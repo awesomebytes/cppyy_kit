@@ -230,6 +230,23 @@ zstandard = "*"
 provision-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py provision"
 validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
 
+# --- pkg (M1c): rattler-build packaging of the 10-package suite --------------
+# Standalone (no-default-feature) so the packaging tooling doesn't drag the
+# ROS/cppyy stack. Recipes live in recipe/<pkg>/; the driver builds all ten in
+# dependency order into ./output (gitignored) and runs the fresh-env artifact
+# proof for each. See recipe/README.md.
+[feature.pkg.dependencies]
+rattler-build = ">=0.68,<0.69"
+
+[feature.pkg.tasks]
+# Build all 10 packages in dependency order into ./output, chaining the local
+# output as a file:// channel so intra-suite deps resolve for each recipe's test.
+pkg-build-all = "bash recipe/build_all.sh"
+# Fresh-env artifact proof per package (throwaway pixi workspace, package from
+# the local channel alone): import smoke (+ cppdef for cppyy-kit, bringup for
+# rclcpp-kit). Run after pkg-build-all.
+pkg-prove = "bash recipe/prove_all.sh"
+
 [environments]
 # solve-group = "default" pins every shared package to the exact same version as
 # the default env, so enabling a kit env never re-resolves the core ROS/cppyy stack.
@@ -248,3 +265,5 @@ rclcpp = { features = ["rclcpp"], solve-group = "default" }
 cudabuild = { features = ["cudabuild"], no-default-feature = true }
 # Integrated GPU vision: the vision stack + CUDA runtime so cv_kit auto-detects cv::cuda.
 vision-cuda = { features = ["vision", "cudabuild"], solve-group = "default" }
+# Packaging env (M1c): rattler-build only; standalone, no ROS/cppyy stack.
+pkg = { features = ["pkg"], no-default-feature = true }
