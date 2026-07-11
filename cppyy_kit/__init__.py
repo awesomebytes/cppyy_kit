@@ -46,6 +46,7 @@ from . import trace  # noqa: F401
 from .cache import (  # noqa: F401
     cppdef_cached, prebuild, cache_info, clear_cache, cache_dir)
 from .require import require, RequireError  # noqa: F401
+from ._cpp import cpp  # noqa: F401
 
 
 class CppyyKitError(Exception):

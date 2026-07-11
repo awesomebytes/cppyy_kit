@@ -576,6 +576,28 @@ and register the cache include dir; cached (offline) thereafter.
   raises, the partial download is removed). Point `$CPPYY_KIT_REQUIRE_DIR` at a
   persistent dir (e.g. `~/.cache`) for a machine-wide header cache.
 
+### 26. `@cpp` — write a C++ kernel in Python, compiled + cached + auto-marshaled
+For a small hot kernel you'd otherwise hand-write as a `cppdef` helper plus manual
+`uintptr_t` marshaling (§6), `cppyy_kit.cpp` does both. The decorated function's
+**docstring is the C++ body** (its Python body never runs) and its **annotations
+drive marshaling**; on first call it compiles once into a cached `.so`
+(`cppdef_cached`, §23) and loads it thereafter.
+```python
+@cpp
+def sum_sq(data: cpp.arr("float")) -> float:            # numpy -> (float* data, size_t data_size)
+    "double s=0; for (std::size_t i=0;i<data_size;++i) s+=data[i]*data[i]; return s;"
+sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctypes/cast
+```
+- **The marshaling is the §6 pattern, automated.** `int`/`float`/`bool` cross by
+  value; a verbatim `"T*"` annotation takes a NumPy array (its `.ctypes.data`) or an
+  int address as `uintptr_t` and hands the body the typed pointer (the
+  `reinterpret_cast` is injected); `cpp.arr("T")` is the numpy→**pointer+size**
+  convenience (body sees `name` and `name_size`). Return `None`→`void`. Only that
+  honest subset is marshaled; anything else raises at decoration time.
+- **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
+  after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
+  `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS
