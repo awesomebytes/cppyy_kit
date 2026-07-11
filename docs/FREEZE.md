@@ -212,29 +212,45 @@ The wrapper JIT is Clang front-end codegen — call it at a compiler once, cache
   proxy with cppyy's public `CPyCppyy::Instance_FromVoidPtr`. All the heavy
   instantiation then happens at `.so` build time.
 
-**Measured (bt simple-action tick path, this machine, cold subprocesses, medians):**
+The isolated crossing shows the ceiling: the bare `std::function` thunk + a single
+`registerSimpleAction` fall from ~414 ms (JIT) to ~16 ms (cached load + one call)
+— the whole first-use JIT gone.
 
-| config | first-use register | end-to-end wall | note |
-|---|--:|--:|---|
-| L0 JIT baseline | ~422 ms | ~1660 ms | first-use JIT every run |
-| L0 + cache (run ≥2) | ~35 ms | ~1230 ms | `.so` loaded, no wrapper JIT |
-| L1 frozen baseline | ~427 ms | ~860 ms | parse gone; first-use JIT remains |
-| **L1 frozen + cache (run ≥2)** | **~36 ms** | **~435 ms** | **best cold start** |
-| run 1 (either, cache miss) | ~1.8 s | +~1.4 s | one-time `.so` compile, per machine |
+**bt_kit adopted end-to-end (t01: 4 leaves in a Sequence, cold subprocesses, this
+machine, `pixi run -e bt bench-cache-bt[-frozen]`):**
+
+| config | first register (first-use) | first tick | end-to-end wall |
+|---|--:|--:|--:|
+| L0 JIT baseline | ~233 ms | ~8 ms | ~1770 ms |
+| L0 + cache (run ≥2) | ~60 ms | ~5 ms | ~1200 ms |
+| frozen JIT baseline | ~278 ms | ~9 ms | ~970 ms |
+| **frozen + cache (run ≥2)** | **~62 ms** | **~5 ms** | **~425 ms** |
+| cached run 1 (miss) | — | — | +~2 s one-time `.so` compile |
 
 So freeze + cache compose: the PCH removes the ~0.89 s **parse**, the cache removes
-the ~0.42 s first-use **wrapper JIT** — end-to-end **~1.66 s → ~0.44 s (~3.8×)**,
-and the first-use register **422 → 36 ms persistently** (not just moved into a
-warmup window). Run 1 pays a one-time ~1.4 s to compile the `.so`; a kit can skip
-even that by *shipping warm* — building the `.so` at package-build time
-(`cppyy_kit.cache.prebuild`) so the artifact is present on first run.
+the bulk of the first-use **wrapper JIT** — best cold start **~1.77 s → ~0.43 s
+(~4.1×)**, first-use register **~233 → ~60 ms persistently** (not just moved into a
+warmup window; `bt_kit.warmup()` becomes a no-op on the cached path). Run 1 pays a
+one-time ~2 s to compile the `.so`; a kit can skip even that by *shipping warm* —
+building the `.so` at package-build time (`cppyy_kit.cache.prebuild`) so the
+artifact is present on first run.
+
+**The residual ~60 ms** is honest and expected: the cache kills the `std::function`
+thunk and the `registerSimpleAction`/`registerStateful` wrapper (the big costs, all
+compiled into the `.so`), but cppyy still JIT-generates a call wrapper the first time
+Python calls *our* trampoline entry points (`register_py_action`, `makePorts`) —
+that codegen is cppyy-internal, not interceptable at our layer. It is a smaller,
+simpler-signature wrapper (~60 ms vs ~233 ms), and it is the same cost whether or
+not the `.so` is cached.
 
 **Honest boundary.** This caches the glue/trampolines the kit *authors*. cppyy's
 on-demand template instantiations triggered by arbitrary user calls (e.g.
-`node.getInput[T](key)` for a new `T`) are not cached by this — they remain JIT
-unless routed through their own cached helper. Artifacts are env-version-tagged and
+`node.getInput[T](key)` for a new `T`), and the call wrappers cppyy makes to reach
+our entry points, are not cached by this. Artifacts are env-version-tagged and
 gitignored, same lifecycle as the PCH (§3): a cppyy/compiler/source change is a
-clean cache miss, never a silent ABI mismatch.
+clean cache miss, never a silent ABI mismatch. When the compiler/CPyCppyy toolchain
+is unavailable the kit falls back to the JIT registration path (a one-time notice),
+so the cache is a pure optimisation, never a correctness dependency.
 
 ---
 
@@ -283,7 +299,8 @@ and runs at engine speed. Registration still crosses cppyy once
   JIT of cppyy call wrappers (~0.7 s for t01) is untouched by it — it is *moved*
   off the first live call by `warmup()`, or *eliminated* persistently by the
   compile cache (§4, "The compile cache"): freeze + cache compose into the
-  best-case cold start (~1.66 s → ~0.44 s).
+  best-case cold start (~1.77 s → ~0.43 s), leaving a small ~60 ms residual
+  (cppyy's call wrappers to the kit's own trampoline entry points).
 * Artifacts are Cling-version-specific and must be rebuilt (never committed) on any
   cppyy-cling / library version change.
 * Freezing a new header may surface further internal-linkage symbols to force

@@ -64,6 +64,9 @@ SKIPPED = 4
 _BT = None
 _STATUS = {}
 _BRINGUP_DONE = False
+# True once the compile-cache trampoline is available (the registration path that
+# has no first-use JIT). False falls back to the cppyy callback()+register JIT path.
+_CACHED = False
 
 
 class BtXmlError(ValueError):
@@ -95,9 +98,10 @@ inline void addPort(BT::PortsList& p, const std::string& name, const std::string
 }
 
 // Two parallel std::vector<std::string> (names, types) -- passing a
-// vector<pair> or building the map from Python is what segfaults.
-inline BT::PortsList makePorts(const std::vector<std::string>& names,
-                               const std::vector<std::string>& types) {
+// vector<pair> or building the map from Python is what segfaults. Non-inline so it
+// exports a real symbol from the compile-cache .so (Python calls it via _make_ports).
+BT::PortsList makePorts(const std::vector<std::string>& names,
+                        const std::vector<std::string>& types) {
   BT::PortsList ports;
   for (size_t i = 0; i < names.size(); ++i) {
     addPort(ports, names[i], types[i]);
@@ -142,6 +146,102 @@ inline void registerStateful(BT::BehaviorTreeFactory& factory,
 }
 
 }  // namespace rclcppyy_btkit
+"""
+
+# Compile-cache trampolines (cppyy_kit.cppdef_cached). These build the
+# std::function thunks AND do the registerSimpleAction/Condition/registerStateful
+# calls in COMPILED code, so the per-signature call-wrapper JIT (~0.4-0.7 s on the
+# first live registration, which a freeze/PCH does NOT remove) is paid once at .so
+# build time and never again. The Python leaf/hook callables arrive as PyObject*
+# (cppyy hands a Python callable to a PyObject* parameter directly); C++ node
+# arguments cross back to Python as cppyy proxies via CPyCppyy::Instance_FromVoidPtr.
+# The .so is compiled from _CPP_GLUE + this, so it also carries makePorts and the
+# stateful shim; _CACHED_DECLS is what Cling needs to call into the .so on a hit.
+_TRAMPOLINE_CODE = r"""
+#include <Python.h>
+#include <CPyCppyy/API.h>
+namespace rclcppyy_btkit {
+
+// Call a Python leaf with the node proxy; return its int NodeStatus (FAILURE=3 on
+// any Python error, so a raising leaf fails its node rather than crashing C++).
+static int _call_status(PyObject* fn, BT::TreeNode& node) {
+  PyGILState_STATE g = PyGILState_Ensure();
+  PyObject* pynode = CPyCppyy::Instance_FromVoidPtr((void*)&node, "BT::TreeNode");
+  PyObject* res = pynode ? PyObject_CallFunctionObjArgs(fn, pynode, nullptr) : nullptr;
+  long st = 3;
+  if (res) { st = PyLong_AsLong(res); Py_DECREF(res); } else { PyErr_Print(); }
+  Py_XDECREF(pynode);
+  PyGILState_Release(g);
+  return (int)st;
+}
+
+static int _call_handle_status(PyObject* fn, int handle, BT::TreeNode& node) {
+  PyGILState_STATE g = PyGILState_Ensure();
+  PyObject* pynode = CPyCppyy::Instance_FromVoidPtr((void*)&node, "BT::TreeNode");
+  PyObject* res = pynode ? PyObject_CallFunction(fn, (char*)"iO", handle, pynode) : nullptr;
+  long st = 3;
+  if (res) { st = PyLong_AsLong(res); Py_DECREF(res); } else { PyErr_Print(); }
+  Py_XDECREF(pynode);
+  PyGILState_Release(g);
+  return (int)st;
+}
+
+// Non-inline: real exported symbols the cache .so hands cppyy on a hit.
+void register_py_action(BT::BehaviorTreeFactory& factory, const std::string& id,
+                        const BT::PortsList& ports, PyObject* fn) {
+  Py_XINCREF(fn);  // the std::function outlives this call (also pinned Python-side)
+  factory.registerSimpleAction(id,
+    [fn](BT::TreeNode& n) { return static_cast<BT::NodeStatus>(_call_status(fn, n)); }, ports);
+}
+
+void register_py_condition(BT::BehaviorTreeFactory& factory, const std::string& id,
+                           const BT::PortsList& ports, PyObject* fn) {
+  Py_XINCREF(fn);
+  factory.registerSimpleCondition(id,
+    [fn](BT::TreeNode& n) { return static_cast<BT::NodeStatus>(_call_status(fn, n)); }, ports);
+}
+
+void register_py_stateful(BT::BehaviorTreeFactory& factory, const std::string& id,
+                          const BT::PortsList& ports, PyObject* build,
+                          PyObject* start, PyObject* running, PyObject* halted) {
+  Py_XINCREF(build); Py_XINCREF(start); Py_XINCREF(running); Py_XINCREF(halted);
+  std::function<int(const std::string&)> fbuild = [build](const std::string& name) -> int {
+    PyGILState_STATE g = PyGILState_Ensure();
+    PyObject* res = PyObject_CallFunction(build, (char*)"s", name.c_str());
+    long h = 0;
+    if (res) { h = PyLong_AsLong(res); Py_DECREF(res); } else { PyErr_Print(); }
+    PyGILState_Release(g);
+    return (int)h;
+  };
+  std::function<int(int, BT::TreeNode&)> fstart =
+    [start](int h, BT::TreeNode& n) { return _call_handle_status(start, h, n); };
+  std::function<int(int, BT::TreeNode&)> frunning =
+    [running](int h, BT::TreeNode& n) { return _call_handle_status(running, h, n); };
+  std::function<void(int, BT::TreeNode&)> fhalted = [halted](int h, BT::TreeNode& n) {
+    PyGILState_STATE g = PyGILState_Ensure();
+    PyObject* pynode = CPyCppyy::Instance_FromVoidPtr((void*)&n, "BT::TreeNode");
+    PyObject* res = pynode ? PyObject_CallFunction(halted, (char*)"iO", h, pynode) : nullptr;
+    Py_XDECREF(res);
+    Py_XDECREF(pynode);
+    PyGILState_Release(g);
+  };
+  registerStateful(factory, id, ports, fbuild, fstart, frunning, fhalted);
+}
+
+}  // namespace rclcppyy_btkit
+"""
+
+# Bodiless declarations Cling needs on a cache hit (the definitions live in the .so).
+_CACHED_DECLS = r"""
+#include <Python.h>
+#include <behaviortree_cpp/bt_factory.h>
+namespace rclcppyy_btkit {
+  BT::PortsList makePorts(const std::vector<std::string>&, const std::vector<std::string>&);
+  void register_py_action(BT::BehaviorTreeFactory&, const std::string&, const BT::PortsList&, PyObject*);
+  void register_py_condition(BT::BehaviorTreeFactory&, const std::string&, const BT::PortsList&, PyObject*);
+  void register_py_stateful(BT::BehaviorTreeFactory&, const std::string&, const BT::PortsList&,
+                            PyObject*, PyObject*, PyObject*, PyObject*);
+}
 """
 
 
@@ -252,6 +352,16 @@ def _tick_functor(fn, owner):
     return cppyy_kit.callback(tick, signature="BT::NodeStatus(BT::TreeNode&)", owner=owner)
 
 
+def _cached_tick(fn):
+    """The Python callable the compile-cache trampoline invokes: it receives the raw
+    cppyy ``BT::TreeNode`` proxy and returns an int status. Wraps the node in
+    ``_Node`` and coerces the leaf's return exactly like the JIT path -- so leaves
+    behave identically whether registered through the cache or through cppyy."""
+    def tick(cpp_node):
+        return int(_coerce_status(fn(_Node(cpp_node))))
+    return tick
+
+
 def _adapt_factory(BT):
     """Patch BehaviorTreeFactory so the C++-named registration/creation methods
     accept plain Python callables and list-of-string ports (friction removed),
@@ -266,12 +376,22 @@ def _adapt_factory(BT):
     Factory._orig_create_tree_from_file = Factory.createTreeFromFile
 
     def register_simple_action(self, name, fn, ports=None):
-        with cppyy_kit.first_use("bt_kit.register_simple_action", "bt_kit.warmup()"):
-            self._orig_register_simple_action(name, _tick_functor(fn, self), _make_ports(ports))
+        if _CACHED:
+            tick = _cached_tick(fn)
+            cppyy_kit.keep_alive(self, tick)
+            cppyy.gbl.rclcppyy_btkit.register_py_action(self, name, _make_ports(ports), tick)
+        else:
+            with cppyy_kit.first_use("bt_kit.register_simple_action", "bt_kit.warmup()"):
+                self._orig_register_simple_action(name, _tick_functor(fn, self), _make_ports(ports))
 
     def register_simple_condition(self, name, fn, ports=None):
-        with cppyy_kit.first_use("bt_kit.register_simple_condition", "bt_kit.warmup()"):
-            self._orig_register_simple_condition(name, _tick_functor(fn, self), _make_ports(ports))
+        if _CACHED:
+            tick = _cached_tick(fn)
+            cppyy_kit.keep_alive(self, tick)
+            cppyy.gbl.rclcppyy_btkit.register_py_condition(self, name, _make_ports(ports), tick)
+        else:
+            with cppyy_kit.first_use("bt_kit.register_simple_condition", "bt_kit.warmup()"):
+                self._orig_register_simple_condition(name, _tick_functor(fn, self), _make_ports(ports))
 
     def register_stateful(self, name, node_class, ports=None):
         """Register an asynchronous (multi-tick) node whose behaviour is a Python
@@ -311,14 +431,22 @@ def _adapt_factory(BT):
             if method is not None:
                 method(_Node(node))
 
-        # callback() pins each wrapper (and its Python fn) on the factory; the
-        # closures hold `registry`, so the per-instance objects stay alive too.
-        with cppyy_kit.first_use("bt_kit.register_stateful", "bt_kit.warmup()"):
-            b = cppyy_kit.callback(build, signature="int(const std::string&)", owner=self)
-            fs = cppyy_kit.callback(f_start, signature="int(int, BT::TreeNode&)", owner=self)
-            fr = cppyy_kit.callback(f_running, signature="int(int, BT::TreeNode&)", owner=self)
-            fh = cppyy_kit.callback(f_halted, signature="void(int, BT::TreeNode&)", owner=self)
-            cppyy.gbl.rclcppyy_btkit.registerStateful(self, name, _make_ports(ports), b, fs, fr, fh)
+        if _CACHED:
+            # The trampoline builds the four std::function thunks in compiled code;
+            # hand it the raw Python closures. Pin them (and the registry holding the
+            # per-instance objects) on the factory; the .so also holds a ref.
+            cppyy_kit.keep_alive(self, build, f_start, f_running, f_halted, registry)
+            cppyy.gbl.rclcppyy_btkit.register_py_stateful(
+                self, name, _make_ports(ports), build, f_start, f_running, f_halted)
+        else:
+            # callback() pins each wrapper (and its Python fn) on the factory; the
+            # closures hold `registry`, so the per-instance objects stay alive too.
+            with cppyy_kit.first_use("bt_kit.register_stateful", "bt_kit.warmup()"):
+                b = cppyy_kit.callback(build, signature="int(const std::string&)", owner=self)
+                fs = cppyy_kit.callback(f_start, signature="int(int, BT::TreeNode&)", owner=self)
+                fr = cppyy_kit.callback(f_running, signature="int(int, BT::TreeNode&)", owner=self)
+                fh = cppyy_kit.callback(f_halted, signature="void(int, BT::TreeNode&)", owner=self)
+                cppyy.gbl.rclcppyy_btkit.registerStateful(self, name, _make_ports(ports), b, fs, fr, fh)
 
     def create_tree_from_text(self, xml, *args):
         try:
@@ -349,6 +477,48 @@ def _adapt_factory(BT):
     Factory.create_tree_from_text = create_tree_from_text
     Factory.create_tree_from_file = create_tree_from_file
     Factory._bt_kit_adapted = True
+
+
+_ADOPT_NOTICE_SHOWN = False
+
+
+def _adopt_glue(prefix):
+    """Make the C++ glue available, preferring the compile-cache trampoline path
+    (no first-use JIT) and falling back to the plain-cppdef + cppyy callback() path
+    when the cache/toolchain is unavailable (capability/fallback).
+
+    On the fast path the glue *and* the PyObject* trampolines are compiled once into
+    a cached ``.so`` (``cppdef_cached``); ``register_*`` then route registration
+    through it. On the fallback path only ``_CPP_GLUE`` is cppdef'd and
+    registration goes through ``cppyy_kit.callback`` (the JIT path, warmup-movable).
+    """
+    global _CACHED, _ADOPT_NOTICE_SHOWN
+    # Opt-out / benchmark switch: force the JIT registration path.
+    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+        _CACHED = False
+        cppyy.cppdef(_CPP_GLUE)
+        return
+    # Compiled standalone by $CXX, so the source must include the BT headers itself
+    # (the in-process cppdef inherits bringup's include; a .so translation unit does
+    # not). Python.h / CPyCppyy come in via _TRAMPOLINE_CODE.
+    source = "#include <behaviortree_cpp/bt_factory.h>\n" + _CPP_GLUE + _TRAMPOLINE_CODE
+    try:
+        cppyy_kit.cppdef_cached(
+            source, decls=_CACHED_DECLS, name="bt_glue", trampoline=True,
+            include_paths=[os.path.join(prefix, "include")],
+            library_paths=[os.path.join(prefix, "lib")], libraries=["behaviortree_cpp"])
+        # Confirm the trampoline entry point is actually callable before committing.
+        _ = cppyy.gbl.rclcppyy_btkit.register_py_action
+        _CACHED = True
+    except Exception as exc:  # no compiler / CPyCppyy / a compile-or-parse issue
+        _CACHED = False
+        if not _ADOPT_NOTICE_SHOWN and os.environ.get("RCLCPPYY_JIT_NOTICE", "1") != "0":
+            _ADOPT_NOTICE_SHOWN = True
+            cppyy_kit._compile._stderr(
+                "[bt_kit] compile-cache trampoline unavailable (%s); using the JIT "
+                "registration path (call bt_kit.warmup() to move the first-use cost). "
+                "Silence: RCLCPPYY_JIT_NOTICE=0." % exc)
+        cppyy.cppdef(_CPP_GLUE)
 
 
 def bringup_bt():
@@ -383,7 +553,7 @@ def bringup_bt():
     # Frozen only: emit the header's internal-linkage statics the AST-only PCH
     # doesn't (else the C++ glue below fails to link). No-op on the JIT path.
     freeze.apply_force_symbols("bt")
-    cppyy.cppdef(_CPP_GLUE)
+    _adopt_glue(prefix)
 
     _BT = cppyy.gbl.BT
     ns = _BT.NodeStatus
@@ -414,6 +584,12 @@ def warmup():
     after the first call, since the wrappers are then cached). A freeze/PCH does
     not remove this cost -- warmup and freeze compose (freeze cuts the header
     parse, warmup moves the wrapper JIT off the first live call).
+
+    When the compile cache is active (``bt_kit._CACHED`` -- the default when a
+    compiler is present), registration routes through the cached trampoline ``.so``
+    which *already* carries the wrappers, so there is no first-use JIT to move:
+    warmup is then a cheap no-op kept for API compatibility. It stays useful on the
+    fallback (JIT) path.
     """
     bt = bringup_bt()
 

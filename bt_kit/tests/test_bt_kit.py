@@ -159,11 +159,15 @@ def test_subtree_composition(bt):
 
 
 def test_warmup_marks_entry_points_seen_and_tree_runs(bt):
-    # warmup() exercises the expensive entry points (under notice suppression), so
-    # afterwards their first-use labels are marked seen and a real tree still runs.
+    # warmup() exercises the expensive entry points and a real tree still runs after.
+    # On the JIT path warmup marks the first-use labels seen (it front-loads the
+    # wrapper JIT); on the compile-cache path there is no first-use JIT to front-load
+    # (the trampoline .so already carries the wrappers), so warmup is a cheap no-op
+    # and the labels are not used -- both are correct, so assert per mode.
     bt_kit.warmup()
-    assert "bt_kit.register_simple_action" in cppyy_kit._FIRST_USE_SEEN
-    assert "bt_kit.register_stateful" in cppyy_kit._FIRST_USE_SEEN
+    if not bt_kit._CACHED:
+        assert "bt_kit.register_simple_action" in cppyy_kit._FIRST_USE_SEEN
+        assert "bt_kit.register_stateful" in cppyy_kit._FIRST_USE_SEEN
 
     factory = bt.BehaviorTreeFactory()
     factory.register_simple_action("WarmA", lambda n: bt_kit.SUCCESS)
