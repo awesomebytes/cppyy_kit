@@ -107,6 +107,18 @@ kits pull `ros-jazzy-rclcpp-kit`, transitively.
 - [`docs/tutorials/`](docs/tutorials/) — end-to-end tutorials (visual loop closure).
 - Per kit: `<kit>/SKILL.md` (LLM-facing), `<kit>/WHY.md` (the pitch), `<kit>/REPORT.md` (evidence).
 
+## Make it faster with an LLM: the `cppyy-accelerate` skill
+
+Point a coding agent at slow Python and ask it to speed it up:
+[`skills/cppyy-accelerate/SKILL.md`](skills/cppyy-accelerate/SKILL.md) is a
+Claude-Code-consumable procedure — **PROFILE** (a cProfile + boundary-tracer
+wrapper), **MAP** (a decision tree from hotspot shape to the right kit/pattern, with
+an honest DON'T list), **APPLY** (minimal diff per the kit `SKILL.md`), **VERIFY**
+(tests-as-contract + a before/after table). The worked example
+([`WALKTHROUGH.md`](skills/cppyy-accelerate/WALKTHROUGH.md)) accelerates a naive
+Python voxel downsampler **15.6× (47.9 ms → 3.07 ms)** with identical output —
+`pixi run -e pcl test-accelerate` (the contract) and `bench-accelerate` (the table).
+
 ## Status: M1b (rclcpp_kit carved)
 
 This repo was bootstrapped (M1a) by migrating the kit suite out of rclcppyy **with
