@@ -1,0 +1,67 @@
+name: Docs
+
+# On push to main: strict-build the mkdocs-material site and deploy it to GitHub
+# Pages. The BUILD job is the hard gate (strict); the DEPLOY job is best-effort
+# so the workflow stays green until Pages is enabled on the repo.
+#
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ ⚠  ONE-TIME MANUAL STEP (Sam) — enable GitHub Pages if the API call in M4    │
+# │ could not: repo Settings → Pages → Build and deployment → Source =           │
+# │ "GitHub Actions". Until then the build job still runs + gates; the deploy    │
+# │ job soft-fails (continue-on-error) instead of blocking the workflow.         │
+# └────────────────────────────────────────────────────────────────────────────┘
+
+on:
+  push:
+    branches: [main]
+  # Allow manual runs from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never cancel an in-flight Pages deployment; queue instead.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build (strict)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          # Docs env only (mkdocs-material); no ROS/cppyy stack.
+          environments: docs
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Build site (strict)
+        run: pixi run -e docs docs-build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: deploy to Pages (best-effort until enabled)
+    needs: build
+    runs-on: ubuntu-latest
+    # Soft-fail if Pages is not enabled yet — the build job above still gates.
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
