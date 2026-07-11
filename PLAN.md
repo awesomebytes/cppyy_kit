@@ -134,3 +134,28 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 - COMMON_PATTERNS.md is the canonical playbook; every lane feeds it.
 - Commits: sammypfeiffer@gmail.com; no history rewrites containing others'
   commits; PLAN.md (this file) is the supervisor's ledger.
+
+### M8 — L3 whole-app lowering (research thread)
+
+The step beyond the ladder: convert a whole kit-built app to a compiled
+artifact by **tracing its execution** — PGO/LTO thinking applied to the
+prototype→deploy workflow. Tractable precisely because kit apps are thin
+Python between cppyy crossings (this is NOT "compile Python"): instrument the
+boundary centrally in cppyy_kit → a semantic, typed call-trace + instantiation
+manifest → emit C++ replaying the orchestration skeleton → compile with real
+LTO/PGO. The control-flow wall (a trace is one path) has three honest routes:
+control-flow-as-data apps (BT XML) lower to a **full static binary**;
+multi-trace+guards yields a hybrid binary (embedded CPython, no Cling);
+bounded AST-lift covers straight-line glue only. Tests-as-contract makes the
+automation safe (differential gate at every step).
+
+- **8a — boundary tracer** (small; run early — also feeds freeze manifests,
+  real PGO profiles, and the M5 accelerate skill's hotspot analysis).
+- **8b — trace→C++ emitter** for straight-line segments + differential harness
+  (pilot: the vision per-frame path or the PCL pipeline).
+- **8c — whole-app pilot**: a BT-shaped app → static binary (emitted main +
+  L2-lowered leaves + tree XML); same golden tests; measure binary size,
+  startup, CPU vs L0.
+- **8d — honest positioning survey** vs Nuitka / Codon / torch.export+
+  AOTInductor / PyPy tracing — including "hybrid binary, not full lowering" as
+  an acceptable general-case answer.
