@@ -25,7 +25,7 @@ UK 2026.**
 | Package | Depends on | Content |
 |---|---|---|
 | **`cppyy_kit`** | cppyy | ROS-free base: friction primitives (load / keep_alive / callback / HandleRegistry / warmup / first_use / teardown / probe), `freeze` (PCH + vendored-source tooling). Enriched in M2 (compile cache, `require()`, `@cpp`, `nogil`, stubs, capability/fallback). |
-| **`rclcpp_kit`** | cppyy_kit, rclcpp | The kit for rclcpp (ROS 2 core): bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers. **Placeholder — arrives in M1b.** |
+| **`rclcpp_kit`** | cppyy_kit, rclcpp | The kit for rclcpp (ROS 2 core): bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers. Carved out of rclcppyy in M1b. |
 | **`bt_kit`** | cppyy_kit | BehaviorTree.CPP v4 from Python. |
 | **`pcl_kit`** | cppyy_kit (+ rclcpp) | Point Cloud Library; clouds stay in C++ end to end. |
 | **`ompl_kit`** | cppyy_kit | Open Motion Planning Library. |
@@ -58,8 +58,10 @@ pixi run -e control test-control  # a Python controller in the real controller_m
 ```
 
 Kit demos/tests are discovered via `PYTHONPATH` (set in `pixi.toml`
-`[activation.env]`): the repo root plus each kit dir. Every ROS-touching kit env
-also pulls the **`rclcpp` bridge** — see below.
+`[activation.env]`): the repo root plus each kit dir. ROS-touching kits get the ROS
+2 core through **`rclcpp_kit`** (a local package on that path) plus the default
+`ros-base` env — no extra per-kit ROS dependency. The `rclcpp_kit` suite + tf demos
+run in the `rclcpp` env: `pixi run -e rclcpp test-rclcpp` / `test-tf`.
 
 ## Docs
 
@@ -69,20 +71,20 @@ also pulls the **`rclcpp` bridge** — see below.
 - [`docs/tutorials/`](docs/tutorials/) — end-to-end tutorials (visual loop closure).
 - Per kit: `<kit>/SKILL.md` (LLM-facing), `<kit>/WHY.md` (the pitch), `<kit>/REPORT.md` (evidence).
 
-## Status: M1a (migration & bootstrap)
+## Status: M1b (rclcpp_kit carved)
 
-This repo was bootstrapped by migrating the kit suite out of rclcppyy **with git
-history** (`git log --follow` traces any migrated file back into rclcppyy).
+This repo was bootstrapped (M1a) by migrating the kit suite out of rclcppyy **with
+git history**, and (M1b) by carving the rclcpp core layer — **`rclcpp_kit`**
+(bringup, messages, serialization, rosbag2, tf) — out of rclcppyy the same way
+(`git log --follow` traces any file back into rclcppyy). Every ROS-touching kit now
+imports `rclcpp_kit` directly; the M1b-temporary `ros-jazzy-rclcppyy` bridge is gone.
 Still to come:
 
-- **M1b** — carve the real `rclcpp_kit` out of rclcppyy (bringup, messages,
-  serialization, rosbag2, tf). Until then, ROS-touching kits import the rclcppyy
-  product via the **`rclcpp` bridge**: the `ros-jazzy-rclcppyy` conda package,
-  pulled into the ROS-touching feature envs. When M1b lands, those imports switch
-  to `rclcpp_kit` and the bridge feature is removed.
 - **M1c** — per-package rattler-build recipes + tag-triggered release matrix to
   the prefix.dev `awesomebytes` channel (which replaces the PYTHONPATH mechanism
   with proper editable/conda installs).
+- **M3** — slim rclcppyy to thin re-export shims over `rclcpp_kit` + its
+  monkeypatch/brand; parity proven by its own bench/test suite.
 
 ## License
 

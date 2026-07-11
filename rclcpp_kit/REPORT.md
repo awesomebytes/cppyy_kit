@@ -15,10 +15,16 @@ entirely in C++ on its own thread — **~7–14× less CPU** than the stock rclp
 listener under a TF storm (the win grows with tf traffic) — **and** each
 `lookup_transform` is **~5× cheaper** (1.4 µs vs 7.5 µs) because the Python `Buffer`
 pays two C-extension round-trips plus a Python message build per call. Delivered as
-`rclcppyy/tf.py` (rclcppyy-proper, since tf2 is core ROS 2 in the default env), a
-`TransformListener` helper whose lookups return the real
-`geometry_msgs::msg::TransformStamped`. Tests run in the default suite (8 tests, 4.2 s,
+`rclcpp_kit/tf.py` (surfaced as `rclcpp_kit.tf` — the rclcpp core capability layer,
+since tf2 is core ROS 2), a `TransformListener` helper whose lookups return the real
+`geometry_msgs::msg::TransformStamped`. Tests run in the `rclcpp` env (8 tests, ~4 s,
 including a real network-ingest test); demos + bench are pixi tasks with clean exit 0.
+
+> **M1b note.** This spike was originally delivered inside the rclcppyy product as
+> `rclcppyy.tf`. M1b carved it (with its bringup/serialization/rosbag2 siblings) into
+> `rclcpp_kit` **with git history**; the mechanism, numbers and reasoning below are
+> unchanged, only the import path is now `rclcpp_kit.tf`. Run it with
+> `pixi run -e rclcpp test-tf`.
 
 ---
 
@@ -162,19 +168,20 @@ are measured **under ingest load**.
 
 ## Job 4 — deliverable shape
 
-**`rclcppyy/tf.py`, surfaced as `rclcppyy.tf` — rclcppyy-proper, not a "kit".** Every
-existing kit (bt/pcl/ompl/nav2/moveit/control/cv/dbow) wraps a **third-party or opt-in**
-library living in its own pixi feature-env. tf2 is **core ROS 2**, shipped in the
-default `ros-base` env exactly like rclcpp — so it belongs alongside `bringup_rclcpp` /
-`serialization` / `rosbag2_cpp`, not behind an opt-in env. Surface:
+**`rclcpp_kit/tf.py`, surfaced as `rclcpp_kit.tf` — the rclcpp core layer, not a
+domain "kit".** Every domain kit (bt/pcl/ompl/nav2/moveit/control/cv/dbow) wraps a
+**third-party or opt-in** library living in its own pixi feature-env. tf2 is **core
+ROS 2**, shipped in the default `ros-base` env exactly like rclcpp — so it belongs in
+`rclcpp_kit` alongside `bringup_rclcpp` / `serialization` / `rosbag2_cpp`, not behind
+an opt-in env. Surface:
 
 ```python
-import rclcppyy
-from rclcppyy import tf
+import rclcpp_kit
+from rclcpp_kit import tf
 
-rclcppyy.bringup_rclcpp()
+rclcpp_kit.bringup_rclcpp()
 listener = tf.TransformListener()                 # own node + own C++ spin thread
-# or tf.TransformListener(node=my_rclcppyy_node)  # attach to an existing node
+# or tf.TransformListener(node=my_node)           # attach to an existing node
 ts = listener.lookup_transform("world", "sensor", timeout=1.0)
 x = ts.transform.translation.x                     # the real geometry_msgs message
 ok = listener.can_transform("world", "sensor")
@@ -187,18 +194,18 @@ ok = listener.can_transform("world", "sensor")
   `_yaml`, `close`. `time=` accepts `None` (latest) / seconds / an rclpy·rclcpp `Time`.
 - `tf.time_from_sec` / `tf.duration_from_sec`; `tf.TransformException`.
 - Mirror-don't-sugar: `lookup_transform` returns the real
-  `geometry_msgs::msg::TransformStamped` (the same cppyy proxy the rest of rclcppyy
+  `geometry_msgs::msg::TransformStamped` (the same cppyy proxy the rest of rclcpp_kit
   uses); the raw `tf2` namespace is available for advanced use.
 
-Demos (`scripts/tf_demos/`, pixi tasks): `demo-tf-lookup` (minimal lookup example),
-`demo-tf-storm` (the storm publisher), `bench-tf` (the table above). Tests
-(`test/test_tf.py`, 8 tests, in the default suite): numeric composition, can/timeout,
-chain, time helpers, and a real network-ingest test.
+Demos (`rclcpp_kit/demos/`, pixi tasks in the `rclcpp` env): `demo-tf-lookup` (minimal
+lookup example), `demo-tf-storm` (the storm publisher), `bench-tf` (the table above).
+Tests (`rclcpp_kit/tests/test_tf.py`, 8 tests, `pixi run -e rclcpp test-tf`): numeric
+composition, can/timeout, chain, time helpers, and a real network-ingest test.
 
-*Not done (candidates):* `node.tf_listener()` sugar on `RclcppyyNode` (kept out to
-respect shared-file ownership — additive, easy follow-up); a `TransformBroadcaster`
-helper (the publish side); `lookup_transform_full` (fixed-frame/advanced API);
-`transform()` of a stamped datatype (needs `tf2_geometry_msgs` converters).
+*Not done (candidates):* `node.tf_listener()` sugar on a node wrapper (additive, easy
+follow-up); a `TransformBroadcaster` helper (the publish side); `lookup_transform_full`
+(fixed-frame/advanced API); `transform()` of a stamped datatype (needs
+`tf2_geometry_msgs` converters).
 
 ---
 
@@ -239,7 +246,7 @@ Sam's assumption is confirmed and then some: the stock rclpy TransformListener f
 its buffer entirely in Python (deserialize → per-transform Python→C crossing → GIL),
 and rclcppyy's C++ listener does it in C++ on its own thread for **~7–14× less ingest
 CPU** under load, with **~5× cheaper lookups** as a bonus. It is delivered as
-`rclcppyy.tf` — a thin, mirror-don't-sugar helper in rclcppyy-proper — with demos, a
-reproducible benchmark, and a fast default-suite test that includes the real
-network-ingest path. The friction was two familiar cppyy walls (overload mis-resolution,
+`rclcpp_kit.tf` — a thin, mirror-don't-sugar helper in the rclcpp core capability
+layer — with demos, a reproducible benchmark, and a fast test suite that includes the
+real network-ingest path. The friction was two familiar cppyy walls (overload mis-resolution,
 ctor-in-C++), both hidden behind ~35 lines of glue.
