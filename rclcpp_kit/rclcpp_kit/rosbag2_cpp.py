@@ -5,7 +5,7 @@ This module provides access to the common C++ rosbag2 classes and
 simple helpers to open readers/writers and iterate messages.
 
 Usage:
-    from rclcppyy import rosbag2_cpp as rosbag2_py
+    from rclcpp_kit import rosbag2_cpp as rosbag2_py
     reader = rosbag2_py.open_reader("/path/to/input", storage_id="mcap")
     writer = rosbag2_py.open_writer("/path/to/output", storage_id="mcap")
 """
