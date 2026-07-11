@@ -243,6 +243,13 @@ that codegen is cppyy-internal, not interceptable at our layer. It is a smaller,
 simpler-signature wrapper (~60 ms vs ~233 ms), and it is the same cost whether or
 not the `.so` is cached.
 
+**Second data point (pcl_kit).** The same mechanism caches PCL's heavy template
+first-use: `pcl_kit.voxel_downsample` compiles a `pcl::VoxelGrid<PointXYZ>` into the
+kit's `.so`, taking the filter's first-use ~594 ms → ~5 ms and the d02 showcase
+frame-0 (`from_msg → voxel → to_msg`) **~681 ms → ~88 ms (~7.7×)** — evidence the
+cache is library-independent, like the PCH. (Here the win is instantiating a
+*library* template in compiled code, the pcl analogue of bt's callback trampoline.)
+
 **Honest boundary.** This caches the glue/trampolines the kit *authors*. cppyy's
 on-demand template instantiations triggered by arbitrary user calls (e.g.
 `node.getInput[T](key)` for a new `T`), and the call wrappers cppyy makes to reach

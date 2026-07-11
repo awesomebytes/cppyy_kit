@@ -127,6 +127,8 @@ demo-pcl-voxel = "python pcl_kit/demos/d01_voxel_numpy.py"
 demo-pcl-pipeline = "python pcl_kit/demos/d02_ros_pipeline.py"
 # pcl_kit pipeline (d02) vs plain rclpy+NumPy baseline (d03): latency, CPU%, LOC.
 bench-pcl = "python pcl_kit/demos/bench_pcl_pipeline.py"
+# M2 compile cache: d02 frame-0 first-use, JIT vs cached voxel_downsample.
+bench-cache-pcl = "python scripts/cache/measure_pcl_frame0.py"
 
 # --- ompl: Open Motion Planning Library --------------------------------------
 [feature.ompl.dependencies]
