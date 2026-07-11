@@ -1,0 +1,136 @@
+# cppyy_kit — master plan
+
+**Mission:** a suite of "kits" that let Python drive C++ robotics libraries via
+cppyy — prototype at Python speed, run at C++ speed, graduate to AOT — with
+first-class documentation and LLM-agent consumability.
+
+**Headline target: ROSCon UK 2026.** The presentation storyline every milestone
+serves:
+
+> Prototype normally (plain Python) → switch to rclcppyy + kits and it gets
+> automatically more efficient → write unit/integration tests (the contract) →
+> apply AOT (freeze/lower) → show the benchmark difference — **while the code
+> stays the same or changes minimally**. Plus: an LLM agent you can ask "make
+> this code/package faster" that applies cppyy_kit + the right kits for you.
+
+**Origin:** this project extracts and expands the kit suite proven in
+[rclcppyy](https://github.com/awesomebytes/rclcppyy) (7 spikes, 7 GOs, 22
+documented patterns, measured ladder: PCH freeze 890→6 ms header parse, L2
+lowering, 14.8×/9.4× PCL showcase, 6.7–14× TF ingest). See
+`rclcppyy/docs/kits/ARCHITECTURE_V2.md` for the approved architecture and
+evaluation history.
+
+---
+
+## Package suite
+
+| Package | Conda name | Depends on | Content |
+|---|---|---|---|
+| `cppyy_kit` | `cppyy-kit` (distro-free) | cppyy | friction primitives (load/keep_alive/callback/HandleRegistry/warmup/first_use/teardown/probe), compile cache, `require()`, `@cpp`, `nogil`, stubs, freeze & vendored-source tooling, capability/fallback |
+| `rclcpp_kit` | `ros-jazzy-rclcpp-kit` | cppyy_kit, ros-jazzy-rclcpp | rclcpp bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers, rclcpp PCH recipe |
+| `bt_kit` `pcl_kit` `ompl_kit` `nav2_kit` `moveit_kit` `control_kit` `cv_kit` `dbow_kit` | `ros-jazzy-<name>-kit` (ROS-touching) / distro-free where possible | cppyy_kit (+ rclcpp_kit where ROS) | as proven in rclcppyy, restructured to kit anatomy |
+| (separate repo) `rclcppyy` | `ros-jazzy-rclcppyy` | rclcpp-kit | the drop-in rclpy accelerator product; slims to monkeypatching + brand |
+
+**Kit anatomy** (each kit): Python mirror-API package + optional `cpp/` sources
+(shims, L2 nodes, vendored builds, freeze recipes) + **`SKILL.md`** (LLM-facing:
+when to use, copy-paste patterns, gotchas) + `WHY.md` + `REPORT.md` + demos +
+tests + recipe (which may precompile `cpp/` at package-build time → the compile
+cache ships warm).
+
+**Publishing:** prefix.dev `awesomebytes` channel; every published artifact must
+pass the fresh-env proof (install from channel alone → works) before upload —
+same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
+
+---
+
+## Milestones
+
+### M1 — Migration & bootstrap
+- **M1a**: bootstrap this repo (pixi workspace on the proven pattern, CI via
+  setup-pixi, lint, LICENSE/README/.gitignore); migrate kits + kit docs +
+  freeze/dataset/demo scripts + kit tests from rclcppyy **with git history**
+  (`git filter-repo` path extraction; documented fallback if it fights);
+  restructure to the kit anatomy (per-kit dirs); all migrated suites green in
+  the new home. rclcppyy repo remains fully functional (nothing deleted there
+  until M3).
+- **M1b**: carve **`rclcpp_kit`** out of rclcppyy's core (bringup, message
+  machinery, serialization, rosbag2, tf) into this repo; its tests move with
+  it; imports across kits updated.
+- **M1c**: per-package rattler-build recipes + tag-triggered release matrix
+  (build → fresh-env artifact proof → upload), OIDC to prefix.dev.
+
+### M2 — Base enrichment (value order)
+1. **Compile cache** (content-hash cppdef→`.so`, dlopen thereafter) — kills the
+   measured ~0.69 s first-use wrapper JIT *persistently*; measure vs warmup.
+2. `require()` header-only fetcher (conda-first policy).
+3. `@cpp` decorator (annotation-driven marshaling, unified with callback()).
+4. `nogil()` + asyncio helper (on the corrected GIL evidence).
+5. `.pyi` stub generation (revive rclcppyy's stalled create_stubs).
+6. capability/fallback/status codified.
+- **SKILL.md for every kit** (evolve the cheat sheets) + repo-level
+  COMMON_PATTERNS as the shared manual.
+
+### M3 — rclcppyy slim + first suite release
+- In the rclcppyy repo: replace moved internals with rclcpp_kit imports +
+  deprecation shims; 0.2.0; parity proof = its own bench/test suite unchanged.
+- Release the full suite to prefix.dev (artifact-proven, working).
+
+### M4 — Documentation site
+- mkdocs-material on GitHub Pages (this repo): landing page with the measured
+  numbers; per-kit pages (WHY/REPORT/SKILL rendered); the tutorials (vision
+  loop-closure + new ones from M6); COMMON_PATTERNS + FREEZE as core chapters;
+  quickstart per package (pixi snippets). CI deploys on push to main.
+
+### M5 — LLM acceleration tooling
+- The "ask an LLM to make my code faster" story: a **`cppyy-accelerate` skill**
+  (Claude-Code-style SKILL.md + supporting scripts) that: profiles/identifies
+  hot paths → maps them to kits/patterns (COMMON_PATTERNS + per-kit SKILL.md as
+  its knowledge) → applies the change → verifies with the tests-as-contract
+  discipline → reports before/after numbers. Demoable live: point it at a slow
+  Python package and watch it get faster.
+
+### M6 — ROSCon demo track (parallel lanes once M1 lands)
+- **6a Canonical arc demo**: one compact example shown end-to-end:
+  plain-Python prototype → kits (minimal diff) → tests → freeze/L2 → benchmark
+  table. Candidate: evolve the vision pipeline or a purpose-built compact demo;
+  decision after 6b lands.
+- **6b Live webcam demo**: robotics-flavored expensive computation "all in
+  Python": webcam → cv_kit (ORB/optical flow, CUDA if present) → pose/track →
+  TF via rclcpp_kit → live Rerun; CPU% overlay showing the headroom vs a plain
+  Python/cv2-loop baseline. Must run on a laptop with a webcam, degrade
+  gracefully without CUDA.
+- **6c IK benchmark suite**: benchmark IK solvers via moveit_kit's plugin
+  loading — KDL (packaged), **trac_ik** (packaged, verified 2.0.2), **bio_ik**
+  and **pick_ik** (NOT packaged — vendored-source builds via the §21 recipe;
+  pick_ik likely hits the generate_parameter_library wall → known route), plus
+  a pure-Python IK baseline. Same robot (Panda), same targets, solve-rate /
+  success / accuracy table + docs page. A genuinely new use case: cppyy as the
+  harness that makes C++-only solvers benchmarkable from one Python script.
+- **6d Nav2 lifecycle unlock**: the nav2_kit report showed Smac + RPP blocked
+  on lifecycle-coupled ctors. Way around it: construct a real
+  `rclcpp_lifecycle::LifecycleNode` (plain class, in-process — same pattern as
+  control_kit's ControllerManager) and, if needed, `Costmap2DROS` from Python
+  to satisfy those ctors; unlock Smac (needs OMPL headers on path — we have
+  the ompl env) and the RPP controller; extend nav2_kit + REPORT verdicts.
+- **6e WBC exploration**: survey spike first — tsid/crocoddyl/pinocchio are on
+  conda-forge WITH Python bindings (verified), so the cppyy win must be sharper
+  than "bindings exist": candidates = templated-scalar surfaces (pinocchio
+  `Scalar` templates for autodiff), binding-lag APIs, or C++-only frameworks
+  (OCS2, mc_rtc — availability TBD in the spike). Deliverable: evidence-based
+  pick + one feasibility probe (wbc_kit go/no-go), honest if the answer is
+  "bindings are fine, no kit needed".
+
+### M7 — Presentation assets (near conference)
+- Slide-ready numbers/tables, demo run-books (what to type live, fallbacks),
+  rehearsal checklist. Placeholder until M6 stabilizes.
+
+---
+
+## Constraints & discipline (carried from rclcppyy)
+- Every claim measured; every spike reports works/partial/blocked with
+  evidence; honest boundaries documented.
+- Publish only artifact-proven packages (fresh-env install test gates upload).
+- Tests are the contract at every rung (golden/differential where applicable).
+- COMMON_PATTERNS.md is the canonical playbook; every lane feeds it.
+- Commits: sammypfeiffer@gmail.com; no history rewrites containing others'
+  commits; PLAN.md (this file) is the supervisor's ledger.
