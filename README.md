@@ -63,6 +63,42 @@ Kit demos/tests are discovered via `PYTHONPATH` (set in `pixi.toml`
 `ros-base` env — no extra per-kit ROS dependency. The `rclcpp_kit` suite + tf demos
 run in the `rclcpp` env: `pixi run -e rclcpp test-rclcpp` / `test-tf`.
 
+## Install (conda packages)
+
+> **Available after the first release.** The suite is packaged (10 rattler-build
+> recipes under [`recipe/`](recipe/), a tag-triggered
+> [release workflow](.github/workflows/release.yml)), but not yet published —
+> the snippets below work once `v0.1.0` is tagged and uploaded to the prefix.dev
+> `awesomebytes` channel. Until then, use the repo (Quickstart above).
+
+Each package is pure-Python (`noarch`) and installs into any pixi/conda env; its
+C++ dependency is declared as a run dependency and pulled by the solver. Add the
+`awesomebytes` channel (plus `robostack-jazzy` + `conda-forge` for the ROS/C++
+deps):
+
+```toml
+# pixi.toml
+[workspace]
+channels = ["https://prefix.dev/awesomebytes", "robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+cppyy-kit = "*"                  # ROS-free base (cppyy only)
+ros-jazzy-rclcpp-kit = "*"       # rclcpp core: bringup, messages, tf, rosbag2
+ros-jazzy-bt-kit = "*"           # BehaviorTree.CPP v4
+ros-jazzy-pcl-kit = "*"          # Point Cloud Library
+ros-jazzy-ompl-kit = "*"         # Open Motion Planning Library
+ros-jazzy-nav2-kit = "*"         # Nav2 algorithm cores
+ros-jazzy-moveit-kit = "*"       # MoveIt 2
+ros-jazzy-control-kit = "*"      # ros2_control
+ros-jazzy-cv-kit = "*"           # OpenCV C++ (zero-copy Image->cv::Mat)
+ros-jazzy-dbow-kit = "*"         # DBoW2 loop closure (run build-dbow2 once)
+```
+
+Or `pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-bt-kit`.
+Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching
+kits pull `ros-jazzy-rclcpp-kit`, transitively.
+
 ## Docs
 
 - [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) — the approved kit-suite architecture.
