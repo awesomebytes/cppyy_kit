@@ -616,6 +616,18 @@ the whole time.
   callback must re-take the GIL first — a cppyy Python callback does so automatically;
   hand-written C++ touching `PyObject*` under `nogil` must `PyGILState_Ensure()`.
 
+### 28. `.pyi` stubs for a kit's mirror surface (IDE/mypy corridor)
+A kit assembles its mirror API at runtime, so editors see nothing. `python -m
+cppyy_kit stubgen <module> -o <module>.pyi` emits a static `.pyi` for the module's
+**public Python surface** — functions, classes (with methods) and scalar constants,
+including names re-exported from submodules — giving name + arity completion and a
+mypy corridor. Committed pilots: `cppyy_kit/__init__.pyi`, `bt_kit/bt_kit/__init__.pyi`.
+- **Honest scope:** it stubs the statically-knowable *kit* API, not the C++ namespace
+  a bringup returns (`cppyy.gbl.BT.*` are dynamic cppyy proxies with no static
+  signature — a bringup's return is `Any`). Signatures are names + arity with `Any`
+  types (always-valid, loose) rather than guessed C++ types; tighten by hand where a
+  kit wants richer hints. Regenerate when the surface changes.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS
