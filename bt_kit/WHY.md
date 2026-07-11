@@ -9,7 +9,7 @@ library), so this capability does not otherwise exist — and because it is the
 (Groot2, the Nav2 behavior trees, plugins) stays compatible.
 
 This doc explains what that gives you over the C++ workflow, and the two distinct
-ways to use it. For the API, see [BT.CPP_KIT.md](BT.CPP_KIT.md); for the
+ways to use it. For the API, see [SKILL.md](SKILL.md); for the
 feasibility evidence, gaps, and benchmarks, see [REPORT.md](REPORT.md).
 
 ---

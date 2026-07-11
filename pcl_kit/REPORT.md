@@ -14,7 +14,7 @@ benchmark, pcl_kit is **~15x lower latency and ~9x less CPU** than the honest
 rclpy+NumPy baseline — in **essentially the same number of user lines of code**.
 
 (For the motivation and a C++-vs-Python side-by-side, see [WHY.md](WHY.md); for the
-API and copy-paste patterns, see [PCL_KIT.md](PCL_KIT.md).)
+API and copy-paste patterns, see [SKILL.md](SKILL.md).)
 
 ---
 
@@ -238,7 +238,7 @@ cross-kit numbers: `docs/kits/FREEZE.md` §4.
 ## 6. Generic lessons for cppyy_kit
 
 These generalized beyond PCL and are now maintained as the shared,
-library-independent catalog in **[../kits/COMMON_PATTERNS.md](../kits/COMMON_PATTERNS.md)**
+library-independent catalog in **[../docs/COMMON_PATTERNS.md](../docs/COMMON_PATTERNS.md)**
 (the recipe, `load_library` rule, containers-in-C++/`uintptr_t` bulk copy,
 on-demand template instantiation via impl headers, Cling attribute/`cppdef`
 traps, direct template-function calls, and mirror-don't-sugar) — implemented in

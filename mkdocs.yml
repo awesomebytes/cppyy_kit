@@ -68,18 +68,20 @@ markdown_extensions:
 plugins:
   - search
 
-# Strict build (docs-build = mkdocs build --strict) fails on nav/structure/anchor
-# problems (our responsibility). Relative-link not_found is downgraded to `info`
-# because the migrated read-only content carries PRE-EXISTING stale links (the
-# M1a BT.CPP_KIT.md -> SKILL.md rename and the docs/kits -> docs move) that this
-# lane may not edit — flagged for the content pass; promote to `warn` once fixed.
+# Strict build (docs-build = mkdocs build --strict) enforces links: the M1a-era
+# stale content links (BT.CPP_KIT.md-style cheat-sheet names, ../kits/ and
+# ../vision/ paths from the docs/kits -> docs and vision -> cv_kit moves) were
+# fixed in the content pass (task #48), so `links.not_found` is now `warn` (fails
+# under --strict). `unrecognized_links` stays `info`: a few kit docs link to
+# sibling source DIRECTORIES (../cppyy_kit, ../cv_kit/, ../dbow_kit/) which are
+# valid in the repo but are not renderable doc pages — intentional, non-failing.
 validation:
   nav:
     omitted_files: warn
     not_found: warn
     absolute_links: info
   links:
-    not_found: info
+    not_found: warn
     anchors: info
     absolute_links: info
     unrecognized_links: info

@@ -10,7 +10,7 @@ with **no code generation and no build step**.
 That last point is the whole story. OMPL *has* official Python bindings — and they
 are the cautionary tale this repo exists to answer. This doc shows what cppyy gives
 you over both the C++ workflow and OMPL's own bindings. For the API, see
-[OMPL_KIT.md](OMPL_KIT.md); for the feasibility evidence, cross-inheritance
+[SKILL.md](SKILL.md); for the feasibility evidence, cross-inheritance
 mechanics, benchmarks, and gaps, see [REPORT.md](REPORT.md).
 
 ---

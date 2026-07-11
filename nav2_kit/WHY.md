@@ -11,7 +11,7 @@ That framing is the whole point. Nav2 is a superb, production navigation system 
 its Python surface is deliberately *client-side*: you configure C++ servers with YAML
 and send them goals. This doc shows what cppyy gives you when you want the opposite:
 to compose your own miniature stack from Nav2's building blocks. For the API, see
-[NAV2_KIT.md](NAV2_KIT.md); for the feasibility evidence, the honest coupling
+[SKILL.md](SKILL.md); for the feasibility evidence, the honest coupling
 boundary, and benchmarks, see [REPORT.md](REPORT.md).
 
 ---

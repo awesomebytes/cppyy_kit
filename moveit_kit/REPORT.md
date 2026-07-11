@@ -20,7 +20,7 @@ Python node — **works**, with two frictions documented precisely below because
 **ros2_control kit depends on this exact mechanic**.
 
 (For the moveit_py contrast and a side-by-side, see [WHY.md](WHY.md); for the API and
-copy-paste patterns, see [MOVEIT_KIT.md](MOVEIT_KIT.md).)
+copy-paste patterns, see [SKILL.md](SKILL.md).)
 
 ---
 
