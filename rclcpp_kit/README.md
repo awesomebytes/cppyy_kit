@@ -29,3 +29,12 @@ The tf test is deliberately **excluded from the default `pixi run test`**: tf2
 headers are present in the default ROS env, so the test would try to import the
 rclcppyy bridge (absent from the default env) rather than skip. Run it with
 `pixi run -e rclcpp test-tf`.
+
+**tf vs. the released bridge.** `tf` was added to rclcppyy *after* its 0.1.0
+release, so the `ros-jazzy-rclcppyy` conda package that provides the bridge does
+**not** ship `rclcppyy.tf`. On that bridge, `test-tf` / `demo-tf-*` **skip
+cleanly** (the guard probes the installed package for `tf.py`). They run once tf
+is available — i.e. when M1b carves the real `rclcpp_kit` (tf then lives here, no
+bridge needed) or a post-0.1.0 rclcppyy is installed. Every *other* kit only
+needs `bringup_rclcpp` / `add_ros2_include_paths`, which the 0.1.0 bridge does
+provide (nav2 / control / moveit suites pass against it).

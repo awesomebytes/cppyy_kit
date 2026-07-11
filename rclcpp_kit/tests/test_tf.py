@@ -8,6 +8,7 @@ independent while staying fast. One test exercises the real network ingest path
 (publish on /tf via rclcppyy -> C++ listener -> lookup) to prove transforms are
 ingested with no per-message Python callback.
 """
+import importlib.util
 import os
 import time
 
@@ -17,9 +18,29 @@ import pytest
 # tf2 ships in ros-base; skip defensively only if the C++ headers are truly absent.
 _HAVE_TF2 = os.path.isdir(
     os.path.join(os.environ.get("CONDA_PREFIX", ""), "include", "tf2", "tf2"))
-pytestmark = pytest.mark.skipif(not _HAVE_TF2, reason="tf2 C++ headers not installed")
 
-if _HAVE_TF2:
+
+def _bridge_has_tf():
+    """True iff the rclcppyy bridge actually provides the tf module.
+
+    M1a-temporary: tf lives in the rclcppyy product until it is carved into
+    rclcpp_kit (M1b). The released ros-jazzy-rclcppyy bridge package predates
+    tf.py, so `from rclcppyy import tf` would ImportError. Probe the installed
+    package for tf.py (without importing rclcppyy) so this suite SKIPS cleanly
+    on an older bridge instead of erroring; it runs against a post-0.1.0 bridge
+    or once rclcpp_kit ships tf in M1b.
+    """
+    spec = importlib.util.find_spec("rclcppyy")
+    locs = getattr(spec, "submodule_search_locations", None) or []
+    return any(os.path.exists(os.path.join(p, "tf.py")) for p in locs)
+
+
+_HAVE_TF = _HAVE_TF2 and _bridge_has_tf()
+pytestmark = pytest.mark.skipif(
+    not _HAVE_TF,
+    reason="rclcppyy.tf bridge unavailable (released bridge predates tf; tf arrives with rclcpp_kit in M1b)")
+
+if _HAVE_TF:
     import rclcppyy
     from rclcppyy import tf
 
