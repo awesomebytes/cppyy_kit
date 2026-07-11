@@ -10,7 +10,7 @@ reading the *same* headers, cppyy instantiates templates for *any* point type on
 demand, including ones no binding ever shipped.
 
 This doc explains what that gives you over the C++ workflow, and the two distinct
-ways to use it. For the API, see [PCL_KIT.md](PCL_KIT.md); for the feasibility
+ways to use it. For the API, see [SKILL.md](SKILL.md); for the feasibility
 evidence, copy accounting, gaps, and benchmarks, see [REPORT.md](REPORT.md).
 
 ---

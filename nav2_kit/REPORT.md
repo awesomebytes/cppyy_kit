@@ -22,7 +22,7 @@ in this release (evidence in §Probe D/F). The controller half of the showcase i
 therefore ~30 lines of Python pure-pursuit, and we say so.
 
 (For motivation and a stock-Nav2-vs-ours side-by-side, see [WHY.md](WHY.md); for the
-API and copy-paste patterns, see [NAV2_KIT.md](NAV2_KIT.md).)
+API and copy-paste patterns, see [SKILL.md](SKILL.md).)
 
 ---
 
