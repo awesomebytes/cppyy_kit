@@ -38,7 +38,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 _CV_LIBS = (
     "libopencv_core.so",

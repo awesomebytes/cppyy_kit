@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for scripts/vision/vision_viz.py -- the spawn-vs-headless decision
+"""Unit tests for cv_kit/demos/vision_viz.py -- the spawn-vs-headless decision
 that makes the live Rerun viewer the interactive default while keeping tests/CI
 headless, plus native-viewer resolution.
 
@@ -17,14 +17,14 @@ import pytest
 
 _HAVE_RERUN = importlib.util.find_spec("rerun") is not None
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.dirname(_HERE)
+_REPO = os.path.dirname(os.path.dirname(_HERE))   # cv_kit/tests/ -> repo root
 
 pytestmark = pytest.mark.skipif(
     not _HAVE_RERUN,
     reason="rerun-sdk not present (use the vision env: pixi run -e vision test-vision)")
 
 if _HAVE_RERUN:
-    sys.path.insert(0, os.path.join(_REPO, "scripts", "vision"))
+    sys.path.insert(0, os.path.join(_REPO, "cv_kit", "demos"))
     import vision_viz
 
 

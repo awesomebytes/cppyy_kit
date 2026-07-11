@@ -20,7 +20,7 @@ import time
 import cppyy
 
 from rclcppyy.bringup_rclcpp import bringup_rclcpp, add_ros2_include_paths
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 
 def build_message(frames):

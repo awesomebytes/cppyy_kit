@@ -23,7 +23,8 @@ pytestmark = pytest.mark.skipif(not _HAVE_BT,
                                 reason="behaviortree_cpp not installed (use the bt env)")
 
 if _HAVE_BT:
-    from rclcppyy.kits import bt_kit, cppyy_kit
+    import bt_kit
+    import cppyy_kit
 
 
 @pytest.fixture(scope="module")

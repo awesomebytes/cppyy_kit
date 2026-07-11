@@ -12,7 +12,7 @@ Run: pixi run -e nav2 demo-nav2-plan
 """
 import numpy as np
 
-from rclcppyy.kits import nav2_kit
+import nav2_kit
 
 W = H = 100
 RES = 0.05  # meters/cell

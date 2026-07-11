@@ -36,7 +36,7 @@ def _artifact():
     """Frozen PCH path via rclcppyy.kits.freeze, or None."""
     if not _HAVE_BT:
         return None
-    from rclcppyy.kits import freeze
+    from cppyy_kit import freeze
     p = freeze.artifact_path("bt")
     return p if os.path.exists(p) else None
 

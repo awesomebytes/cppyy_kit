@@ -22,7 +22,7 @@ os.environ.setdefault("ROS_DOMAIN_ID", "48")
 
 import cppyy                                          # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp    # noqa: E402
-from rclcppyy.kits import moveit_kit                  # noqa: E402
+import moveit_kit                  # noqa: E402
 
 GROUP = "panda_arm"
 TIP = "panda_link8"

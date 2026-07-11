@@ -21,7 +21,7 @@ import pytest
 _CONDA = os.environ.get("CONDA_PREFIX", "")
 _HAVE_CV = bool(glob.glob(os.path.join(_CONDA, "include", "opencv4")))
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.dirname(_HERE)
+_REPO = os.path.dirname(os.path.dirname(_HERE))   # cv_kit/tests/ -> repo root
 _HAVE_DBOW = os.path.isfile(os.path.join(_REPO, "build", "vendor", "libDBoW2.so"))
 
 pytestmark = pytest.mark.skipif(
@@ -29,7 +29,8 @@ pytestmark = pytest.mark.skipif(
     reason="vision env / vendored DBoW2 not present (use the vision env + build-dbow2)")
 
 if _HAVE_CV and _HAVE_DBOW:
-    from rclcppyy.kits import cv_kit, dbow_kit
+    import cv_kit
+    import dbow_kit
 
 
 @pytest.fixture(scope="module")

@@ -1,0 +1,247 @@
+[workspace]
+authors = ["Sam Pfeiffer <sammypfeiffer@gmail.com>"]
+name = "cppyy_kit_ws"
+# robostack-jazzy + conda-forge supply the ROS/cppyy stack and every kit's C++
+# dependency; awesomebytes (lowest priority) supplies ONLY the ros-jazzy-rclcppyy
+# package used as the M1b-temporary bridge (see the `rclcpp` feature below).
+channels = ["robostack-jazzy", "conda-forge", "https://prefix.dev/awesomebytes"]
+platforms = ["linux-64"]
+version = "0.1.0"
+
+# Default environment. Mirrors rclcppyy's proven default (ros-base + cyclonedds +
+# cppyy + toolchain + test/lint tooling): the base cppyy_kit package is ROS-free,
+# but most kits (pcl/nav2/moveit/control/cv/tf) are ROS-adjacent and JIT C++ that
+# needs the ROS message packages, headers and compiler toolchain, and the
+# M1b-temporary bridge is a ROS package — so a ROS-based default keeps the feature
+# envs purely additive (solve-group = "default") on the same proven stack that
+# rclcppyy's CI already validates. flake8 + its plugins arrive transitively via
+# ros-base (same as rclcppyy), satisfying the `lint` gate.
+[dependencies]
+ros-jazzy-ros-base = ">=0.11"
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+cppyy = ">=3.5,<4"
+colcon-common-extensions = "*"
+cmake = "*"
+ninja = "*"
+make = "*"
+compilers = "*"
+pkg-config = "*"
+python = "3.12.*"
+# robostack-jazzy's launch_testing / launch_ros pytest plugins use hook
+# signatures removed in pytest 8, so keep pytest on the 7.x line.
+pytest = ">=7.4,<8"
+numpy = "*"
+setuptools = "<81"
+psutil = ">=7.2.2,<8"
+
+[activation.env]
+# fastrtps (the ROS default) has intermittent latency issues and drops big
+# messages; cyclonedds on LOCALHOST is the reliable default for this workspace.
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
+# cppyy resolves C++ symbols at call time by scanning LD_LIBRARY_PATH for the
+# owning shared library. conda/robostack rely on RPATH and leave LD_LIBRARY_PATH
+# unset, so point it at the env's lib dir or cppyy.gbl.* calls fail to resolve.
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+# M1-era package resolution: the base package cppyy_kit/ and rclcpp_kit/ resolve
+# from the repo root; each domain kit is a nested package (<kit>/<kit>/), so its
+# kit dir goes on the path too (repo-root shadow is a discarded namespace portion,
+# the nested regular package wins — PEP 420). Editable installs / conda recipes
+# replace this in M1c. site-packages (cppyy, rclcppyy bridge) is unaffected.
+PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pcl_kit:$PIXI_PROJECT_ROOT/ompl_kit:$PIXI_PROJECT_ROOT/nav2_kit:$PIXI_PROJECT_ROOT/moveit_kit:$PIXI_PROJECT_ROOT/control_kit:$PIXI_PROJECT_ROOT/cv_kit:$PIXI_PROJECT_ROOT/dbow_kit:$PIXI_PROJECT_ROOT/rclcpp_kit"
+
+[tasks]
+# Default smoke: collect every kit test suite EXCEPT the tf suite. In the default
+# env (no kit C++ libs) each suite auto-skips on its capability probe, so this is
+# a green "everything collects & skips" check. tf is excluded because tf2 headers
+# ARE in the default ROS env, so test_tf would try the rclcppyy bridge (absent
+# here) instead of skipping — run it with `pixi run -e rclcpp test-tf`. The real
+# per-kit proof is the feature-env test-<kit> tasks.
+test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests"
+# flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit scripts"
+clean = "rm -rf build"
+
+# --- rclcpp (M1b-temporary bridge) -------------------------------------------
+# Several kits import rclcppyy.bringup_rclcpp / rclcppyy.tf for ROS core bits
+# (add_ros2_include_paths, bringup_rclcpp, tf). Until M1b carves rclcpp_kit out of
+# the rclcppyy product, the ros-jazzy-rclcppyy conda package (awesomebytes) supplies
+# those. Composed into every ROS-touching feature env below; also a standalone env
+# for the tf demos/tests staged under rclcpp_kit/. Removed in M1b.
+[feature.rclcpp.dependencies]
+ros-jazzy-rclcppyy = "*"
+
+[feature.rclcpp.tasks]
+# tf2 C++ transform stack via cppyy (rclcppyy.tf). Kept out of the default `test`.
+test-tf = "pytest rclcpp_kit/tests/test_tf.py -v"
+# C++ tf2_ros::TransformListener ingests /tf; Python looks the transform up.
+demo-tf-lookup = "python rclcpp_kit/demos/d01_lookup_example.py"
+# Synthetic TF-storm publisher (frames*rate transforms/s on /tf); runs until killed.
+demo-tf-storm = "python rclcpp_kit/demos/tf_storm_publisher.py --frames 50 --rate 100"
+# Stock rclpy Python listener vs rclcppyy C++ listener: ingest CPU% + lookup latency.
+bench-tf = "python rclcpp_kit/demos/bench_tf.py"
+
+# --- bt: BehaviorTree.CPP v4 -------------------------------------------------
+[feature.bt.dependencies]
+ros-jazzy-behaviortree-cpp = ">=4.9,<5" # BehaviorTree.CPP v4 (headers + libbehaviortree_cpp.so)
+
+[feature.bt.tasks]
+# Official BT.CPP tutorials, written in short Python via bt_kit.
+demo-bt-t01 = "python bt_kit/demos/t01_first_tree.py"
+demo-bt-t02 = "python bt_kit/demos/t02_ports.py"
+# Mixed-language tree: Python leaf + JIT'd C++ leaf + a leaf that publishes a ROS 2
+# message via rclcpp (needs the rclcpp bridge).
+demo-bt-t03 = "python bt_kit/demos/t03_mixed_tree.py"
+# ticks/sec micro-benchmark: C++ JIT leaves vs Python leaves through the kit.
+bench-bt = "python bt_kit/demos/bench_bt.py"
+# bt_kit + the base cppyy_kit tests (both gate on behaviortree_cpp). test_bt_freeze
+# also skips until the PCH is built (freeze-bt-build).
+test-bt = "pytest bt_kit/tests/test_bt_kit.py cppyy_kit/tests/test_cppyy_kit.py bt_kit/tests/test_bt_freeze.py -v"
+# --- L0->L1 "freeze": Cling PCH of the bt headers (see docs/FREEZE.md) ---
+freeze-bt-build = "python scripts/freeze/build_bt_pch.py"
+freeze-bt-run = "python scripts/freeze/run_frozen.py"
+freeze-bench = "python scripts/freeze/bench_freeze.py"
+test-bt-frozen = "python scripts/freeze/run_frozen.py -m pytest bt_kit/tests/test_bt_kit.py cppyy_kit/tests/test_cppyy_kit.py -v"
+demo-bt-t01-frozen = "python scripts/freeze/run_frozen.py bt_kit/demos/t01_first_tree.py"
+# --- L2 lowering: t01's ApproachObject leaf as a native BT.CPP plugin node ---
+freeze-l2-build = "python scripts/freeze/build_l2_node.py"
+freeze-l2-diff = "python scripts/freeze/l2_diff.py"
+
+# --- pcl: Point Cloud Library ------------------------------------------------
+[feature.pcl.dependencies]
+pcl = "*"                       # Point Cloud Library (headers + libpcl_*.so)
+ros-jazzy-pcl-conversions = "*" # pcl <-> sensor_msgs/PointCloud2 bridge
+eigen = "*"                     # PCL dependency (eigen3 headers)
+
+[feature.pcl.tasks]
+# NumPy cloud -> PCL VoxelGrid -> NumPy.
+demo-pcl-voxel = "python pcl_kit/demos/d01_voxel_numpy.py"
+# THE SHOWCASE: self-contained ROS 2 pipeline where the cloud stays in C++ end to end.
+demo-pcl-pipeline = "python pcl_kit/demos/d02_ros_pipeline.py"
+# pcl_kit pipeline (d02) vs plain rclpy+NumPy baseline (d03): latency, CPU%, LOC.
+bench-pcl = "python pcl_kit/demos/bench_pcl_pipeline.py"
+
+# --- ompl: Open Motion Planning Library --------------------------------------
+[feature.ompl.dependencies]
+ros-jazzy-ompl = "*" # OMPL headers + libompl.so (brings its mutex-pinned boost)
+eigen = "*"          # OMPL dependency (eigen3 headers)
+
+[feature.ompl.tasks]
+# OMPL's first geometric-planning tutorial (2D plan around an obstacle) via ompl_kit.
+demo-ompl-plan = "python ompl_kit/demos/d01_first_plan.py"
+# Plan a 2D path, then publish it as nav_msgs/Path on a ROS 2 topic (needs bridge).
+demo-ompl-path = "python ompl_kit/demos/d02_publish_path.py"
+# The honest hot-loop bench: Python-callback / Python-subclass / native JIT'd C++ checkers.
+bench-ompl = "python ompl_kit/demos/bench_ompl_validity.py"
+# ompl_kit tests (gate on OMPL headers). The base cppyy_kit layer is covered by test-bt.
+test-ompl = "pytest ompl_kit/tests/test_ompl_kit.py -v"
+
+# --- nav2: Nav2 algorithm cores ----------------------------------------------
+[feature.nav2.dependencies]
+ros-jazzy-nav2-costmap-2d = "*"                        # Costmap2D core classes
+ros-jazzy-nav2-navfn-planner = "*"                     # NavFn planner core
+ros-jazzy-nav2-smac-planner = "*"                      # Smac/Hybrid-A* planners
+ros-jazzy-nav2-regulated-pure-pursuit-controller = "*" # RPP controller
+ros-jazzy-nav2-msgs = "*"                              # nav2 message types
+
+[feature.nav2.tasks]
+# Plan on a synthetic occupancy grid with real Costmap2D + NavFn, driven from Python.
+demo-nav2-plan = "python nav2_kit/demos/d01_plan_grid.py"
+# THE SHOWCASE: a complete miniature nav stack in one file (rviz2-visualizable).
+demo-nav2-stack = "python nav2_kit/demos/d02_own_nav_stack.py"
+# NavFn-from-Python vs pure-Python A* on 256/512/1024 grids: plan-time table.
+bench-nav2-plan = "python nav2_kit/demos/bench_nav2_plan.py"
+# nav2_kit tests (gate on Nav2 headers). The base cppyy_kit layer is covered by test-bt.
+test-nav2 = "pytest nav2_kit/tests/test_nav2_kit.py -v"
+
+# --- moveit: MoveIt 2 ---------------------------------------------------------
+[feature.moveit.dependencies]
+ros-jazzy-moveit = "*"                                 # MoveIt 2 metapackage
+ros-jazzy-moveit-resources-panda-moveit-config = "*"   # Panda test model (URDF/SRDF/configs)
+ros-jazzy-moveit-py = "*"                              # official Python subset (contrast)
+
+[feature.moveit.tasks]
+# RobotModel + FK + KDL IK basics from Python (parse layer + pluginlib kinematics).
+demo-moveit-state = "python moveit_kit/demos/d01_robot_state.py"
+# THE SHOWCASE: plan the Panda to a Cartesian pose goal with MoveIt's real OMPL pipeline.
+demo-moveit-plan = "python moveit_kit/demos/d02_plan_pose_goal.py"
+# Bench: collision checks/sec + IK solves/sec, moveit_kit (full C++) vs moveit_py.
+bench-moveit = "python moveit_kit/demos/bench_moveit.py"
+# moveit_kit tests (gate on MoveIt + panda config). The base cppyy_kit layer is in test-bt.
+test-moveit = "pytest moveit_kit/tests/test_moveit_kit.py -v"
+
+# --- control: ros2_control ----------------------------------------------------
+[feature.control.dependencies]
+ros-jazzy-ros2-control = "*"      # controller_manager, hardware/controller interfaces
+ros-jazzy-ros2-controllers = "*"  # standard C++ controllers (baselines) + mock usage
+
+[feature.control.tasks]
+# A real controller_manager in-process with mock hardware + a stock C++ controller.
+demo-control-rig = "python control_kit/demos/d01_mock_rig.py"
+# THE SHOWCASE: a PD controller written in Python, cross-inherited from the real
+# controller_interface::ControllerInterface, driven by the real read/update/write loop.
+demo-control-python = "python control_kit/demos/d02_python_controller.py"
+# Update-loop rate/jitter/missed-deadline numbers, Python controller vs C++ baseline.
+bench-control = "python control_kit/demos/bench_control_loop.py"
+# control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
+test-control = "pytest control_kit/tests/test_control_kit.py -v"
+
+# --- vision: visual loop-closure tutorial (cv_kit + dbow_kit + gtsam) --------
+[feature.vision.dependencies]
+opencv = "4.*"          # C++ OpenCV (core/features2d headers + libs) + cv2 for contrast
+rerun-sdk = "*"         # live multimodal visualization
+gtsam = "*"             # pose-graph optimization (stretch)
+libboost-headers = "*"  # headers-only: lets gtsam headers JIT via cppyy
+
+[feature.vision.tasks]
+# Fetch/patch/compile DBoW2 from source into build/vendor/ (not on conda-forge). Run once.
+build-dbow2 = "python dbow_kit/cpp/build_dbow2.py"
+# cv_kit + dbow_kit + loop-closure test suites. Auto-skip without OpenCV/DBoW2/rerun.
+test-vision = "pytest cv_kit/tests/test_vision_kits.py cv_kit/tests/test_vision_loop.py cv_kit/tests/test_vision_viz.py -v"
+# Datasets (shared tooling under scripts/datasets/).
+dataset-synthetic = "python scripts/datasets/dataset_publisher.py --synthetic"
+dataset-tum = "python scripts/datasets/download_tum_rgbd.py"
+dataset-orbvoc = "python scripts/datasets/download_orbvoc.py"
+vocab-train = "python cv_kit/demos/train_vocab.py"
+# The loop-closure pipeline stages (joint cv_kit + dbow_kit) -> Rerun.
+demo-vision-spine = "python cv_kit/demos/demo_spine.py"
+demo-vision-features = "python cv_kit/demos/demo_features.py"
+demo-vision-loop = "python cv_kit/demos/demo_loop.py"
+demo-vision-posegraph = "python cv_kit/demos/demo_posegraph.py"
+bench-vision = "python cv_kit/demos/bench_vision.py"
+
+# --- cudabuild: provision/validate a CUDA-enabled OpenCV for cv_kit's GPU path -
+# conda-forge ships no CUDA OpenCV (docs in cv_kit/CUDA_OPENCV.md); this vendors a
+# trustworthy prebuilt's .so's + supplies the matching CUDA 12.9 runtime. Standalone.
+[feature.cudabuild.dependencies]
+python = "3.12.*"
+cuda-version = "12.9.*"
+cuda-cudart = ">=12.9,<13"
+libcublas = ">=12.9,<13"
+libcufft = "*"
+libnpp = "*"
+libzlib = "*"
+gxx = "*"
+zstandard = "*"
+
+[feature.cudabuild.tasks]
+provision-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py provision"
+validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
+
+[environments]
+# solve-group = "default" pins every shared package to the exact same version as
+# the default env, so enabling a kit env never re-resolves the core ROS/cppyy stack.
+# Every ROS-touching kit env also pulls the rclcpp bridge (M1b-temporary).
+bt = { features = ["bt", "rclcpp"], solve-group = "default" }
+pcl = { features = ["pcl", "rclcpp"], solve-group = "default" }
+ompl = { features = ["ompl", "rclcpp"], solve-group = "default" }
+nav2 = { features = ["nav2", "rclcpp"], solve-group = "default" }
+moveit = { features = ["moveit", "rclcpp"], solve-group = "default" }
+control = { features = ["control", "rclcpp"], solve-group = "default" }
+vision = { features = ["vision", "rclcpp"], solve-group = "default" }
+# Standalone bridge env for the tf demos/tests staged under rclcpp_kit/.
+rclcpp = { features = ["rclcpp"], solve-group = "default" }
+# GPU vision: standalone (vendors the CUDA libs + supplies the CUDA 12.9 runtime).
+cudabuild = { features = ["cudabuild"], no-default-feature = true }
+# Integrated GPU vision: the vision stack + CUDA runtime so cv_kit auto-detects cv::cuda.
+vision-cuda = { features = ["vision", "rclcpp", "cudabuild"], solve-group = "default" }

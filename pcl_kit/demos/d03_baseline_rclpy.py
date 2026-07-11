@@ -16,7 +16,7 @@ This is what you would write without the kit: every message is deserialized into
 Python/NumPy, processed in Python, and re-serialized. Compare the latency, CPU,
 and line count against d02.
 
-Run: python scripts/pcl_kit_demos/d03_baseline_rclpy.py   (or via bench-pcl)
+Run: python pcl_kit/demos/d03_baseline_rclpy.py   (or via bench-pcl)
 """
 import argparse
 import os

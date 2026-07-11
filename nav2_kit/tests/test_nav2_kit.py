@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(not _HAVE_NAV2,
                                 reason="Nav2 not installed (use the nav2 env)")
 
 if _HAVE_NAV2:
-    from rclcppyy.kits import nav2_kit
+    import nav2_kit
 
 
 @pytest.fixture(scope="module")

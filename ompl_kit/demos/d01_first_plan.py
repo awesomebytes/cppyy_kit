@@ -12,7 +12,7 @@ would cut through the circle, so a valid plan must route around it.
 Reference: https://ompl.kavrakilab.org/geometricPlanningSE3.html (RigidBodyPlanning)
 Run:       pixi run -e ompl demo-ompl-plan
 """
-from rclcppyy.kits import ompl_kit
+import ompl_kit
 
 ob, og = ompl_kit.bringup_ompl()
 

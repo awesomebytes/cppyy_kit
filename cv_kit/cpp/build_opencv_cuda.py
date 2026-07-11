@@ -242,7 +242,7 @@ def validate_cppyy() -> None:
         import cppyy
     except ImportError:
         raise SystemExit("ERROR: cppyy not importable. Run from the vision env, e.g.\n"
-                         "  pixi run -e vision python scripts/vision/build_opencv_cuda.py validate-cppyy")
+                         "  pixi run -e vision python cv_kit/cpp/build_opencv_cuda.py validate-cppyy")
     if not VENDOR_LIB.joinpath("libopencv_cudafeatures2d.so").exists():
         raise SystemExit("ERROR: not provisioned. Run: pixi run -e cudabuild provision-cuda-opencv")
     rt = os.environ.get("CUDA_RT_LIB") or str(_cuda_runtime_dir())

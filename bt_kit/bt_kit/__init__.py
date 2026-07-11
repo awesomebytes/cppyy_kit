@@ -12,7 +12,7 @@ from the C++ docs transfers almost verbatim.
 
 Tutorial 1, in Python::
 
-    from rclcppyy.kits import bt_kit
+    import bt_kit
     bt = bt_kit.bringup_bt()
 
     def approach_object(node):
@@ -47,7 +47,8 @@ import warnings
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit, freeze
+import cppyy_kit
+from cppyy_kit import freeze
 
 _MISSING = object()
 

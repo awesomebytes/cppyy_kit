@@ -9,7 +9,7 @@ Mirrors the C++ tutorial: registerSimpleAction with a ports list, node.getInput
 Reference: https://www.behaviortree.dev/docs/tutorial-basics/tutorial_02_basic_ports
 Run:       pixi run -e bt demo-bt-t02
 """
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 bt = bt_kit.bringup_bt()
 

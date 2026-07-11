@@ -26,7 +26,7 @@ for the full probe matrix, including what is *not*):
 Minimal plan on a synthetic world::
 
     import numpy as np
-    from rclcppyy.kits import nav2_kit
+    import nav2_kit
     costmap_ns, navfn_ns = nav2_kit.bringup_nav2()
 
     grid = np.zeros((200, 200), dtype=np.uint8)      # 0 = free
@@ -58,7 +58,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 # The two .so whose symbols the cores resolve against. NavFn's setCost/getCharMap
 # are undefined in libnav2_navfn_planner.so (they live in the costmap core), so both

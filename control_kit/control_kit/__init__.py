@@ -40,7 +40,7 @@ is reachable. The frictions this kit hides are different and specific (see REPOR
 
 Minimal Python controller (mirrors the C++ tutorial's names 1:1)::
 
-    from rclcppyy.kits import control_kit as ck
+    import control_kit as ck
     ck.bringup_control()
 
     class MyPD(ck.ControllerInterface):
@@ -75,7 +75,7 @@ import time
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 _HEADERS = (
     "controller_manager/controller_manager.hpp",

@@ -36,7 +36,7 @@ plugins in-process via ``pluginlib::ClassLoader``. Two frictions shape the desig
 
 Staged bringup (each stage is idempotent; later stages imply earlier ones):
 
-    from rclcppyy.kits import moveit_kit
+    import moveit_kit
     moveit = moveit_kit.bringup_moveit()                 # PARSE layer: model+state+scene
     cfg = moveit_kit.panda_config()
     model = moveit_kit.build_robot_model(cfg.urdf, cfg.srdf)
@@ -62,7 +62,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 # --- PARSE layer: build a RobotModel from URDF+SRDF strings, FK/collision. ---
 # These headers all parse cleanly in Cling (no generate_parameter_library).

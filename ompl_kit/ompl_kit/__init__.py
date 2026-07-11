@@ -19,7 +19,7 @@ docs/ompl_kit/REPORT.md for the mechanics and the measured cost.
 
 A 2D plan with a Python validity checker, mirroring OMPL's first tutorial::
 
-    from rclcppyy.kits import ompl_kit
+    import ompl_kit
     ob, og = ompl_kit.bringup_ompl()
 
     space = ob.RealVectorStateSpace(2)                 # OMPL's own API, verbatim
@@ -61,7 +61,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 # Base headers (always). SpaceInformation.h transitively pulls State/StateSpace;
 # the rest are the spaces/objectives/RNG a typical plan touches. RandomNumbers.h

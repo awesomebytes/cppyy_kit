@@ -24,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 
 if _HAVE_CONTROL:
     from rclcppyy.bringup_rclcpp import bringup_rclcpp
-    from rclcppyy.kits import control_kit as ck
+    import control_kit as ck
 
 JOINTS = ["joint1", "joint2"]
 FWD = "forward_command_controller/ForwardCommandController"

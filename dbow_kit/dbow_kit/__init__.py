@@ -3,7 +3,7 @@ dbow_kit -- drive DBoW2 (Galvez-Lopez & Tardos, "Bags of Binary Words") from
 Python via cppyy for ORB place recognition / loop-closure detection.
 
 DBoW2 has no Python binding and is not packaged on conda-forge, so it is vendored
-and compiled from source by ``scripts/vision/build_dbow2.py`` into
+and compiled from source by ``dbow_kit/cpp/build_dbow2.py`` into
 ``build/vendor/libDBoW2.so`` (run ``pixi run -e vision build-dbow2`` once). This
 kit brings those headers/lib up under cppyy and mirrors DBoW2's own ORB API:
 ``OrbVocabulary`` (train / save / load) and ``OrbDatabase`` (add / query), plus the
@@ -30,7 +30,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 # The vendored DBoW2 headers we actually use. We deliberately include these three
 # rather than the umbrella DBoW2.h, which pulls FBrief.h (BRIEF -> DVision/DLib);
@@ -85,7 +85,7 @@ def bringup_dbow():
     if _DONE:
         return _NS
     # cv_kit brings up OpenCV (headers/libs/glue) that DBoW2 links against.
-    from rclcppyy.kits import cv_kit
+    import cv_kit
     cv_kit.bringup_cv()
 
     vendor = _vendor()
@@ -223,7 +223,7 @@ def warmup():
     / db query call wrappers) by training a tiny throwaway vocabulary. Call once
     during init so the first live query is steady-state."""
     import numpy as np
-    from rclcppyy.kits import cv_kit
+    import cv_kit
     bringup_dbow()
 
     def _exercise():

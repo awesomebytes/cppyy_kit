@@ -19,7 +19,7 @@ Words / DLoopDetector).
 Rerun is LIVE by default when run interactively: a viewer opens and you watch the
 camera + ORB stream, the per-frame timing, and each loop pop into the score plot /
 event log / image-pair panel as it is confirmed. Headless (.rrd) under pytest/CI or
-no display; force with RCLCPPYY_RERUN_SPAWN=1/0. See scripts/vision/vision_viz.py.
+no display; force with RCLCPPYY_RERUN_SPAWN=1/0. See cv_kit/demos/vision_viz.py.
 
     pixi run -e vision demo-vision-loop
     pixi run -e vision demo-vision-loop --tum data/<seq> --vocab data/ORBvoc.txt
@@ -43,7 +43,8 @@ import train_vocab  # noqa: E402
 import vision_viz  # noqa: E402
 from loop_detector import LoopDetector  # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import cv_kit, dbow_kit  # noqa: E402
+import cv_kit  # noqa: E402
+import dbow_kit  # noqa: E402
 
 TOPIC = "vision/image"
 FX, FY, CX, CY = 525.0, 525.0, 319.5, 239.5

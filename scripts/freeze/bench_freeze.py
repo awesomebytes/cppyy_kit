@@ -43,7 +43,8 @@ def _worker():
         return r
 
     import cppyy
-    from rclcppyy.kits import bt_kit, freeze
+    import bt_kit
+    from cppyy_kit import freeze
     from ament_index_python.packages import get_package_prefix
     prefix = get_package_prefix("behaviortree_cpp")
 
