@@ -455,6 +455,58 @@ mixes a `using`-imported base form with timeout/clock forms of the same name.
   cppyy's — picks it. Probe a suspicious overloaded call out-of-process; a
   wrong-overload crash gives you nothing to read in Python.
 
+### 23. Compile cache: kill the first-use wrapper JIT persistently (`cppdef_cached`)
+The one-time, per-signature call-wrapper JIT (§15) is *relocatable* with `warmup()`
+but comes back every process — a PCH can't touch it (that's an AST; this is
+codegen). `cppyy_kit.cppdef_cached(code, decls=..., name=...)` **eliminates** it:
+compile the C++ glue once into a real `.so` (the direct-compile recipe, factored
+into `cppyy_kit._compile`), and on every later run `load_library` it instead of
+JIT-generating the wrapper. Measured on bt's tick path: first-use register
+**~422 ms → ~36 ms**, and freeze + cache compose to **~1.66 s → ~0.44 s** end-to-end
+(FREEZE.md §4). Run 1 pays a one-time `.so` compile (~1.4 s, per machine); a kit
+can *ship warm* by pre-building the `.so` at package-build time
+(`cppyy_kit.cache.prebuild`).
+- **Declarations are mandatory for the speedup.** Cling emits any function *body*
+  it can see (inline or not), ignoring the `.so` copy — so the fast path must give
+  Cling **bodiless declarations** (`decls=`) and let the definitions live only in
+  the `.so`. Without `decls` the call safely degrades to a plain `cppyy.cppdef`
+  (correct, uncached) and says so once. `extern "C"` and free functions / classes
+  with out-of-line methods are the clean supported subset.
+- **The big win is caching the *crossing*, not just the glue.** The ~0.4 s isn't
+  cppyy internals you can intercept — it's the `std::function<Ret(Args)>` thunk +
+  the register call wrapper. Build **both in compiled code**: a trampoline whose
+  `.so` constructs the `std::function` wrapping the Python callable and does the
+  registration, converting the C++ argument to its Python proxy with cppyy's
+  public `CPyCppyy::Instance_FromVoidPtr(&obj, "Cpp::Type")` (header under
+  `$CONDA_PREFIX/include/pythonX.Y/CPyCppyy/API.h`; link `libcppyy`). Pass the
+  Python callable to a `PyObject*` parameter — cppyy hands it across directly.
+  `cppdef_cached(..., trampoline=True)` adds the Python + CPyCppyy include and the
+  `libcppyy` link. bt's `BT::NodeStatus(BT::TreeNode&)` is the worked example
+  (`scripts/cache/validate_cache_bt.py`, the kit-adoption reference).
+- **Honest boundary:** this caches the glue/trampolines the *kit* authors. cppyy's
+  on-demand template member instantiations from arbitrary user calls
+  (`node.getInput[T]` for a new `T`) are not cached — they stay JIT unless routed
+  through their own cached helper. Artifacts are env-version-tagged + gitignored
+  (same lifecycle as the PCH); a cppyy/compiler/source change is a clean miss, and
+  a corrupt/stale `.so` on load is discarded and rebuilt, never wedging a run.
+
+### 24. Boundary tracer: a typed manifest of every crossing (`cppyy_kit.trace`)
+cppyy_kit is the one place Python crosses into C++, so instrumenting *it* — not
+Python — yields a small, typed record of what a kit app loaded, compiled and
+wrapped, with the C++ signatures, counts and timings. `cppyy_kit.trace.start()` /
+`stop()` (or `CPPYY_KIT_TRACE=1` before import) turns it on; the crossing points
+(`load_libraries`, `cppdef_cached`, `callback`/`std_function`) record automatically.
+Off by default and cheap when off (each crossing asks `trace.span(...)` for a timer
+that's a shared no-op until started — no timing syscall, no event).
+- **The manifest is the point.** `stop()` returns (and optionally writes) JSON with
+  a per-kind summary and an **instantiation manifest**: the distinct C++ signatures
+  crossed, sorted by cost — i.e. exactly what a freeze PCH or the compile cache (§23)
+  should cover, and the raw material for the M5 `cppyy-accelerate` skill's hotspot
+  analysis. `python -m cppyy_kit trace report trace.json` pretty-prints it.
+- **Use it to decide what to cache.** Trace a workload once; the top instantiation
+  lines (e.g. `std_function` at ~100 ms for `BT::NodeStatus(BT::TreeNode&)`) name the
+  crossings worth routing through a cached trampoline (§23) or baking into the PCH.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS
