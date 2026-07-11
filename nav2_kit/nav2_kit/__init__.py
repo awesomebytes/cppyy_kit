@@ -150,7 +150,7 @@ def _ensure(with_ros_paths=True):
     # rclcpp). $CONDA_PREFIX/include covers the nav2_navfn_planner/navfn.hpp
     # cross-reference layout.
     if with_ros_paths:
-        from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+        from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
         add_ros2_include_paths()
     cppyy.add_include_path(os.path.join(conda, "include"))
     for header in _NAV2_HEADERS:

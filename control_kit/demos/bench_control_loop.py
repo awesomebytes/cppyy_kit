@@ -21,7 +21,7 @@ import time
 
 os.environ.setdefault("ROS_DOMAIN_ID", "49")
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp  # noqa: E402
 import control_kit as ck  # noqa: E402
 
 JOINTS = ["joint1", "joint2"]

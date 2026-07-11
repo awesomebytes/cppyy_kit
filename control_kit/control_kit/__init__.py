@@ -229,7 +229,7 @@ def bringup_control():
     global _BROUGHT_UP, _CI, _CK
     if _BROUGHT_UP:
         return _CI
-    from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.add_include_path(os.path.join(os.environ["CONDA_PREFIX"], "include", "eigen3"))
     cppyy.add_library_path(_lib_dir())

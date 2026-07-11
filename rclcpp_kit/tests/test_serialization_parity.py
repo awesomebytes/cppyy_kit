@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
-"""Smoke test: serialization parity between rclcppyy and rclpy.
+"""Smoke test: serialization parity between rclcpp_kit and rclpy.
 
-For identical message content, ``rclcppyy.serialization`` (C++ rclcpp CDR via
+For identical message content, ``rclcpp_kit.serialization`` (C++ rclcpp CDR via
 cppyy) and ``rclpy.serialization`` must produce byte-for-byte identical wire
 bytes, and each must be able to deserialize the other's bytes back to the same
 content.
 
 Runs in-process: it only serializes/deserializes message values (no nodes, no
-spinning) and, crucially, must NOT touch ``enable_cpp_acceleration()`` -- it
-relies on the unpatched Python message classes for the rclpy side, which is
-exactly what the pytest interpreter has since the monkeypatch scenario is
-isolated in its own subprocess.
+spinning) and relies on the unpatched Python message classes for the rclpy side.
 """
 import unittest
 
 import rclpy.serialization as rclpy_ser
-from rclcppyy import serialization as cpp_ser
+from rclcpp_kit import serialization as cpp_ser
 
 from std_msgs.msg import String
 from geometry_msgs.msg import Vector3

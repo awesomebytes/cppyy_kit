@@ -95,7 +95,7 @@ def test_msg_to_mat_zero_copy_pointer_identity(cv):
     """The headline zero-copy evidence: a C++ sensor_msgs/Image's data buffer and
     the wrapping cv::Mat share ONE pointer (no per-frame copy into Python)."""
     import cppyy
-    from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.include("sensor_msgs/msg/image.hpp")
     Image = cppyy.gbl.sensor_msgs.msg.Image

@@ -3,7 +3,7 @@
 import unittest
 import cppyy
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 
 
 class TestBringup(unittest.TestCase):

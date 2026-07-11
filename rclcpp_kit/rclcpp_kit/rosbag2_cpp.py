@@ -19,7 +19,7 @@ from typing import Iterable, Dict, Any, List, Set
 import cppyy
 from ament_index_python.packages import get_packages_with_prefixes, get_package_prefix
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 
 
 _BROUGHT_UP: bool = False

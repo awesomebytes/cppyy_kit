@@ -34,7 +34,7 @@ import numpy as np
 os.environ.setdefault("ROS_DOMAIN_ID", "47")
 
 import cppyy                                            # noqa: E402
-from rclcppyy.bringup_rclcpp import bringup_rclcpp      # noqa: E402
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp      # noqa: E402
 import nav2_kit                      # noqa: E402
 
 W = H = 120

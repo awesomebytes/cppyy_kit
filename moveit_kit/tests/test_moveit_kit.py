@@ -24,7 +24,7 @@ pytestmark = pytest.mark.skipif(
 
 if _HAVE_MOVEIT:
     import cppyy
-    from rclcppyy.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
     import moveit_kit
 
 GROUP = "panda_arm"

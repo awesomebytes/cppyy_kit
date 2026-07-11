@@ -167,7 +167,7 @@ def _ensure_ros():
         return
     # Reuse rclcppyy's ROS include-path machinery (adds every ament package's
     # include dir; cheap -- it registers paths, it does not JIT rclcpp).
-    from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.include("pcl_conversions/pcl_conversions.h")
     _ROS_DONE = True

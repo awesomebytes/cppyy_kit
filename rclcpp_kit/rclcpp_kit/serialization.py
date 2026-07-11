@@ -10,7 +10,7 @@ import os
 import cppyy
 from ament_index_python.packages import get_package_prefix
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp, _resolve_message_type, load_ros_library
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp, _resolve_message_type, load_ros_library
 
 
 def _ensure_headers_for_msg(package: str, python_msg_module: str) -> None:

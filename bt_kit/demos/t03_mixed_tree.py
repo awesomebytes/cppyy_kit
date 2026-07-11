@@ -20,7 +20,7 @@ import sys
 import time
 
 import cppyy
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 import bt_kit
 
 os.environ.setdefault("ROS_DOMAIN_ID", "42")

@@ -10,7 +10,7 @@ Runs ONE listener variant against the running storm and prints a single
 Two variants:
   --mode py   stock rclpy path: tf2_ros.Buffer + tf2_ros.TransformListener (Python
               callbacks feed each TransformStamped across into the tf2_py C-extension).
-  --mode cpp  rclcppyy.tf: tf2::BufferCore + C++ tf2_ros::TransformListener ingesting
+  --mode cpp  rclcpp_kit.tf: tf2::BufferCore + C++ tf2_ros::TransformListener ingesting
               on its own C++ thread (no per-message Python).
 
 With --idle there is no storm: a static chain is seeded straight into the buffer and
@@ -35,10 +35,10 @@ def _percentiles(samples_us):
 
 def run_cpp(args):
     import cppyy
-    import rclcppyy
-    from rclcppyy import tf
+    import rclcpp_kit
+    from rclcpp_kit import tf
 
-    rclcpp = rclcppyy.bringup_rclcpp()
+    rclcpp = rclcpp_kit.bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
     listener = tf.TransformListener()

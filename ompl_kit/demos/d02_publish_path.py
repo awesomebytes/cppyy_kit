@@ -17,7 +17,7 @@ import time
 
 os.environ.setdefault("ROS_DOMAIN_ID", "45")
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp  # noqa: E402
 import ompl_kit                  # noqa: E402
 
 TOPIC = "ompl_kit/plan"
@@ -58,7 +58,7 @@ def build_path_msg(waypoints):
     std::vector and the message crosses to the publisher without a Python-message
     conversion -- same approach as pcl_kit.msg_from_cloud."""
     import cppyy
-    from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.include("nav_msgs/msg/path.hpp")
     cppyy.include("geometry_msgs/msg/pose_stamped.hpp")

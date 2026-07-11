@@ -105,7 +105,7 @@ def main():
     args = ap.parse_args()
 
     os.environ.setdefault("ROS_DOMAIN_ID", "50")
-    from rclcppyy.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
     import cppyy
     rclcpp = bringup_rclcpp()
     if not rclcpp.ok():
