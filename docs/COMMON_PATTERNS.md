@@ -598,6 +598,24 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
   after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
 
+### 27. `nogil()` — release the GIL around a blocking C++ call
+§13's rule ("cppyy does not release the GIL on a blocking C++ call") has a fix:
+`cppyy_kit.nogil(fn)` runs a **C++** nullary callable through a compiled shim that
+drops the GIL (`Py_BEGIN_ALLOW_THREADS`) around it, so concurrent Python threads run
+during the call. Measured (test_nogil.py): a 500 ms C++ sleep called directly lets a
+co-thread advance ~1 tick; through `nogil` it advances **~470** — the co-thread runs
+the whole time.
+- **`fn` must be C++, not Python.** A Python callable would re-acquire the GIL to run
+  (cppyy takes it to enter Python), defeating the point. Bind args/results in C++ (a
+  `cppdef`/`@cpp` nullary wrapper writing its result into a C++ object you read
+  after). This is §13's "run the blocking work on a C++ path, not a Python thread",
+  made a one-liner.
+- **`run_async(fn)`** is the asyncio form: `await`s the blocking C++ work on an
+  executor thread *with the GIL released*, so the event loop keeps running.
+- **Callback caveat:** if `fn` calls back into Python while the GIL is released, that
+  callback must re-take the GIL first — a cppyy Python callback does so automatically;
+  hand-written C++ touching `PyObject*` under `nogil` must `PyGILState_Ensure()`.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS
