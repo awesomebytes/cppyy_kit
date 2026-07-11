@@ -38,6 +38,14 @@ import time
 
 import cppyy
 
+# The compile cache and the boundary tracer are the two M2 base features. Imported
+# here so `cppyy_kit.cppdef_cached` / `cppyy_kit.trace` are top-level; these
+# submodules import only stdlib + cppyy (+ freeze lazily), so no import cycle.
+from . import _compile  # noqa: F401  (direct-compile recipe; re-exported for kits)
+from . import trace  # noqa: F401
+from .cache import (  # noqa: F401
+    cppdef_cached, prebuild, cache_info, clear_cache, cache_dir)
+
 
 class CppyyKitError(Exception):
     """Base for kit-raised errors; message is the cleaned C++ what() text."""
@@ -68,8 +76,10 @@ def load_libraries(sonames, search_paths=()):
     """
     for path in search_paths:
         cppyy.add_library_path(path)
+    span = trace.span("load_libraries", sonames=list(sonames), search_paths=list(search_paths))
     for soname in sonames:
         cppyy.load_library(soname)
+    span.done()
 
 
 def keep_alive(owner, *objects):
@@ -95,7 +105,10 @@ def std_function(signature, pyfunc):
     ``keep_alive`` yourself. The callback runs in whatever C++ thread invokes it
     (cppyy takes the GIL); cppyy does not keep the callable alive on its own.
     """
-    return cppyy.gbl.std.function[signature](pyfunc)
+    span = trace.span("std_function", signature=signature)
+    wrapper = cppyy.gbl.std.function[signature](pyfunc)
+    span.done()
+    return wrapper
 
 
 # Python annotation -> C++ type tag for callback-signature inference. None and
@@ -188,7 +201,9 @@ def callback(fn, signature=None, owner=None):
     the GIL); a single-threaded driver -- a tick loop, a spin -- never contends.
     """
     sig = signature if signature is not None else _infer_signature(fn)
+    span = trace.span("callback", signature=sig, owner=owner is not None)
     wrapper = cppyy.gbl.std.function[sig](fn)
+    span.done()
     if owner is not None:
         keep_alive(owner, fn, wrapper)
     else:
