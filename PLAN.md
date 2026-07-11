@@ -45,7 +45,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 
 ## Milestones
 
-### M1 — Migration & bootstrap
+### M1 — Migration & bootstrap ✅ DONE (2026-07-11)
 - **M1a**: bootstrap this repo (pixi workspace on the proven pattern, CI via
   setup-pixi, lint, LICENSE/README/.gitignore); migrate kits + kit docs +
   freeze/dataset/demo scripts + kit tests from rclcppyy **with git history**
@@ -59,7 +59,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 - **M1c**: per-package rattler-build recipes + tag-triggered release matrix
   (build → fresh-env artifact proof → upload), OIDC to prefix.dev.
 
-### M2 — Base enrichment (value order)
+### M2 — Base enrichment (value order) — item 1 ✅ DONE + ADOPTED (2026-07-12: cache kills first-use JIT persistently; bt frozen+cached ~425 ms end-to-end ~4.1×, pcl frame-0 681→88 ms ~7.7×; 8a tracer shipped early); items 2-6 open
 1. **Compile cache** (content-hash cppdef→`.so`, dlopen thereafter) — kills the
    measured ~0.69 s first-use wrapper JIT *persistently*; measure vs warmup.
 2. `require()` header-only fetcher (conda-first policy).
@@ -75,7 +75,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   deprecation shims; 0.2.0; parity proof = its own bench/test suite unchanged.
 - Release the full suite to prefix.dev (artifact-proven, working).
 
-### M4 — Documentation site
+### M4 — Documentation site ✅ LIVE (2026-07-11: https://awesomebytes.github.io/cppyy_kit/ — Pages enabled via API, strict build + auto-deploy)
 - mkdocs-material on GitHub Pages (this repo): landing page with the measured
   numbers; per-kit pages (WHY/REPORT/SKILL rendered); the tutorials (vision
   loop-closure + new ones from M6); COMMON_PATTERNS + FREEZE as core chapters;
