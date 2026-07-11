@@ -23,7 +23,7 @@ import sys
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _spec = importlib.util.spec_from_file_location(
-    "_rclcppyy_freeze", os.path.join(_REPO, "rclcppyy", "kits", "freeze.py"))
+    "_cppyy_kit_freeze", os.path.join(_REPO, "cppyy_kit", "freeze.py"))
 freeze = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(freeze)
 

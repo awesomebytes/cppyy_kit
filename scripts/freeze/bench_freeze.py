@@ -27,7 +27,7 @@ import sys
 import time
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-T01 = os.path.join(REPO, "scripts", "bt_kit_demos", "t01_first_tree.py")
+T01 = os.path.join(REPO, "bt_kit", "demos", "t01_first_tree.py")
 STAGES = ["import cppyy+init", "add_include_path", "include(bt_factory.h)",
           "load_library", "cppdef(glue)", "first factory+tick"]
 
@@ -137,7 +137,7 @@ def main():
 
     import importlib.util
     spec = importlib.util.spec_from_file_location(
-        "_frz", os.path.join(REPO, "rclcppyy", "kits", "freeze.py"))
+        "_frz", os.path.join(REPO, "cppyy_kit", "freeze.py"))
     frz = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(frz)
     pch = frz.artifact_path("bt")
