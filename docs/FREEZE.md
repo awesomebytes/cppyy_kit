@@ -189,6 +189,53 @@ size — evidence the freeze is library-independent, not a BT.CPP special case. 
 rclcpp measurement is parse-elimination only; a full frozen rclcpp bringup would
 need its own force-symbol pass and is out of scope here.)
 
+### The compile cache: eliminate the first-use JIT, don't just relocate it
+
+The subsection above says the ~0.7 s first-use call-wrapper JIT is *relocatable*
+(warmup) but not *reducible* — true for cppyy's own levers. But it **is**
+eliminable, persistently, by not asking cppyy to generate the wrapper at all:
+compile the crossing **once** into a real `.so` and `load_library` it thereafter.
+This is `cppyy_kit.cppdef_cached` (see COMMON_PATTERNS §23).
+
+The wrapper JIT is Clang front-end codegen — call it at a compiler once, cache the
+`.so`, and every later run pays a ~ms symbol call. Two things are cacheable:
+
+* **kit glue** (`makePorts`, the stateful shim, …) — definitions we control,
+  split into a bodiless-declarations header (cheap to `cppdef` on a hit) and the
+  `.so` (the definitions). Cling emits any body it can *see*, so the fast path
+  must give it only declarations.
+* **the boundary crossing itself** — the ~0.4 s isn't cppyy's internal codegen
+  (that we can't intercept), it's the `std::function<NodeStatus(TreeNode&)>` thunk
+  + the `registerSimpleAction` call wrapper. Build **both in compiled code**: a
+  trampoline `.so` that constructs the `std::function` wrapping the Python callable
+  and does the registration, converting the C++ `TreeNode&` to the Python node
+  proxy with cppyy's public `CPyCppyy::Instance_FromVoidPtr`. All the heavy
+  instantiation then happens at `.so` build time.
+
+**Measured (bt simple-action tick path, this machine, cold subprocesses, medians):**
+
+| config | first-use register | end-to-end wall | note |
+|---|--:|--:|---|
+| L0 JIT baseline | ~422 ms | ~1660 ms | first-use JIT every run |
+| L0 + cache (run ≥2) | ~35 ms | ~1230 ms | `.so` loaded, no wrapper JIT |
+| L1 frozen baseline | ~427 ms | ~860 ms | parse gone; first-use JIT remains |
+| **L1 frozen + cache (run ≥2)** | **~36 ms** | **~435 ms** | **best cold start** |
+| run 1 (either, cache miss) | ~1.8 s | +~1.4 s | one-time `.so` compile, per machine |
+
+So freeze + cache compose: the PCH removes the ~0.89 s **parse**, the cache removes
+the ~0.42 s first-use **wrapper JIT** — end-to-end **~1.66 s → ~0.44 s (~3.8×)**,
+and the first-use register **422 → 36 ms persistently** (not just moved into a
+warmup window). Run 1 pays a one-time ~1.4 s to compile the `.so`; a kit can skip
+even that by *shipping warm* — building the `.so` at package-build time
+(`cppyy_kit.cache.prebuild`) so the artifact is present on first run.
+
+**Honest boundary.** This caches the glue/trampolines the kit *authors*. cppyy's
+on-demand template instantiations triggered by arbitrary user calls (e.g.
+`node.getInput[T](key)` for a new `T`) are not cached by this — they remain JIT
+unless routed through their own cached helper. Artifacts are env-version-tagged and
+gitignored, same lifecycle as the PCH (§3): a cppyy/compiler/source change is a
+clean cache miss, never a silent ABI mismatch.
+
 ---
 
 ## 5. L2 — one leaf lowered to native C++
@@ -233,9 +280,10 @@ and runs at engine speed. Registration still crosses cppyy once
 ## 7. Limitations
 
 * The PCH is a startup-latency optimisation for the **parse only**; the first-use
-  JIT of cppyy call wrappers (~0.7 s for t01) is untouched by it — but is *moved*
-  off the first live call by `warmup()`, and freeze + warmup compose into the
-  best-case cold start (§4).
+  JIT of cppyy call wrappers (~0.7 s for t01) is untouched by it — it is *moved*
+  off the first live call by `warmup()`, or *eliminated* persistently by the
+  compile cache (§4, "The compile cache"): freeze + cache compose into the
+  best-case cold start (~1.66 s → ~0.44 s).
 * Artifacts are Cling-version-specific and must be rebuilt (never committed) on any
   cppyy-cling / library version change.
 * Freezing a new header may surface further internal-linkage symbols to force
