@@ -559,6 +559,23 @@ that's a shared no-op until started — no timing syscall, no event).
   lines (e.g. `std_function` at ~100 ms for `BT::NodeStatus(BT::TreeNode&)`) name the
   crossings worth routing through a cached trampoline (§23) or baking into the PCH.
 
+### 25. `require()` a header-only library — conda-first, fetch only if unpackaged
+Some header-only C++ libs aren't in the env. `cppyy_kit.require(name, header, url=,
+sha256=)` makes one available, **conda-first**: if `header` already resolves on the
+env include path (the conda-forge/robostack package), it registers that dir and does
+nothing else — the packaged copy is ABI-matched and offline. Only when the header is
+absent *and* a `url`+`sha256` are given does it download once to a gitignored cache,
+verify the checksum, unpack (single header / `.zip` / `.tar.gz` with `strip_prefix`),
+and register the cache include dir; cached (offline) thereafter.
+- **Policy, not convenience:** prefer the conda-forge package for anything on it
+  (Eigen, fmt, nlohmann_json). Reach for `url=` only for the unpackaged or an exact
+  pinned version — the same discipline as the §21 vendored-source builds, minus the
+  compile. `require` fetches *sources*; pair it with `cppdef_cached` (§23) when you
+  need a compiled `.so`, not just headers.
+- **Integrity + reproducibility:** `sha256` is mandatory for a fetch (a mismatch
+  raises, the partial download is removed). Point `$CPPYY_KIT_REQUIRE_DIR` at a
+  persistent dir (e.g. `~/.cache`) for a machine-wide header cache.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS

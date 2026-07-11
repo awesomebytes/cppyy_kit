@@ -45,6 +45,7 @@ from . import _compile  # noqa: F401  (direct-compile recipe; re-exported for ki
 from . import trace  # noqa: F401
 from .cache import (  # noqa: F401
     cppdef_cached, prebuild, cache_info, clear_cache, cache_dir)
+from .require import require, RequireError  # noqa: F401
 
 
 class CppyyKitError(Exception):
