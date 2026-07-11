@@ -136,21 +136,27 @@ vox = pcl.VoxelGrid[MyPoint]()                    # works over the custom type
 
 ---
 
-## Pattern 5 — warmup (front-load the first-frame JIT)
+## Pattern 5 — compile-cached VoxelGrid, and warmup for the rest
 *Use for:* any node/loop whose **first** frame must not be a latency outlier. The
-first NumPy→cloud→VoxelGrid→NumPy pipeline JIT-compiles cppyy wrappers (~0.45 s
-here); call `warmup()` once during init so frame 0 runs at steady-state speed.
+dominant first-frame cost is cppyy JIT-instantiating PCL's `VoxelGrid<PointXYZ>`
+(~0.6 s). `pcl_kit.voxel_downsample(cloud, leaf)` runs a `VoxelGrid` **compiled once
+into the kit's `.so`** (`cppdef_cached`), so its first use is ~5 ms and persistent —
+prefer it over building `pcl.VoxelGrid[...]` by hand in a hot path. The showcase
+frame-0 drops ~681 ms → ~88 ms. First run on a machine pays a one-time ~3 s `.so`
+build; no compiler → it falls back to the Python VoxelGrid path (`pcl_kit._CACHED`).
 
 ```python
-from rclcppyy.kits import pcl_kit
+import numpy as np, pcl_kit
 
-pcl = pcl_kit.bringup_pcl()          # with_ros default
-pcl_kit.warmup(with_ros=True)        # runs one throwaway pipeline (glue + VoxelGrid
-                                     # + toROSMsg/fromROSMsg); ~0.5 s here, once
-# ... your real frames now start fast: showcase frame-0 630 ms -> 4 ms ...
+pcl_kit.bringup_pcl()                       # caches the glue + voxel_downsample here
+cloud = pcl_kit.cloud_from_numpy(pts)
+out = pcl_kit.voxel_downsample(cloud, 0.05)  # compiled VoxelGrid; ~5 ms first use
 ```
-Pass `with_ros=False` if you only use the NumPy path. A freeze/PCH does not remove
-this first-use cost; warmup is the tool (see docs/kits/COMMON_PATTERNS.md §15).
+
+`warmup(with_ros=True)` still front-loads what the cache doesn't yet cover — the
+`pcl_conversions` `toROSMsg`/`fromROSMsg` round-trip (the same cacheable pattern, a
+compiled conversion helper, is the next step). Pass `with_ros=False` for the
+NumPy-only path. See docs/kits/COMMON_PATTERNS.md §23 (cache) and FREEZE.md §4.
 
 ---
 

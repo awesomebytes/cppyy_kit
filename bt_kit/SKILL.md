@@ -179,24 +179,30 @@ except bt_kit.BtXmlError as e:
 ```
 Loggers attach at construction and are pinned on the `tree`; keep the tree alive.
 
-## Pattern 6 — warmup (front-load the first-use JIT)
+## Pattern 6 — the first-use JIT is cached away for you (and warmup as fallback)
 *Use for:* any script/node where the **first** tree build must not stall. The first
-`registerSimpleAction` etc. JIT-compiles a cppyy call wrapper (~0.4 s; the whole
-first tree ~0.7 s). Call `warmup()` once during init to move that cost off the
-first live call.
+`registerSimpleAction` etc. would JIT-compile a cppyy call wrapper (~0.4 s; whole
+first tree ~0.7 s) — but bt_kit now **compile-caches** that crossing: registration
+routes through a trampoline compiled once into a `.so`, so the first-use register
+is ~60 ms and *persistent* (no per-run JIT). You do nothing; it happens at
+`bringup_bt()`. The first run on a machine pays a one-time ~2 s `.so` build.
+
+`warmup()` is now a **no-op on the cached path** (nothing to front-load) and stays
+useful only as the fallback when no compiler/CPyCppyy toolchain is present (the kit
+prints a one-time notice and uses the cppyy JIT path; `bt_kit._CACHED` tells you
+which). Force the JIT path with `CPPYY_KIT_NO_CACHE=1`.
 
 ```python
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 def main():
-    bt = bt_kit.bringup_bt()
-    bt_kit.warmup()          # ~0.9 s here, once, instead of stalling the first tick
-    # ... build and tick your real trees; first tick is now ~0.1 s not ~0.7 s ...
+    bt = bt_kit.bringup_bt()      # cached trampoline adopted here; no warmup needed
+    # ... build and tick your real trees; first tick is already fast ...
+    # bt_kit.warmup()             # only helps on the JIT fallback path
 ```
-If you skip it, the kit prints a one-time hint the first time a call is slow
-(silence with `RCLCPPYY_JIT_NOTICE=0`). warmup composes with the frozen PCH
-(`freeze-bt-run`): freeze cuts the ~0.9 s header parse, warmup moves the wrapper
-JIT — together they are the fastest cold start (see docs/kits/FREEZE.md §4).
+Composes with the frozen PCH (`freeze-bt-run`): freeze cuts the ~0.9 s header parse,
+the cache cuts the wrapper JIT — together the fastest cold start (~0.43 s end-to-end
+for t01; see docs/kits/FREEZE.md §4 and COMMON_PATTERNS §23).
 
 ## Gotchas (short version)
 - **Don't** subclass BT C++ node classes in Python (`class X(BT.StatefulActionNode)`)

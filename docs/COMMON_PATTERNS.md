@@ -461,11 +461,11 @@ but comes back every process — a PCH can't touch it (that's an AST; this is
 codegen). `cppyy_kit.cppdef_cached(code, decls=..., name=...)` **eliminates** it:
 compile the C++ glue once into a real `.so` (the direct-compile recipe, factored
 into `cppyy_kit._compile`), and on every later run `load_library` it instead of
-JIT-generating the wrapper. Measured on bt's tick path: first-use register
-**~422 ms → ~36 ms**, and freeze + cache compose to **~1.66 s → ~0.44 s** end-to-end
-(FREEZE.md §4). Run 1 pays a one-time `.so` compile (~1.4 s, per machine); a kit
-can *ship warm* by pre-building the `.so` at package-build time
-(`cppyy_kit.cache.prebuild`).
+JIT-generating the wrapper. Measured with bt_kit adopted (t01): first-use register
+**~233 ms → ~60 ms**, and freeze + cache compose to **~1.77 s → ~0.43 s** end-to-end
+(FREEZE.md §4); pcl_kit's d02 frame-0 **~681 ms → ~88 ms**. Run 1 pays a one-time
+`.so` compile (per machine); a kit can *ship warm* by pre-building the `.so` at
+package-build time (`cppyy_kit.cache.prebuild`).
 - **Declarations are mandatory for the speedup.** Cling emits any function *body*
   it can see (inline or not), ignoring the `.so` copy — so the fast path must give
   Cling **bodiless declarations** (`decls=`) and let the definitions live only in
@@ -489,6 +489,58 @@ can *ship warm* by pre-building the `.so` at package-build time
   through their own cached helper. Artifacts are env-version-tagged + gitignored
   (same lifecycle as the PCH); a cppyy/compiler/source change is a clean miss, and
   a corrupt/stale `.so` on load is discarded and rebuilt, never wedging a run.
+
+**Kit adoption recipe (copy-paste).** Both bt_kit and pcl_kit follow this shape;
+it is what a new kit (and the M5 accelerate skill) should apply. Split the glue into
+bodiless *declarations* and out-of-line *definitions* (or a trampoline), cache with
+`cppdef_cached`, and branch the hot call site on a `_CACHED` flag with a graceful
+JIT fallback:
+
+```python
+_CACHED = False
+
+_DEFS = r"""                         # compiled into the .so (out-of-line, or a
+#include <lib/thing.h>               # PyObject* trampoline that builds the
+namespace mykit {                    # std::function + does the call in C++)
+  void do_thing(Thing& t, PyObject* fn) { /* ... CPyCppyy::Instance_FromVoidPtr ... */ }
+}"""
+_DECLS = r"""                        # bodiless: what Cling needs on a cache hit
+#include <lib/thing.h>
+namespace mykit { void do_thing(Thing&, PyObject*); }"""
+
+def _adopt(prefix):
+    global _CACHED
+    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+        cppyy.cppdef(_FALLBACK_GLUE); _CACHED = False; return
+    try:
+        cppyy_kit.cppdef_cached(_DEFS, decls=_DECLS, name="mykit_glue",
+                                trampoline=True,                     # adds Python+CPyCppyy+libcppyy
+                                include_paths=[os.path.join(prefix, "include")],
+                                library_paths=[os.path.join(prefix, "lib")],
+                                libraries=["thing"])
+        _ = cppyy.gbl.mykit.do_thing          # confirm it's callable before committing
+        _CACHED = True
+    except Exception as exc:                  # no compiler/CPyCppyy -> JIT path + one notice
+        _CACHED = False
+        cppyy_kit._compile._stderr("[mykit] compile cache unavailable (%s); JIT path." % exc)
+        cppyy.cppdef(_FALLBACK_GLUE)
+
+def call_it(t, fn):
+    if _CACHED:
+        cppyy.gbl.mykit.do_thing(t, fn)       # ~ms; the .so already carries the wrapper
+    else:
+        with cppyy_kit.first_use("mykit.call_it", "mykit.warmup()"):
+            ... the cppyy callback()/template path (warmup-movable) ...
+```
+
+Rules that make it safe: the `.so` translation unit must `#include` the library
+headers itself (a standalone compile doesn't inherit bringup's includes) and add
+`$CONDA_PREFIX/include` for transitive deps (boost etc.); pass caller `include_paths`
+so the miss/hit `cppdef` resolves the same headers; keep the cache a pure
+optimisation (never a correctness dependency) via the fallback. Worked references:
+`bt_kit._adopt_glue` + `scripts/cache/validate_cache_bt.py` (callback trampoline),
+`pcl_kit._adopt_glue` (a library template — `VoxelGrid<PointXYZ>` — compiled into
+the `.so`).
 
 ### 24. Boundary tracer: a typed manifest of every crossing (`cppyy_kit.trace`)
 cppyy_kit is the one place Python crosses into C++, so instrumenting *it* — not
