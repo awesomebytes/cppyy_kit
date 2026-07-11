@@ -1,0 +1,71 @@
+name: Release
+
+# On a version tag (v*): build all 10 cppyy_kit-suite conda packages in
+# dependency order, prove each installs+imports from a channel with no repo
+# checkout, then upload them to the prefix.dev channel `awesomebytes`.
+#
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ ⚠  MANUAL STEP REQUIRED BEFORE THE FIRST RELEASE — Sam, action needed:       │
+# │                                                                              │
+# │ The UPLOAD step will FAIL until the cppyy_kit repo is authorized on          │
+# │ prefix.dev. OIDC trusted publishing is scoped per repo+workflow, and the     │
+# │ existing rclcppyy authorization does NOT cover this repo. Add it at:         │
+# │   prefix.dev → channel `awesomebytes` → Settings → Repository Access →       │
+# │   authorize  awesomebytes/cppyy_kit , workflow  release.yml , read/write.    │
+# │                                                                              │
+# │ The build + artifact-proof steps run and gate regardless, so a tag pushed    │
+# │ before authorization still validates all 10 packages; only the upload 401s.  │
+# └────────────────────────────────────────────────────────────────────────────┘
+#
+# Authentication: OIDC trusted publishing (no API token stored). `id-token:
+# write` lets the job mint the GitHub OIDC token that `rattler-build upload
+# prefix` exchanges automatically.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build all, prove artifacts, upload
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          # Only the packaging env (rattler-build); it pulls no ROS/cppyy stack.
+          environments: pkg
+
+      # Builds the 10 packages in dependency order into ./output, chaining the
+      # local output as a file:// channel. rattler-build also runs each recipe's
+      # fresh-env import test during the build.
+      - name: Build all packages (dependency-ordered)
+        run: pixi run -e pkg pkg-build-all
+
+      # The release discipline: for each artifact, a throwaway pixi workspace
+      # with [file://output, robostack-jazzy, conda-forge] and the single package
+      # as its only dep must import cleanly (+ cppdef for cppyy-kit, bringup for
+      # rclcpp-kit) — no repo on PYTHONPATH.
+      - name: Prove artifacts install + import from the channel
+        run: pixi run -e pkg pkg-prove
+
+      # Upload every built .conda to the prefix.dev channel `awesomebytes` via
+      # OIDC. REQUIRES the Repository Access authorization flagged in the header.
+      - name: Upload to prefix.dev channel `awesomebytes` (OIDC)
+        run: |
+          set -euxo pipefail
+          pixi run -e pkg rattler-build upload prefix --channel awesomebytes \
+            $(find output -name '*.conda' | sort)
