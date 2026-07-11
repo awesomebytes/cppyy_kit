@@ -176,6 +176,32 @@ single-threaded pipeline could sustain flat-out.
 - Steady-state d02 latency is ~2.5 ms; the 3.8 ms avg reflects early-frame warmup
   and shared-machine contention during the window.
 
+### 4b. Compile-cache adoption — first-frame JIT eliminated (2026-07-12)
+
+The showcase's frame-0 cost is dominated not by our bridge glue (the NumPy memcpy
+is ~30 ms) but by cppyy JIT-instantiating **library** template methods on first
+use: `pcl::VoxelGrid<PointXYZ>` ~594 ms and `pcl::toROSMsg<PointXYZ>` ~593 ms
+(measured). A freeze/PCH does not touch these (they are codegen, not header parse),
+and `warmup()` only relocates them.
+
+The M2 compile cache moves the VoxelGrid cost into a compiled `.so`:
+`pcl_kit.voxel_downsample(cloud, leaf)` runs a `VoxelGrid<PointXYZ>` compiled once
+via `cppyy_kit.cppdef_cached` (bringup `_adopt_glue()` caches the bridge glue +
+this helper together; it falls back to the Python-driven `pcl.VoxelGrid[...]` mirror
+path when no compiler is present). Measured (`bench-cache-pcl`, cold subprocesses):
+
+| d02 frame-0 (from_msg -> voxel -> to_msg) | first frame |
+|---|--:|
+| JIT (Python VoxelGrid) | ~681 ms |
+| **compile-cached voxel** | **~88 ms** (~7.7×) |
+
+The VoxelGrid step itself is ~594 ms → ~5 ms. The one-time `.so` build (~3 s, PCL
+headers are heavy) is paid at first bringup per machine, not per frame. The
+residual ~88 ms is `fromROSMsg`'s first-use (~56 ms) plus cppyy's call wrappers to
+our entry points — `toROSMsg`/`fromROSMsg` are the same cacheable pattern (a
+compiled conversion helper), left as a `warmup()` job for now. Mechanism +
+cross-kit numbers: `docs/kits/FREEZE.md` §4.
+
 ---
 
 ## 5. GAPS — what an LLM-agent user hits next

@@ -92,15 +92,18 @@ _CPP_GLUE = r"""
 namespace rclcppyy_pclkit {
 using CloudXYZ = pcl::PointCloud<pcl::PointXYZ>;
 
+// Non-inline throughout so these export as real symbols from the compile-cache .so
+// (Python calls them via cloud_from_numpy / cloud_to_numpy).
+
 // (N,4) contiguous float32 -> single std::memcpy (PointXYZ == 16 bytes).
-inline void xyz_from_array4(uintptr_t src, std::size_t n, CloudXYZ& c) {
+void xyz_from_array4(uintptr_t src, std::size_t n, CloudXYZ& c) {
   c.resize(n);
   std::memcpy(c.points.data(), reinterpret_cast<const void*>(src), n * sizeof(pcl::PointXYZ));
   c.width = static_cast<std::uint32_t>(n); c.height = 1; c.is_dense = true;
 }
 
 // (N,3) contiguous float32 -> strided per-point copy (skips the padding lane).
-inline void xyz_from_array3(uintptr_t src, std::size_t n, CloudXYZ& c) {
+void xyz_from_array3(uintptr_t src, std::size_t n, CloudXYZ& c) {
   const float* s = reinterpret_cast<const float*>(src);
   c.resize(n);
   for (std::size_t i = 0; i < n; ++i) {
@@ -110,7 +113,7 @@ inline void xyz_from_array3(uintptr_t src, std::size_t n, CloudXYZ& c) {
 }
 
 // cloud -> caller-owned (N,3) float32 buffer (strided copy out).
-inline void xyz_to_array3(const CloudXYZ& c, uintptr_t dst) {
+void xyz_to_array3(const CloudXYZ& c, uintptr_t dst) {
   float* d = reinterpret_cast<float*>(dst);
   for (std::size_t i = 0; i < c.size(); ++i) {
     d[3 * i] = c.points[i].x; d[3 * i + 1] = c.points[i].y; d[3 * i + 2] = c.points[i].z;
@@ -118,15 +121,62 @@ inline void xyz_to_array3(const CloudXYZ& c, uintptr_t dst) {
 }
 
 // Address of the (16-byte-stride) point storage, for a zero-copy NumPy view.
-inline uintptr_t xyz_data_addr(CloudXYZ& c) {
+uintptr_t xyz_data_addr(CloudXYZ& c) {
   return reinterpret_cast<uintptr_t>(c.points.data());
 }
 }  // namespace rclcppyy_pclkit
 """
 
+# Compile-cache extension: the VoxelGrid downsample, compiled once into the .so so
+# the ~0.6 s first-use JIT of pcl::VoxelGrid<PointXYZ>'s template methods (measured;
+# a freeze/PCH does NOT remove it) is paid at .so build time instead of on the first
+# live filter call. The Python-driven mirror path (pcl.VoxelGrid[...] directly) still
+# works and is what the fallback / prototyping surface uses. Kept out of _CPP_GLUE so
+# the JIT fallback only cppdef's the small bridge glue.
+_VOXEL_CODE = r"""
+namespace rclcppyy_pclkit {
+// Alias the input cloud (no copy) into the ConstPtr the filter wants.
+void voxel_downsample(const CloudXYZ& in, float lx, float ly, float lz, CloudXYZ& out) {
+  CloudXYZ::ConstPtr ptr(&in, [](const CloudXYZ*){});
+  pcl::VoxelGrid<pcl::PointXYZ> vox;
+  vox.setInputCloud(ptr);
+  vox.setLeafSize(lx, ly, lz);
+  vox.filter(out);
+}
+}  // namespace rclcppyy_pclkit
+"""
+
+# Headers the standalone .so translation unit needs (the in-process cppdef inherits
+# bringup's includes; a compiled .so does not). $CONDA_PREFIX/include (boost etc.),
+# the PCL and Eigen dirs are added as -I via include_paths in _adopt_glue.
+_CACHED_INCLUDES = (
+    "#include <cstring>\n#include <cstdint>\n"
+    "#include <pcl/point_types.h>\n#include <pcl/point_cloud.h>\n"
+    "#include <pcl/filters/voxel_grid.h>\n#include <pcl/filters/impl/voxel_grid.hpp>\n"
+)
+
+# Bodiless declarations Cling needs to call into the .so on a cache hit.
+_CACHED_DECLS = r"""
+#include <cstdint>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
+namespace rclcppyy_pclkit {
+  using CloudXYZ = pcl::PointCloud<pcl::PointXYZ>;
+  void xyz_from_array4(uintptr_t, std::size_t, CloudXYZ&);
+  void xyz_from_array3(uintptr_t, std::size_t, CloudXYZ&);
+  void xyz_to_array3(const CloudXYZ&, uintptr_t);
+  uintptr_t xyz_data_addr(CloudXYZ&);
+  void voxel_downsample(const CloudXYZ&, float, float, float, CloudXYZ&);
+}
+"""
+
 _PCL = None
 _CORE_DONE = False
 _ROS_DONE = False
+# True once the compile-cache .so (bridge glue + voxel_downsample) is loaded; False
+# falls back to plain cppdef of the bridge glue + the Python-driven VoxelGrid path.
+_CACHED = False
+_ADOPT_NOTICE_SHOWN = False
 
 
 def _pcl_include_dir():
@@ -153,9 +203,40 @@ def _ensure_core():
         cppyy.include(header)
     # Load the .so set so cppyy resolves their symbols at call time (see cppyy_kit).
     cppyy_kit.load_libraries(_PCL_LIBS, [os.path.join(conda, "lib")])
-    cppyy.cppdef(_CPP_GLUE)
+    _adopt_glue(conda)
     _PCL = cppyy.gbl.pcl
     _CORE_DONE = True
+
+
+def _adopt_glue(conda):
+    """Compile-cache the bridge glue + voxel_downsample into a .so (first-use JIT
+    paid once at build time), falling back to plain cppdef of the bridge glue + the
+    Python VoxelGrid path when no compiler is available (capability/fallback). The
+    cache is a pure optimisation, never a correctness dependency."""
+    global _CACHED, _ADOPT_NOTICE_SHOWN
+    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+        _CACHED = False
+        cppyy.cppdef(_CPP_GLUE)
+        return
+    source = _CACHED_INCLUDES + _CPP_GLUE + _VOXEL_CODE
+    try:
+        cppyy_kit.cppdef_cached(
+            source, decls=_CACHED_DECLS, name="pcl_glue",
+            include_paths=[os.path.join(conda, "include"), _pcl_include_dir(),
+                           os.path.join(conda, "include", "eigen3")],
+            library_paths=[os.path.join(conda, "lib")],
+            libraries=["pcl_common", "pcl_filters", "pcl_octree", "pcl_kdtree",
+                       "pcl_search", "pcl_sample_consensus"])
+        _ = cppyy.gbl.rclcppyy_pclkit.voxel_downsample
+        _CACHED = True
+    except Exception as exc:  # no compiler / a compile-or-parse issue
+        _CACHED = False
+        if not _ADOPT_NOTICE_SHOWN and os.environ.get("RCLCPPYY_JIT_NOTICE", "1") != "0":
+            _ADOPT_NOTICE_SHOWN = True
+            cppyy_kit._compile._stderr(
+                "[pcl_kit] compile cache unavailable (%s); using the JIT path "
+                "(call pcl_kit.warmup()). Silence: RCLCPPYY_JIT_NOTICE=0." % exc)
+        cppyy.cppdef(_CPP_GLUE)
 
 
 def _ensure_ros():
@@ -201,18 +282,20 @@ def warmup(with_ros=False):
     tiny cloud so the wrappers are cached process-globally before your first real
     frame. Call once during init (e.g. a node's __init__). Pass with_ros=True to
     also warm the pcl_conversions path if you use cloud_from_msg / msg_from_cloud.
+
+    On the compile-cache path the glue and the VoxelGrid are already compiled into
+    the kit's ``.so``, so the only first-use left to move is the pcl_conversions
+    round-trip (``with_ros=True``); warmup stays useful there and is cheap otherwise.
     """
-    pcl = bringup_pcl(with_ros=with_ros)
+    bringup_pcl(with_ros=with_ros)
 
     def _exercise():
         import numpy as np
         points = np.zeros((8, 3), dtype=np.float32)
         cloud = cloud_from_numpy(points)
-        vox = pcl.VoxelGrid[pcl.PointXYZ]()
-        vox.setInputCloud(cloud.makeShared())
-        vox.setLeafSize(0.1, 0.1, 0.1)
-        out = pcl.PointCloud[pcl.PointXYZ]()
-        vox.filter(out)
+        # Exercise the actual downsample path (cached helper, or the Python VoxelGrid
+        # on the fallback path -- warmup front-loads whichever this env uses).
+        out = voxel_downsample(cloud, 0.1)
         cloud_to_numpy(out)
         if with_ros:
             # also warm the pcl_conversions round-trip (toROSMsg / fromROSMsg).
@@ -282,6 +365,33 @@ def cloud_to_numpy(cloud, copy=True):
     cppyy_kit.keep_alive(buf, cloud)
     view = np.frombuffer(buf, dtype=np.float32).reshape(n, 4)
     return view[:, :3]
+
+
+def voxel_downsample(cloud, leaf, out=None):
+    """Voxel-grid downsample a ``PointCloud<PointXYZ>`` -- the compile-cached fast
+    path for the pcl_kit showcase's core op. ``leaf`` is a float (cubic voxel) or an
+    ``(lx, ly, lz)`` triple; ``out`` is filled if given, else a fresh cloud is made.
+
+    When the compile cache is active this runs a ``VoxelGrid<PointXYZ>`` compiled
+    into the kit's ``.so`` -- the ~0.6 s first-use JIT of the filter's template
+    methods is gone (measured ~594 ms -> ~5 ms). Without the cache it falls back to
+    the Python-driven mirror path (``pcl.VoxelGrid[pcl.PointXYZ]`` directly), which
+    is exactly what a user would write by hand and what ``warmup()`` front-loads.
+    Returns the downsampled cloud.
+    """
+    pcl = bringup_pcl(with_ros=False)
+    lx, ly, lz = (leaf, leaf, leaf) if isinstance(leaf, (int, float)) else leaf
+    if out is None:
+        out = pcl.PointCloud[pcl.PointXYZ]()
+    if _CACHED:
+        cppyy.gbl.rclcppyy_pclkit.voxel_downsample(cloud, lx, ly, lz, out)
+    else:
+        with cppyy_kit.first_use("pcl_kit.voxel_downsample", "pcl_kit.warmup()"):
+            vox = pcl.VoxelGrid[pcl.PointXYZ]()
+            vox.setInputCloud(cloud.makeShared())
+            vox.setLeafSize(lx, ly, lz)
+            vox.filter(out)
+    return out
 
 
 def cloud_from_msg(msg, point_type=None):
