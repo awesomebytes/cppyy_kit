@@ -247,6 +247,21 @@ pkg-build-all = "bash recipe/build_all.sh"
 # rclcpp-kit). Run after pkg-build-all.
 pkg-prove = "bash recipe/prove_all.sh"
 
+# --- docs (M4): mkdocs-material documentation site --------------------------
+# Standalone (no-default-feature): the docs build renders Markdown only, no
+# ROS/cppyy stack needed. mkdocs-material bundles mkdocs + pymdown-extensions
+# (superfences/mermaid) + the search plugin, so it is the only dependency.
+[feature.docs.dependencies]
+mkdocs-material = ">=9.7,<10"
+
+[feature.docs.tasks]
+# Live-reload preview at http://127.0.0.1:8000 (renders the symlinked nav tree).
+docs-serve = "mkdocs serve"
+# Strict build into ./site (gitignored). Strict fails on nav/structure/anchor
+# problems; relative-link not_found is `info` (see mkdocs.yml validation) because
+# the migrated read-only content carries pre-existing stale links.
+docs-build = "mkdocs build --strict"
+
 [environments]
 # solve-group = "default" pins every shared package to the exact same version as
 # the default env, so enabling a kit env never re-resolves the core ROS/cppyy stack.
@@ -267,3 +282,5 @@ cudabuild = { features = ["cudabuild"], no-default-feature = true }
 vision-cuda = { features = ["vision", "cudabuild"], solve-group = "default" }
 # Packaging env (M1c): rattler-build only; standalone, no ROS/cppyy stack.
 pkg = { features = ["pkg"], no-default-feature = true }
+# Docs env (M4): mkdocs-material only; standalone, no ROS/cppyy stack.
+docs = { features = ["docs"], no-default-feature = true }

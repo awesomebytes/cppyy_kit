@@ -1,0 +1,136 @@
+site_name: cppyy_kit
+site_description: >-
+  Drive C++ robotics libraries from Python via cppyy — prototype at Python speed,
+  run at C++ speed, graduate to AOT.
+site_url: https://awesomebytes.github.io/cppyy_kit/
+repo_url: https://github.com/awesomebytes/cppyy_kit
+repo_name: awesomebytes/cppyy_kit
+edit_uri: ""
+
+# The site source is a symlink mirror of the repo (see mkdocs_site_links.sh):
+# the read-only kit/docs .md files use relative links that assume the repo layout
+# (kit dirs siblings of docs/), so we render them from a docs_dir that mirrors it
+# — symlinking the .md files we nav (not whole kit dirs, to skip *.py/demos/tests).
+docs_dir: mkdocs_site
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      # Material's built-in Mermaid support: ```mermaid blocks render as diagrams
+      # (used in the tutorials + several kit REPORTs).
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+
+# Strict build (docs-build = mkdocs build --strict) fails on nav/structure/anchor
+# problems (our responsibility). Relative-link not_found is downgraded to `info`
+# because the migrated read-only content carries PRE-EXISTING stale links (the
+# M1a BT.CPP_KIT.md -> SKILL.md rename and the docs/kits -> docs move) that this
+# lane may not edit — flagged for the content pass; promote to `warn` once fixed.
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: info
+    anchors: info
+    absolute_links: info
+    unrecognized_links: info
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - The Patterns: docs/COMMON_PATTERNS.md
+  - Freeze & Cache: docs/FREEZE.md
+  - Kits:
+    - cppyy_kit (base): kits/cppyy_kit.md
+    - rclcpp_kit:
+      - Overview: rclcpp_kit/README.md
+      - Why: rclcpp_kit/WHY.md
+      - Report: rclcpp_kit/REPORT.md
+      - Skill: rclcpp_kit/SKILL.md
+    - bt_kit:
+      - Why: bt_kit/WHY.md
+      - Report: bt_kit/REPORT.md
+      - Skill: bt_kit/SKILL.md
+    - pcl_kit:
+      - Why: pcl_kit/WHY.md
+      - Report: pcl_kit/REPORT.md
+      - Skill: pcl_kit/SKILL.md
+    - ompl_kit:
+      - Why: ompl_kit/WHY.md
+      - Report: ompl_kit/REPORT.md
+      - Skill: ompl_kit/SKILL.md
+    - nav2_kit:
+      - Why: nav2_kit/WHY.md
+      - Report: nav2_kit/REPORT.md
+      - Skill: nav2_kit/SKILL.md
+    - moveit_kit:
+      - Why: moveit_kit/WHY.md
+      - Report: moveit_kit/REPORT.md
+      - Skill: moveit_kit/SKILL.md
+    - control_kit:
+      - Why: control_kit/WHY.md
+      - Report: control_kit/REPORT.md
+      - Skill: control_kit/SKILL.md
+    - cv_kit:
+      - Why: cv_kit/WHY.md
+      - Report: cv_kit/REPORT.md
+      - Skill: cv_kit/SKILL.md
+      - CUDA OpenCV: cv_kit/CUDA_OPENCV.md
+    - dbow_kit:
+      - Why: dbow_kit/WHY.md
+      - Report: dbow_kit/REPORT.md
+      - Skill: dbow_kit/SKILL.md
+  - Tutorials:
+    - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
+  - Architecture:
+    - Kit Architecture (V2): docs/ARCHITECTURE_V2.md
+    - Project Plan: PLAN.md

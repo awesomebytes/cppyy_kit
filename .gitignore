@@ -20,3 +20,6 @@ __pycache__/
 #   data/   — downloaded datasets (TUM RGB-D sequence, ORBvoc vocabulary)
 output/
 data/
+
+# mkdocs-material build output (M4)
+site/
