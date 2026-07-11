@@ -249,6 +249,31 @@ materialises the header AST from the PCH at interpreter start.
 `docs/kits/FREEZE.md`. One leaf was also lowered to native C++ (L2) and
 differential-tested (§6 "Next investments" (a) is thus partly demonstrated).
 
+### Gap 8b — first-use JIT eliminated via the compile cache (2026-07-11)
+
+The first-use JIT the PCH could not touch is now **eliminated persistently** by the
+M2 compile cache. bt_kit's registration routes through a **trampoline** compiled
+once into a cached `.so` (`cppyy_kit.cppdef_cached(..., trampoline=True)`): the
+`std::function` thunk *and* the `registerSimpleAction`/`registerStateful` calls run
+in compiled code, converting the `BT::TreeNode&` back to the Python proxy via
+`CPyCppyy::Instance_FromVoidPtr`. bringup is `_adopt_glue()`; `register_*` branch on
+`bt_kit._CACHED`, falling back to the cppyy `callback()` JIT path (with a one-time
+notice) when no compiler/CPyCppyy toolchain is present. `warmup()` is then a no-op.
+
+Measured (t01, cold subprocesses, `bench-cache-bt[-frozen]`):
+
+| config | first register | first tick | end-to-end wall |
+|---|--:|--:|--:|
+| L0 JIT | ~233 ms | ~8 ms | ~1770 ms |
+| L0 + cache (run ≥2) | ~60 ms | ~5 ms | ~1200 ms |
+| frozen JIT | ~278 ms | ~9 ms | ~970 ms |
+| **frozen + cache (run ≥2)** | **~62 ms** | **~5 ms** | **~425 ms** (~4.1× vs L0 JIT) |
+
+Run 1 pays a one-time ~2 s `.so` compile (per machine; skippable by shipping warm).
+The residual ~60 ms is cppyy's call wrapper to the trampoline entry points, which is
+cppyy-internal (not cacheable at our layer). Same 37 tests green on the cached path
+and the JIT fallback; `docs/kits/FREEZE.md` §4 has the mechanism.
+
 ---
 
 ## 6. Recommendation — GO (curated kit that mirrors the C++ API)

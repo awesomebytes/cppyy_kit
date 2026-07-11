@@ -98,7 +98,7 @@ demo-bt-t03 = "python bt_kit/demos/t03_mixed_tree.py"
 bench-bt = "python bt_kit/demos/bench_bt.py"
 # bt_kit + the base cppyy_kit tests (both gate on behaviortree_cpp). test_bt_freeze
 # also skips until the PCH is built (freeze-bt-build).
-test-bt = "pytest bt_kit/tests/test_bt_kit.py cppyy_kit/tests/test_cppyy_kit.py bt_kit/tests/test_bt_freeze.py -v"
+test-bt = "pytest bt_kit/tests/test_bt_kit.py cppyy_kit/tests/test_cppyy_kit.py cppyy_kit/tests/test_cache.py cppyy_kit/tests/test_trace.py bt_kit/tests/test_bt_freeze.py -v"
 # --- L0->L1 "freeze": Cling PCH of the bt headers (see docs/FREEZE.md) ---
 freeze-bt-build = "python scripts/freeze/build_bt_pch.py"
 freeze-bt-run = "python scripts/freeze/run_frozen.py"
@@ -108,6 +108,11 @@ demo-bt-t01-frozen = "python scripts/freeze/run_frozen.py bt_kit/demos/t01_first
 # --- L2 lowering: t01's ApproachObject leaf as a native BT.CPP plugin node ---
 freeze-l2-build = "python scripts/freeze/build_l2_node.py"
 freeze-l2-diff = "python scripts/freeze/l2_diff.py"
+# --- M2 compile cache: validation + the t01 cold-run adoption benchmark ---
+validate-cache-bt = "python scripts/cache/validate_cache_bt.py"
+validate-cache-bt-frozen = "python scripts/freeze/run_frozen.py scripts/cache/validate_cache_bt.py"
+bench-cache-bt = "python scripts/cache/measure_bt_t01.py"
+bench-cache-bt-frozen = "python scripts/freeze/run_frozen.py scripts/cache/measure_bt_t01.py"
 
 # --- pcl: Point Cloud Library ------------------------------------------------
 [feature.pcl.dependencies]

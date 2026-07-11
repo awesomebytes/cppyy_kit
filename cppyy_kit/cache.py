@@ -44,6 +44,7 @@ from . import trace
 _LOADED = set()          # so_paths already load_library'd this process (idempotent)
 _APPLIED = {}            # so_path -> result, for one-cppdef-per-process idempotency
 _NO_DECLS_WARNED = set()  # names warned about the missing-decls degrade (dedup)
+_INCLUDED = set()        # include paths already put on cppyy's search path (dedup)
 
 
 def _version_tag():
@@ -126,6 +127,13 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     def _ms():
         return round((time.perf_counter() - t0) * 1000, 3)
 
+    # Global kill-switch (benchmark/opt-out): behave exactly like cppyy.cppdef.
+    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+        cppyy.cppdef(code)
+        trace.record("cppdef_cached", name=name, cached=False, reason="disabled",
+                     duration_ms=_ms())
+        return {"cached": False, "reason": "disabled", "so": None}
+
     include_paths = tuple(include_paths)
     library_paths = tuple(library_paths)
     libraries = tuple(libraries)
@@ -137,6 +145,14 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
         include_paths = include_paths + tuple(tc["include_paths"])
         library_paths = library_paths + tuple(tc["link_paths"])
         link_args = link_args + tuple(tc["link_args"])
+
+    # Mirror the compile's include paths onto cppyy's in-process search path, so the
+    # miss-path cppdef(code) / hit-path cppdef(decls) resolve the same headers the
+    # .so was compiled against (deduped -- add_include_path is process-global).
+    for path in include_paths:
+        if path not in _INCLUDED:
+            _INCLUDED.add(path)
+            cppyy.add_include_path(path)
 
     # No declarations -> nothing to split, so we cannot avoid Cling emitting the
     # bodies. Stay a correct drop-in: plain cppdef, note once that decls caches it.
