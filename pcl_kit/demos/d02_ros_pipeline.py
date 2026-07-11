@@ -27,7 +27,7 @@ import numpy as np
 os.environ.setdefault("ROS_DOMAIN_ID", "43")
 
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import pcl_kit                    # noqa: E402
+import pcl_kit                    # noqa: E402
 
 LEAF = 0.05
 N_POINTS = 100_000

@@ -28,7 +28,7 @@ import os
 os.environ.setdefault("ROS_DOMAIN_ID", "49")
 
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import control_kit as ck  # noqa: E402
+import control_kit as ck  # noqa: E402
 
 JOINTS = ["shoulder", "elbow"]
 

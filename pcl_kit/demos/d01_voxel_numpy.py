@@ -11,7 +11,7 @@ Run: pixi run -e pcl demo-pcl-voxel
 """
 import numpy as np
 
-from rclcppyy.kits import pcl_kit
+import pcl_kit
 
 
 def main():

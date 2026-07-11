@@ -22,7 +22,7 @@ os.environ.setdefault("ROS_DOMAIN_ID", "49")
 
 import cppyy  # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import control_kit as ck  # noqa: E402
+import control_kit as ck  # noqa: E402
 
 FWD = "forward_command_controller/ForwardCommandController"
 

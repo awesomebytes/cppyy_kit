@@ -21,7 +21,7 @@ import time
 
 import cppyy
 from rclcppyy.bringup_rclcpp import bringup_rclcpp
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 os.environ.setdefault("ROS_DOMAIN_ID", "42")
 N_CYCLES = 3

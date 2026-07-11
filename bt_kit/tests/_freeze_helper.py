@@ -14,7 +14,8 @@ import time
 import cppyy
 from ament_index_python.packages import get_package_prefix
 
-from rclcppyy.kits import bt_kit, freeze
+import bt_kit
+from cppyy_kit import freeze
 
 prefix = get_package_prefix("behaviortree_cpp")
 cppyy.add_include_path(os.path.join(prefix, "include"))

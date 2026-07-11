@@ -12,7 +12,7 @@ copies a pixel on the ingest path. Per-frame ingest latency is reported.
 Rerun is LIVE by default when you run this interactively: a viewer window opens
 and you watch the camera stream in real time. Under pytest/CI or with no display it
 is headless (writes a .rrd you open later with ``rerun <file>``). Force either way
-with RCLCPPYY_RERUN_SPAWN=1 (live) / =0 (headless). See scripts/vision/vision_viz.py.
+with RCLCPPYY_RERUN_SPAWN=1 (live) / =0 (headless). See cv_kit/demos/vision_viz.py.
 
     pixi run -e vision demo-vision-spine
     RCLCPPYY_RERUN_SPAWN=1 pixi run -e vision demo-vision-spine --tum data/rgbd_dataset_freiburg3_long_office_household
@@ -34,7 +34,7 @@ sys.path.insert(0, HERE)
 import dataset_publisher as DP  # noqa: E402
 import vision_viz  # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import cv_kit  # noqa: E402
+import cv_kit  # noqa: E402
 
 TOPIC = "vision/image"
 # Plausible pinhole intrinsics for a 640x480 camera (TUM fr3 is ~535/320/248).

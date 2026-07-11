@@ -48,7 +48,7 @@ def _l2_factory(bt):
 
 
 def _worker(variant):
-    from rclcppyy.kits import bt_kit
+    import bt_kit
     bt = bt_kit.bringup_bt()
     factory = _l0_factory(bt) if variant == "l0" else _l2_factory(bt)
     status = factory.create_tree_from_text(XML_PRINT).tickWhileRunning()
@@ -104,7 +104,7 @@ def main():
     print("  PASS: identical output and status.\n")
 
     # --- tick-rate differential (silent nodes, in-process) ---
-    from rclcppyy.kits import bt_kit
+    import bt_kit
     bt = bt_kit.bringup_bt()
 
     def silent(node):

@@ -9,7 +9,7 @@ generate the committed golden-test fixture and for anyone who wants a vocabulary
 tuned to their own sequence without a big download.
 
     pixi run -e vision vocab-train                       # synthetic -> fixture path
-    python scripts/vision/train_vocab.py --tum DIR --out data/tum_voc.dbow2 --k 10 --L 4
+    python cv_kit/demos/train_vocab.py --tum DIR --out data/tum_voc.dbow2 --k 10 --L 4
 """
 import argparse
 import os
@@ -21,7 +21,8 @@ REPO = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(REPO, "scripts", "datasets"))
 
 import dataset_publisher as DP  # noqa: E402
-from rclcppyy.kits import cv_kit, dbow_kit  # noqa: E402
+import cv_kit  # noqa: E402
+import dbow_kit  # noqa: E402
 
 FIXTURE = os.path.join(REPO, "test", "fixtures", "synthetic_voc.dbow2")
 

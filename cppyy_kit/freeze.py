@@ -14,7 +14,7 @@ We build a PCH that bakes the kit's headers on top of the std ones and point
 ``import cppyy`` (which ``import rclcppyy`` triggers transitively), the variable
 MUST be set *before* any cppyy import. The supported entry point is the launcher::
 
-    RCLCPPYY_FROZEN=1 pixi run -e bt freeze-bt-run scripts/bt_kit_demos/t01_first_tree.py
+    RCLCPPYY_FROZEN=1 pixi run -e bt freeze-bt-run bt_kit/demos/t01_first_tree.py
     # or directly:
     python scripts/freeze/run_frozen.py <script.py> [args...]
 

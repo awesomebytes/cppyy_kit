@@ -15,7 +15,7 @@ subscription, the Mat, ORB, and (M3) the DBoW2 query.
 
 Rerun is LIVE by default when run interactively (a viewer opens; keypoints update
 on the stream in real time), headless (.rrd) under pytest/CI or no display. Force
-with RCLCPPYY_RERUN_SPAWN=1/0. See scripts/vision/vision_viz.py.
+with RCLCPPYY_RERUN_SPAWN=1/0. See cv_kit/demos/vision_viz.py.
 
     pixi run -e vision demo-vision-features
     RCLCPPYY_RERUN_SPAWN=1 pixi run -e vision demo-vision-features --tum data/<tum-seq>
@@ -37,7 +37,7 @@ sys.path.insert(0, HERE)
 import dataset_publisher as DP  # noqa: E402
 import vision_viz  # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import cv_kit  # noqa: E402
+import cv_kit  # noqa: E402
 
 TOPIC = "vision/image"
 FX, FY, CX, CY = 525.0, 525.0, 319.5, 239.5

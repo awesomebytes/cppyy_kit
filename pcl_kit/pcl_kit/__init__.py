@@ -24,7 +24,7 @@ The kit's only job is to remove the cppyy friction that PCL has:
 
 Minimal NumPy pipeline::
 
-    from rclcppyy.kits import pcl_kit
+    import pcl_kit
     pcl = pcl_kit.bringup_pcl(with_ros=False)
 
     cloud = pcl_kit.cloud_from_numpy(points)           # (N,3) float32 -> cloud
@@ -56,7 +56,7 @@ import os
 
 import cppyy
 
-from rclcppyy.kits import cppyy_kit
+import cppyy_kit
 
 # The libpcl_*.so set whose symbols the common filters (VoxelGrid, PCLBase,
 # getMinMax3D, ...) resolve against. cppyy discovers a symbol's owning library by

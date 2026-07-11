@@ -18,7 +18,7 @@ import time
 os.environ.setdefault("ROS_DOMAIN_ID", "45")
 
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import ompl_kit                  # noqa: E402
+import ompl_kit                  # noqa: E402
 
 TOPIC = "ompl_kit/plan"
 OBSTACLE = (0.5, 0.5, 0.25)

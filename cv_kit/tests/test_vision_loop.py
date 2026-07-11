@@ -23,7 +23,7 @@ import pytest
 _CONDA = os.environ.get("CONDA_PREFIX", "")
 _HAVE_CV = bool(glob.glob(os.path.join(_CONDA, "include", "opencv4")))
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_REPO = os.path.dirname(_HERE)
+_REPO = os.path.dirname(os.path.dirname(_HERE))   # cv_kit/tests/ -> repo root
 _HAVE_DBOW = os.path.isfile(os.path.join(_REPO, "build", "vendor", "libDBoW2.so"))
 
 pytestmark = pytest.mark.skipif(
@@ -40,10 +40,11 @@ MIN_SCORE, CONSISTENCY_K, IGNORE_RECENT = 0.4, 3, 25
 
 if _HAVE_CV and _HAVE_DBOW:
     sys.path.insert(0, os.path.join(_REPO, "scripts", "datasets"))
-    sys.path.insert(0, os.path.join(_REPO, "scripts", "vision"))
+    sys.path.insert(0, os.path.join(_REPO, "cv_kit", "demos"))
     import synthetic_loop  # noqa: E402
     from loop_detector import LoopDetector  # noqa: E402
-    from rclcppyy.kits import cv_kit, dbow_kit  # noqa: E402
+    import cv_kit  # noqa: E402
+    import dbow_kit  # noqa: E402
 
 
 @pytest.fixture(scope="module")

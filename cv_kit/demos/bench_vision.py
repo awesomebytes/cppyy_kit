@@ -34,7 +34,8 @@ import synthetic_loop  # noqa: E402
 import dataset_publisher as DP  # noqa: E402
 from loop_detector import LoopDetector  # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
-from rclcppyy.kits import cv_kit, dbow_kit  # noqa: E402
+import cv_kit  # noqa: E402
+import dbow_kit  # noqa: E402
 
 
 def _cpu_percent(fn, iters):

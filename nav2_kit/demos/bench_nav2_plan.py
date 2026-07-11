@@ -25,7 +25,7 @@ import time
 
 import numpy as np
 
-from rclcppyy.kits import nav2_kit
+import nav2_kit
 
 SQRT2 = math.sqrt(2.0)
 

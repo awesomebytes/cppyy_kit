@@ -44,7 +44,8 @@ VARIANTS = [
 # --------------------------------------------------------------------------
 def worker(kind, seed, micro_n):
     import cppyy
-    from rclcppyy.kits import ompl_kit, cppyy_kit
+    import ompl_kit
+    import cppyy_kit
 
     ob, og = ompl_kit.bringup_ompl()
 

@@ -1,0 +1,22 @@
+# pixi
+.pixi/
+
+# build artifacts (vendored source builds land in build/vendor/, freeze PCHs in build/freeze/)
+build/
+# colcon (only if a kit ever adds an ament package)
+install/
+log/
+
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# hypothesis
+.hypothesis/
+
+# generated / downloaded, never committed:
+#   output/ — rattler-build package output (M1c)
+#   data/   — downloaded datasets (TUM RGB-D sequence, ORBvoc vocabulary)
+output/
+data/

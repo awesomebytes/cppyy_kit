@@ -21,7 +21,7 @@ Usage::
 """
 from collections import namedtuple
 
-from rclcppyy.kits import dbow_kit
+import dbow_kit
 
 # A confirmed loop closure: the current frame (query_id) revisits an earlier frame
 # (match_id) with BoW similarity `score`; `candidates` is the raw top-k list.

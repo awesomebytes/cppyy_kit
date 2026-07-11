@@ -8,7 +8,7 @@ tickWhileRunning -- only the leaf callbacks are Python.
 Reference: https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree
 Run:       pixi run -e bt demo-bt-t01
 """
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 bt = bt_kit.bringup_bt()
 

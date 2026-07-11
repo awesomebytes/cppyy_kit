@@ -1,0 +1,44 @@
+name: CI
+
+# A clean checkout must lint clean and collect the full kit test suite (which
+# auto-skips per kit in the default env), with no manual steps beyond `pixi run`.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch/PR cancels the in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: lint + default test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          # Pin pixi to the version that generated and validated pixi.lock
+          # locally, so CI resolves the same environment.
+          pixi-version: v0.70.0
+          # Default environment only. The kit feature envs pull multi-GB C++
+          # extras (moveit / nav2 / pcl / opencv ...) that the default lint +
+          # skip-collection suite below does not need.
+          environments: default
+          cache: true
+          cache-write: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      # flake8 over every kit package + shared scripts (see .flake8).
+      - name: Lint
+        run: pixi run lint
+
+      # Collects every kit test suite; each auto-skips on its capability probe in
+      # the default env (no kit C++ libs). Green = everything imports & skips
+      # cleanly. The per-kit green proof runs in the feature envs (test-<kit>).
+      - name: Test (kit suites collect + auto-skip)
+        run: pixi run test

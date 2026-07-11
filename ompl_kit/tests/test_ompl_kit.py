@@ -24,7 +24,8 @@ pytestmark = pytest.mark.skipif(not _HAVE_OMPL,
                                 reason="OMPL not installed (use the ompl env)")
 
 if _HAVE_OMPL:
-    from rclcppyy.kits import ompl_kit, cppyy_kit
+    import ompl_kit
+    import cppyy_kit
 
 OBSTACLE = (0.5, 0.5, 0.25)
 

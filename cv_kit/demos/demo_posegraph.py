@@ -50,7 +50,7 @@ import synthetic_loop  # noqa: E402
 import train_vocab  # noqa: E402
 import vision_viz  # noqa: E402
 from loop_detector import LoopDetector  # noqa: E402
-from rclcppyy.kits import cv_kit  # noqa: E402
+import cv_kit  # noqa: E402
 
 # Trajectory colors, shared by the 3D lines and their labels.
 C_GT = (0, 200, 0)         # ground truth  -- green

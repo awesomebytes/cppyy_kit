@@ -35,7 +35,7 @@ os.environ.setdefault("ROS_DOMAIN_ID", "47")
 
 import cppyy                                            # noqa: E402
 from rclcppyy.bringup_rclcpp import bringup_rclcpp      # noqa: E402
-from rclcppyy.kits import nav2_kit                      # noqa: E402
+import nav2_kit                      # noqa: E402
 
 W = H = 120
 RES = 0.05                    # meters/cell -> a 6 m x 6 m world

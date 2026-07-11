@@ -22,7 +22,8 @@ pytestmark = pytest.mark.skipif(not _HAVE_BT,
 
 if _HAVE_BT:
     import cppyy
-    from rclcppyy.kits import bt_kit, cppyy_kit
+    import bt_kit
+    import cppyy_kit
 
     # A tiny C++ holder for the C++<->Python direction tests: a free function
     # Python can call, and a std::function slot C++ can store and invoke.

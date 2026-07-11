@@ -22,7 +22,7 @@ Run: pixi run -e bt bench-bt
 """
 import time
 
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 DURATION = 2.0  # seconds per measured variant
 LEAVES = 3
