@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  name: ros-jazzy-dbow-kit
+  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.1.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Repo root (this recipe lives in recipe/ros-jazzy-dbow-kit/). use_gitignore skips
+  # .pixi/, build/, output/. build.sh installs only the dbow_kit package.
+  path: ../..
+  use_gitignore: true
+
+build:
+  # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
+  # -> noarch python: one artifact for every platform/python.
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools >=61
+  run:
+    - python
+    - cppyy-kit ==0.1.0
+    - ros-jazzy-cv-kit ==0.1.0
+    - opencv >=4,<5
+
+tests:
+  - script:
+      # Fresh-env import smoke (rattler-build resolves run deps in an isolated
+      # test env). The richer proof runs in the driver (recipe/prove_all.sh).
+      - python -c "import dbow_kit; print('dbow_kit', dbow_kit.__file__)"
+
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  repository: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: "Drive DBoW2 place recognition / loop closure from Python via cppyy"
+  description: |
+    dbow_kit drives DBoW2 (Bags of Binary Words) place recognition from Python
+    via cppyy. DBoW2 has no Python binding and is not on conda-forge, so it is
+    vendored and compiled from source (dbow_kit/cpp/build_dbow2.py) — this
+    package ships the Python wrapper; run the build step once to produce the .so.
+
+extra:
+  recipe-maintainers:
+    - awesomebytes

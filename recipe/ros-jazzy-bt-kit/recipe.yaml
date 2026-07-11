@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  name: ros-jazzy-bt-kit
+  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.1.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Repo root (this recipe lives in recipe/ros-jazzy-bt-kit/). use_gitignore skips
+  # .pixi/, build/, output/. build.sh installs only the bt_kit package.
+  path: ../..
+  use_gitignore: true
+
+build:
+  # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
+  # -> noarch python: one artifact for every platform/python.
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools >=61
+  run:
+    - python
+    - cppyy-kit ==0.1.0
+    - ros-jazzy-behaviortree-cpp >=4.9,<5
+
+tests:
+  - script:
+      # Fresh-env import smoke (rattler-build resolves run deps in an isolated
+      # test env). The richer proof runs in the driver (recipe/prove_all.sh).
+      - python -c "import bt_kit; print('bt_kit', bt_kit.__file__)"
+
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  repository: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: "Drive BehaviorTree.CPP v4 from Python via cppyy"
+  description: |
+    bt_kit drives BehaviorTree.CPP v4 from short Python via cppyy: build trees,
+    mix Python and JIT-compiled C++ leaves, with an L0->L1->L2 freeze path.
+
+extra:
+  recipe-maintainers:
+    - awesomebytes

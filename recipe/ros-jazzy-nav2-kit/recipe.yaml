@@ -1,0 +1,57 @@
+schema_version: 1
+
+context:
+  name: ros-jazzy-nav2-kit
+  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.1.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Repo root (this recipe lives in recipe/ros-jazzy-nav2-kit/). use_gitignore skips
+  # .pixi/, build/, output/. build.sh installs only the nav2_kit package.
+  path: ../..
+  use_gitignore: true
+
+build:
+  # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
+  # -> noarch python: one artifact for every platform/python.
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools >=61
+  run:
+    - python
+    - cppyy-kit ==0.1.0
+    - ros-jazzy-rclcpp-kit ==0.1.0
+    - ros-jazzy-nav2-costmap-2d
+    - ros-jazzy-nav2-navfn-planner
+    - ros-jazzy-nav2-smac-planner
+    - ros-jazzy-nav2-regulated-pure-pursuit-controller
+    - ros-jazzy-nav2-msgs
+
+tests:
+  - script:
+      # Fresh-env import smoke (rattler-build resolves run deps in an isolated
+      # test env). The richer proof runs in the driver (recipe/prove_all.sh).
+      - python -c "import nav2_kit; print('nav2_kit', nav2_kit.__file__)"
+
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  repository: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: "Compose a Nav2 stack from its algorithm cores in Python via cppyy"
+  description: |
+    nav2_kit composes Nav2's algorithm cores (Costmap2D, NavFn, Smac, RPP) from
+    Python via cppyy — a miniature nav stack with no lifecycle servers.
+
+extra:
+  recipe-maintainers:
+    - awesomebytes

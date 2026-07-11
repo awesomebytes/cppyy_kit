@@ -1,0 +1,54 @@
+schema_version: 1
+
+context:
+  name: ros-jazzy-pcl-kit
+  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.1.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Repo root (this recipe lives in recipe/ros-jazzy-pcl-kit/). use_gitignore skips
+  # .pixi/, build/, output/. build.sh installs only the pcl_kit package.
+  path: ../..
+  use_gitignore: true
+
+build:
+  # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
+  # -> noarch python: one artifact for every platform/python.
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools >=61
+  run:
+    - python
+    - cppyy-kit ==0.1.0
+    - ros-jazzy-rclcpp-kit ==0.1.0
+    - pcl
+    - ros-jazzy-pcl-conversions
+
+tests:
+  - script:
+      # Fresh-env import smoke (rattler-build resolves run deps in an isolated
+      # test env). The richer proof runs in the driver (recipe/prove_all.sh).
+      - python -c "import pcl_kit; print('pcl_kit', pcl_kit.__file__)"
+
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  repository: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: "Drive the Point Cloud Library from Python via cppyy (clouds stay in C++)"
+  description: |
+    pcl_kit drives the Point Cloud Library from Python via cppyy, with a ROS 2
+    PointCloud2 bridge so a cloud stays in C++ end to end through a pipeline.
+
+extra:
+  recipe-maintainers:
+    - awesomebytes
