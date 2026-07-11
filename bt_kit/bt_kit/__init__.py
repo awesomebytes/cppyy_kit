@@ -493,10 +493,17 @@ def _adopt_glue(prefix):
     registration goes through ``cppyy_kit.callback`` (the JIT path, warmup-movable).
     """
     global _CACHED, _ADOPT_NOTICE_SHOWN
-    # Opt-out / benchmark switch: force the JIT registration path.
-    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+    capability = cppyy_kit.capability
+    _CAP_DESC = "bt_kit registration through the compiled trampoline (.so)"
+    # detect -> fall back to the JIT path if disabled or the base can't compile a .so
+    # (capability/fallback/status, COMMON_PATTERNS §29). set_state records the outcome
+    # for `python -m cppyy_kit status`.
+    disabled = os.environ.get("CPPYY_KIT_NO_CACHE") == "1"
+    if disabled or not capability.available("compile_cache"):
         _CACHED = False
         cppyy.cppdef(_CPP_GLUE)
+        reason = "disabled via CPPYY_KIT_NO_CACHE" if disabled else capability.detail("compile_cache")
+        capability.set_state("bt_kit.compile_cache", False, reason, _CAP_DESC)
         return
     # Compiled standalone by $CXX, so the source must include the BT headers itself
     # (the in-process cppdef inherits bringup's include; a .so translation unit does
@@ -510,7 +517,8 @@ def _adopt_glue(prefix):
         # Confirm the trampoline entry point is actually callable before committing.
         _ = cppyy.gbl.rclcppyy_btkit.register_py_action
         _CACHED = True
-    except Exception as exc:  # no compiler / CPyCppyy / a compile-or-parse issue
+        capability.set_state("bt_kit.compile_cache", True, "", _CAP_DESC)
+    except Exception as exc:  # CPyCppyy / a compile-or-parse issue past the base probe
         _CACHED = False
         if not _ADOPT_NOTICE_SHOWN and os.environ.get("RCLCPPYY_JIT_NOTICE", "1") != "0":
             _ADOPT_NOTICE_SHOWN = True
@@ -519,6 +527,7 @@ def _adopt_glue(prefix):
                 "registration path (call bt_kit.warmup() to move the first-use cost). "
                 "Silence: RCLCPPYY_JIT_NOTICE=0." % exc)
         cppyy.cppdef(_CPP_GLUE)
+        capability.set_state("bt_kit.compile_cache", False, str(exc), _CAP_DESC)
 
 
 def bringup_bt():
