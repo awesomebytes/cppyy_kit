@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Minimal rclcppyy.tf lookup example.
+"""Minimal rclcpp_kit.tf lookup example.
 
 Publishes a tiny transform tree (world -> base -> sensor) on ``/tf`` while a C++
-``tf2_ros::TransformListener`` (running on its own C++ thread, via rclcppyy.tf)
+``tf2_ros::TransformListener`` (running on its own C++ thread, via rclcpp_kit.tf)
 ingests it, then looks the composed transform up from Python and prints it. The
 listener never runs a Python callback -- ingest is entirely in C++.
 
-    pixi run demo-tf-lookup
+    pixi run -e rclcpp demo-tf-lookup
 """
 import time
 
 import cppyy
 
-import rclcppyy
-from rclcppyy import tf
+import rclcpp_kit
+from rclcpp_kit import tf
 
 
 def make_ts(parent, child, x, y, z):
@@ -28,7 +28,7 @@ def make_ts(parent, child, x, y, z):
 
 
 def main():
-    rclcpp = rclcppyy.bringup_rclcpp()
+    rclcpp = rclcpp_kit.bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
 

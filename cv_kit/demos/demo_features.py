@@ -36,7 +36,7 @@ sys.path.insert(0, HERE)
 
 import dataset_publisher as DP  # noqa: E402
 import vision_viz  # noqa: E402
-from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp  # noqa: E402
 import cv_kit  # noqa: E402
 
 TOPIC = "vision/image"

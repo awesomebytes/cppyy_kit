@@ -1,8 +1,10 @@
 """
-rclcppyy.tf -- drive the tf2 C++ transform stack from Python via cppyy.
+rclcpp_kit.tf -- drive the tf2 C++ transform stack from Python via cppyy.
 
 tf2 is core ROS 2 (it ships in the default ``ros-base`` env, like rclcpp), so this
-lives in rclcppyy-proper rather than in an opt-in ``kit``. The point is efficiency:
+lives in rclcpp_kit (the rclcpp core capability layer) alongside ``bringup_rclcpp`` /
+``serialization`` / ``rosbag2_cpp``, not behind an opt-in domain ``kit``. The point
+is efficiency:
 the stock ``tf2_ros`` **Python** ``TransformListener`` subscribes to ``/tf`` /
 ``/tf_static`` with **Python** callbacks, so every incoming ``TFMessage`` is
 deserialized into Python objects and then fed **one TransformStamped at a time**
@@ -14,15 +16,15 @@ is entirely Python.
 This module instead runs tf2's **C++** ``tf2_ros::TransformListener`` on its own
 dedicated C++ thread against a ``tf2::BufferCore``: transforms are ingested wholly in
 C++ (no per-message Python crossing, no GIL), and Python only reaches across when it
-actually calls ``lookup_transform``. See docs/tf/REPORT.md for the mechanism and the
-benchmark.
+actually calls ``lookup_transform``. See ``rclcpp_kit/REPORT.md`` for the mechanism
+and the benchmark.
 
 Usage::
 
-    import rclcppyy
-    from rclcppyy import tf
+    import rclcpp_kit
+    from rclcpp_kit import tf
 
-    rclcppyy.bringup_rclcpp()               # rclcpp up (tf bringup does this too)
+    rclcpp_kit.bringup_rclcpp()             # rclcpp up (tf bringup does this too)
     listener = tf.TransformListener()       # own node + own C++ spin thread
     ts = listener.lookup_transform("world", "sensor", timeout=1.0)
     print(ts.transform.translation.x, ts.transform.translation.y)
@@ -38,20 +40,20 @@ Design notes / friction hidden (mirror-don't-sugar otherwise):
       don't resolve from Python (the recurring cppyy pattern -- build the object in
       C++).
     * ``lookup_transform`` returns the real ``geometry_msgs::msg::TransformStamped``
-      (the same cppyy proxy the rest of rclcppyy uses); read ``.transform.translation``
+      (the same cppyy proxy the rest of rclcpp_kit uses); read ``.transform.translation``
       / ``.transform.rotation`` exactly as in C++.
 """
 import os
 
 import cppyy
 
-# Import the functions directly: rclcppyy/__init__.py binds the *function*
+# Import the functions directly: rclcpp_kit/__init__.py binds the *function*
 # ``bringup_rclcpp`` into the package namespace, shadowing the submodule of the same
-# name, so ``from rclcppyy import bringup_rclcpp`` would give the function, not the
+# name, so ``from rclcpp_kit import bringup_rclcpp`` would give the function, not the
 # module.
-from rclcppyy.bringup_rclcpp import bringup_rclcpp as _bringup_rclcpp
-from rclcppyy.bringup_rclcpp import add_ros2_include_paths as _add_ros2_include_paths
-from rclcppyy.kits import cppyy_kit
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp as _bringup_rclcpp
+from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths as _add_ros2_include_paths
+import cppyy_kit
 
 _TF_LIBS = (
     "libtf2.so",            # tf2::BufferCore -- the transform cache + math

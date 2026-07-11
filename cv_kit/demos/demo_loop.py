@@ -42,7 +42,7 @@ import dataset_publisher as DP  # noqa: E402
 import train_vocab  # noqa: E402
 import vision_viz  # noqa: E402
 from loop_detector import LoopDetector  # noqa: E402
-from rclcppyy.bringup_rclcpp import bringup_rclcpp  # noqa: E402
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp  # noqa: E402
 import cv_kit  # noqa: E402
 import dbow_kit  # noqa: E402
 

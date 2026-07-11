@@ -23,7 +23,7 @@ pytestmark = pytest.mark.skipif(
     not _HAVE_CONTROL, reason="ros2_control not installed (use the control env)")
 
 if _HAVE_CONTROL:
-    from rclcppyy.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
     import control_kit as ck
 
 JOINTS = ["joint1", "joint2"]

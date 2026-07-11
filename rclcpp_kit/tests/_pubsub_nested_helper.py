@@ -13,7 +13,7 @@ interpreter.
 """
 import time
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 
 # Deadline for the bounded spin loop, measured after the (separate) rclcpp JIT
 # bringup so a slow cold compile never eats into it. Generous for CI.

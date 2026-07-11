@@ -277,7 +277,7 @@ def _add_moveit_includes():
     """Add MoveIt/ROS include paths (reuses rclcppyy's ament-index helper, which
     registers ``include/<pkg>`` for every package -- the layout MoveIt headers such
     as ``<urdf/model.h>`` and ``<moveit/.../*.hpp>`` expect) plus eigen3."""
-    from rclcppyy.bringup_rclcpp import add_ros2_include_paths
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.add_include_path(os.path.join(os.environ["CONDA_PREFIX"], "include", "eigen3"))
 
@@ -652,7 +652,7 @@ def warmup(with_kinematics=True, with_planning=False):
     init, so the first live ``load_kinematics_solver`` / ``load_planner`` does not
     stall. Builds a throwaway panda model + node and exercises the loaders once."""
     cfg = panda_config()
-    from rclcppyy.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
     rclcpp = bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()

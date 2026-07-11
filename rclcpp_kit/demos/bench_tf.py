@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""TF benchmark: stock rclpy Python listener vs rclcppyy C++ listener.
+"""TF benchmark: stock rclpy Python listener vs rclcpp_kit C++ listener.
 
-Answers "is TF via rclcppyy more efficient than the stock Python path?" with numbers.
+Answers "is TF via rclcpp_kit more efficient than the stock Python path?" with numbers.
 For each scenario it spawns the synthetic TF-storm publisher and then, one at a time,
 each listener variant (as its own child process, so their CPU never overlaps). Each
 listener reports its own ingest CPU% (process-wide, over a fixed window with the main
@@ -116,7 +116,7 @@ def main():
         return fmt(res.get(key, "ERR")) if "error" not in res else "ERR"
 
     print("\n" + "=" * 92)
-    print("TF ingest + lookup: stock rclpy Python listener vs rclcppyy C++ listener")
+    print("TF ingest + lookup: stock rclpy Python listener vs rclcpp_kit C++ listener")
     print("=" * 92)
     header = ("%-18s | %-21s | %-21s | %-21s"
               % ("scenario", "ingest CPU%  py / cpp",

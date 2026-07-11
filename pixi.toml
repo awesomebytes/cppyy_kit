@@ -2,9 +2,10 @@
 authors = ["Sam Pfeiffer <sammypfeiffer@gmail.com>"]
 name = "cppyy_kit_ws"
 # robostack-jazzy + conda-forge supply the ROS/cppyy stack and every kit's C++
-# dependency; awesomebytes (lowest priority) supplies ONLY the ros-jazzy-rclcppyy
-# package used as the M1b-temporary bridge (see the `rclcpp` feature below).
-channels = ["robostack-jazzy", "conda-forge", "https://prefix.dev/awesomebytes"]
+# dependency. (M1c will re-add the prefix.dev `awesomebytes` channel for the
+# published kit packages; the M1b workspace resolves every conda package from these
+# two channels and finds the local kits — including rclcpp_kit — via PYTHONPATH.)
+channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
 version = "0.1.0"
 
@@ -43,42 +44,43 @@ ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
 # owning shared library. conda/robostack rely on RPATH and leave LD_LIBRARY_PATH
 # unset, so point it at the env's lib dir or cppyy.gbl.* calls fail to resolve.
 LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
-# M1-era package resolution: the base package cppyy_kit/ and rclcpp_kit/ resolve
-# from the repo root; each domain kit is a nested package (<kit>/<kit>/), so its
-# kit dir goes on the path too (repo-root shadow is a discarded namespace portion,
-# the nested regular package wins — PEP 420). Editable installs / conda recipes
-# replace this in M1c. site-packages (cppyy, rclcppyy bridge) is unaffected.
+# M1-era package resolution: the base package cppyy_kit/ is a repo-root package
+# (import cppyy_kit resolves straight from the root); rclcpp_kit and every domain
+# kit are nested packages (<kit>/<kit>/), so each kit dir goes on the path too.
+# Editable installs / conda recipes replace this in M1c. site-packages (cppyy) is
+# unaffected.
 PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pcl_kit:$PIXI_PROJECT_ROOT/ompl_kit:$PIXI_PROJECT_ROOT/nav2_kit:$PIXI_PROJECT_ROOT/moveit_kit:$PIXI_PROJECT_ROOT/control_kit:$PIXI_PROJECT_ROOT/cv_kit:$PIXI_PROJECT_ROOT/dbow_kit:$PIXI_PROJECT_ROOT/rclcpp_kit"
 
 [tasks]
-# Default smoke: collect every kit test suite EXCEPT the tf suite. In the default
-# env (no kit C++ libs) each suite auto-skips on its capability probe, so this is
-# a green "everything collects & skips" check. tf is excluded because tf2 headers
-# ARE in the default ROS env, so test_tf would try the rclcppyy bridge (absent
-# here) instead of skipping — run it with `pixi run -e rclcpp test-tf`. The real
+# Default smoke: collect every domain-kit test suite. In the default env (no kit
+# C++ libs) each suite auto-skips on its capability probe, so this is a green
+# "everything collects & skips" check. The rclcpp_kit suite is NOT here: unlike the
+# domain kits it needs no opt-in C++ library (ros-base is already in the default
+# env), so it would actually bring up rclcpp + DDS rather than skip — it runs in its
+# own env via `pixi run -e rclcpp test-rclcpp` (and the `test-tf` gate). The real
 # per-kit proof is the feature-env test-<kit> tasks.
 test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
 lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit scripts"
 clean = "rm -rf build"
 
-# --- rclcpp (M1b-temporary bridge) -------------------------------------------
-# Several kits import rclcppyy.bringup_rclcpp / rclcppyy.tf for ROS core bits
-# (add_ros2_include_paths, bringup_rclcpp, tf). Until M1b carves rclcpp_kit out of
-# the rclcppyy product, the ros-jazzy-rclcppyy conda package (awesomebytes) supplies
-# those. Composed into every ROS-touching feature env below; also a standalone env
-# for the tf demos/tests staged under rclcpp_kit/. Removed in M1b.
-[feature.rclcpp.dependencies]
-ros-jazzy-rclcppyy = "*"
-
+# --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
+# rclcpp_kit (bringup / messages / serialization / rosbag2 / tf) is a LOCAL package
+# resolved via PYTHONPATH; it needs only the ROS core (rclcpp + tf2, both in the
+# default ros-base env), so this feature carries no extra conda deps. It exists as
+# a standalone env for the rclcpp_kit test suite + tf demos. (This was the
+# M1b-temporary `ros-jazzy-rclcppyy` bridge; M1b carved rclcpp_kit into this repo
+# and dropped the bridge — every kit now imports `rclcpp_kit` directly.)
 [feature.rclcpp.tasks]
-# tf2 C++ transform stack via cppyy (rclcppyy.tf). Kept out of the default `test`.
+# Full rclcpp_kit suite: bringup, plain pub/sub roundtrip, serialization parity, tf.
+test-rclcpp = "pytest rclcpp_kit/tests -v"
+# tf2 C++ transform stack via cppyy (rclcpp_kit.tf) — the tf gate (8 tests).
 test-tf = "pytest rclcpp_kit/tests/test_tf.py -v"
 # C++ tf2_ros::TransformListener ingests /tf; Python looks the transform up.
 demo-tf-lookup = "python rclcpp_kit/demos/d01_lookup_example.py"
 # Synthetic TF-storm publisher (frames*rate transforms/s on /tf); runs until killed.
 demo-tf-storm = "python rclcpp_kit/demos/tf_storm_publisher.py --frames 50 --rate 100"
-# Stock rclpy Python listener vs rclcppyy C++ listener: ingest CPU% + lookup latency.
+# Stock rclpy Python listener vs rclcpp_kit C++ listener: ingest CPU% + lookup latency.
 bench-tf = "python rclcpp_kit/demos/bench_tf.py"
 
 # --- bt: BehaviorTree.CPP v4 -------------------------------------------------
@@ -231,17 +233,18 @@ validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
 [environments]
 # solve-group = "default" pins every shared package to the exact same version as
 # the default env, so enabling a kit env never re-resolves the core ROS/cppyy stack.
-# Every ROS-touching kit env also pulls the rclcpp bridge (M1b-temporary).
-bt = { features = ["bt", "rclcpp"], solve-group = "default" }
-pcl = { features = ["pcl", "rclcpp"], solve-group = "default" }
-ompl = { features = ["ompl", "rclcpp"], solve-group = "default" }
-nav2 = { features = ["nav2", "rclcpp"], solve-group = "default" }
-moveit = { features = ["moveit", "rclcpp"], solve-group = "default" }
-control = { features = ["control", "rclcpp"], solve-group = "default" }
-vision = { features = ["vision", "rclcpp"], solve-group = "default" }
-# Standalone bridge env for the tf demos/tests staged under rclcpp_kit/.
+# ROS-core bits come from rclcpp_kit (local, on PYTHONPATH) + the default ros-base,
+# so no kit env carries a per-env ROS-core conda dependency.
+bt = { features = ["bt"], solve-group = "default" }
+pcl = { features = ["pcl"], solve-group = "default" }
+ompl = { features = ["ompl"], solve-group = "default" }
+nav2 = { features = ["nav2"], solve-group = "default" }
+moveit = { features = ["moveit"], solve-group = "default" }
+control = { features = ["control"], solve-group = "default" }
+vision = { features = ["vision"], solve-group = "default" }
+# Standalone env for the rclcpp_kit test suite + tf demos (see the `rclcpp` feature).
 rclcpp = { features = ["rclcpp"], solve-group = "default" }
 # GPU vision: standalone (vendors the CUDA libs + supplies the CUDA 12.9 runtime).
 cudabuild = { features = ["cudabuild"], no-default-feature = true }
 # Integrated GPU vision: the vision stack + CUDA runtime so cv_kit auto-detects cv::cuda.
-vision-cuda = { features = ["vision", "rclcpp", "cudabuild"], solve-group = "default" }
+vision-cuda = { features = ["vision", "cudabuild"], solve-group = "default" }

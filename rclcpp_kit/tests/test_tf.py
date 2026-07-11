@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Tests for rclcppyy.tf (tf2 C++ transform stack via cppyy).
+"""Tests for rclcpp_kit.tf (tf2 C++ transform stack via cppyy).
 
-tf2 is core ROS 2 (present in the default env), so these run in the default
-`pixi run test`. They share one process: bringup is idempotent and each test uses
-distinct frame names, so a single module-scoped TransformListener keeps them
-independent while staying fast. One test exercises the real network ingest path
-(publish on /tf via rclcppyy -> C++ listener -> lookup) to prove transforms are
+tf2 is core ROS 2 (present in every env that carries rclcpp_kit), so these run in
+`pixi run -e rclcpp test-tf`. They share one process: bringup is idempotent and each
+test uses distinct frame names, so a single module-scoped TransformListener keeps
+them independent while staying fast. One test exercises the real network ingest path
+(publish on /tf via rclcpp_kit -> C++ listener -> lookup) to prove transforms are
 ingested with no per-message Python callback.
 """
-import importlib.util
 import os
 import time
 
@@ -19,35 +18,18 @@ import pytest
 _HAVE_TF2 = os.path.isdir(
     os.path.join(os.environ.get("CONDA_PREFIX", ""), "include", "tf2", "tf2"))
 
-
-def _bridge_has_tf():
-    """True iff the rclcppyy bridge actually provides the tf module.
-
-    M1a-temporary: tf lives in the rclcppyy product until it is carved into
-    rclcpp_kit (M1b). The released ros-jazzy-rclcppyy bridge package predates
-    tf.py, so `from rclcppyy import tf` would ImportError. Probe the installed
-    package for tf.py (without importing rclcppyy) so this suite SKIPS cleanly
-    on an older bridge instead of erroring; it runs against a post-0.1.0 bridge
-    or once rclcpp_kit ships tf in M1b.
-    """
-    spec = importlib.util.find_spec("rclcppyy")
-    locs = getattr(spec, "submodule_search_locations", None) or []
-    return any(os.path.exists(os.path.join(p, "tf.py")) for p in locs)
-
-
-_HAVE_TF = _HAVE_TF2 and _bridge_has_tf()
 pytestmark = pytest.mark.skipif(
-    not _HAVE_TF,
-    reason="rclcppyy.tf bridge unavailable (released bridge predates tf; tf arrives with rclcpp_kit in M1b)")
+    not _HAVE_TF2,
+    reason="tf2 C++ headers not found in this env ($CONDA_PREFIX/include/tf2)")
 
-if _HAVE_TF:
-    import rclcppyy
-    from rclcppyy import tf
+if _HAVE_TF2:
+    import rclcpp_kit
+    from rclcpp_kit import tf
 
 
 @pytest.fixture(scope="module")
 def listener():
-    rclcpp = rclcppyy.bringup_rclcpp()
+    rclcpp = rclcpp_kit.bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
     return tf.TransformListener()
@@ -115,9 +97,9 @@ def test_time_helpers():
 
 
 def test_network_ingest_no_python_callback():
-    """Publish /tf via rclcppyy; the C++ listener ingests it on its own thread (no
+    """Publish /tf via rclcpp_kit; the C++ listener ingests it on its own thread (no
     Python callback), and Python looks the transform up."""
-    rclcpp = rclcppyy.bringup_rclcpp()
+    rclcpp = rclcpp_kit.bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
     net_listener = tf.TransformListener()

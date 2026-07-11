@@ -1,5 +1,6 @@
 import array
 import cppyy
+import cppyy_kit
 import numpy as np
 import os
 import re
@@ -112,8 +113,7 @@ def ensure_ros_libraries_loaded() -> None:
     global _ROS_CORE_LIBS_LOADED
     if _ROS_CORE_LIBS_LOADED:
         return
-    cppyy.add_library_path(get_ros2_lib_path())
-    cppyy.load_library("librclcpp.so")
+    cppyy_kit.load_libraries(["librclcpp.so"], [get_ros2_lib_path()])
     _ROS_CORE_LIBS_LOADED = True
 
 
@@ -395,15 +395,12 @@ def _keep_alive(node: Any, *objs: Any) -> None:
     """
     Keep Python objects referenced for as long as the node lives.
 
-    cppyy's std::function wrappers do not reliably hold a strong reference to the
+    Delegates to :func:`cppyy_kit.keep_alive` (the shared primitive): cppyy's
+    std::function wrappers do not reliably hold a strong reference to the
     underlying Python callable, so without this the callback can be garbage
     collected and firing it later raises "callable was deleted".
     """
-    store = getattr(node, "_rclcppyy_kept_alive", None)
-    if store is None:
-        store = []
-        node._rclcppyy_kept_alive = store
-    store.extend(objs)
+    cppyy_kit.keep_alive(node, *objs)
 
 
 def convert_python_msg_to_cpp(msg_py: Any, msg_cpp: Any) -> Any:
@@ -611,7 +608,7 @@ def adapt_node_lifecycle_to_python(rclcpp: Any):
         return
 
     def destroy_node_wrapper(self, *args, **kwargs):
-        store = getattr(self, "_rclcppyy_kept_alive", None)
+        store = getattr(self, "_cppyy_kit_kept_alive", None)
         if store is not None:
             store.clear()
 
@@ -664,7 +661,6 @@ def bringup_rclcpp():
 
     # Release the rclcpp Context (and the DDS layer it owns) in a defined order
     # at interpreter exit, before Python finalization / cppyy's Cling teardown.
-    from rclcppyy.kits import cppyy_kit
     cppyy_kit.register_teardown(shutdown_rclcpp)
 
     RCLCPP_BRINGUP_DONE = True

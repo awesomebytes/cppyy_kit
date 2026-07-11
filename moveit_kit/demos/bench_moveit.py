@@ -39,7 +39,7 @@ def _panda_paths():
 
 def worker_ours(collision_n, ik_n):
     import cppyy
-    from rclcppyy.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
     import moveit_kit
     moveit = moveit_kit.bringup_moveit(with_kinematics=True)
     rclcpp = bringup_rclcpp()

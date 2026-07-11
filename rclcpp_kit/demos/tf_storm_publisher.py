@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic TF-storm publisher (rclcppyy / C++ TFMessage).
+"""Synthetic TF-storm publisher (rclcpp_kit / C++ TFMessage).
 
 Publishes a chain of ``--frames`` transforms (world -> link_0 -> ... -> link_{N-1})
 as a single ``tf2_msgs/TFMessage`` on ``/tf`` at ``--rate`` Hz, so the aggregate
@@ -9,7 +9,7 @@ x from its parent, so ``lookup_transform("world", "link_{N-1}")`` should give
 
 The message is built once and only its timestamps are advanced each tick (in a C++
 helper), so the publisher stays lean and is never the bottleneck. Publishing goes
-through rclcppyy so the whole publish path is C++ too.
+through rclcpp_kit so the whole publish path is C++ too.
 
     python tf_storm_publisher.py --frames 50 --rate 100 --duration 8
 """
@@ -19,7 +19,7 @@ import time
 
 import cppyy
 
-from rclcppyy.bringup_rclcpp import bringup_rclcpp, add_ros2_include_paths
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp, add_ros2_include_paths
 import cppyy_kit
 
 
