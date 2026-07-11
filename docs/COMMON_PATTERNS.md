@@ -628,6 +628,29 @@ mypy corridor. Committed pilots: `cppyy_kit/__init__.pyi`, `bt_kit/bt_kit/__init
   types (always-valid, loose) rather than guessed C++ types; tighten by hand where a
   kit wants richer hints. Regenerate when the surface changes.
 
+### 29. capability / fallback / status — codify detect → fallback → introspect
+Kits keep doing the same dance for optional capabilities (a CUDA build of OpenCV, a
+working compiler for the compile cache, a frozen PCH): **detect**, **fall back** to a
+slower-correct path, and ideally let a user **introspect** why. `cppyy_kit.capability`
+makes it uniform:
+```python
+capability.register("cuda", probe_cuda, "OpenCV built with CUDA")  # probed once, cached
+if capability.available("cuda"):        # detect
+    gpu_path()
+else:
+    cpu_path()                          # fallback
+print(capability.report())              # introspect (also: python -m cppyy_kit status)
+```
+- A detect callable returns `bool` or `(bool, detail)`; a raise is caught and recorded
+  as unavailable-with-reason (so a probe can't break bringup). `set_state(name, ok,
+  detail)` records a capability decided by an *adoption attempt* rather than a probe.
+- **Reference adoption:** `bt_kit._adopt_glue` (§23) now asks
+  `capability.available("compile_cache")` before attempting the trampoline and
+  `set_state("bt_kit.compile_cache", ...)` with the outcome — so `python -m cppyy_kit
+  status` shows both the base capability and whether bt_kit actually took the cache
+  path (and, if not, why). This is the pattern every kit's CUDA/lifecycle/binding
+  probe should follow instead of an ad-hoc `try/except`.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS

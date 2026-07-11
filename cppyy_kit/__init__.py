@@ -48,6 +48,7 @@ from .cache import (  # noqa: F401
 from .require import require, RequireError  # noqa: F401
 from ._cpp import cpp  # noqa: F401
 from .nogil import nogil, run_async  # noqa: F401
+from . import capability  # noqa: F401
 
 
 class CppyyKitError(Exception):
