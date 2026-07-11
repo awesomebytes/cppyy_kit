@@ -30,3 +30,8 @@ for k in rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_k
   done
 done
 echo "mkdocs_site symlink mirror regenerated."
+
+# Accelerate skill (M5)
+mkdir -p mkdocs_site/skills/cppyy-accelerate
+ln -sfn ../../../skills/cppyy-accelerate/SKILL.md mkdocs_site/skills/cppyy-accelerate/SKILL.md
+ln -sfn ../../../skills/cppyy-accelerate/WALKTHROUGH.md mkdocs_site/skills/cppyy-accelerate/WALKTHROUGH.md

@@ -133,6 +133,9 @@ nav:
       - Skill: dbow_kit/SKILL.md
   - Tutorials:
     - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
+  - Accelerate (LLM skill):
+    - Skill: skills/cppyy-accelerate/SKILL.md
+    - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
   - Architecture:
     - Kit Architecture (V2): docs/ARCHITECTURE_V2.md
     - Project Plan: PLAN.md
