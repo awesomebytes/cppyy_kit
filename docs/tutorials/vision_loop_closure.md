@@ -137,7 +137,7 @@ point** in `cv_kit.create_orb`, so a CUDA-enabled OpenCV drops in with **no code
 change**: `create_orb` then constructs `cv::cuda::ORB` instead.
 
 A CUDA OpenCV build (matching this env's 4.13.0) is available and validated on this
-machine's GPU — see **[docs/vision/CUDA_OPENCV.md](../vision/CUDA_OPENCV.md)** for the
+machine's GPU — see **[cv_kit/CUDA_OPENCV.md](../../cv_kit/CUDA_OPENCV.md)** for the
 `pixi run -e cudabuild provision-cuda-opencv` steps and the `vision-cuda` env. Measured
 there: `cv::cuda::ORB` ~576 fps vs ~110 fps CPU — **~5.3× faster** through the same
 cppyy path (thanks to soname shadowing, `cv_kit` needs no change to use it).
@@ -264,7 +264,7 @@ same is in `build/vision/posegraph.rrd`.)
 > not a hot per-frame loop, so the "keep it in C++" argument doesn't apply and a cppyy
 > wrapper wouldn't earn its keep. The per-frame hot path (ORB → DBoW2) is where staying
 > in C++ matters, and that is all cppyy. Full probe evidence:
-> [docs/vision/REPORT.md](../vision/REPORT.md) §GTSAM/cppyy.
+> [cv_kit/REPORT.md](../../cv_kit/REPORT.md) §GTSAM/cppyy.
 
 ---
 
@@ -324,7 +324,7 @@ Everything above runs at **L0**: cppyy JIT-compiles the libraries' headers at br
 the rclcppyy **freeze** machinery applies unchanged:
 
 - **L1 (freeze):** bake the kit's headers into a Cling precompiled header so bringup
-  skips the header parse. See **[docs/kits/FREEZE.md](../kits/FREEZE.md)**.
+  skips the header parse. See **[docs/FREEZE.md](../FREEZE.md)**.
 - **L2 (lowering):** if a per-frame Python hop ever dominates, emit that step as native
   C++ (the pattern in `scripts/freeze/build_l2_node.py`, which `build_dbow2.py` already
   mirrors). Here the hot path (ORB, the DBoW2 query) is *already* all C++ — Python only

@@ -11,7 +11,7 @@ strategy, provided the kit hides cppyy from the user (several raw cppyy operatio
 segfault the process). The v0 API deliberately **mirrors the C++ API** — see §2.
 
 (For the motivation and a C++-vs-Python side-by-side, see [WHY.md](WHY.md); for the
-API, see [BT.CPP_KIT.md](BT.CPP_KIT.md).)
+API, see [SKILL.md](SKILL.md).)
 
 ---
 
@@ -96,7 +96,7 @@ int; they compare equal. The one place it cannot mirror C++ is stateful nodes �
 uses `registerNodeType<T>()`, impossible for a Python `T` — so the kit adds
 `factory.register_stateful(name, PyClass, ports)` whose class exposes
 `onStart`/`onRunning`/`onHalted`. See [WHY.md](WHY.md) for the complete
-C++-vs-Python side-by-side and [BT.CPP_KIT.md](BT.CPP_KIT.md) for the API.
+C++-vs-Python side-by-side and [SKILL.md](SKILL.md) for the API.
 
 **Considered and rejected: a sugared decorator DSL** (`@action_node(...)` +
 `tree_from_xml`). It was ~2 LOC shorter on tutorial 1 but relied on a module-global
@@ -315,7 +315,7 @@ Groot2 verification.
 ## 7. Generic lessons for cppyy_kit
 
 These generalized beyond BT.CPP and are now maintained as the shared,
-library-independent catalog in **[../kits/COMMON_PATTERNS.md](../kits/COMMON_PATTERNS.md)**
+library-independent catalog in **[../docs/COMMON_PATTERNS.md](../docs/COMMON_PATTERNS.md)**
 (the recipe, keep-alive, function crossing both ways, container/segfault traps,
 templates, GIL rules, error prettify, and the AOT/L1 finding) — implemented in
 `rclcppyy/kits/cppyy_kit.py` and confirmed by both bt_kit and pcl_kit. The

@@ -10,7 +10,7 @@ step**, using MoveIt's **own C++ API names** (`RobotModel`, `RobotState::setFrom
 
 The point isn't "MoveIt has no Python binding" — it does, `moveit_py`. The point is
 that `moveit_py` is an explicit, hand-curated **subset**, and cppyy gives you the
-**whole** C++ surface. For the API cheat sheet, see [MOVEIT_KIT.md](MOVEIT_KIT.md); for
+**whole** C++ surface. For the API cheat sheet, see [SKILL.md](SKILL.md); for
 the feasibility evidence, the plugin/parameter bring-up mechanics, benchmarks, and gaps,
 see [REPORT.md](REPORT.md).
 

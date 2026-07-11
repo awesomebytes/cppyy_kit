@@ -21,7 +21,7 @@ documents the *lowering* path (prototype in Python, lower the hot checker to a
 JIT'd C++ one).
 
 (For motivation and a C++-vs-Python side-by-side, see [WHY.md](WHY.md); for the API
-and copy-paste patterns, see [OMPL_KIT.md](OMPL_KIT.md).)
+and copy-paste patterns, see [SKILL.md](SKILL.md).)
 
 ---
 

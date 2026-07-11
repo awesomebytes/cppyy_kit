@@ -25,7 +25,7 @@ needed. **ros2_control does NOT hit MoveIt's generate_parameter_library Cling wa
 CM and controller_interface headers JIT-parse cleanly.
 
 (For the stock-ros2_control ceremony contrast see [WHY.md](WHY.md); for the API cheat
-sheet see [CONTROL_KIT.md](CONTROL_KIT.md).)
+sheet see [SKILL.md](SKILL.md).)
 
 ---
 
