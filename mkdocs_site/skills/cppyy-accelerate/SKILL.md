@@ -1,0 +1,1 @@
+../../../skills/cppyy-accelerate/SKILL.md
