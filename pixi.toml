@@ -61,7 +61,7 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # per-kit proof is the feature-env test-<kit> tasks.
 test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
-lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit scripts"
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit scripts skills examples"
 clean = "rm -rf build"
 
 # --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
@@ -129,6 +129,10 @@ demo-pcl-pipeline = "python pcl_kit/demos/d02_ros_pipeline.py"
 bench-pcl = "python pcl_kit/demos/bench_pcl_pipeline.py"
 # M2 compile cache: d02 frame-0 first-use, JIT vs cached voxel_downsample.
 bench-cache-pcl = "python scripts/cache/measure_pcl_frame0.py"
+# M5 cppyy-accelerate demo: the differential contract + the before/after table.
+test-accelerate = "pytest examples/accelerate_demo/test_pipeline.py -v"
+demo-accelerate = "python examples/accelerate_demo/fast_pointcloud_pipeline.py"
+bench-accelerate = "python examples/accelerate_demo/bench.py"
 
 # --- ompl: Open Motion Planning Library --------------------------------------
 [feature.ompl.dependencies]
