@@ -59,7 +59,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 - **M1c**: per-package rattler-build recipes + tag-triggered release matrix
   (build → fresh-env artifact proof → upload), OIDC to prefix.dev.
 
-### M2 — Base enrichment (value order) — item 1 ✅ DONE + ADOPTED (2026-07-12: cache kills first-use JIT persistently; bt frozen+cached ~425 ms end-to-end ~4.1×, pcl frame-0 681→88 ms ~7.7×; 8a tracer shipped early); items 2-6 open
+### M2 — Base enrichment (value order) — item 1 ✅ DONE + ADOPTED (2026-07-12: cache kills first-use JIT persistently; bt frozen+cached ~425 ms end-to-end ~4.1×, pcl frame-0 681→88 ms ~7.7×; 8a tracer shipped early); items 2-6 ✅ DONE (2026-07-12: require conda-first, @cpp annotation marshaling, nogil with measured GIL-release proof ~1 vs ~470 ticks, stubgen pilot + honest dynamic-proxy limit, capability/status registry w/ bt reference adoption — M2 CLOSED)
 1. **Compile cache** (content-hash cppdef→`.so`, dlopen thereafter) — kills the
    measured ~0.69 s first-use wrapper JIT *persistently*; measure vs warmup.
 2. `require()` header-only fetcher (conda-first policy).
