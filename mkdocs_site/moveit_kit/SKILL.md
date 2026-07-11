@@ -1,0 +1,1 @@
+../../moveit_kit/SKILL.md
