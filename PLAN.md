@@ -118,8 +118,18 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   control_kit's ControllerManager) and, if needed, `Costmap2DROS` from Python
   to satisfy those ctors; unlock Smac (needs OMPL headers on path — we have
   the ompl env) and the RPP controller; extend nav2_kit + REPORT verdicts.
-- **6f Perception→humanoid retargeting pipeline** (agreed 2026-07-12, decisions
-  locked): webcam → body+hand+face tracking + object detection → TF frames via
+- **6f Perception→humanoid retargeting pipeline** ✅ DONE (2026-07-12,
+  supervisor-verified live: webcam→HolisticLandmarker→TF→Rerun ~30 fps 0-drop
+  437-frame run; CLIK retarget Talos 0.91 ms/frame + G1 0.82 ms [zero-code
+  URDF swap — G1 ships in example-robot-data, EE err 2.4–2.6 cm median];
+  policy-kickstart datasets npz; measured glue wins: /tf build 290.8×, retarget
+  kernel [xform+map+One-Euro one cppdef pass] 364.5× at 4.4e-8 m numeric
+  agreement; honest boundary: pinocchio::Model un-JIT-able under Cling+boost
+  1.90 [2nd confirmation, now incl. default-double+URDF] so the solve stays on
+  pinocchio bindings; repo's first pip dep [mediapipe, sha256-pinned model
+  fetch] in isolated `pipeline` env; two-process seam over JSONL landmark
+  stream; docs/retarget_pipeline/REPORT.md + run-book; 5 pattern candidates
+  pending fold-in): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-

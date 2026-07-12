@@ -131,9 +131,9 @@ nav:
       - Why: dbow_kit/WHY.md
       - Report: dbow_kit/REPORT.md
       - Skill: dbow_kit/SKILL.md
-  - Live Webcam Demo (M6b):
+  - Live Webcam Demo:
     - Report: docs/webcam_demo/REPORT.md
-  - IK Benchmark (M6c):
+  - IK Benchmark:
     - Why: docs/ik_bench/WHY.md
     - Report: docs/ik_bench/REPORT.md
   - Tutorials:
