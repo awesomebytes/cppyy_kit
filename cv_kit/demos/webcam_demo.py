@@ -29,7 +29,9 @@ tracker: it is a **custom numerical kernel with no OpenCV/NumPy one-liner**, so 
 naive baseline must loop in Python (~5-100x slower, measured), while A expresses the
 same math as C++ and runs it natively. That is exactly the cppyy_kit thesis
 (COMMON_PATTERNS s6/s26: a per-element Python loop is the trap; keep the loop in
-C++). Both pipelines compute bit-identical flow -- verified in the tests.
+C++). Both pipelines compute the same NCC flow (identical except at the odd
+keypoint where two search offsets have near-equal correlation and the C++
+running-sum vs NumPy summation break the tie differently) -- checked in the tests.
 
 Rerun is LIVE by default when run interactively (a viewer opens and the plots
 diverge in real time); headless (.rrd) under pytest/CI or no display. Force with
@@ -487,7 +489,7 @@ def print_bench(rows, nfeatures, track_points, patch_r, search_s):
     print("A = you write it in Python, it runs as C++ (cv_kit ORB + a cppyy.cppdef "
           "NCC/RANSAC kernel; features & patches never leave C++).")
     print("B = the same algorithm in naive Python (cv2 ORB + a NumPy-per-keypoint NCC "
-          "loop). Both compute identical flow; the gap is the per-keypoint Python "
+          "loop). Both compute the same flow; the gap is the per-keypoint Python "
           "iteration.\n")
 
 
