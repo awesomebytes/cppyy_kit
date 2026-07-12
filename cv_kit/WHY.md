@@ -1,7 +1,7 @@
 # cv_kit — WHY (seed)
 
 > Seed. The full human pitch (side-by-side + what you gain) is folded in with
-> the M2 SKILL.md pass. See [`REPORT.md`](REPORT.md) for the measured evidence
+> a later SKILL.md pass. See [`REPORT.md`](REPORT.md) for the measured evidence
 > and the tutorial [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md)
 > for the end-to-end story.
 

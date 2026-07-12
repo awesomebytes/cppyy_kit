@@ -1,6 +1,6 @@
 # nav2_kit spike — composing your own Nav stack from Nav2's algorithm cores in Python via cppyy
 
-**Date:** 2026-07-11 (M6d lifecycle unlock: 2026-07-12) · **Env:** pixi `nav2`
+**Date:** 2026-07-11 (lifecycle unlock: 2026-07-12) · **Env:** pixi `nav2`
 (robostack-jazzy + conda-forge), `ros-jazzy-nav2-costmap-2d`,
 `ros-jazzy-nav2-navfn-planner`, `ros-jazzy-nav2-smac-planner`,
 `ros-jazzy-nav2-regulated-pure-pursuit-controller`, `ros-jazzy-nav2-msgs`,
@@ -10,7 +10,7 @@ goals to the C++ lifecycle servers; every algorithm is a C++ class behind
 pluginlib). Can we instead build *our own* nav stack by driving Nav2's **algorithm
 cores directly** from Python, with Python owning the loop and C++ owning the math?
 
-**Verdict: YES — and, since M6d, the lifecycle-coupled cores too. GO.**
+**Verdict: YES — and, since the lifecycle unlock, the lifecycle-coupled cores too. GO.**
 `nav2_costmap_2d::Costmap2D` (a plain grid class, no node) and
 `nav2_navfn_planner::NavFn` (the pure planner algorithm on a costmap char array, no
 node) are driven end to end from Python against the installed Nav2 — **no lifecycle
@@ -18,7 +18,7 @@ servers, no pluginlib, no tf** — and composed into a complete miniature nav st
 synthetic world → costmap → plan → follow loop → live `OccupancyGrid` + `Path` +
 `TwistStamped` on real ROS 2 topics via rclcppyy.
 
-**M6d — the lifecycle unlock.** The original boundary ("Smac and the RPP controller
+**The lifecycle unlock.** The original boundary ("Smac and the RPP controller
 are lifecycle-coupled and NOT usable standalone", §Probe D/F) is **retired for the two
 prizes**. Constructing a real `rclcpp_lifecycle::LifecycleNode` in-process from Python
 (the same move control_kit made for `ControllerManager`) is the key that fits every
@@ -78,17 +78,17 @@ Nav2. Scratch probes and their output are the evidence behind each row.
 | A | **Bringup + JIT**: include cost_values/costmap_2d/navfn headers, load the 2 `.so` | **WORKS** | Warm bringup **~70 ms** (costmap headers ~57 ms dominant — they pull `geometry_msgs`/`nav_msgs`; navfn header ~1 ms; loading both libs ~10 ms). `probe_cppdef` of the C++ glue returns **OK** once given the full ROS include-path set (see §Gotchas). First-ever run rebuilds the cppyy std PCH (~a minute, once/machine). |
 | B | **Costmap2D from Python** + bulk NumPy→charmap load | **WORKS** | `Costmap2D(w, h, res, ox, oy, default)` is a plain class (no node); `getCharMap()` exposes the `unsigned char*` grid. A `(H,W)` uint8 array crosses in a **single `std::memcpy`**. See the crossing table below. |
 | C | **NavFn plan** on that costmap (no node!) | **WORKS** | `NavFn(nx, ny)` → `setNavArr` → `setCostmap(charmap, isROS=True, allow_unknown)` → `setStart/setGoal(int*)` → `calcNavFnAstar(cancel)` → `calcPath`. Plans a 100×100 world through a doorway in **~8 ms**; 1024×1024 in **~5–23 ms** (§bench). |
-| D | **Smac 2D core** (`AStarAlgorithm<Node2D>`) | **WORKS (M6d)** | Both original couplings dissolve once a `LifecycleNode` can be built from Python (§9). `a_star.hpp` JIT-parses with `include/ompl-1.7` + `include/eigen3` on the path — **OMPL *is* in the nav2 env** (shipped by `nav2-smac-planner`'s deps; the original probe missed it). `GridCollisionChecker` is built from a **NULL `Costmap2DROS` + a real `LifecycleNode`**, then the plain costmap is set via the base `FootprintCollisionChecker::setCostmap(Costmap2D*)` (the commented-out plain ctor is unnecessary). 100×100 through-doorway plan verified: 61 waypoints, 0 on lethal cells, start..goal order (Smac plans goal→start; the kit reverses). |
+| D | **Smac 2D core** (`AStarAlgorithm<Node2D>`) | **WORKS** | Both original couplings dissolve once a `LifecycleNode` can be built from Python (§9). `a_star.hpp` JIT-parses with `include/ompl-1.7` + `include/eigen3` on the path — **OMPL *is* in the nav2 env** (shipped by `nav2-smac-planner`'s deps; the original probe missed it). `GridCollisionChecker` is built from a **NULL `Costmap2DROS` + a real `LifecycleNode`**, then the plain costmap is set via the base `FootprintCollisionChecker::setCostmap(Costmap2D*)` (the commented-out plain ctor is unnecessary). 100×100 through-doorway plan verified: 61 waypoints, 0 on lethal cells, start..goal order (Smac plans goal→start; the kit reverses). |
 | D2 | **Smac Hybrid-A\*** (`AStarAlgorithm<NodeHybrid>`) | **FLAKY PARTIAL** | Parses, constructs (needs a **real** `Costmap2DROS` + `libompl` loaded + `setFootprint`), and once produced a valid **48-point Dubins path**. But `NodeHybrid::precomputeDistanceHeuristic` (the OMPL Dubins/Reeds-Shepp distance-table precompute, from `initialize`) **segfaults ~2 of 3 runs** under Cling; `OMP_NUM_THREADS=1` does not stabilize it. 2D is solid precisely because `Node2D`'s search never enters OMPL at runtime. Not shipped. |
 | E | **getPath extraction** to NumPy | **WORKS** | NavFn: `getPathLen()` + `getPathX()`/`getPathY()` (`float*`) → one `memcpy` into `(N,2)` float32. Smac: `createPath` fills a `std::vector<Node2D::Coordinates>`, copied out (reversed) in a `cppdef` helper. |
-| F | **RegulatedPurePursuit** | **WORKS (M6d)** | The **whole controller runs from Python.** `configure(LifecycleNode::WeakPtr, name, tf2_ros::Buffer, Costmap2DROS)` succeeds against an in-process plugin-free `Costmap2DROS` (§Probe C2) + a C++-built `tf2_ros::Buffer` fed one `map→base_link` transform + our `LifecycleNode`; `activate()` + `computeVelocityCommands(pose, vel, goal_checker)` returns sensible twists (straight line → v=0.5 w=0; offset+rotated → steers back). Two gotchas fenced: `goal_checker` is dereferenced even though the header comments its name (a **C++ `GoalChecker` stub** supplies it), and the forward collision check false-positives on a static map (disable it, or catch `NoValidControl`). Its header-only regulation math (`heuristics::curvatureConstraint`) is *also* separable, now a footnote. |
+| F | **RegulatedPurePursuit** | **WORKS** | The **whole controller runs from Python.** `configure(LifecycleNode::WeakPtr, name, tf2_ros::Buffer, Costmap2DROS)` succeeds against an in-process plugin-free `Costmap2DROS` (§Probe C2) + a C++-built `tf2_ros::Buffer` fed one `map→base_link` transform + our `LifecycleNode`; `activate()` + `computeVelocityCommands(pose, vel, goal_checker)` returns sensible twists (straight line → v=0.5 w=0; offset+rotated → steers back). Two gotchas fenced: `goal_checker` is dereferenced even though the header comments its name (a **C++ `GoalChecker` stub** supplies it), and the forward collision check false-positives on a static map (disable it, or catch `NoValidControl`). Its header-only regulation math (`heuristics::curvatureConstraint`) is *also* separable, now a footnote. |
 
-| # | Capability (M6d additions) | Result | Evidence |
+| # | Capability (lifecycle-unlock additions) | Result | Evidence |
 |---|---|:--:|---|
 | C2 | **In-process `Costmap2DROS`** (no plugins) | **WORKS** | `make_shared<Costmap2DROS>(NodeOptions with parameter_overrides)` + `configure()` → a blank fillable master `Costmap2D` (numpy memcpy fill+readback exact). Uses the `NodeOptions` ctor (names the node `costmap`, `is_lifecycle_follower_=false`); **auto-declare must be OFF** (Costmap2DROS declares its own params — auto-declare double-declares). `plugins: []` → no static map / tf / sensor pipeline. |
 | L | **In-process `rclcpp_lifecycle::LifecycleNode`** | **WORKS** | `lifecycle_node.hpp` JIT-parses clean; `make_shared<LifecycleNode>(name, ns, NodeOptions)` + `configure()`/`activate()` walk UNCONFIGURED→INACTIVE→ACTIVE; `get_clock()`/`get_logger()` live. The key for every lifecycle-coupled ctor. |
 
-**Original split holds and grows: Costmap2D + NavFn are pure cores; the M6d
+**Original split holds and grows: Costmap2D + NavFn are pure cores; the lifecycle-unlock
 LifecycleNode key adds Smac 2D, a plugin-free Costmap2DROS, and the real RPP
 controller. Only Hybrid-A\* remains walled (an OMPL-under-Cling instability, not a
 lifecycle coupling).**
@@ -107,7 +107,7 @@ back `float*` path arrays. That is *directly* drivable from Python, and the Nav2
 `NavfnPlanner` lifecycle node is just a thin ROS wrapper around exactly these calls.
 nav2_kit reproduces the wrapper's call sequence in Python.
 
-**Smac's A\* and RPP's controller are lifecycle-coupled** — and (M6d) that is no
+**Smac's A\* and RPP's controller are lifecycle-coupled** — and that is no
 longer a wall. `GridCollisionChecker`'s only exposed constructor takes a `Costmap2DROS`
 + a `LifecycleNode`; `RegulatedPurePursuitController::configure` takes a
 `LifecycleNode::WeakPtr` + a `Costmap2DROS` + a `tf2_ros::Buffer`. The original report
@@ -193,10 +193,10 @@ the thesis made concrete:
 - **World → costmap → plan (C++):** a 120×120 "two rooms + doorway + box obstacle"
   world → `Costmap2D` → `NavFn` plan (166 waypoints, through the doorway around the
   box).
-- **Planner (C++):** `--planner navfn` (default) or `--planner smac` (Smac 2D, M6d) —
+- **Planner (C++):** `--planner navfn` (default) or `--planner smac` (Smac 2D) —
   both real Nav2 C++.
 - **Controller:** `--controller pursuit` (default, the ~30-line Python pure-pursuit) or
-  **`--controller rpp`** (M6d) — Nav2's **real RegulatedPurePursuitController** drives
+  **`--controller rpp`** — Nav2's **real RegulatedPurePursuitController** drives
   the robot. The "controller half is Python because RPP is lifecycle-coupled" caveat is
   **retired**; the Python pure-pursuit is now a *choice*, not a limitation.
 - **Publish via rclcppyy:** real C++ `nav_msgs/OccupancyGrid`, `nav_msgs/Path`, and
@@ -226,7 +226,7 @@ documented in the file.)
 stack.** Explicitly absent:
 
 1. **No lifecycle *servers*.** No `planner_server`/`controller_server`/`bt_navigator`,
-   no lifecycle *manager*, no parameter YAML, no action interface. (M6d: we do
+   no lifecycle *manager*, no parameter YAML, no action interface. (We do
    construct the individual `LifecycleNode`/`Costmap2DROS` *objects* the coupled ctors
    ask for — in-process, driven by Python — but there is still no server bringup.)
 2. **No pluginlib for the planner/controller.** Smac/RPP are constructed as concrete
@@ -294,27 +294,27 @@ edited in parallel, so this report does not touch it.**
   first (§2).** "Drivable core" vs "needs a node" is decided by whether the class
   takes plain data or a `LifecycleNode`/`*ROS`/pluginlib base. A one-line `nm -DC` /
   header grep up front tells you which targets are separable before you invest —
-  **but (M6d) "needs a node" is now a build-it recipe (§9), not a wall.**
-- **M6d — construct a `rclcpp_lifecycle::LifecycleNode` in-process from Python.** A
+  **but "needs a node" is now a build-it recipe (§9), not a wall.**
+- **Construct a `rclcpp_lifecycle::LifecycleNode` in-process from Python.** A
   strong COMMON_PATTERNS candidate (§9): the LifecycleNode is a plain class you
   `make_shared` with `NodeOptions` + parameter_overrides, then walk through
   `configure()`/`activate()`. It is the key that fits every lifecycle-coupled ctor in
   the ROS 2 ecosystem — the third instance of the "in-process ROS 2 node/manager"
   pattern after moveit_kit's parameterized `Node` and control_kit's `ControllerManager`.
-- **M6d — `NodeOptions` auto-declare is a trap for self-declaring nodes.**
+- **`NodeOptions` auto-declare is a trap for self-declaring nodes.**
   `automatically_declare_parameters_from_overrides(True)` is right for a plain
   LifecycleNode (it makes your overrides real params) but **wrong for `Costmap2DROS`**
   (and any node that calls `declare_parameter` itself) — it double-declares and throws
   `ParameterAlreadyDeclaredException`. Rule: auto-declare only for nodes that declare
   nothing themselves; otherwise pass overrides *without* auto-declare and let the node's
   own `declare_parameter(name, default)` pick them up.
-- **M6d — "the header comments the parameter name" ≠ "the parameter is unused".**
+- **"The header comments the parameter name" ≠ "the parameter is unused".**
   RPP's `computeVelocityCommands(..., nav2_core::GoalChecker * /*goal_checker*/)` reads
   as unused, but the *definition* dereferences `goal_checker->getTolerances()` → a null
   crashes. When a coupled API takes an interface pointer, supply a **minimal C++ stub
   subclass** (a `cppdef` `struct : Base`) rather than `nullptr`, even if the signature
   suggests it is ignored. Check the `.so`, not just the header.
-- **M6d — a "lifecycle coupling" wall and a "runtime library" wall are different.**
+- **A "lifecycle coupling" wall and a "runtime library" wall are different.**
   Smac 2D fell to the LifecycleNode key; Hybrid-A\* did *not*, because its wall is a
   **non-deterministic OMPL-under-Cling segfault** in `precomputeDistanceHeuristic`, not
   a ctor signature. Node2D is stable precisely because its search never enters OMPL at
@@ -326,7 +326,7 @@ edited in parallel, so this report does not touch it.**
 
 ## 8. Recommendation — GO
 
-The hypothesis holds, and M6d widens it. **Nav2's Costmap2D and NavFn are driven end to
+The hypothesis holds, and the lifecycle unlock widens it. **Nav2's Costmap2D and NavFn are driven end to
 end from Python** with no lifecycle servers, no pluginlib, no tf; and **Smac 2D + the
 real RegulatedPurePursuit controller** — the two cores the first pass marked
 lifecycle-BLOCKED — now also run from Python, unlocked by constructing a real
@@ -335,7 +335,7 @@ planner×controller combinations of the miniature stack reach the goal live to r
 boundary is still drawn honestly: Hybrid-A\* is a documented flaky partial (an
 OMPL-under-Cling runtime crash, not a coupling), and the *reverse* direction — Python
 plugins loaded by name inside real Nav2 servers — remains a separate planned spike.
-nav2_kit stays a thin mirror: the M6d surface (lifecycle_node / costmap_ros /
+nav2_kit stays a thin mirror: the lifecycle-unlock surface (lifecycle_node / costmap_ros /
 smac_plan_2d / RPPController) adds the specific frictions and nothing else.
 
 **Next investments, in priority order:** (a) stabilize **Hybrid-A\*** (the OMPL
@@ -348,7 +348,7 @@ real Nav2 server — §19 in-process pluginlib now has the LifecycleNode key it 
 
 ---
 
-## 9. The M6d lifecycle unlock — mechanics (COMMON_PATTERNS candidate)
+## 9. The lifecycle unlock — mechanics (COMMON_PATTERNS candidate)
 
 The whole unlock is one capability: **build the lifecycle objects the coupled ctors ask
 for, in-process, from Python** — no servers. This is the same family as moveit_kit's

@@ -252,7 +252,7 @@ differential-tested (§6 "Next investments" (a) is thus partly demonstrated).
 ### Gap 8b — first-use JIT eliminated via the compile cache (2026-07-11)
 
 The first-use JIT the PCH could not touch is now **eliminated persistently** by the
-M2 compile cache. bt_kit's registration routes through a **trampoline** compiled
+compile cache. bt_kit's registration routes through a **trampoline** compiled
 once into a cached `.so` (`cppyy_kit.cppdef_cached(..., trampoline=True)`): the
 `std::function` thunk *and* the `registerSimpleAction`/`registerStateful` calls run
 in compiled code, converting the `BT::TreeNode&` back to the Python proxy via

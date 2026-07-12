@@ -21,7 +21,7 @@ data stays in one C++ address space from the subscription through the DBoW2 quer
 Basis: Mur-Artal & Tardos (ORB-SLAM); Galvez-Lopez & Tardos (Bags of Binary Words).
 
 The one honest boundary: **GTSAM does not JIT-and-run under cppyy in this env**, so
-the M4 stretch uses gtsam's own Python binding — legitimate, because pose-graph
+the pose-graph stretch uses gtsam's own Python binding — legitimate, because pose-graph
 optimization is a batch step, not a hot loop. The v2 retry (with `libboost-headers`
 now present) moved the wall but did not remove it: the old `boost/optional.hpp`
 blocker is **gone** (gtsam's headers parse past boost), but two further blockers
@@ -69,7 +69,7 @@ Two kits + a shared detector, all mirroring the libraries' own APIs:
 | 6 | **DBoW2 vocab train / db query** via cppyy | **WORKS** | Small vocab (k=10,L=4) 9970 words in ~7 s; self-match score 1.0; query ~2.8 ms/frame. |
 | 7 | **Real ORBvoc load** (`loadFromTextFile` patch) | **WORKS** | 971,814 words (k=10,L=6) parsed from the 145 MB text in ~2.3 s; binary cache 49 MB reloads in ~0.37 s (~6×). |
 | 8 | **GTSAM via cppyy** (v2 retry, boost headers present) | **STILL BLOCKED (wall moved)** | Boost blocker **gone** — headers parse. New walls: (a) `config.h` sets `GTSAM_USE_TBB` → headers `#include <tbb/…>`, tbb *headers* absent from env; (b) with ABI-matched tbb headers supplied, headers JIT in ~2.6 s but the Cling ORC JIT then **fails to materialize** the static init of `static const KeyFormatter DefaultKeyFormatter` (`Key.h`, internal-linkage `std::function` global) — a Cling limitation, not a dep. See §5. |
-| 9 | **GTSAM via Python binding** (M4 path) | **WORKS** | Pose-graph LM optimize; drift 2.19 m → 0.14 m mean error. |
+| 9 | **GTSAM via Python binding** (pose-graph path) | **WORKS** | Pose-graph LM optimize; drift 2.19 m → 0.14 m mean error. |
 
 **Zero hard failures on the front-end.** The single blocked probe (GTSAM/cppyy)
 has a clean, honest fallback that does not compromise the milestone.
@@ -157,7 +157,7 @@ what separate a genuine revisit from "the same place seen a moment ago."
 
 ---
 
-## 5. M4 (stretch) — GTSAM pose-graph correction
+## 5. GTSAM pose-graph correction (stretch)
 
 Built a 2D pose graph over the synthetic circuit (ground truth), corrupted the
 odometry with an accumulating heading drift, added a `BetweenFactor` per confirmed
@@ -232,7 +232,7 @@ cppyy wrapper would not earn its existence (mirror-don't-sugar).
    geometric verification (RANSAC on matched keypoints). Both are future work — the
    front-end plumbing is proven; robust tuning for an arbitrary real sequence is the
    next step.
-3. **No geometric verification / no relative-pose from matches.** M4's loop factors
+3. **No geometric verification / no relative-pose from matches.** The pose-graph loop factors
    use the ground-truth relative pose; a real system estimates it (PnP/essential
    matrix) from the matched features.
 4. **Track B (loaned messages / SHM transport) is out of scope** (as decided). The

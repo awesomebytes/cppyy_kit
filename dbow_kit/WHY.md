@@ -1,6 +1,6 @@
 # dbow_kit — WHY (seed)
 
-> Seed. Full pitch folds in with the M2 SKILL.md pass. Evidence:
+> Seed. Full pitch folds in with a later SKILL.md pass. Evidence:
 > [`REPORT.md`](REPORT.md); end-to-end: [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
 
 DBoW2 is the canonical bag-of-binary-words place-recognition library behind

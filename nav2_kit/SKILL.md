@@ -8,7 +8,7 @@ math. The kit **mirrors Nav2's own C++ API**: `bringup_nav2()` returns the real
 as in the C++. The kit only removes the cppyy friction (bringup, the NumPy↔charmap
 memcpy, raw-pointer I/O). You do **not** need to know cppyy.
 
-**M6d — the lifecycle unlock.** Two cores that were previously BLOCKED now work,
+**The lifecycle unlock.** Two cores that were previously BLOCKED now work,
 because the kit can construct a real `rclcpp_lifecycle::LifecycleNode` in-process
 (`nav2_kit.lifecycle_node(...)`): **Smac 2D** (`nav2_kit.smac_plan_2d(...)`) and the
 **real RegulatedPurePursuit controller** (`nav2_kit.RPPController(...)`). These need
@@ -146,7 +146,7 @@ def pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w):
 
 ---
 
-## Pattern 6 — construct a LifecycleNode  (the M6d key)
+## Pattern 6 — construct a LifecycleNode  (the lifecycle-unlock key)
 *Use for:* anything Nav2 that wants a `LifecycleNode` (Smac's collision checker, RPP's
 parent). It is a plain class you build in-process — **no lifecycle server**.
 
@@ -183,7 +183,7 @@ cm_ros.getCostmap()                                  # the real master Costmap2D
 `costmap_ros(...)` sizes itself to `grid` (or pass `width_m`/`height_m`). It is
 `configure`d (INACTIVE) but not activated (no map-update thread), so your fill stays.
 
-## Pattern 9 — the real RegulatedPurePursuit controller  (M6d)
+## Pattern 9 — the real RegulatedPurePursuit controller
 *Use for:* following a plan with Nav2's actual RPP controller instead of Pattern 5.
 
 ```python
@@ -214,7 +214,7 @@ already collision-free) and it enters rotate-to-heading near the goal (pass
 - **`setCostmap(..., isROS=True)`** rescales ROS cost values into NavFn's internal
   band and adds an obstacle border, exactly like the Nav2 server.
 - **Grid orientation:** `(H, W)`, `grid[y, x]`; matches `OccupancyGrid` row-major.
-- **Smac 2D and the real RPP controller ARE surfaced (M6d)** via the in-process
+- **Smac 2D and the real RPP controller ARE surfaced** via the in-process
   LifecycleNode key (Patterns 6–9); they need rclcpp (auto) + a `costmap_ros` where
   noted. **Hybrid-A\* is not** — a flaky OMPL-under-Cling crash (REPORT §Probe D2).
 - **Smac plans goal→start internally; `smac_plan_2d` reverses it** to start..goal
