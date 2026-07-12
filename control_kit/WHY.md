@@ -87,6 +87,13 @@ build-and-launch ceremony — fast iteration, teaching, HIL/sim, and validating 
 end-to-end before committing it to C++. See [REPORT.md](REPORT.md) §4 for the real-time
 verdict: 100 Hz is rock-solid, 1 kHz works on average but Python's GC/GIL pauses cost the
 odd deadline, so this is soft-real-time / prototyping-grade, not hard-real-time.
+The miss rate is not fixed, though: the jitter benchmark drove this same rig at 1 kHz
+with unprivileged real-time knobs — `prctl(PR_SET_TIMERSLACK, 1)` (Linux's default 50 µs
+timer slack, not Python, dominates the median: 52.4 → 2.4 µs on the pure-Python timer
+loop), `mlockall`, and CPU pinning — and measured ~2.4 µs median wakeup latency for the
+in-process `ControllerManager` loop on a stock kernel
+([jitter bench report](../docs/jitter_bench/REPORT.md)). Tail spikes under load remain
+until `SCHED_FIFO`/preemption tuning is applied (owner-action commands in that report).
 
 **Not for (yet):** shipping a controller that a *separately launched*, stock (C++)
 `controller_manager` loads by name — that still needs a compiled pluginlib `.so`

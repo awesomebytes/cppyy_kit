@@ -201,6 +201,13 @@ controller from Python", Route A wins.
 
 ## 4. Stage 4 — the honest real-time verdict
 
+> **Follow-up measurement (2026-07-12):** the jitter benchmark re-ran this rig's 1 kHz
+> loop with unprivileged real-time knobs (timer slack 1 ns, `mlockall`, CPU pinning) and
+> measured ~2.4 µs median wakeup latency on a stock kernel — see
+> [docs/jitter_bench/REPORT.md](../docs/jitter_bench/REPORT.md) for the full matrix and
+> the `SCHED_FIFO`/preemption steps that address the remaining tail. The verdict below is
+> the original untuned measurement and stands as recorded.
+
 Update loop held for 8 s at each rate; per-cycle wall-clock intervals; "late" = interval >
 1.5× the target period. Python controller (cross-inherited PD) vs stock C++
 `forward_command_controller`, same rig, same mock hardware. **Shared machine — directional.**

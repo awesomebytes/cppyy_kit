@@ -131,6 +131,23 @@ pixi run -e control bench-control         # bench: Python vs C++ loop numbers (S
 pixi run -e control test-control          # the test suite (auto-skips without ros2_control)
 ```
 
+## Fewer missed deadlines (real-time knobs)
+
+The jitter benchmark measured these unprivileged knobs on this rig's 1 kHz loop
+(~2.4 µs median wakeup on a stock kernel — [report](../docs/jitter_bench/REPORT.md)):
+
+```python
+from jitter_bench.harness import apply_timerslack, try_mlockall, apply_affinity
+apply_timerslack(1)   # Linux default slack is 50 us; this alone moved p50 52.4 -> 2.4 us
+try_mlockall()        # lock pages, avoid page-fault stalls (works unprivileged)
+apply_affinity(2)     # pin the loop to one core
+# apply_scheduling("fifo", 50)  # needs an rtprio grant -- see the jitter report, Stage 1
+```
+
+Apply them before `rig.run()`. A `nogil` C++ loop body additionally holds its median
+under machine load where a Python loop degrades (2.1–2.3 µs vs ~5 µs p50 in the same
+benchmark).
+
 ## Gotchas (see REPORT §2)
 
 - **Load before the loop** (above). **`super().__init__()` is required** in your controller.
