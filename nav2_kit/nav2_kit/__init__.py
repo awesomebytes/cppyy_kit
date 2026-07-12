@@ -307,6 +307,10 @@ def warmup():
 # ============================================================================
 
 _LIFECYCLE_LIBS = ("librclcpp_lifecycle.so",)
+# Smac 2D (Node2D) needs no OMPL at runtime (a_star.hpp only *parses* node_hybrid.hpp's
+# OMPL includes). Hybrid-A* (NodeHybrid) DOES enter OMPL and is not surfaced here -- its
+# precomputeDistanceHeuristic (OMPL Dubins/Reeds-Shepp distance table) segfaults
+# non-deterministically under Cling; see the REPORT for the flaky-partial evidence.
 _SMAC_LIBS = ("libnav2_smac_planner.so",)
 _RPP_LIBS = ("libtf2_ros.so", "libnav2_regulated_pure_pursuit_controller.so")
 
