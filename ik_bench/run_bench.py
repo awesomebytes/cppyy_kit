@@ -45,6 +45,25 @@ from ik_bench import solvers as S  # noqa: E402
 DEFAULT_TARGETS = os.path.join(REPO, "build", "ik_bench", "targets.json")
 
 
+def _fixed_base_srdf(srdf):
+    """Build a FIXED-base panda: the panda test SRDF declares a *floating* virtual
+    joint (world -> panda_link0), a MoveIt convention for mobile manipulation. For
+    pure-arm IK the base is bolted down, so we make it fixed. This is not cosmetic:
+    bio_ik's own forward kinematics reads ``getVariableDefaultPositions``, which give
+    a floating joint a default (0,0,0,0) quaternion -> a degenerate base transform ->
+    it never converges. A fixed base has identical arm kinematics at the origin, so
+    KDL / trac_ik / the generated targets are unchanged; bio_ik then works."""
+    return srdf.replace('type="floating"', 'type="fixed"')
+
+
+def _build_panda(moveit_kit):
+    """The shared fixed-base panda model + its config (every worker builds this so the
+    model is identical across solvers and target generation)."""
+    cfg = moveit_kit.panda_config()
+    model = moveit_kit.build_robot_model(cfg.urdf, _fixed_base_srdf(cfg.srdf))
+    return cfg, model
+
+
 # ======================================================================
 # Target generation (MoveIt FK -> canonical, seeded, cached to JSON)
 # ======================================================================
@@ -57,8 +76,7 @@ def worker_gen_targets(n, seed, out_path):
     from ik_bench.panda import PandaChain
 
     moveit = moveit_kit.bringup_moveit()
-    cfg = moveit_kit.panda_config()
-    model = moveit_kit.build_robot_model(cfg.urdf, cfg.srdf)
+    cfg, model = _build_panda(moveit_kit)
     jmg = model.getJointModelGroup(S.GROUP)
     state = moveit.core.RobotState(model)
     chain = PandaChain()
@@ -126,14 +144,9 @@ def worker_moveit(spec_key, targets_path, timeout, repeats, pos_tol, ori_tol):
     from ik_bench.panda import pose_error
 
     spec = S.BY_KEY[spec_key]
-    if spec.prefix and os.path.isdir(spec.prefix):
-        # make the vendored plugin discoverable by pluginlib's ament-index lookup
-        os.environ["AMENT_PREFIX_PATH"] = (
-            spec.prefix + os.pathsep + os.environ.get("AMENT_PREFIX_PATH", ""))
-        os.environ["LD_LIBRARY_PATH"] = (
-            os.path.join(spec.prefix, "lib") + os.pathsep
-            + os.environ.get("LD_LIBRARY_PATH", ""))
-
+    # AMENT_PREFIX_PATH / LD_LIBRARY_PATH for a vendored plugin are set by the PARENT
+    # before spawning this worker (LD_LIBRARY_PATH is read by the dynamic linker at
+    # process start -- setting it here would be too late for pluginlib's dlopen).
     with open(targets_path) as fh:
         data = json.load(fh)
     targets = data["targets"]
@@ -142,8 +155,7 @@ def worker_moveit(spec_key, targets_path, timeout, repeats, pos_tol, ori_tol):
     rclcpp = bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
-    cfg = moveit_kit.panda_config()
-    model = moveit_kit.build_robot_model(cfg.urdf, cfg.srdf)
+    cfg, model = _build_panda(moveit_kit)
     jmg = model.getJointModelGroup(S.GROUP)
 
     # build a node carrying this plugin's params under robot_description_kinematics.<group>
@@ -247,12 +259,28 @@ def _run_and_report(spec, targets, solve_one, repeats, pos_tol, ori_tol):
 # ======================================================================
 # Orchestration
 # ======================================================================
-def _spawn(worker, extra, timeout_s):
+def _spawn(worker, extra, timeout_s, env=None):
     argv = [sys.executable, "-u", os.path.abspath(__file__), "--worker", worker] + extra
-    proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout_s)
+    proc = subprocess.run(argv, capture_output=True, text=True, timeout=timeout_s,
+                          env=env)
     line = next((ln for ln in proc.stdout.splitlines()
                  if ln.startswith("RESULT ")), None)
     return line, proc
+
+
+def _solver_env(spec):
+    """Env for a solver worker: for a vendored plugin, prepend its install prefix to
+    AMENT_PREFIX_PATH (so pluginlib's ament-index lookup finds it) and its lib dir to
+    LD_LIBRARY_PATH (so the plugin .so and its sibling core lib dlopen). Must be set
+    in the PARENT -- the dynamic linker reads LD_LIBRARY_PATH at child startup."""
+    env = os.environ.copy()
+    if spec.prefix and os.path.isdir(spec.prefix):
+        env["AMENT_PREFIX_PATH"] = (
+            spec.prefix + os.pathsep + env.get("AMENT_PREFIX_PATH", ""))
+        env["LD_LIBRARY_PATH"] = (
+            os.path.join(spec.prefix, "lib") + os.pathsep
+            + env.get("LD_LIBRARY_PATH", ""))
+    return env
 
 
 def ensure_targets(args):
@@ -291,7 +319,8 @@ def run(args):
                  "--pos-tol", str(args.pos_tol), "--ori-tol", str(args.ori_tol)]
         print("  [%s] running ..." % key, file=sys.stderr, flush=True)
         try:
-            line, proc = _spawn(worker, extra, args.solver_timeout)
+            line, proc = _spawn(worker, extra, args.solver_timeout,
+                                env=_solver_env(spec))
         except subprocess.TimeoutExpired:
             results.append({"key": key, "label": spec.label, "status": "timeout",
                             "note": spec.note})
