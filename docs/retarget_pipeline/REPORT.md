@@ -162,6 +162,53 @@ per-element Python-loop trap (§6/§26).
 
 ---
 
+## Motion-fidelity diagnosis + trunk-lean fix (2026-07-12)
+
+A live-teleop review reported the retargeting looked broken: hands don't follow, the
+target balls barely move, the head is static, and Talos's trunk leans back a lot.
+Diagnosed with a **known-motion** test (both wrists trace 0.3 m circles about the
+shoulders) measuring per-axis correlation + amplitude between the human wrist motion,
+the computed EE target, and the solved EE — the check the EE-error metric can't do (it
+scores solve-vs-clamped-target, not fidelity to human motion).
+
+- **"Hands don't follow / targets barely move" — NOT a code bug.** Input-wrist →
+  target correlation is **0.89–0.97** per axis and target → solved-EE is **~1.0**;
+  the Talos EE moves 13–26 cm for that input. **`--source tf` and `--replay` are
+  equivalent** (target std matches to ~1 mm; q std 0.587 vs 0.546) — so there is no
+  double/missing coordinate transform in the live path. The perceived staleness was
+  dominated by the trunk lean (below) contorting the arm, plus the mapping *amplitude*
+  (shoulder-anchored, arm-ratio-scaled, 0.8× clamp) which is modest — smallest on G1
+  (0.28 m arm → 5–12 cm hand motion). The amplitude/anchor scheme is a **design choice**
+  (see options) — the code faithfully maps whatever motion it is given.
+- **Talos trunk leans ~52° — FIXED.** With only two gripper position tasks and a weak
+  *uniform* posture regulariser, the CLIK freely pitched the torso/waist to reach
+  (measured: 52° for Talos, −17° for G1). Fix: a **per-joint posture weight**
+  (`Retargeter.posture_w`) that firmly pins the legs + torso/waist to the reference and
+  frees only the arm chain, so reaching is done by the arms with an upright trunk.
+  Measured after: torso pitch **0.0°** for both, and arm tracking is **unchanged**
+  (correlation still 0.89–0.97, EE amplitude 13–26 cm). Regression test
+  `test_trunk_stays_upright` asserts < 15°.
+- **Head doesn't move — STRUCTURAL (reported, not hacked).** G1 has **no neck joints**
+  (the head is rigid — it cannot move). On Talos, driving the neck joints moves the
+  `head_2_link` frame by **0.000 m / 0.0°** in the reduced model, so a *position* IK
+  task on the head is a no-op. Proper head tracking needs an **orientation/gaze** task
+  (or a direct neck-joint yaw/pitch mapping) and a robot with an articulated head —
+  an owner-visible design choice, left as a `whead` knob (default off).
+
+**Options for the owner (structural, not applied unilaterally):**
+1. **Amplitude/anchor.** To make the hands track the owner's motion more directly:
+   raise the reach clamp (`REACH_FRAC` 0.8→~0.95), or increase the arm-ratio scale, or
+   switch to a **hip-anchored** target (map the wrist relative to the hip/torso rather
+   than the shoulder) so gross arm sweeps map 1:1-ish. Each changes the feel; pick one.
+2. **Head/gaze.** Add an orientation task on an articulated head frame (Talos full model,
+   not `_reduced`), driven by the human head yaw/pitch.
+
+**Regression tests added** (permanent — would have caught this): `test_retarget_tracks_
+wrist_motion` (known circle → target correlation > 0.7 per axis, non-trivial amplitude)
+and `test_trunk_stays_upright`.
+
+---
+
 ## Honest boundaries (library-primitive vs cppyy-won)
 
 - **ML inference is a library primitive** (MediaPipe, CPU ~30 ms/frame) — deliberately NOT
