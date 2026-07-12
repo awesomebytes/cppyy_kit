@@ -189,6 +189,13 @@ during transaction revert** (no Python traceback).
   packages all generate one. Never `cppyy.include` it; find the *clean* base header
   and load the class/plugin directly. (ros2_control's headers happen to be
   Cling-clean — this wall is per-package, so probe.)
+- **Confirmed a *parse*-wall only — the compiled artifact is fine (ik_bench).**
+  pick_ik is the positive control: a `generate_parameter_library`-heavy MoveIt IK
+  plugin whose generated `*_parameters.hpp` is exactly the SIGSEGV header, yet it
+  **builds and `dlopen`s cleanly** — because its own CMake compiles the g_p_l code into
+  `libpick_ik_plugin.so` and pluginlib loads the finished `.so`; nothing ever
+  `cppyy.include`s a pick_ik header. Rule stands: load the plugin, never parse its
+  params header (§19).
 - **The ORC static-initializer wall: parse succeeds, *execution* fails (vision/gtsam).**
   A header can `cppyy.include` cleanly yet the first use fault later, when Cling's ORC
   JIT must materialize a **namespace-scope internal-linkage static** it can't emit —
@@ -198,6 +205,17 @@ during transaction revert** (no Python traceback).
   from a parse error — worth suspecting when includes pass but a symbol won't
   materialize; the honest fallback is §20 (the library's own Python binding for batch
   steps).
+- **`boost::variant` template-arity is an env-version parse wall (wbc/pinocchio).**
+  A big `boost::variant` that a **precompiled** `.so` carries fine can be
+  **un-JIT-able from headers** under a newer boost whose preprocessed arity limit it
+  exceeds. pinocchio's `JointModelVariant` is a **25-type `boost::variant`**;
+  re-instantiating `ModelTpl<Scalar>` for a new scalar hits **boost 1.90**'s
+  `make_variant_list` limit (`wrong number of template arguments (25, should be at
+  least 0)`) — while the shipped `double`/casadi libraries sidestep it by being
+  precompiled. This is a **parse** failure, distinct from the ORC static-init wall
+  (an *execution* failure). Reproduce with `g++` to confirm it is not a Cling quirk;
+  suspect it when a template *class* re-instantiation for a new parameter fails but
+  the shipped specialization works.
 - **Mitigation:** probe risky glue out-of-process first —
   `cppyy_kit.probe_cppdef(code, include_paths=, headers=, libraries=)` compiles it
   in a throwaway subprocess and returns `(ok, message)` without risking the main
@@ -343,6 +361,14 @@ class and C++ calls its overrides in a hot loop (RRT\* calls a Python
 - **Only plain virtuals** can be overridden across the boundary. A `final` (or
   non-virtual) member cannot — this is exactly why bt_kit's `final` `tick()` needed
   a C++ shim instead (Pattern 5 / bt REPORT). Check the base before promising it.
+- **Watch for versioned pure-virtual creep (wbc/Crocoddyl).** A library minor version
+  can **add pure virtuals to a base you subclass** and silently make your override
+  abstract — Crocoddyl 3.2's `CROCODDYL_BASE_CAST` macro added
+  `cloneAsDouble`/`cloneAsFloat` to `ActionModelAbstract`. In C++ that is a compile
+  error; **in cppyy it is a failed-`cppdef` crash** with no traceback (§9). Before
+  authoring, `nm`/grep the base for **every** pure virtual (including macro-injected
+  ones) and probe the subclass `cppdef` out-of-process; a kit should ship the mandatory
+  boilerplate as a constant (`wbc_kit.ACTION_MODEL_CLONES` is the worked example).
 - **Pin the subclass instance** with `keep_alive` (or an `owner`): the "callable
   was deleted" footgun (Pattern 4) applies to override *instances* too — C++ holds
   the object, cppyy won't keep it alive for you.
@@ -400,6 +426,13 @@ parameters. Both work in-process (moveit_kit proved it; control_kit reuses it):
   "Base::type")` in a `cppdef`, then `createUniqueInstance(lookup_name)` — pluginlib
   `dlopen`s the plugin `.so` itself via the ament index (do **not** cppyy-load the
   plugin). The "add the library named in the JIT link error" loop resolves the rest.
+- **A dlopen'd plugin's sibling libs need `LD_LIBRARY_PATH` set *before* the process
+  starts (ik_bench).** A vendored plugin `.so` depends on its co-installed core lib
+  (`libpick_ik_plugin.so` → `libbio_ik.so`) in the same private prefix. The dynamic
+  linker reads `LD_LIBRARY_PATH` **at process start**, so setting it inside the running
+  worker is too late for pluginlib's `dlopen`. Prepend the vendored `lib/` dir to the
+  **child's** `LD_LIBRARY_PATH` before spawning (or `$ORIGIN`-RPATH the install);
+  `AMENT_PREFIX_PATH` — which *is* read at runtime — carries the plugin discovery.
 - **parameterized node:** `NodeOptions().automatically_declare_parameters_from_overrides(true)
   .parameter_overrides(vec)` + `make_shared<rclcpp::Node>(name, options)`, fed by a
   **YAML → dotted-`rclcpp::Parameter` flattener** (nested dict → dotted names,
@@ -441,6 +474,17 @@ For a small, well-understood subset of a library that ships no conda package
 with a direct `$CXX` invocation into a `.so` — this beats fighting the library's
 CMake/ExternalProject. It generalizes the L2 lowering recipe (`build_l2_node` →
 `build_dbow2`): a reproducible build script, artifact gitignored, env-version tagged.
+
+**A second shape: a vendored ROS/MoveIt *plugin* wants its ament install layout, not
+a bare `.so` (ik_bench).** The direct-`$CXX`→`.so` recipe does *not* suffice for a
+pluginlib plugin, because discovery is via the **ament index**, which only the
+package's own `ament_package()` + `pluginlib_export_plugin_description_file` produce
+(the `<pkg>` marker, the plugin description XML, the `.so`). So for a plugin,
+"vendored build" = **run its own CMake with a plain `cmake` configure/build/install
+into a private prefix**, then put that prefix on `AMENT_PREFIX_PATH` — pluginlib then
+finds it by lookup name, no different from a packaged one. The two unpackaged IK
+solvers (bio_ik, pick_ik) both built first try this way; pick_ik needed only one extra
+header-only dep (`range-v3`) added to the env, no source patches.
 
 ### 22. Overload mis-resolution: a compilable-but-WRONG overload that crashes
 Distinct from the parse/execution faults (§9): with a **thicket of overloads**, cppyy
@@ -491,7 +535,7 @@ package-build time (`cppyy_kit.cache.prebuild`).
   a corrupt/stale `.so` on load is discarded and rebuilt, never wedging a run.
 
 **Kit adoption recipe (copy-paste).** Both bt_kit and pcl_kit follow this shape;
-it is what a new kit (and the M5 accelerate skill) should apply. Split the glue into
+it is what a new kit (and the `cppyy-accelerate` skill) should apply. Split the glue into
 bodiless *declarations* and out-of-line *definitions* (or a trampoline), cache with
 `cppdef_cached`, and branch the hot call site on a `_CACHED` flag with a graceful
 JIT fallback:
@@ -553,7 +597,7 @@ that's a shared no-op until started — no timing syscall, no event).
 - **The manifest is the point.** `stop()` returns (and optionally writes) JSON with
   a per-kind summary and an **instantiation manifest**: the distinct C++ signatures
   crossed, sorted by cost — i.e. exactly what a freeze PCH or the compile cache (§23)
-  should cover, and the raw material for the M5 `cppyy-accelerate` skill's hotspot
+  should cover, and the raw material for the `cppyy-accelerate` skill's hotspot
   analysis. `python -m cppyy_kit trace report trace.json` pretty-prints it.
 - **Use it to decide what to cache.** Trace a workload once; the top instantiation
   lines (e.g. `std_function` at ~100 ms for `BT::NodeStatus(BT::TreeNode&)`) name the
@@ -597,6 +641,18 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
 - **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
   after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
+- **The honest headline: the win tracks "custom kernel vs library primitive", not
+  "C++ vs Python" (webcam).** Reach for a `@cpp`/`cppdef` kernel where you'd otherwise
+  write a **per-element Python loop with no vectorized-NumPy/library one-liner** — a
+  hand-written NCC patch tracker measured **~12–15×** (4.32 ms vs 66.3 ms/frame at
+  640×480). Where the per-frame work is *only* library-provided ops (OpenCV
+  ORB/match/RANSAC, where `cv2` is C++ too) the gap collapses to **~1.1–1.2×**
+  per-frame orchestration — do **not** expect a win from merely chaining library
+  primitives. Robotics code constantly hand-writes the former (trackers, cost
+  functions, robust estimators), which is exactly where cppyy_kit earns its keep.
+  (For an honest A-vs-B bench, bracket each pipeline with `time.process_time()` deltas:
+  `cpu% = 100 * Δcpu/Δwall` is a dependency-free per-pipeline CPU meter when the driver
+  is single-threaded and the calls are sequential — no psutil needed.)
 
 ### 27. `nogil()` — release the GIL around a blocking C++ call
 §13's rule ("cppyy does not release the GIL on a blocking C++ call") has a fix:
@@ -650,6 +706,140 @@ print(capability.report())              # introspect (also: python -m cppyy_kit 
   status` shows both the base capability and whether bt_kit actually took the cache
   path (and, if not, why). This is the pattern every kit's CUDA/lifecycle/binding
   probe should follow instead of an ad-hoc `try/except`.
+
+### 30. In-process lifecycle bootstrap: build the node the coupled ctor asks for
+Modern ROS 2 cores often take a `rclcpp_lifecycle::LifecycleNode` / a `*ROS` wrapper /
+a pluginlib base in their ctor or `configure`, so they *look* like they need the
+server. They don't: those objects are **plain classes you construct in-process from
+Python** — no lifecycle servers, no manager, no YAML, no action interface. This is the
+third instance of the "in-process ROS 2 node/manager" family after moveit_kit's
+parameterized `Node` and control_kit's `ControllerManager` (§19), and the cleanest
+statement of it (nav2_kit's lifecycle unlock).
+- **The key — construct a `LifecycleNode`.** `make_shared["rclcpp_lifecycle::
+  LifecycleNode"](name, ns, NodeOptions)`, then walk `configure()` (UNCONFIGURED→
+  INACTIVE) and `activate()` (→ACTIVE); `get_clock()`/`get_logger()` are live
+  immediately. `lifecycle_node.hpp` **JIT-parses cleanly** (no generate_parameter_
+  library wall, like ros2_control and unlike MoveIt's convenience headers). This one
+  object fits every lifecycle-coupled ctor in the ecosystem.
+- **A plugin-free `*ROS` wrapper runs in-process too.** `make_shared<Costmap2DROS>(
+  NodeOptions with parameter_overrides)` + `configure()` → a blank fillable master grid
+  (fill it from NumPy, §6). Its `NodeOptions` ctor names the node and sets
+  `is_lifecycle_follower_=false` (a standalone node you drive). Do **not** `activate()`
+  unless you want its background update thread.
+- **`NodeOptions` auto-declare is a trap for self-declaring nodes.**
+  `automatically_declare_parameters_from_overrides(True)` is right for a node that
+  declares nothing (it turns your overrides into real params) but **wrong for a node
+  that calls `declare_parameter` itself** (`Costmap2DROS`): it double-declares and
+  throws `ParameterAlreadyDeclaredException`. Rule: auto-declare only for nodes that
+  declare nothing; otherwise pass overrides *without* it and let the node's own
+  `declare_parameter(name, default)` pick them up.
+- **"The header comments the parameter name" ≠ "the parameter is unused".** RPP's
+  `computeVelocityCommands(..., nav2_core::GoalChecker * /*goal_checker*/)` reads as
+  unused, but the *definition* dereferences it (`goal_checker->getTolerances()`) →
+  `nullptr` crashes. When a coupled API takes an interface pointer, supply a **minimal
+  C++ stub subclass** (a `cppdef` `struct : Base`), not `nullptr`, even when the
+  signature suggests it is ignored. Check the `.so`, not just the header.
+- **Separate "can I construct it" from "does its runtime path enter a fragile
+  transitive dep".** The LifecycleNode key unlocked Smac 2D (`AStarAlgorithm<Node2D>`
+  plans from Python) but **not** Hybrid-A\*: its wall is a *non-deterministic
+  OMPL-under-Cling segfault* in `precomputeDistanceHeuristic` (~2 of 3 runs), not a
+  ctor coupling. `Node2D` is stable precisely because its search never enters OMPL at
+  runtime (the header only *parses* the OMPL includes). A coupling wall and a
+  runtime-library wall are different failures; one is a ctor you can build, the other
+  is a path you can't safely run.
+- **Teardown (§14, applied).** These objects own DDS entities (+ a bond timer); their
+  destructors must run **before** `rclcpp` shutdown. `register_teardown` a callback that
+  drops each one so it runs *before* `shutdown_rclcpp` (LIFO). Verified: nav2_kit's
+  14-test suite and all four planner×controller demo combinations exit 0.
+
+The updated authoring heuristic (§20): grep the ctor/`configure` signature. Plain data
+(`Costmap2D(w,h,...)`, `NavFn(nx,ny)`) → drive directly. A `LifecycleNode`/`*ROS`/
+pluginlib base → still reachable via this in-process bootstrap, **not** a server. The
+remaining walls are runtime (missing/unstable transitive libs), not signatures.
+
+### 31. Lower the hot virtual: the ideal cppyy target
+A framework whose hot loop repeatedly calls a **user-authored virtual** is the ideal
+cppyy target, and the recurring highest-value shape. Three instances now — OMPL's
+`StateValidityChecker::isValid` (RRT\* calls it millions of times/solve, §16),
+ros2_control's `update` (control_kit), and Crocoddyl's `calc`/`calcDiff` (the DDP
+solver calls them per node per iteration plus line-search rollouts) — all share the
+same "prototype → lower" arc:
+- **Prototype the virtual in Python** (the binding's supported path), then **lower it
+  to an inline-C++ subclass in the *same script*** via `cppdef` — JIT-compiled at
+  runtime, so the solver calls native C++ in the hot loop with **no build system**.
+- cppyy is the *only* tool that offers the *fast* authoring path without the framework's
+  usual "write a CMake project linking the library" rebuild. The framework's own
+  workflow is "prototype in Python (slow) or ship a C++ model (needs a build)"; cppyy
+  fills the missing "fast **and** no build system, one file" cell.
+- **Measured (Crocoddyl, wbc):** the inline-C++ custom action model runs at the
+  compiled built-in's speed (**0.32 vs 0.34 ms**) and **~21.7×** the Python-derived
+  model, converging to a **bit-identical** cost (250.039320, 8 iters — the numeric
+  match is the regression gate). ompl_kit's Python validity checker was ~350 ns/override
+  call, 1–3 M dispatches/s (§16); the win is invisible for small problems, material when
+  the override dominates the loop.
+- This is the L2 native-lowering rung (FREEZE.md) made a one-liner: keep the crossing
+  out of the hot loop by putting the *whole* per-iteration virtual in C++. Watch for
+  versioned pure-virtual creep (§16) and the failed-`cppdef` minefield (§9) when
+  authoring the subclass; probe it out-of-process first.
+
+### 32. A library's own Python binding and cppyy coexist in one process
+Many robotics libraries ship their own binding (boost::python, pybind, `cv2`) *and* can
+be driven by cppyy. Mixing them in one process is fine — and often ideal — with two
+rules:
+- **Both load the same `.so`; the C++ objects are separate.** The clean division of
+  labour is **prototype with the library's own binding, lower the hot path with cppyy,
+  in one script** (the Crocoddyl story, §31). But a **cppyy-created C++ object cannot be
+  handed to a boost::python API** (two proxy runtimes, wbc-verified) — so the cppyy path
+  must build its own containers/solve in C++ (§6), not feed the binding's objects. Don't
+  pass objects *between* the two runtimes.
+- **Same build only.** Two loaders of *one* build coexist cleanly — `cv2` (the CPU
+  `libopencv`) and a cppyy-loaded CPU OpenCV share the same `.so`, no corruption
+  (webcam). The hazard is **mixing two builds of the same soname** in one process (a
+  CUDA `libopencv` alongside the CPU one corrupts it): a GPU-vs-CPU comparison must be
+  single-pipeline or two processes, never a same-process A-vs-B.
+
+### 33. Schema-derived C++ structs — validate at the boundary, compute in C++
+*(Design + probe RFC; prototype `cppyy_kit/pydantic_structs.py`. Numbers below measured
+on cppyy 3.5.0 / pydantic 2.13.4, 1M `Detection`.)*
+
+You already describe your data with a Pydantic v2 model for edge validation — that
+schema *is* a struct layout. `pydantic_structs` emits the equivalent C++ `struct`
+(compiled + cached), so the same data lives as a `std::vector<Struct>` instead of a
+`list` of model instances: compact, typed, and zero-copy-viewable as NumPy on its
+numeric columns. Slogan: **validate at the boundary (Pydantic) → compute compactly
+(C++) → re-validate on exit (Pydantic)**; `to_model()` re-runs the validators so the
+C++ excursion can't silently violate the model.
+- **A struct is a *parse* cost, not a call-wrapper-JIT cost — so cache the kernels, not
+  the struct.** A struct is a type *declaration*; cppyy learns its layout by parsing it
+  once per process (~7 ms for a small set — the domain of the freeze PCH, §2/L1), and
+  there is no function body to compile into a `.so`. What genuinely recurs is (a) the
+  `std::vector<Struct>` template first-use JIT (~46 ms) and (b) the **consumer kernels +
+  marshaling glue**, which *are* functions with bodies — exactly what `cppdef_cached`
+  (§23) persists.
+- **Compact storage:** `list[Detection]` (Pydantic instances) **1112 MB** →
+  `std::vector<Struct>` **70 MB** (16× smaller); numpy columns 49 MB.
+- **Compute — numpy is still the incumbent for flat reductions.** `sum(score)` (pure
+  contiguous reduction): numpy **136×** vs Python, the struct loop only 12× (it walks
+  the AoS with a 64-B stride). If your hot path is pure columnar numeric reductions,
+  **use numpy** (and the zero-copy column view lets you). The **C++ struct kernel wins
+  fused/branchy logic** — a `score>0.5` filter+centroid is **7×** vs numpy's 3× (numpy's
+  mask+gather allocates intermediates; the C++ loop is one alloc-free pass) — and keeps
+  the model's **nested/mixed shape** a flat array cannot represent.
+- **"Free" type checks:** consumer kernels compile *against* the struct, so a misused
+  field is a Cling compile error that names it (`no member named 'scoree' … did you mean
+  'score'?`; `invalid operands ('double' and 'std::string')`). Run that check
+  **out-of-process** (`probe_cppdef`) — a failed `cppdef` contaminates the live
+  interpreter (§9).
+- **Crossing traps:** a `std::string` inside a returned `std::vector<std::string>`
+  crosses as **`bytes`** — `to_model()` must `.decode()` string fields (§11). The
+  zero-copy numeric column view is **strided/non-contiguous** (stride = `sizeof(Struct)`),
+  a read/mutate-in-place convenience, not a free numpy pipeline; contiguous SoA columns
+  are just numpy. The view aliases the vector's buffer, so the vector must outlive it and
+  any `resize`/`push_back` invalidates it (`column()` pins via `keep_alive`).
+
+Positioning: the "I already maintain Pydantic models — make the hot path compact and
+typed without a codegen step" tool (contrast FlatBuffers/protobuf's separate schema +
+build), not a wire format and not a numpy replacement.
 
 ---
 
