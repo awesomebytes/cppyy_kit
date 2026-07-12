@@ -63,6 +63,9 @@ that per-kit table.
 
 ## 2. Recipe — freeze bt_kit
 
+*This is the explicit/manual path, useful for CI or full control. For everyday use you
+run none of it — §8's zero-config auto-PCH builds and loads the PCH for you.*
+
 ```bash
 pixi install -e bt
 pixi run build                 # install the package (bt_kit + freeze module)
@@ -176,11 +179,13 @@ t01 specifically because `warmup()` also warms the *stateful* path (~340 ms) tha
 t01 doesn't use; for a tree that uses all node kinds the totals converge. The win
 is **predictability**, not throughput.
 
-**Best-case cold start we can offer today = freeze + warmup:** ~85 ms bringup +
-~0.9 s warmup at init, after which every tree op is fast (first tick ~94 ms,
-steady-state instant) — versus L0's ~920 ms bringup followed by an unpredictable
-~680 ms stall on the first live tick. pcl_kit is the same story: `pcl_kit.warmup()`
-takes the showcase's first frame from **630 ms → 4 ms**.
+**Cold start, best case = freeze + the compile cache — both automatic now.** The
+auto-PCH (§8) removes the ~0.9 s header parse with nothing to set, and the compile
+cache (§4, "The compile cache", below) eliminates the first-use wrapper JIT
+*persistently*. `warmup()` only *relocates* that JIT to init, so it is no longer the
+answer — it stays useful only as a fallback when no compiler/CPyCppyy toolchain is
+present. Measured freeze+cache cold start: ~1.77 s → ~0.43 s (below), versus L0's
+~920 ms bringup and an unpredictable ~680 ms stall on the first live tick.
 
 ### The mechanism generalises (second data point)
 
@@ -319,7 +324,9 @@ and runs at engine speed. Registration still crosses cppyy once
 * Freezing a new header may surface further internal-linkage symbols to force
   (§1); the failure mode is a clear "unresolved while linking" error naming the
   symbol.
-* The launcher must run before any cppyy import (import-order rule, §2).
+* The **manual** launcher must run before any cppyy import (import-order rule, §2);
+  the zero-config auto-PCH (§8) removes this constraint by activating from a startup
+  `.pth` before any user import.
 
 ---
 
