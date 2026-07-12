@@ -235,7 +235,7 @@ libboost-headers = "*"  # headers-only: lets gtsam headers JIT via cppyy
 # Fetch/patch/compile DBoW2 from source into build/vendor/ (not on conda-forge). Run once.
 build-dbow2 = "python dbow_kit/cpp/build_dbow2.py"
 # cv_kit + dbow_kit + loop-closure test suites. Auto-skip without OpenCV/DBoW2/rerun.
-test-vision = "pytest cv_kit/tests/test_vision_kits.py cv_kit/tests/test_vision_loop.py cv_kit/tests/test_vision_viz.py -v"
+test-vision = "pytest cv_kit/tests/test_vision_kits.py cv_kit/tests/test_vision_loop.py cv_kit/tests/test_vision_viz.py cv_kit/tests/test_webcam_demo.py -v"
 # Datasets (shared tooling under scripts/datasets/).
 dataset-synthetic = "python scripts/datasets/dataset_publisher.py --synthetic"
 dataset-tum = "python scripts/datasets/download_tum_rgbd.py"
@@ -247,6 +247,11 @@ demo-vision-features = "python cv_kit/demos/demo_features.py"
 demo-vision-loop = "python cv_kit/demos/demo_loop.py"
 demo-vision-posegraph = "python cv_kit/demos/demo_posegraph.py"
 bench-vision = "python cv_kit/demos/bench_vision.py"
+# M6b live webcam demo: two pipelines (cppyy_kit C++ vs naive Python) over the same
+# live frames, side by side in Rerun. Auto source (webcam if present else synthetic).
+demo-webcam = "python cv_kit/demos/webcam_demo.py"
+# The A-vs-B table at 640x480 and 1280x720 (synthetic, no viewer, no ROS).
+bench-webcam = "python cv_kit/demos/webcam_demo.py --bench"
 
 # --- cudabuild: provision/validate a CUDA-enabled OpenCV for cv_kit's GPU path -
 # conda-forge ships no CUDA OpenCV (docs in cv_kit/CUDA_OPENCV.md); this vendors a
