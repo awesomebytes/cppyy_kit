@@ -151,7 +151,7 @@ _TF_GLUE = r"""
 #include <string>
 #include <vector>
 #include <sstream>
-namespace m6f_tf {
+namespace landmark_tf {
 
 // A /tf broadcaster whose TFMessage is built and refilled entirely in C++. The
 // child frame names are fixed at construction (one per tracked landmark); each
@@ -190,7 +190,7 @@ class Broadcaster {
   int size() const { return (int)msg_.transforms.size(); }
 };
 
-}  // namespace m6f_tf
+}  // namespace landmark_tf
 """
 
 _TF_READY = False
@@ -213,7 +213,7 @@ def _bringup_tf_glue():
 
 class TfPublisher:
     """Publishes the landmark frames on ``/tf``. The message is built in C++
-    (``m6f_tf::Broadcaster``); Python passes a flat xyz array address per frame."""
+    (``landmark_tf::Broadcaster``); Python passes a flat xyz array address per frame."""
 
     def __init__(self, frame_names, parent=PARENT_FRAME):
         import cppyy
@@ -222,9 +222,9 @@ class TfPublisher:
         self._cppyy = cppyy
         self._cppyy_kit = cppyy_kit
         self._TFMessage = cppyy.gbl.tf2_msgs.msg.TFMessage
-        self._node = self._rclcpp.Node("m6f_perceive")
+        self._node = self._rclcpp.Node("retarget_perceive")
         self._pub = self._node.create_publisher(self._TFMessage, "/tf", 10)
-        self._bc = cppyy.gbl.m6f_tf.Broadcaster("\n".join(frame_names), parent)
+        self._bc = cppyy.gbl.landmark_tf.Broadcaster("\n".join(frame_names), parent)
         self.n_frames = int(self._bc.size())
         # Warm the update() call-wrapper JIT so frame 0 does not stutter.
         warm = np.zeros((self.n_frames, 3), dtype=np.float64)
@@ -321,7 +321,7 @@ def run_live(args):
     session = None
     if not args.no_viz:
         import rerun as rr
-        session = viz.init_rerun("m6f_perceive", args.rrd,
+        session = viz.init_rerun("retarget_perceive", args.rrd,
                                  blueprint=viz.blueprint_perceive())
     else:
         rr = None
@@ -475,7 +475,7 @@ def run_replay(args):
           flush=True)
     session = None
     if not args.no_viz:
-        session = viz.init_rerun("m6f_perceive_replay", args.rrd,
+        session = viz.init_rerun("retarget_perceive_replay", args.rrd,
                                  blueprint=viz.blueprint_perceive())
     tfpub = None
     if not args.no_ros:
@@ -523,7 +523,7 @@ def run_bench(args):
         print("bench: no frames.")
         return
 
-    bc = cppyy.gbl.m6f_tf.Broadcaster("\n".join(names), PARENT_FRAME)
+    bc = cppyy.gbl.landmark_tf.Broadcaster("\n".join(names), PARENT_FRAME)
     # Warmup both paths.
     bc.update(rows[0].ctypes.data, n_frames, 0, 0)
     build_tf_message_python(TFMessage, TransformStamped, names, rows[0], PARENT_FRAME, 0, 0)
