@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-retarget.py (M6f, Process B) -- the retargeting half of the capture rig.
+retarget.py (Process B) -- the retargeting half of the capture rig.
 
     landmark stream -> whole-body targets -> a humanoid configuration per frame
     (pinocchio CLIK) -> Rerun (robot + human) + a "policy-kickstart" dataset.
@@ -321,7 +321,17 @@ def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=1.2, beta=0.03, reach_f
 # --------------------------------------------------------------------------- #
 # Modes.
 # --------------------------------------------------------------------------- #
+def _no_stream_msg(path):
+    return ("landmark stream not found: %s\n"
+            "Record one first with the perception half, e.g.:\n"
+            "  pixi run -e pipeline demo-perceive --record %s --duration 15\n"
+            "then re-run this with --replay %s" % (path, path, path))
+
+
 def run_retarget(args):
+    if not os.path.exists(args.replay):
+        print("[retarget] " + _no_stream_msg(args.replay), flush=True)
+        return 2
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
     print("Robot %s: nq=%d nv=%d, arm reach %.3f m; anchors L=%s R=%s"
@@ -405,9 +415,12 @@ def run_bench(args):
     over the whole stream, cppyy_kit C++ kernel vs the Python per-frame loop."""
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
-    if args.replay:
+    if args.replay and os.path.exists(args.replay):
         pw_all, _ = load_pose_world(args.replay)
     else:
+        if args.replay:
+            print("[retarget] %s not found; benching on the synthetic scene "
+                  "(record a stream to bench on real landmarks)." % args.replay, flush=True)
         pw_all = np.array([pw.reshape(99) for (_, pw, _, _, _, _, _)
                            in ls.synthetic_frames(args.bench_n)], dtype=np.float64)
     if len(pw_all) == 0:
@@ -428,7 +441,7 @@ def run_bench(args):
 
     a_ms = bench(True)
     b_ms = bench(False)
-    print("\n== M6f retarget-glue A-vs-B (%d frames: coord xform + target map + "
+    print("\n== retarget-glue A-vs-B (%d frames: coord xform + target map + "
           "One-Euro filter) ==" % len(pw_all))
     print("  A  cppyy_kit C++ kernel (one cppdef pass): %8.3f ms total" % a_ms)
     print("  B  Python per-frame loop:                  %8.3f ms total" % b_ms)
@@ -455,10 +468,9 @@ def main(argv=None):
                                                   "retarget.rrd"))
     args = ap.parse_args(argv)
     if args.bench:
-        run_bench(args)
-    else:
-        run_retarget(args)
+        return run_bench(args)
+    return run_retarget(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

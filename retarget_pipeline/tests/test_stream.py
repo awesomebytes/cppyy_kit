@@ -1,5 +1,5 @@
 """
-test_stream -- the record/replay contract (M6f). Pure: stdlib + numpy only, so it
+test_stream -- the record/replay contract. Pure: stdlib + numpy only, so it
 runs in any env (it is the seam both processes depend on). No ROS / mediapipe / cppyy.
 """
 import os

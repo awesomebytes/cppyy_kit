@@ -1,5 +1,5 @@
 """
-retarget_pipeline (M6f) -- a minimal-code human-demonstration capture rig.
+retarget_pipeline -- a minimal-code human-demonstration capture rig.
 
 Two processes, coupled by a landmark stream file:
 

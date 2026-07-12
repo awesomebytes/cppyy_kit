@@ -1,13 +1,13 @@
 """
-viz -- Rerun setup for the M6f pipeline, reusing the vision demos' tested logic.
+viz -- Rerun setup for the retarget pipeline, reusing the vision demos' tested logic.
 
 ``cv_kit/demos/vision_viz.py`` already solved the hard parts of driving Rerun on
 this stage machine: the live-vs-headless decision (:func:`should_spawn`), spawning
 the *native* viewer binary bundled in the wheel (the ``rerun`` console script is a
 broken shim in this env), and degrading to a ``.rrd`` when no window can open. Both
-M6f processes reuse it verbatim (it imports only ``rerun`` + stdlib, so it loads in
-the perception env AND the pinocchio ``wbc`` env). This module adds only the M6f
-blueprints and a couple of small skeleton-logging helpers shared by both processes.
+pipeline processes reuse it verbatim (it imports only ``rerun`` + stdlib, so it loads
+in the perception env AND the pinocchio ``wbc`` env). This module adds only the
+pipeline blueprints and a couple of small skeleton-logging helpers shared by both.
 """
 import os
 import sys
