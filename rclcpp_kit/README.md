@@ -3,8 +3,8 @@
 `rclcpp_kit` is the kit **for rclcpp** (ROS 2 core), following the same naming
 rule as every other kit. It is the rclcpp core **capability layer** that every
 ROS-touching kit — and the [rclcppyy](https://github.com/awesomebytes/rclcppyy)
-product — builds on. It was carved out of rclcppyy's core **with git history** in
-M1b (`git log --follow` traces any module back into rclcppyy).
+product — builds on. It was carved out of rclcppyy's core **with git history**
+(`git log --follow` traces any module back into rclcppyy).
 
 It sits between the ROS-free [`cppyy_kit`](../cppyy_kit) base (load_libraries /
 keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
@@ -32,9 +32,8 @@ from rclcpp_kit import serialization as ser
 blob = ser.serialized_message_to_bytes(ser.serialize_message(cpp_msg))
 ```
 
-The surface mirrors the names the rclcppyy product exposed, so rclcppyy slims to
-thin re-export shims over this package in **M3** and stays a drop-in rclpy
-accelerator.
+The surface mirrors the names the rclcppyy product exposed, so rclcppyy is slimmed
+to thin re-export shims over this package and stays a drop-in rclpy accelerator.
 
 ## Running it
 

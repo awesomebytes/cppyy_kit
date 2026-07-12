@@ -44,7 +44,7 @@ what those patches are and why.
 > **Rerun viewer — you watch it work.** Run any demo by hand and a **Rerun window
 > opens live**: you see the camera stream, the ORB keypoints tracking on it, a
 > per-frame processing-time plot ticking along (how fast it's going, made visible),
-> and — in M3/M4 — loops popping into the score plot and event log as they're
+> and — in stages 3–4 — loops popping into the score plot and event log as they're
 > confirmed, and the drifted trajectory snapping back onto ground truth when the
 > optimizer runs. The window is arranged into labelled panels by a small
 > [blueprint](https://rerun.io) so the entity tree is comprehensible from the first
@@ -61,7 +61,7 @@ what those patches are and why.
 
 ---
 
-## M1 — The spine: a zero-copy image path
+## Stage 1 — The spine: a zero-copy image path
 
 ```bash
 pixi run -e vision demo-vision-spine
@@ -107,7 +107,7 @@ into a fresh array — a copy whose cost grows with every pixel.
 
 ---
 
-## M2 — Features: ORB on every frame
+## Stage 2 — Features: ORB on every frame
 
 ```bash
 pixi run -e vision demo-vision-features
@@ -144,7 +144,7 @@ cppyy path (thanks to soname shadowing, `cv_kit` needs no change to use it).
 
 ---
 
-## M3 — Place recognition and loop closure (the heart)
+## Stage 3 — Place recognition and loop closure (the heart)
 
 ```bash
 pixi run -e vision demo-vision-loop
@@ -222,7 +222,7 @@ split in C++.
 
 ---
 
-## M4 (stretch) — Correcting the trajectory with a pose graph
+## Stage 4 (stretch) — Correcting the trajectory with a pose graph
 
 ```bash
 pixi run -e vision demo-vision-posegraph
@@ -268,7 +268,7 @@ same is in `build/vision/posegraph.rrd`.)
 
 ---
 
-## M5 — The numbers
+## Stage 5 — The numbers
 
 ```bash
 pixi run -e vision bench-vision            # add --orbvoc for the real-vocab timing
@@ -336,7 +336,7 @@ the cppyy_kit **freeze** machinery applies unchanged:
 - **Robust real-world detection.** The temporal gate uses a raw BoW-score threshold;
   DLoopDetector normalizes by the expected (previous-frame) score, and a real system
   adds **geometric verification** (RANSAC on matched keypoints) before trusting a loop.
-- **Relative pose from matches.** M4's loop factors use the ground-truth relative pose;
+- **Relative pose from matches.** Stage 4's loop factors use the ground-truth relative pose;
   a real system estimates it from the matched features (PnP / essential matrix).
 - **Track B (loaned messages / zero-copy SHM transport)** is out of scope: the
   zero-copy here is subscription-callback → `cv::Mat`; a loaned-message intra-process
@@ -355,8 +355,8 @@ the cppyy_kit **freeze** machinery applies unchanged:
 | `scripts/vision/build_dbow2.py` | clone + patch + compile DBoW2 |
 | `scripts/vision/vision_viz.py` | shared Rerun setup: live-viewer-by-default decision + per-demo blueprints |
 | `scripts/vision/loop_detector.py` | temporal-consistency loop gate |
-| `scripts/vision/demo_spine.py` / `demo_features.py` / `demo_loop.py` / `demo_posegraph.py` | M1–M4 demos |
-| `scripts/vision/train_vocab.py` / `bench_vision.py` | offline vocab trainer / M5 bench |
+| `scripts/vision/demo_spine.py` / `demo_features.py` / `demo_loop.py` / `demo_posegraph.py` | stage 1–4 demos |
+| `scripts/vision/train_vocab.py` / `bench_vision.py` | offline vocab trainer / stage 5 bench |
 | `scripts/datasets/synthetic_loop.py` / `dataset_publisher.py` / `download_tum_rgbd.py` / `download_orbvoc.py` | data tooling |
 | `test/test_vision_kits.py` / `test/test_vision_loop.py` | kit tests + the golden test |
 | `docs/vision/REPORT.md` | the spike report (probe matrix, evidence, generic lessons) |
