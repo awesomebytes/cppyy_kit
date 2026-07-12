@@ -136,7 +136,9 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   new retarget-ros env in the default solve-group, `--source tf` consumes the
   /tf landmark frames via rclcpp_kit's C++ TransformListener at 2.5 ms median
   lag [reproduced exactly], ONE shared Rerun viewer [screenshot-verified];
-  Cling JIT wall on pinocchio::Model UNCHANGED — solve stays on bindings): webcam → body+hand+face tracking + object detection → TF frames via
+  Cling JIT wall on pinocchio::Model UNCHANGED — solve stays on bindings.
+  Parked polish: no-person phantom tracking — gate perception's /tf+stream on
+  mean landmark visibility; retarget tf mode skips stale/absent frames): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
