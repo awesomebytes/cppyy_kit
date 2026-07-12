@@ -2,10 +2,10 @@
 
 `nav2_kit` lets you build a navigation stack by driving [Nav2](https://nav2.org)'s
 **algorithm cores directly** from Python: the real C++ code owns the costmap grid and
-runs the planner (NavFn), while your Python owns the loop, the world, and the
-controller. It does this against the Nav2 that is already installed, with **no
-lifecycle servers, no pluginlib, and no tf** — and with no code generation and no
-build step.
+runs the planner (NavFn or Smac 2D) and, since the M6d lifecycle unlock, the real
+RegulatedPurePursuit controller — while your Python owns the loop and the world. It
+does this against the Nav2 that is already installed, with **no lifecycle servers and
+no pluginlib** — and with no code generation and no build step.
 
 That framing is the whole point. Nav2 is a superb, production navigation system — but
 its Python surface is deliberately *client-side*: you configure C++ servers with YAML
@@ -122,24 +122,27 @@ not for running a robot in production.
 
 ## The honest part: what is a clean core, and what is not
 
-The thesis only works for Nav2 classes that are genuinely **node-free algorithms**.
-Nav2 has clean examples of both sides, and nav2_kit draws the line where the evidence
-does (full detail in [REPORT.md](REPORT.md)):
+nav2_kit draws the line where the evidence does, and the **M6d lifecycle unlock** moved
+it (full detail in [REPORT.md](REPORT.md)):
 
-- **Separable cores (surfaced): `Costmap2D`, `NavFn`.** Plain classes — `Costmap2D(w,
-  h, res, ox, oy)`, `NavFn(nx, ny)` operating on a raw `unsigned char*` cost array.
+- **Pure cores (surfaced, no rclcpp at all): `Costmap2D`, `NavFn`.** Plain classes —
+  `Costmap2D(w, h, res, ox, oy)`, `NavFn(nx, ny)` on a raw `unsigned char*` cost array.
   No node, no tf, no pluginlib. Directly drivable.
-- **Lifecycle-coupled (NOT surfaced): Smac Hybrid-A\*, the RegulatedPurePursuit
-  controller.** Smac's collision checker only exposes a constructor taking a
-  `Costmap2DROS` + a `LifecycleNode` (and its header transitively needs OMPL); the RPP
-  controller's `configure()` takes a `LifecycleNode`. You cannot build these without
-  the lifecycle machinery the thesis avoids — so nav2_kit does not pretend to, and the
-  showcase's follow controller is **~30 lines of honest Python pure-pursuit**, stated
-  as such. (RPP's header-only regulation math *is* separable and callable — a small
-  bonus noted in the REPORT.)
+- **Lifecycle-coupled cores (NOW surfaced, M6d): Smac 2D + the real RegulatedPurePursuit
+  controller.** These take a `LifecycleNode` (and RPP a `Costmap2DROS` + `tf2_ros::Buffer`)
+  — and the key insight is that **a `LifecycleNode` is a plain class you construct
+  in-process from Python**, exactly like the `rclcpp::Node` we already build. So
+  nav2_kit builds the node object (and a plugin-free `Costmap2DROS`) the ctors ask for —
+  **no lifecycle server, no pluginlib, no YAML.** The showcase's follow controller can
+  now be Nav2's *actual* RPP (`--controller rpp`); the ~30-line Python pure-pursuit is a
+  lightweight *choice*, no longer a forced limitation.
+- **Still walled: Smac Hybrid-A\* (SE(2)).** Not a coupling problem — it constructs
+  fine — but its OMPL-backed distance heuristic segfaults non-deterministically under
+  Cling. A documented flaky partial, not shipped.
 
-This honesty is the point: the value is a real, working core road with a clearly
-marked boundary — not a claim that all of Nav2 is "just Python".
+This honesty is the point: a real, working core road — now including the
+lifecycle-coupled planners/controllers — with the one remaining wall (a runtime OMPL
+instability, not "it needs a node") clearly marked.
 
 ---
 
@@ -151,12 +154,14 @@ the path however you like (`d01_plan_grid.py`). Good for planner experiments,
 map-based reasoning, and dataset generation where edit-run speed matters.
 
 ### Mode B — a whole miniature nav stack, live to rviz2
-`scripts/nav2_kit_demos/d02_own_nav_stack.py` (the showcase) plans with NavFn, follows
-with a pure-pursuit loop over simulated diff-drive kinematics, and publishes a live
-`nav_msgs/OccupancyGrid` + `nav_msgs/Path` + `geometry_msgs/TwistStamped` via
-rclcppyy — so an rviz2 (Fixed Frame `map`) shows the map, the plan, and the commanded
-velocity as the simulated robot drives to the goal. One self-contained Python file,
-planner in C++, controller in Python.
+`nav2_kit/demos/d02_own_nav_stack.py` (the showcase) plans, follows over simulated
+diff-drive kinematics, and publishes a live `nav_msgs/OccupancyGrid` +
+`nav_msgs/Path` + `geometry_msgs/TwistStamped` via rclcppyy — so an rviz2 (Fixed Frame
+`map`) shows the map, plan, and commanded velocity as the robot drives to the goal.
+**Pick the pieces:** `--planner navfn|smac` and `--controller pursuit|rpp`. All four
+combinations reach the goal; `--planner smac --controller rpp` runs Nav2's real Smac 2D
+planner **and** its real RegulatedPurePursuit controller — both C++, driven from one
+self-contained Python file.
 
 ---
 
@@ -177,10 +182,11 @@ Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
 
 ## Limits
 
-nav2_kit is a v0 spike, and deliberately **not a Nav2 stack**: no lifecycle servers,
-no pluginlib, no tf, no dynamic obstacle/inflation layers, no recovery behaviors. Only
-`Costmap2D` + `NavFn` are surfaced; Smac and the RPP controller are lifecycle-coupled
-and out of scope (their separable pieces are noted). The complementary direction —
-running a **Python planner/controller plugin *inside* a real Nav2 server** via a
-pluginlib bridge — is a separate planned spike, not this one. The full, honest list is
-in [REPORT.md](REPORT.md) §6.
+nav2_kit is deliberately **not a Nav2 stack**: no lifecycle *servers*/manager, no
+pluginlib-by-name loading, no tf tree/localization, no dynamic obstacle/inflation
+layers, no recovery behaviors. Surfaced: `Costmap2D` + `NavFn` (pure cores) and — since
+M6d — Smac **2D** + the real RPP controller (via an in-process `LifecycleNode` +
+plugin-free `Costmap2DROS`, still no servers). Smac **Hybrid-A\*** remains out (a flaky
+OMPL-under-Cling crash). The complementary direction — loading a **Python
+planner/controller plugin *inside* a real Nav2 server** — is a separate planned spike.
+The full, honest list is in [REPORT.md](REPORT.md) §6.
