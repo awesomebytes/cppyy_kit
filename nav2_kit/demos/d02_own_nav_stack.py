@@ -2,15 +2,14 @@
 """
 nav2_kit demo 2 -- THE SHOWCASE: your own miniature Nav stack, in one Python file.
 
-A complete navigation loop built from Nav2's algorithm cores plus rclcppyy, with no
-lifecycle servers, no pluginlib, no tf -- Python owns the loop, C++ owns the math:
+A complete navigation loop built from Nav2's algorithm cores plus rclcppyy -- Python
+owns the loop, C++ owns the math:
 
   synthetic world (NumPy)  ->  nav2_costmap_2d::Costmap2D   (real Nav2 grid)
-                           ->  nav2_navfn_planner::NavFn     (real Nav2 A* planner)
-                           ->  pure-pursuit follow loop      (HONEST split: ~30 lines
-                                                              of Python -- Nav2's RPP
-                                                              controller is lifecycle-
-                                                              coupled, see the REPORT)
+                           ->  PLANNER: NavFn (default) or Smac 2D (--planner smac)
+                                                              -- both real Nav2 C++
+                           ->  CONTROLLER: pure pursuit (default, ~30 lines Python) or
+                              the real RegulatedPurePursuitController (--controller rpp)
                            ->  simulated diff-drive kinematics
                            ->  publish OccupancyGrid + Path + TwistStamped via rclcppyy
 
@@ -18,11 +17,15 @@ So an rviz2 with Fixed Frame "map" shows the map, the plan, and the commanded
 velocity live. The messages are real C++ messages published through rclcppyy. The
 loop is deadline-bounded and self-contained (no external data).
 
-Planner = C++ (NavFn). Controller = Python (pure pursuit) -- stated plainly because
-Nav2's RegulatedPurePursuitController plugin needs a LifecycleNode to configure; only
-its header-only regulation math is separable (REPORT §Smac/RPP).
+The M6d lifecycle unlock (REPORT §Probe D/F, now resolved) makes both the Smac 2D
+planner AND the real RPP controller drivable from Python: a real
+rclcpp_lifecycle::LifecycleNode is constructed in-process, and with it a plugin-free
+Costmap2DROS + Smac's collision checker + RPP's configure(). So the honest "controller
+half is Python because RPP is lifecycle-coupled" caveat is retired -- ``--controller
+rpp`` runs Nav2's actual controller.
 
 Run: pixi run -e nav2 demo-nav2-stack
+     pixi run -e nav2 demo-nav2-stack --planner smac --controller rpp
 """
 import argparse
 import math
@@ -161,6 +164,11 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--rate", type=float, default=20.0, help="control rate (Hz)")
     ap.add_argument("--duration", type=float, default=20.0, help="max run window (s)")
+    ap.add_argument("--planner", choices=("navfn", "smac"), default="navfn",
+                    help="global planner: NavFn (default) or Smac 2D (M6d unlock)")
+    ap.add_argument("--controller", choices=("pursuit", "rpp"), default="pursuit",
+                    help="follow controller: Python pure pursuit (default) or Nav2's "
+                         "real RegulatedPurePursuitController (M6d unlock)")
     args = ap.parse_args()
 
     # ---- plan with Nav2's cores -------------------------------------------------
@@ -169,14 +177,22 @@ def main():
     grid = make_world()
     costmap = nav2_kit.costmap_from_numpy(grid, resolution=RES)
     start_cell, goal_cell = (18, H // 2), (100, 35)
-    path_cells = nav2_kit.plan_navfn(costmap, start_cell, goal_cell)
+    lc_node = None
+    if args.planner == "smac":
+        # Smac 2D needs a LifecycleNode (clock/logger for its collision checker).
+        lc_node = nav2_kit.lifecycle_node("nav2_kit_stack_lc")
+        path_cells = nav2_kit.smac_plan_2d(costmap, start_cell, goal_cell, node=lc_node)
+        planner_label = "Smac 2D, C++"
+    else:
+        path_cells = nav2_kit.plan_navfn(costmap, start_cell, goal_cell)
+        planner_label = "NavFn, C++"
     if path_cells is None:
         print("No plan found; aborting.")
         return
     path_xy = [cell_to_world(cx, cy) for cx, cy in path_cells]
     print(f"Planned {len(path_xy)} waypoints "
           f"{cell_to_world(*start_cell)} -> {cell_to_world(*goal_cell)} "
-          f"(NavFn, C++).", flush=True)
+          f"({planner_label}).", flush=True)
 
     # ---- ROS 2 bringup (rclcppyy) ----------------------------------------------
     rclcpp = bringup_rclcpp()
@@ -196,7 +212,7 @@ def main():
     map_pub.publish(build_occupancy_grid(grid))
     path_pub.publish(build_path_msg(path_xy))
 
-    # ---- follow loop: pure pursuit + diff-drive sim ----------------------------
+    # ---- controller setup ------------------------------------------------------
     gx, gy = cell_to_world(*goal_cell)
     sx, sy = path_xy[0]
     theta0 = math.atan2(path_xy[1][1] - sy, path_xy[1][0] - sx)
@@ -207,12 +223,47 @@ def main():
     reached = False
     steps = int(args.duration * args.rate)
 
+    rpp = None
+    if args.controller == "rpp":
+        # Nav2's real RegulatedPurePursuitController: a plugin-free Costmap2DROS holds
+        # our world; RPP.configure() takes the LifecycleNode + tf + costmap_ros (M6d).
+        if lc_node is None:
+            lc_node = nav2_kit.lifecycle_node("nav2_kit_stack_lc")
+        cm_ros = nav2_kit.costmap_ros("nav2_kit_stack_costmap", grid=grid, resolution=RES,
+                                      width_m=W * RES, height_m=H * RES)
+        # use_collision_detection=False: the planner already returned a collision-free
+        # path, and RPP's forward-projection check is for *dynamic* obstacles not in the
+        # plan -- with a static map + a narrow doorway it false-positives near the walls.
+        # use_rotate_to_heading=False + a tight goal tolerance so RPP drives the last
+        # stretch straight in (otherwise it stops within its xy tolerance and rotates
+        # to the final heading -- correct RPP behavior, but the sim has no goal yaw).
+        rpp = nav2_kit.RPPController(cm_ros, node=lc_node, goal_xy_tolerance=0.08,
+                                     parameters={"desired_linear_vel": max_v,
+                                                 "use_collision_detection": False,
+                                                 "use_rotate_to_heading": False,
+                                                 "min_approach_linear_velocity": 0.10})
+        rpp.set_plan(path_xy)
+        controller_label = "RegulatedPurePursuit, C++"
+    else:
+        controller_label = "pure pursuit, Python"
+    print(f"Following with {controller_label}.", flush=True)
+
+    # ---- follow loop -----------------------------------------------------------
     for step in range(steps):
         dist_goal = math.hypot(gx - pose[0], gy - pose[1])
         if dist_goal < 0.10:
             reached = True
             break
-        v, w, idx = pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w)
+        if rpp is not None:
+            try:
+                v, w = rpp.compute((pose[0], pose[1], pose[2]))
+            except cppyy.gbl.nav2_core.NoValidControl:
+                # RPP is the *real* controller: it can refuse (e.g. a collision it
+                # projects). Stop gracefully rather than crash the showcase.
+                print(f"STEP {step:4d} RPP: no valid control (stopping).", flush=True)
+                v, w = 0.0, 0.0
+        else:
+            v, w, idx = pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w)
         # integrate simulated unicycle/diff-drive kinematics
         pose[0] += v * math.cos(pose[2]) * dt
         pose[1] += v * math.sin(pose[2]) * dt

@@ -733,13 +733,12 @@ class RPPController:
         self.global_frame = str(costmap_ros.getGlobalFrameID())
         self.base_frame = str(costmap_ros.getBaseFrameID())
         if node is None:
-            # RPP declares its params under "<name>." on the parent node; auto-declare
-            # from overrides lets a user pass them via `parameters`.
-            node = lifecycle_node("nav2_kit_rpp_parent",
-                                  parameters={f"{name}.{k}": v
-                                              for k, v in (parameters or {}).items()},
-                                  transitions=())
+            node = lifecycle_node("nav2_kit_rpp_parent", transitions=())
         self.node = node
+        # RPP declares its params under "<name>." on the parent node during configure()
+        # (declare_parameter_if_not_declared), so pre-declare our overrides on the node
+        # -- whether it was created here or passed in -- so RPP reads OUR values.
+        self._declare_params(node, name, parameters)
         self.costmap_ros = costmap_ros
         self.tf = tf_buffer or self._ns.make_buffer(node.get_clock())
         self.gc = self._ns.make_goal_checker(float(goal_xy_tolerance))
@@ -748,6 +747,18 @@ class RPPController:
             self._ns.configure_rpp(self.rpp, node, std.string(name), self.tf, costmap_ros)
         self.rpp.activate()
         _LC_TRACKED.append(self)
+
+    @staticmethod
+    def _declare_params(node, name, parameters):
+        std = cppyy.gbl.std
+        Param = cppyy.gbl.rclcpp.Parameter
+        for key, value in (parameters or {}).items():
+            pname = std.string(f"{name}.{key}")
+            pv = _parameter_value(value)
+            try:
+                node.declare_parameter(pname, pv)
+            except Exception:                        # already declared -> set instead
+                node.set_parameter(Param(pname, pv))
 
     def set_plan(self, path, frame=None):
         """Set the global plan. ``path`` is either a C++ ``nav_msgs/Path`` or an
