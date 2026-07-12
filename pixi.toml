@@ -61,7 +61,7 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # per-kit proof is the feature-env test-<kit> tasks.
 test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
-lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench scripts skills examples"
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench retarget_pipeline scripts skills examples"
 clean = "rm -rf build"
 
 # --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
@@ -253,6 +253,47 @@ demo-webcam = "python cv_kit/demos/webcam_demo.py"
 # The A-vs-B table at 640x480 and 1280x720 (synthetic, no viewer, no ROS).
 bench-webcam = "python cv_kit/demos/webcam_demo.py --bench"
 
+# --- pipeline: perception -> humanoid retargeting capture rig ------------------
+# The perception half (Process A): webcam -> MediaPipe HolisticLandmarker
+# (pose + hands, face optional) -> a landmark stream (record/replay) -> TF frames
+# via rclcpp_kit -> live Rerun. The retargeting half (Process B) runs in the
+# standalone `wbc` env (pinocchio can't share a process/env with ROS -- libboost
+# 1.86 vs 1.90, see [feature.wbc]); the two processes are coupled by the landmark
+# stream file (tailable live, replayable in CI) and both log to one Rerun viewer.
+#
+# This feature composes with the DEFAULT ros-base env (solve-group = "default"):
+# it needs rclcpp_kit (TF) + cppyy, which the default already carries. It adds only
+# rerun-sdk (conda) and MediaPipe (the repo's FIRST pip dependency, in a
+# [pypi-dependencies] section). MediaPipe pulls opencv-contrib-python (pip cv2) and
+# resolves numpy to 2.5.1 -- the SAME version the default conda env already carries,
+# so there is no conda/pip numpy split. The default env carries no conda OpenCV, so
+# pip's cv2 does not shadow a conda cv2 (why this feature does NOT compose with the
+# `vision` feature, whose conda opencv WOULD collide). cv_kit's C++ OpenCV is not
+# needed here -- perception's only hot cppyy path is TF, not image kernels.
+[feature.pipeline.dependencies]
+rerun-sdk = "0.34.*"  # live multimodal viz (pin matches the `vision` feature)
+
+[feature.pipeline.pypi-dependencies]
+# MediaPipe 0.10.35 (py3.12, manylinux_2_28) -> pose/hand/holistic landmarkers via
+# its Tasks API (the legacy mp.solutions API is gone in 0.10.x). Brings cv2
+# (opencv-contrib-python) + numpy 2.5.1 (== the conda numpy) + flatbuffers. The
+# .task model bundles are NOT in the wheel -> retarget_pipeline/fetch_models.py
+# downloads them once to a gitignored cache (synthetic fallback when absent).
+mediapipe = "==0.10.35"
+
+[feature.pipeline.tasks]
+# One-time: fetch the MediaPipe .task model bundles to build/pipeline/models/.
+fetch-models = "python retarget_pipeline/fetch_models.py"
+# THE PERCEPTION DEMO (Process A): live webcam if present else synthetic; opens a
+# Rerun window; writes the landmark stream. Add --record <path> / --replay <path>.
+demo-perceive = "python retarget_pipeline/perceive.py"
+# Perception A-vs-B glue bench: TF broadcast of all landmark frames, rclcpp_kit
+# (C++ tf2) vs a stock rclpy broadcaster, on the same recorded stream.
+bench-perceive = "python retarget_pipeline/perceive.py --bench"
+# retarget_pipeline tests that run in the perception env (stream round-trip +
+# headless replay smoke). Auto-skip without rerun/mediapipe. Replay needs no camera.
+test-pipeline = "pytest retarget_pipeline/tests/test_stream.py retarget_pipeline/tests/test_perceive.py -v"
+
 # --- cudabuild: provision/validate a CUDA-enabled OpenCV for cv_kit's GPU path -
 # conda-forge ships no CUDA OpenCV (docs in cv_kit/CUDA_OPENCV.md); this vendors a
 # trustworthy prebuilt's .so's + supplies the matching CUDA 12.9 runtime. Standalone.
@@ -300,6 +341,7 @@ tsid = "*"                 # task-space inverse dynamics (python bindings + C++ 
 example-robot-data = "*"   # standard robot models (Talos/Solo/arm) for the solves
 casadi = "*"               # pinocchio's shipped autodiff scalar (templated-scalar contrast)
 eigen = "*"                # linear algebra headers (pulled anyway; explicit for JIT includes)
+rerun-sdk = "0.34.*"       # log the retargeted humanoid to Rerun (retarget.py)
 
 [feature.wbc.activation.env]
 # cppyy resolves C++ symbols at call time by scanning LD_LIBRARY_PATH; conda relies
@@ -313,6 +355,20 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/wbc_kit"
 demo-wbc-lower = "python wbc_kit/demos/d01_lower_action_model.py"
 # wbc_kit tests (gate on the WBC C++ libs). The base cppyy_kit layer is in test-bt.
 test-wbc = "pytest wbc_kit/tests/test_wbc_kit.py -v"
+# --- retargeting half (Process B): consume the landmark stream, retarget onto a
+# humanoid via a whole-body CLIK solve (pinocchio), log to Rerun + write the
+# policy-kickstart dataset. Runs in this standalone env (pinocchio can't share a
+# process with ROS). --replay <stream> reads a recorded stream (CI/headless);
+# --robot g1 swaps Talos for the Unitree G1 (both URDFs ship with example-robot-data).
+demo-retarget = "python retarget_pipeline/retarget.py"
+# The honest cppyy_kit win in this half: the per-frame retarget GLUE kernel (coord
+# transform + target map + sequential One-Euro filter) authored as one cppyy.cppdef
+# C++ pass vs the identical Python per-frame loop. (The IK solve itself uses pinocchio's
+# Python bindings -- pinocchio::Model won't JIT under Cling with this env's boost; see
+# docs/retarget_pipeline/REPORT.md.)
+bench-retarget = "python retarget_pipeline/retarget.py --bench"
+# retarget tests (gate on pinocchio). Headless replay of a tiny recorded stream.
+test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
 
 # --- pkg (M1c): rattler-build packaging of the 10-package suite --------------
 # Standalone (no-default-feature) so the packaging tooling doesn't drag the
@@ -361,6 +417,12 @@ moveit = { features = ["moveit"], solve-group = "default" }
 ik = { features = ["moveit", "ik"], solve-group = "default" }
 control = { features = ["control"], solve-group = "default" }
 vision = { features = ["vision"], solve-group = "default" }
+# Perception half of the capture rig: the default ros-base env + rerun + the
+# MediaPipe pip dep (this repo's first). solve-group="default" so the ROS/cppyy
+# stack is the exact same solve as everywhere else; MediaPipe's numpy 2.5.1 matches
+# the default conda numpy, and the default env carries no conda OpenCV to clash with
+# pip's cv2. The retargeting half runs in the standalone `wbc` env (below).
+pipeline = { features = ["pipeline"], solve-group = "default" }
 # WBC exploration (M6e): pinocchio/crocoddyl/tsid + robot models. STANDALONE
 # (no-default-feature): the conda-forge WBC bindings pin libboost 1.86 vs the ROS
 # stack's 1.90 — incompatible under one solve-group (see [feature.wbc.dependencies]).
