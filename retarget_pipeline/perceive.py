@@ -389,7 +389,7 @@ def run_live(args):
                 stats["detected"] += 1
 
             if writer is not None:
-                writer.write(t=time.monotonic(), pose_world=lm.get("pose_world"),
+                writer.write(t=time.time(), pose_world=lm.get("pose_world"),
                              pose_image=lm.get("pose_image"),
                              left_hand=lm.get("left_hand"),
                              right_hand=lm.get("right_hand"),
