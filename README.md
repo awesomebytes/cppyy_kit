@@ -9,7 +9,8 @@ Python via [cppyy](https://cppyy.readthedocs.io). No bindings to write, no code
 generation, no build step: the C++ library you already have installed is called
 directly, its own class and method names intact, while your Python does the
 orchestration. When a hot path needs C++ speed, you write that path in C++ inline —
-in the same file — and the kits make the crossing invisible.
+in the same file — and the kits handle the data marshaling and object lifetime
+across the boundary.
 
 You get the productivity of a Python prototype and the performance of the C++
 library underneath it, and the same code climbs an optimization ladder (freeze the
@@ -90,7 +91,7 @@ pull `ros-jazzy-rclcpp-kit`, transitively. To hack on the suite instead, see
 
 | Kit | What it drives | Headline |
 |---|---|---|
-| **[cppyy_kit](docs/COMMON_PATTERNS.md)** (base) | the ROS-free machinery: load / callback / lifetime, `@cpp`, `require`, `nogil`, [freeze & compile-cache](docs/FREEZE.md) | eliminates the ~0.69 s first-use JIT [persistently](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached) |
+| **[cppyy_kit](docs/COMMON_PATTERNS.md)** (base) | the ROS-free machinery: load / callback / lifetime, `@cpp`, `require`, `nogil`, [freeze & compile-cache](docs/FREEZE.md) | first-use JIT paid once per machine: 632 → 91 ms on the PCL VoxelGrid kernel [↗](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached) |
 | **[rclcpp_kit](rclcpp_kit/WHY.md)** | rclcpp (ROS 2 core): bringup, messages, tf, rosbag2, CDR | TF ingest **7.4–16.9×** lower CPU [↗](docs/benchmarks.md#tf-ingest--c-tf2-listener-vs-python-callback) |
 | **[bt_kit](bt_kit/WHY.md)** | BehaviorTree.CPP v4 (no Python binding exists) | Groot2-compatible trees from Python; cache 218→62 ms [↗](docs/benchmarks.md#bt_kit-compile-cache--t01-cold-run-adoption) |
 | **[pcl_kit](pcl_kit/WHY.md)** | Point Cloud Library (no maintained binding) | **15.1× latency / 7.4× CPU** at 74-LOC parity [↗](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end) |
@@ -103,10 +104,10 @@ pull `ros-jazzy-rclcpp-kit`, transitively. To hack on the suite instead, see
 | **[wbc_kit](wbc_kit/WHY.md)** | Crocoddyl custom action models | inline-C++ model, **no build system** [↗](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c) |
 
 Each kit is a package with its own Python module, `demos/`, `tests/`, optional
-`cpp/`, and a `WHY.md` (the pitch) / `REPORT.md` (the evidence) / `SKILL.md`
+`cpp/`, and a `WHY.md` (the rationale) / `REPORT.md` (the evidence) / `SKILL.md`
 (LLM-facing cheat sheet) trio — the anatomy in [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md).
 
-### Demos & examples — the thesis, measured
+### Demos & examples
 
 Every headline links to the exact row that produced it in
 [docs/benchmarks.md](docs/benchmarks.md).
@@ -121,14 +122,23 @@ Every headline links to the exact row that produced it in
 | [Jitter bench](docs/jitter_bench/REPORT.md) | a ~1 kHz control loop orchestrated from Python on a *stock* kernel | **~2 µs median** period, unprivileged [↗](docs/benchmarks.md#jitter-bench--reduced-reference-set-a1--b--c-idle-60-s-each) |
 | [cppyy-accelerate skill](skills/cppyy-accelerate/SKILL.md) | point a coding agent at slow Python; it moves the hot path to a kit | **16.3×** (49.6 → 3.04 ms), output bit-identical [↗](docs/benchmarks.md#accelerate--the-llm-skill-worked-example) |
 
-**Honest by design.** The webcam win is dramatic *because the hot stage is a custom
-kernel with no OpenCV one-liner*; when the per-frame work is only library-provided
-ops (`cv2` is C++ too) the gap collapses to ~1.1–1.2×, and we say so. In the
-retargeting rig the cppyy wins are in the glue (marshaling + the transform kernel) —
-the IK *solve* itself is a pinocchio-bindings job where cppyy is blocked by a
-documented wall, and that boundary is reported, not hidden. Benchmarks ran on a
-shared development machine; treat absolute numbers as directional and ratios as the
-stabler signal (same caveat every `REPORT.md` carries).
+### Where the speedups apply — and where they don't
+
+The webcam gap is large because the hot per-frame stage is a hand-written per-pixel
+NCC tracker with no OpenCV one-liner. When the per-frame work is only
+library-provided ops (ORB, RANSAC — `cv2` is already C++), the same A-vs-B
+comparison narrows to ~1.1–1.2×
+([webcam report](docs/webcam_demo/REPORT.md#the-a-vs-b-table)).
+
+In the retargeting rig, the measured cppyy wins are the `/tf` message marshaling and
+the transform/retarget kernel. The IK solve runs on pinocchio's own Python bindings:
+instantiating `pinocchio::Model` from headers under Cling trips boost 1.90's variant
+template-arity limit (pinocchio's 25-type joint `boost::variant`), so that path
+cannot be JIT-parsed
+([retarget report](docs/retarget_pipeline/REPORT.md#the-cppyy_kit-win-here-retarget-glue-and-the-honest-boundary-on-the-solve)).
+
+The benchmarks ran on a shared development machine, so the ratios are more repeatable
+than the absolute times.
 
 ## The optimization ladder
 
@@ -136,20 +146,23 @@ The same code climbs rungs as you need more speed — the kit API does not chang
 
 - **Prototype (L0).** Plain Python driving the kit. Headers are parsed and
   per-signature wrappers JIT-compiled on first use. Fastest to write.
-- **Accelerate.** Move the hot path onto C++ via a kit, `@cpp`, or `nogil`. The PCL
-  showcase keeps the cloud in C++ end to end for
-  [15.1× lower latency at LOC parity](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end).
+- **Accelerate.** Move the hot path onto C++ via a kit, `@cpp`, or `nogil` — 15.1×
+  lower latency in the
+  [PCL pipeline benchmark](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end),
+  where the cloud stays in C++ end to end at 74-LOC parity.
 - **Freeze.** A zero-config Cling PCH of the library headers is built once into
   `~/.cache/cppyy_kit` and auto-loaded thereafter, eliminating the header parse —
-  rclcpp bringup [~1.73 s → 0.064 s (~27×)](docs/benchmarks.md#auto-pch--zero-config-cold-vs-warm-bringup).
-  The compile cache does the same for `@cpp`/`cppdef` kernels, paying the ~0.69 s
-  first-use JIT [once per machine, ever](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached).
-- **Lower (L2).** A proven-hot leaf is authored as a native C++ node — the WBC
-  inline Crocoddyl model runs
-  [22.9× faster than the Python-derived one](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c),
-  bit-identical, removing the per-call cppyy boundary entirely.
+  ~27× on rclcpp bringup (~1.73 s → 0.064 s) in the
+  [auto-PCH measurement](docs/benchmarks.md#auto-pch--zero-config-cold-vs-warm-bringup).
+  The compile cache does the same for `@cpp`/`cppdef` kernels: the first-use JIT —
+  632 → 91 ms on the
+  [PCL VoxelGrid kernel](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached)
+  — is paid once per machine, not once per process.
+- **Lower (L2).** A proven-hot leaf is authored as a native C++ node — 22.9× on the
+  [WBC Crocoddyl action model](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c)
+  (bit-identical cost), removing the per-call cppyy boundary.
 
-Read the full ladder in [`docs/FREEZE.md`](docs/FREEZE.md) and the 36 hard-won
+Read the full ladder in [`docs/FREEZE.md`](docs/FREEZE.md) and the 36 documented
 patterns behind it in [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md).
 
 ## Powers rclcppyy
@@ -160,18 +173,18 @@ that lets an existing rclpy program run ROS 2's C++ core (rclcpp, tf2, rosbag2, 
 serialization) with minimal changes. rclcppyy 0.2.0 is now thin re-export shims over
 `rclcpp_kit`, and installs from the same channel as `ros-jazzy-rclcppyy`. If you have
 an rclpy node paying Python for work that is fundamentally C++ (TF ingest, per-message
-marshaling), that is where the suite pays off first.
+marshaling), `rclcpp_kit` moves that work into C++.
 
 ## Built for LLM agents
 
-Agent-consumability is a first-class design goal, not an afterthought:
+Agent-consumability is a design goal:
 
 - Every kit ships a `SKILL.md` — a compact, LLM-facing cheat sheet of its real API.
 - [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) is the shared playbook (36
   patterns) a coding agent reads before writing a new kit or a new call.
 - The [`cppyy-accelerate`](skills/cppyy-accelerate/SKILL.md) skill is a
   Claude-Code-consumable procedure — **PROFILE** (a cProfile + boundary-tracer),
-  **MAP** (hotspot shape → the right kit/pattern, with an honest DON'T list),
+  **MAP** (hotspot shape → the right kit/pattern, with a list of when not to use it),
   **APPLY** (a minimal diff per the kit `SKILL.md`), **VERIFY** (tests-as-contract +
   a before/after table). Its [worked example](skills/cppyy-accelerate/WALKTHROUGH.md)
   accelerates a naive voxel downsampler **16.3×** with bit-identical output.
