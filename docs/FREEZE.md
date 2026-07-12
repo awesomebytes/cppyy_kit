@@ -330,18 +330,30 @@ wrapper. `cppyy_kit.autopch` removes both steps: the PCH is created on first use
 a standard cache dir and auto-loaded on every later run, with a clear line printed for
 each event. Nothing to set, no launcher, no pixi task.
 
-### How it engages
+### How it engages — a startup `.pth`, so import order does not matter
 
-`cppyy_kit/__init__` calls `autopch.setup()` **before its own `import cppyy`** — the
-import-order rule (§2) is honoured automatically. `setup()`:
+Cling binds its PCH when the interpreter first imports cppyy, so `CLING_STANDARD_PCH`
+must be set before that. Rather than depend on a program importing `cppyy_kit` before
+`cppyy` (which many programs do not — `import cppyy` early in a module wins the race),
+activation runs from a `.pth` file installed in the environment's site-packages. A
+`.pth` line executes at every interpreter start, *before any user import*, so the PCH
+binds regardless of import order.
 
-* respects a `CLING_STANDARD_PCH` the user set themselves (deliberate override → hands
-  off) and the `CPPYY_KIT_NO_AUTOPCH=1` opt-out;
-* otherwise reads this environment's manifest of baked headers, and if a matching PCH
-  exists, sets `CLING_STANDARD_PCH` to it and prints
-  `cppyy_kit: Cling PCH loaded from <path>`;
-* if none exists, the run proceeds on the JIT path (never blocks) and a one-time build
-  is scheduled.
+* **The `.pth`** runs `cppyy_kit._autopch_boot.activate()` (installed alongside it as a
+  standalone, stdlib-only module). `activate()` reads this environment's manifest, and
+  if a matching PCH exists, points `CLING_STANDARD_PCH` at it and sets a marker. It is
+  silent, costs a few milliseconds (it imports `cppyy_backend` only, to read the cppyy
+  version for the cache key — not cppyy itself), respects `CPPYY_KIT_NO_AUTOPCH=1` and
+  any already-set `CLING_STANDARD_PCH`, and never raises (a broken bootstrap would
+  otherwise print on every `python` start).
+* **`cppyy_kit` self-installs the `.pth`** on first import (a one-time notice), and
+  refreshes it if out of date. `python -m cppyy_kit.autopch --uninstall` removes it;
+  `--status` shows install + cache state.
+* **`cppyy_kit`'s own import** (`autopch.setup()`) reads the marker and prints the one
+  user-facing line, `cppyy_kit: Cling PCH loaded from <path>` (a print from the `.pth`
+  on every `python` start would be noise). Before the `.pth` exists — the very first
+  run — `setup()` still activates from the manifest if cppyy is not yet loaded, so even
+  that run can be warm.
 
 A kit declares the headers it parses via the hook
 
@@ -355,28 +367,28 @@ into the environment manifest and a **detached background build** is kicked off 
 interpreter exit (guarded by a lockfile, written atomically), so the *next* run is
 warm. rclcpp_kit's `bringup_rclcpp()` registers `rclcpp/rclcpp.hpp` +
 `rcl_interfaces/msg/parameter_event.hpp` with every ament include dir; no
-force-symbols are needed for rclcpp (verified: the full `test-rclcpp` suite passes
-with the PCH active).
-
-**Import-order caveat (honest):** the activation only engages when `cppyy_kit` (or a
-kit, which imports `cppyy_kit` first) is imported **before** the program imports
-`cppyy` directly — Cling binds its PCH at cppyy's first import. If `cppyy` is imported
-first, that run stays on JIT but the header set is still recorded, so the next run
-warms up. Ordinary kit usage (`import rclcpp_kit; rclcpp_kit.bringup_rclcpp()`)
-satisfies this.
+force-symbols are needed for rclcpp (verified: the full `test-rclcpp` suite passes with
+the PCH active). The kit modules import `cppyy_kit` before `cppyy` as a secondary
+safety net, so a kit program is warm on its second run even in an environment where the
+`.pth` could not be installed (e.g. a read-only site-packages).
 
 ### Cache layout — `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/`
 
 | File | Role |
 |---|---|
-| `<env-tag>.manifest.json` | the accumulated baked-header set + include paths for this env; `<env-tag>` hashes the env prefix and the cppyy/backend versions |
+| `<env-tag>.manifest.json` | the accumulated baked-header set, include paths, and the current header-set's `pch_key` for this env; `<env-tag>` hashes the env prefix and the cppyy/backend versions |
 | `<pch-key>.pch` | the artifact; `<pch-key>` hashes the same env material **and** the header set, so any change is a clean miss (never a silent ABI mismatch) |
-| `<pch-key>.pch.log` | the background build's output, for diagnosing a failed build |
+| `<pch-key>.pch.json` | metadata (env tag, headers, version) used to group artifacts for pruning |
+| `<pch-key>.pch.log` | the background build's output (and the prune summary), for diagnosis |
 | `<pch-key>.pch.lock` | held while a build is in flight (prevents double-builds) |
 
 A rebuilt env or an upgraded cppyy changes the tag/key, so a stale artifact is simply
 not found and the run falls back to JIT — the same lifecycle as the manual PCH (§3),
-and nothing is ever committed.
+and nothing is ever committed. **Pruning:** after each successful build the cache is
+trimmed to the newest few PCHs per environment (plus any still referenced by a live
+manifest), and orphaned sidecars, stale locks, and dead-environment manifests are
+swept — so accumulated artifacts from many environments do not pile up. Prune manually
+with `python -m cppyy_kit.autopch --prune`.
 
 ### Measured (rclcpp bringup, this machine)
 
@@ -398,6 +410,7 @@ compile cache).
 
 | File | Role |
 |---|---|
-| `cppyy_kit/autopch.py` | cache paths/keys, manifest, `setup()`, `register_pch_headers()`, `generate_pch()`, at-exit scheduler |
-| `cppyy_kit/autopch_build.py` | detached worker that builds a PCH from a manifest and releases the lock |
-| `cppyy_kit/tests/test_autopch.py` | hermetic tests (keys/invalidation, override, manifest union, scheduling, cross-process pickup) + an opt-in real-build test |
+| `cppyy_kit/_autopch_boot.py` | standalone, stdlib-only bootstrap; `activate()` runs from the `.pth` and is the single source of the cache-path/key logic (shared with `autopch`) |
+| `cppyy_kit/autopch.py` | `setup()`, `register_pch_headers()`, `.pth` self-install/uninstall, `generate_pch()`, at-exit scheduler, `prune()`, the `python -m` CLI |
+| `cppyy_kit/autopch_build.py` | detached worker that builds a PCH from a manifest, prunes, and releases the lock |
+| `cppyy_kit/tests/test_autopch.py` | hermetic tests (keys/invalidation, override, `.pth` install/uninstall/opt-out/crash-proofing, manifest union, scheduling, pruning, cross-process pickup) + an opt-in real-build test |
