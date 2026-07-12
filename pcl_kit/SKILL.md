@@ -1,7 +1,7 @@
 # pcl_kit — cheat sheet for a coding agent
 
 You are writing Python that drives the **Point Cloud Library (PCL)** — a C++ point
-cloud library — through `rclcppyy.kits.pcl_kit`. The kit **mirrors PCL's C++ API**:
+cloud library — through `pcl_kit`. The kit **mirrors PCL's C++ API**:
 `bringup_pcl()` returns the real `pcl` namespace and you use `pcl.PointCloud`,
 `pcl.VoxelGrid`, `setInputCloud`, `setLeafSize`, `filter` exactly as in the PCL
 tutorials. The kit only removes the cppyy friction (bringup, NumPy<->cloud copies,
@@ -29,7 +29,7 @@ the ROS message bridge). You do **not** need to know cppyy.
 
 ```python
 import numpy as np
-from rclcppyy.kits import pcl_kit
+import pcl_kit
 pcl = pcl_kit.bringup_pcl(with_ros=False)
 
 points = np.random.rand(100_000, 3).astype(np.float32)   # (N,3) or (N,4)
@@ -53,15 +53,15 @@ near-free zero-copy view instead — but it aliases the cloud's storage, so keep
 
 ## Pattern 2 — ROS PointCloud2 pipeline, cloud stays in C++  (the money path)
 *Use for:* a ROS 2 node that filters `sensor_msgs/PointCloud2` without ever
-materializing points in Python. Subscribe via rclcppyy so the callback gets the
+materializing points in Python. Subscribe via rclcpp_kit so the callback gets the
 **C++** message.
 
 ```python
 import os; os.environ.setdefault("ROS_DOMAIN_ID", "43")
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-from rclcppyy.kits import pcl_kit
+import rclcpp_kit
+import pcl_kit
 
-rclcpp = bringup_rclcpp()
+rclcpp = rclcpp_kit.bringup_rclcpp()
 pcl = pcl_kit.bringup_pcl()                 # with_ros=True (default)
 from sensor_msgs.msg import PointCloud2
 
@@ -109,7 +109,7 @@ headers so the filter instantiates for your type.
 
 ```python
 import cppyy
-from rclcppyy.kits import pcl_kit
+import pcl_kit
 pcl = pcl_kit.bringup_pcl(with_ros=False)
 
 cppyy.cppdef(r"""

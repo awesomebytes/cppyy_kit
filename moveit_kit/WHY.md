@@ -93,8 +93,8 @@ the node's parameter server, and a rebuild on every edit.
 ### Python — `d01_robot_state.py` (moveit_kit, shipped in this repo)
 
 ```python
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-from rclcppyy.kits import moveit_kit
+import rclcpp_kit
+import moveit_kit
 
 moveit = moveit_kit.bringup_moveit(with_kinematics=True)   # parse + KDL plugin
 cfg = moveit_kit.panda_config()

@@ -271,7 +271,7 @@ Measured (t01, cold subprocesses, `bench-cache-bt[-frozen]`):
 
 Run 1 pays a one-time ~2 s `.so` compile (per machine; skippable by shipping warm).
 The residual ~60 ms is cppyy's call wrapper to the trampoline entry points, which is
-cppyy-internal (not cacheable at our layer). Same 37 tests green on the cached path
+cppyy-internal (not cacheable at this layer). Same 37 tests green on the cached path
 and the JIT fallback; `docs/kits/FREEZE.md` §4 has the mechanism.
 
 ---

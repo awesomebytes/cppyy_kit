@@ -132,8 +132,8 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 - Publish only artifact-proven packages (fresh-env install test gates upload).
 - Tests are the contract at every rung (golden/differential where applicable).
 - COMMON_PATTERNS.md is the canonical playbook; every lane feeds it.
-- Commits: sammypfeiffer@gmail.com; no history rewrites containing others'
-  commits; PLAN.md (this file) is the supervisor's ledger.
+- No history rewrites containing others' commits; PLAN.md (this file) is the
+  project ledger.
 
 ### M8 — L3 whole-app lowering (research thread)
 

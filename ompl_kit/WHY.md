@@ -103,7 +103,7 @@ the section above.)
 ```python
 #!/usr/bin/env python
 """2D plan around a circular obstacle; validity checker in Python."""
-from rclcppyy.kits import ompl_kit
+import ompl_kit
 
 ob, og = ompl_kit.bringup_ompl()
 

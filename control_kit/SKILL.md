@@ -1,6 +1,6 @@
 # CONTROL_KIT.md — API cheat sheet
 
-`rclcppyy.kits.control_kit` — write a ros2_control controller in Python and run it inside a
+`control_kit` — write a ros2_control controller in Python and run it inside a
 real `controller_manager::ControllerManager` in-process. Requires the pixi `control` env
 (`pixi run -e control ...`) and rclcpp initialized. See [REPORT.md](REPORT.md) for the
 mechanics/verdict and [WHY.md](WHY.md) for the stock-ros2_control contrast.
@@ -8,10 +8,10 @@ mechanics/verdict and [WHY.md](WHY.md) for the stock-ros2_control contrast.
 ## Bring-up
 
 ```python
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-from rclcppyy.kits import control_kit as ck
+import rclcpp_kit
+import control_kit as ck
 
-bringup_rclcpp().init()                 # rclcpp must be up
+rclcpp_kit.bringup_rclcpp().init()                 # rclcpp must be up
 ns = ck.bringup_control()               # JIT-include CM/controller headers, load .so, cppdef glue
                                         # returns cppyy.gbl.controller_interface; idempotent
 ck.load_message_support()               # OPTIONAL: std_msgs typesupport for a command topic
@@ -101,7 +101,7 @@ Interface order matches the `*_interface_configuration` names.
 ## Full example (self-commanding PD)
 
 ```python
-bringup_rclcpp().init(); ck.bringup_control()
+rclcpp_kit.bringup_rclcpp().init(); ck.bringup_control()
 
 class PD(ck.ControllerInterface):
     def __init__(self): super().__init__(); self.target=[0.5,-0.3]; self.kp=0.4
