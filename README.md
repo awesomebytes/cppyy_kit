@@ -2,88 +2,61 @@
 
 [![CI](https://github.com/awesomebytes/cppyy_kit/actions/workflows/ci.yml/badge.svg)](https://github.com/awesomebytes/cppyy_kit/actions/workflows/ci.yml)
 
-A suite of **kits** that let Python drive C++ robotics libraries via
-[cppyy](https://cppyy.readthedocs.io) — **prototype at Python speed, run at C++
-speed, graduate to AOT** — with first-class documentation and LLM-agent
-consumability.
+**Prototype in Python, run at C++ speed — mix Python and C++ with ease.**
 
-> Prototype normally (plain Python) → switch to the kits and it gets
-> automatically more efficient → write unit/integration tests (the contract) →
-> apply AOT (freeze/lower) → show the benchmark difference, **while the code
-> stays the same or changes minimally.**
+cppyy_kit is a suite of *kits* that drive real C++ robotics libraries from short
+Python via [cppyy](https://cppyy.readthedocs.io). No bindings to write, no code
+generation, no build step: the C++ library you already have installed is called
+directly, its own class and method names intact, while your Python does the
+orchestration. When a hot path needs C++ speed, you write that path in C++ inline —
+in the same file — and the kits make the crossing invisible.
 
-The suite is extracted and expanded from the patterns proven in
-[rclcppyy](https://github.com/awesomebytes/rclcppyy) (7 spikes, 22 documented
-patterns, a measured optimization ladder: PCH freeze 890→6 ms header parse, L2
-lowering, 14.8×/9.4× PCL showcase, 6.7–14× TF ingest). See
-[`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) for the approved
-architecture and [`PLAN.md`](PLAN.md) for the roadmap. **Headline target: ROSCon
-UK 2026.**
+You get the productivity of a Python prototype and the performance of the C++
+library underneath it, and the same code climbs an optimization ladder (freeze the
+startup cost, cache the compile, lower a hot leaf) without changing shape. Every
+number on this page is measured on one machine on one day and linked to the row that
+produced it in **[docs/benchmarks.md](docs/benchmarks.md)**.
 
-## Packages
+## Two ways to mix Python and C++
 
-| Package | Depends on | Content |
-|---|---|---|
-| **`cppyy_kit`** | cppyy | ROS-free base: friction primitives (load / keep_alive / callback / HandleRegistry / warmup / first_use / teardown / probe), `freeze` (PCH + vendored-source tooling), plus the compile cache, `require()`, `@cpp`, `nogil`, stubs, and capability/fallback. |
-| **`rclcpp_kit`** | cppyy_kit, rclcpp | The kit for rclcpp (ROS 2 core): bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers. Carved out of rclcppyy. |
-| **`bt_kit`** | cppyy_kit | BehaviorTree.CPP v4 from Python. |
-| **`pcl_kit`** | cppyy_kit (+ rclcpp) | Point Cloud Library; clouds stay in C++ end to end. |
-| **`ompl_kit`** | cppyy_kit | Open Motion Planning Library. |
-| **`nav2_kit`** | cppyy_kit (+ rclcpp) | Nav2 algorithm cores (Costmap2D + NavFn) composed from Python. |
-| **`moveit_kit`** | cppyy_kit (+ rclcpp) | The full MoveIt 2 C++ API from Python. |
-| **`control_kit`** | cppyy_kit (+ rclcpp) | A Python ros2_control controller inside the real controller_manager. |
-| **`cv_kit`** | cppyy_kit (+ rclcpp) | OpenCV C++ API with a zero-copy `sensor_msgs/Image` → `cv::Mat` bridge. |
-| **`dbow_kit`** | cppyy_kit | DBoW2 place recognition / loop closure (no Python binding, not on conda-forge). |
-| **`wbc_kit`** | cppyy_kit | Whole-body control: custom Crocoddyl action models authored inline in C++, JIT-compiled with no build system (ROS-free). |
+**Drive a whole C++ library from Python** — here the real BehaviorTree.CPP engine
+parses the XML, owns the tree, and ticks it; there is no Python binding for it, so
+this capability does not otherwise exist:
 
-Each kit is a top-level package with its own Python package, `demos/`, `tests/`,
-optional `cpp/`, and `SKILL.md` / `WHY.md` / `REPORT.md` docs (kit anatomy —
-[`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) §4.4).
-
-## Quickstart
-
-Requires [pixi](https://pixi.sh). The default env is the ROS/cppyy stack; each
-kit's C++ dependency is an additive feature env.
-
-```bash
-# lint + the default (auto-skipping) test suite — the CI gate
-pixi run lint
-pixi run test
-
-# a kit: install its env, run its demo + test suite
-pixi run -e bt   demo-bt-t01      # BehaviorTree.CPP first tree, in short Python
-pixi run -e bt   test-bt          # bt_kit + base cppyy_kit tests
-pixi run -e ompl demo-ompl-plan   # OMPL 2D plan
-pixi run -e nav2 test-nav2        # Nav2 cores from Python
-pixi run -e control test-control  # a Python controller in the real controller_manager
+```python
+import bt_kit
+bt = bt_kit.bringup_bt()
+tree = bt.BehaviorTreeFactory().create_tree_from_text(xml)   # the C++ factory
+tree.tickWhileRunning()                                      # the C++ engine ticks
 ```
 
-Kit demos/tests are discovered via `PYTHONPATH` (set in `pixi.toml`
-`[activation.env]`): the repo root plus each kit dir. ROS-touching kits get the ROS
-2 core through **`rclcpp_kit`** (a local package on that path) plus the default
-`ros-base` env — no extra per-kit ROS dependency. The `rclcpp_kit` suite + tf demos
-run in the `rclcpp` env: `pixi run -e rclcpp test-rclcpp` / `test-tf`.
+**Or drop to inline C++ for a hot kernel** — the decorated function's docstring *is*
+its C++ body; its annotations drive the NumPy marshaling; it compiles once and is
+cached to a real `.so` thereafter (no first-use JIT after the first build):
 
-**Startup gets faster on its own.** The first time you bring a kit up you may see
-`cppyy_kit: building Cling PCH cache at …` — a one-time, background build of a
-precompiled header into `~/.cache/cppyy_kit`. Every later run prints
-`cppyy_kit: Cling PCH loaded from …` and skips the header parse (rclcpp bringup
-~1.9 s → ~0.06 s). Nothing to configure; set `CPPYY_KIT_NO_AUTOPCH=1` to opt out, or
-your own `CLING_STANDARD_PCH` to take over. See
-[docs/FREEZE.md](docs/FREEZE.md#8-zero-config-auto-pch-cppyy_kitautopch).
+```python
+import numpy as np
+from cppyy_kit import cpp
 
-## Install (conda packages)
+@cpp
+def sum_sq(data: cpp.arr("float")) -> float:      # numpy -> (float* data, size_t data_size)
+    "double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"
 
-> **Published.** The suite ships as 11 rattler-build recipes under
-> [`recipe/`](recipe/) via a tag-triggered
-> [release workflow](.github/workflows/release.yml); `v0.1.0` is live on the prefix.dev
-> `awesomebytes` channel. The snippets below work as-is (or use the repo directly per
-> the Quickstart above).
+sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no ctypes, no build, no bindings
+```
 
-Each package is pure-Python (`noarch`) and installs into any pixi/conda env; its
-C++ dependency is declared as a run dependency and pulled by the solver. Add the
-`awesomebytes` channel (plus `robostack-jazzy` + `conda-forge` for the ROS/C++
-deps):
+The friction that both share — locating and loading the `.so`s, pinning callback
+lifetimes, hiding cppyy's template and ownership sharp edges — is factored into the
+`cppyy_kit` base, so each domain kit stays thin and each kit's Python mirrors the
+library's own API 1:1.
+
+## Install
+
+**Published.** The suite ships as 11 conda packages on the prefix.dev
+`awesomebytes` channel (browse: <https://repo.prefix.dev/awesomebytes>). Each package
+is pure-Python (`noarch`); its C++ dependency is a run dependency the solver pulls
+in. `cppyy-kit` and `wbc-kit` are distro-free; the ROS-touching kits are published as
+`ros-jazzy-*`.
 
 ```toml
 # pixi.toml
@@ -105,44 +78,117 @@ ros-jazzy-cv-kit = "*"           # OpenCV C++ (zero-copy Image->cv::Mat)
 ros-jazzy-dbow-kit = "*"         # DBoW2 loop closure (run build-dbow2 once)
 ```
 
-Or `pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-bt-kit`.
-Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching
-kits pull `ros-jazzy-rclcpp-kit`, transitively.
+Or add one at a time:
+`pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-bt-kit`.
+Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching kits
+pull `ros-jazzy-rclcpp-kit`, transitively. To hack on the suite instead, see
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+
+## Showcase
+
+### The kits — a C++ library each, driven from Python
+
+| Kit | What it drives | Headline |
+|---|---|---|
+| **[cppyy_kit](docs/COMMON_PATTERNS.md)** (base) | the ROS-free machinery: load / callback / lifetime, `@cpp`, `require`, `nogil`, [freeze & compile-cache](docs/FREEZE.md) | eliminates the ~0.69 s first-use JIT [persistently](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached) |
+| **[rclcpp_kit](rclcpp_kit/WHY.md)** | rclcpp (ROS 2 core): bringup, messages, tf, rosbag2, CDR | TF ingest **7.4–16.9×** lower CPU [↗](docs/benchmarks.md#tf-ingest--c-tf2-listener-vs-python-callback) |
+| **[bt_kit](bt_kit/WHY.md)** | BehaviorTree.CPP v4 (no Python binding exists) | Groot2-compatible trees from Python; cache 218→62 ms [↗](docs/benchmarks.md#bt_kit-compile-cache--t01-cold-run-adoption) |
+| **[pcl_kit](pcl_kit/WHY.md)** | Point Cloud Library (no maintained binding) | **15.1× latency / 7.4× CPU** at 74-LOC parity [↗](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end) |
+| **[ompl_kit](ompl_kit/WHY.md)** | Open Motion Planning Library | Python validity-checker in the planner's inner loop, no codegen [↗](ompl_kit/REPORT.md) |
+| **[nav2_kit](nav2_kit/WHY.md)** | Nav2 algorithm cores, composed from Python | the real RegulatedPurePursuit with **no lifecycle servers / no pluginlib** [↗](nav2_kit/REPORT.md) |
+| **[moveit_kit](moveit_kit/WHY.md)** | the full MoveIt 2 C++ API | the *whole* C++ surface, not `moveit_py`'s curated subset [↗](moveit_kit/REPORT.md) |
+| **[control_kit](control_kit/WHY.md)** | ros2_control | a Python controller in the *real* controller_manager (ros2_control has no Python API) [↗](control_kit/REPORT.md) |
+| **[cv_kit](cv_kit/WHY.md)** | OpenCV C++ | zero-copy `sensor_msgs/Image` → `cv::Mat`, one CUDA branch point [↗](cv_kit/REPORT.md) |
+| **[dbow_kit](dbow_kit/WHY.md)** | DBoW2 place recognition (no binding, not on conda-forge) | vendored, compiled once, loop closure from short Python [↗](dbow_kit/REPORT.md) |
+| **[wbc_kit](wbc_kit/WHY.md)** | Crocoddyl custom action models | inline-C++ model, **no build system** [↗](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c) |
+
+Each kit is a package with its own Python module, `demos/`, `tests/`, optional
+`cpp/`, and a `WHY.md` (the pitch) / `REPORT.md` (the evidence) / `SKILL.md`
+(LLM-facing cheat sheet) trio — the anatomy in [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md).
+
+### Demos & examples — the thesis, measured
+
+Every headline links to the exact row that produced it in
+[docs/benchmarks.md](docs/benchmarks.md).
+
+| Demo | What it proves | Headline number |
+|---|---|---|
+| [Live webcam A vs B](docs/webcam_demo/REPORT.md) | a hand-written NCC tracker in one inline-C++ kernel vs the identical NumPy loop | **16.18×** @ 640×480 [↗](docs/benchmarks.md#webcam-demo--a-cppyy_kit-c-vs-b-naive-python) |
+| [IK 5-solver bench](docs/ik_bench/WHY.md) | benchmark C++-only IK solvers (incl. unpackaged bio_ik/pick_ik) from *one* Python file | pure-Python **10–25× slower**; bio_ik 991 solve/s [↗](docs/benchmarks.md#ik-benchmark--same-panda-same-200-targets-per-solver-subprocess) |
+| [WBC inline-C++ model](docs/wbc/REPORT.md) | a custom Crocoddyl action model authored inline, JIT-compiled, no CMake | **22.9×** vs Python-derived, bit-identical cost [↗](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c) |
+| [Retargeting teleop rig](docs/retarget_pipeline/REPORT.md) | webcam → body/hand tracking → TF → whole-body retarget onto G1/Talos, live, one Rerun viewer | glue kernel **341.5×**, /tf marshaling **258.9×**, bit-identical [↗](docs/benchmarks.md#retarget-pipeline--perception-tf-marshaling--retarget-glue-kernel) |
+| [Visual loop closure](docs/tutorials/vision_loop_closure.md) | ORB + DBoW2 + GTSAM front-end in short Python, pixels never leave C++ | 1080p ingest **135.8×**; 19 loops, precision/recall 1.00/0.95 [↗](docs/benchmarks.md#vision--cv_kit--dbow_kit-synthetic-sequence) |
+| [Jitter bench](docs/jitter_bench/REPORT.md) | a ~1 kHz control loop orchestrated from Python on a *stock* kernel | **~2 µs median** period, unprivileged [↗](docs/benchmarks.md#jitter-bench--reduced-reference-set-a1--b--c-idle-60-s-each) |
+| [cppyy-accelerate skill](skills/cppyy-accelerate/SKILL.md) | point a coding agent at slow Python; it moves the hot path to a kit | **16.3×** (49.6 → 3.04 ms), output bit-identical [↗](docs/benchmarks.md#accelerate--the-llm-skill-worked-example) |
+
+**Honest by design.** The webcam win is dramatic *because the hot stage is a custom
+kernel with no OpenCV one-liner*; when the per-frame work is only library-provided
+ops (`cv2` is C++ too) the gap collapses to ~1.1–1.2×, and we say so. In the
+retargeting rig the cppyy wins are in the glue (marshaling + the transform kernel) —
+the IK *solve* itself is a pinocchio-bindings job where cppyy is blocked by a
+documented wall, and that boundary is reported, not hidden. Benchmarks ran on a
+shared development machine; treat absolute numbers as directional and ratios as the
+stabler signal (same caveat every `REPORT.md` carries).
+
+## The optimization ladder
+
+The same code climbs rungs as you need more speed — the kit API does not change:
+
+- **Prototype (L0).** Plain Python driving the kit. Headers are parsed and
+  per-signature wrappers JIT-compiled on first use. Fastest to write.
+- **Accelerate.** Move the hot path onto C++ via a kit, `@cpp`, or `nogil`. The PCL
+  showcase keeps the cloud in C++ end to end for
+  [15.1× lower latency at LOC parity](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end).
+- **Freeze.** A zero-config Cling PCH of the library headers is built once into
+  `~/.cache/cppyy_kit` and auto-loaded thereafter, eliminating the header parse —
+  rclcpp bringup [~1.73 s → 0.064 s (~27×)](docs/benchmarks.md#auto-pch--zero-config-cold-vs-warm-bringup).
+  The compile cache does the same for `@cpp`/`cppdef` kernels, paying the ~0.69 s
+  first-use JIT [once per machine, ever](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached).
+- **Lower (L2).** A proven-hot leaf is authored as a native C++ node — the WBC
+  inline Crocoddyl model runs
+  [22.9× faster than the Python-derived one](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c),
+  bit-identical, removing the per-call cppyy boundary entirely.
+
+Read the full ladder in [`docs/FREEZE.md`](docs/FREEZE.md) and the 36 hard-won
+patterns behind it in [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md).
+
+## Powers rclcppyy
+
+`rclcpp_kit` is the capability layer under
+[**rclcppyy**](https://github.com/awesomebytes/rclcppyy) — the drop-in accelerator
+that lets an existing rclpy program run ROS 2's C++ core (rclcpp, tf2, rosbag2, CDR
+serialization) with minimal changes. rclcppyy 0.2.0 is now thin re-export shims over
+`rclcpp_kit`, and installs from the same channel as `ros-jazzy-rclcppyy`. If you have
+an rclpy node paying Python for work that is fundamentally C++ (TF ingest, per-message
+marshaling), that is where the suite pays off first.
+
+## Built for LLM agents
+
+Agent-consumability is a first-class design goal, not an afterthought:
+
+- Every kit ships a `SKILL.md` — a compact, LLM-facing cheat sheet of its real API.
+- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) is the shared playbook (36
+  patterns) a coding agent reads before writing a new kit or a new call.
+- The [`cppyy-accelerate`](skills/cppyy-accelerate/SKILL.md) skill is a
+  Claude-Code-consumable procedure — **PROFILE** (a cProfile + boundary-tracer),
+  **MAP** (hotspot shape → the right kit/pattern, with an honest DON'T list),
+  **APPLY** (a minimal diff per the kit `SKILL.md`), **VERIFY** (tests-as-contract +
+  a before/after table). Its [worked example](skills/cppyy-accelerate/WALKTHROUGH.md)
+  accelerates a naive voxel downsampler **16.3×** with bit-identical output.
 
 ## Docs
 
-- [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) — the approved kit-suite architecture.
-- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (35 patterns).
-- [`docs/FREEZE.md`](docs/FREEZE.md) — the L0→L1→L2 optimization ladder.
-- [`docs/tutorials/`](docs/tutorials/) — end-to-end tutorials (visual loop closure).
-- Per kit: `<kit>/SKILL.md` (LLM-facing), `<kit>/WHY.md` (the pitch), `<kit>/REPORT.md` (evidence).
+Full documentation site: **<https://awesomebytes.github.io/cppyy_kit/>**
 
-## Make it faster with an LLM: the `cppyy-accelerate` skill
+- [The Patterns](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (36 patterns).
+- [Freeze & Cache](docs/FREEZE.md) — the L0 → L1 → L2 + compile-cache ladder.
+- [Benchmarks](docs/benchmarks.md) — every number on this page, one machine, one day, reproducible.
+- [Architecture](docs/ARCHITECTURE_V2.md) — how the suite is put together.
+- [Tutorials](docs/tutorials/vision_loop_closure.md) — end-to-end walkthroughs.
+- Per kit: its **Why** (the pitch), **Report** (the evidence), **Skill** (LLM cheat sheet).
 
-Point a coding agent at slow Python and ask it to speed it up:
-[`skills/cppyy-accelerate/SKILL.md`](skills/cppyy-accelerate/SKILL.md) is a
-Claude-Code-consumable procedure — **PROFILE** (a cProfile + boundary-tracer
-wrapper), **MAP** (a decision tree from hotspot shape to the right kit/pattern, with
-an honest DON'T list), **APPLY** (minimal diff per the kit `SKILL.md`), **VERIFY**
-(tests-as-contract + a before/after table). The worked example
-([`WALKTHROUGH.md`](skills/cppyy-accelerate/WALKTHROUGH.md)) accelerates a naive
-Python voxel downsampler **15.6× (47.9 ms → 3.07 ms)** with identical output —
-`pixi run -e pcl test-accelerate` (the contract) and `bench-accelerate` (the table).
-
-## Status
-
-**Shipped and published.** The migration off rclcppyy is complete, the base is
-enriched (compile cache, `require()`, `@cpp`, `nogil`, stubs, capability/fallback), the
-documentation site is live, the `cppyy-accelerate` LLM skill is out, and every demo
-lane is delivered. All 11 packages are released as `v0.1.0` on the prefix.dev
-`awesomebytes` channel, and rclcppyy is slimmed to thin re-export shims over
-`rclcpp_kit` (0.2.0). The suite is extracted from
-[rclcppyy](https://github.com/awesomebytes/rclcppyy) with git history; every
-ROS-touching kit imports `rclcpp_kit` directly.
-
-Still to come:
-
-- Presentation assets for ROSCon UK 2026.
+Questions, ideas, and bug reports are welcome on the
+[issue tracker](https://github.com/awesomebytes/cppyy_kit/issues).
 
 ## License
 

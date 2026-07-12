@@ -5,10 +5,9 @@ project, or **develop** from the repo to hack on the suite.
 
 ## Install (use a kit)
 
-> **Available after the first release.** The suite is packaged (10 rattler-build
-> recipes + a tag-triggered release workflow) but not yet published. Until then,
-> use the *Develop* path below. The snippets here work once `v0.1.0` is uploaded
-> to the prefix.dev `awesomebytes` channel.
+> **Published.** All 11 packages are live on the prefix.dev `awesomebytes` channel
+> (browse: <https://repo.prefix.dev/awesomebytes>). The snippets below work as-is;
+> or use the *Develop* path to hack on the suite from the repo.
 
 Every package is pure-Python (`noarch`) and installs into any [pixi](https://pixi.sh)
 or conda env; its C++ dependency is pulled by the solver. Add the `awesomebytes`
@@ -72,7 +71,7 @@ pixi run -e docs docs-build    # strict build into ./site
 
 ## Where next
 
-- **[The Patterns](docs/COMMON_PATTERNS.md)** — the canonical cppyy playbook (22 patterns).
+- **[The Patterns](docs/COMMON_PATTERNS.md)** — the canonical cppyy playbook (36 patterns).
 - **[Freeze & Cache](docs/FREEZE.md)** — the L0→L1→L2 + compile-cache ladder.
 - **[Tutorials](docs/tutorials/vision_loop_closure.md)** — end-to-end walkthroughs.
 - Per kit: its **Why** (the pitch), **Report** (the evidence), **Skill** (LLM cheat sheet).
