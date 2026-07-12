@@ -141,6 +141,7 @@ nav:
   - WBC (Crocoddyl): docs/wbc/REPORT.md
   - Retargeting Pipeline: docs/retarget_pipeline/REPORT.md
   - Jitter Bench: docs/jitter_bench/REPORT.md
+  - Benchmarks: docs/benchmarks.md
   - Accelerate (LLM skill):
     - Skill: skills/cppyy-accelerate/SKILL.md
     - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
