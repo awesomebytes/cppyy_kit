@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  name: wbc-kit
+  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.1.0"
+
+package:
+  name: ${{ name }}
+  version: ${{ version }}
+
+source:
+  # Repo root (this recipe lives in recipe/wbc-kit/). use_gitignore skips
+  # .pixi/, build/, output/. build.sh installs only the wbc_kit package.
+  path: ../..
+  use_gitignore: true
+
+build:
+  # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
+  # -> noarch python: one artifact for every platform/python.
+  noarch: python
+  number: 0
+
+requirements:
+  host:
+    - python
+    - pip
+    - setuptools >=61
+  run:
+    - python
+    - cppyy-kit ==0.1.0
+    - crocoddyl
+
+tests:
+  - script:
+      # Fresh-env import smoke (rattler-build resolves run deps in an isolated
+      # test env). The richer proof runs in the driver (recipe/prove_all.sh).
+      - python -c "import wbc_kit; print('wbc_kit', wbc_kit.__file__)"
+
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  repository: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: "Author custom Crocoddyl action models in inline C++ via cppyy (ROS-free)"
+  description: |
+    wbc_kit drives Crocoddyl (optimal control for whole-body / legged robots)
+    from Python via cppyy, with the one capability its own boost::python
+    bindings can't give you: a custom ActionModelAbstract subclass authored in
+    C++ inline, at native speed, with no build system. ROS-free: this kit only
+    needs cppyy-kit + Crocoddyl (pinocchio comes in transitively via
+    Crocoddyl's own dependency), so it does not join the ROS-touching kits'
+    environment (Crocoddyl/pinocchio pin a different libboost line than
+    robostack).
+
+extra:
+  recipe-maintainers:
+    - awesomebytes
