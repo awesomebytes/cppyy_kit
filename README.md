@@ -70,7 +70,6 @@ std::function<void()> job(std::uintptr_t out, std::size_t i, std::size_t iters) 
 
 out = np.zeros(8)                                                        # 8 independent jobs
 jobs = [cppyy.gbl.job(out.ctypes.data, i, 20_000_000) for i in range(8)]
-cppyy_kit.nogil(cppyy.gbl.job(out.ctypes.data, 0, 1))                    # compile the shim once (single-threaded)
 threads = [threading.Thread(target=cppyy_kit.nogil, args=(j,)) for j in jobs]
 for t in threads: t.start()
 for t in threads: t.join()                                              # all 8 run at once, one per core
