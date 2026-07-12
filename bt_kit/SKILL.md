@@ -200,9 +200,10 @@ def main():
     # ... build and tick your real trees; first tick is already fast ...
     # bt_kit.warmup()             # only helps on the JIT fallback path
 ```
-Composes with the frozen PCH (`freeze-bt-run`): freeze cuts the ~0.9 s header parse,
-the cache cuts the wrapper JIT — together the fastest cold start (~0.43 s end-to-end
-for t01; see docs/kits/FREEZE.md §4 and COMMON_PATTERNS §23).
+Composes with the Cling PCH: the header parse (~0.9 s) is cut automatically by the
+zero-config auto-PCH on the second run (nothing to set; `freeze-bt-run` is the
+explicit manual path), and the cache cuts the wrapper JIT — together the fastest cold
+start (~0.43 s end-to-end for t01; see docs/FREEZE.md §4, §8 and COMMON_PATTERNS §36).
 
 ## Gotchas (short version)
 - **Don't** subclass BT C++ node classes in Python (`class X(BT.StatefulActionNode)`)

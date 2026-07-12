@@ -20,7 +20,7 @@ it in **[Benchmarks](docs/benchmarks.md)**.
   <img src="docs/media/cppyy_kit_logo.jpg" alt="cppyy_kit logo" width="420">
 </p>
 
-## Two ways to mix Python and C++
+## Three ways to mix Python and C++
 
 **Drive a whole C++ library from Python** — the real BehaviorTree.CPP engine parses
 the XML, owns the tree, and ticks it; there is no Python binding for it, so this
@@ -48,7 +48,38 @@ def sum_sq(data: cpp.arr("float")) -> float:      # numpy -> (float* data, size_
 sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no ctypes, no build, no bindings
 ```
 
-The friction both share — locating and loading the `.so`s, pinning callback
+**Run those kernels on every core** — plain Python threads run in true parallel once
+`cppyy_kit.nogil` releases the GIL around the C++ call, which pure-Python threads
+cannot do. On a 16-core machine, eight independent jobs finish about **6× faster**
+than with the GIL held (≈810 ms → ≈135 ms); the
+[runnable example](https://github.com/awesomebytes/cppyy_kit/blob/main/examples/parallel_demo/parallel_demo.py)
+has the full version:
+
+```python
+import threading, numpy as np, cppyy, cppyy_kit
+
+cppyy.cppdef(r'''
+#include <cstdint>
+#include <cmath>
+#include <functional>
+std::function<void()> job(std::uintptr_t out, std::size_t i, std::size_t iters) {
+  auto* p = reinterpret_cast<double*>(out);              // one output slot per job
+  return [=] { double s = 0; for (std::size_t k = 1; k <= iters; ++k) s += std::sin(double(k) * 1e-6); p[i] = s; };
+}''')
+
+out = np.zeros(8)                                                        # 8 independent jobs
+jobs = [cppyy.gbl.job(out.ctypes.data, i, 20_000_000) for i in range(8)]
+threads = [threading.Thread(target=cppyy_kit.nogil, args=(j,)) for j in jobs]
+for t in threads: t.start()
+for t in threads: t.join()                                              # all 8 run at once, one per core
+```
+
+`nogil` wraps the C++ call in `Py_BEGIN_ALLOW_THREADS` / `Py_END_ALLOW_THREADS`, so
+the interpreter lock is dropped while the C++ runs — no trick, just the GIL released
+for the duration of the native work. The jobs are independent and write into distinct
+C++ slots, so none needs the GIL while computing.
+
+The friction these three share — locating and loading the `.so`s, pinning callback
 lifetimes, hiding cppyy's template and ownership sharp edges — is factored into the
 `cppyy_kit` base, so each domain kit stays thin and its Python mirrors the library's
 own API 1:1.

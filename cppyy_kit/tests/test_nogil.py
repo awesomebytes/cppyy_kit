@@ -82,3 +82,57 @@ def test_run_async_lets_event_loop_run():
 
     n = asyncio.run(main())
     assert n > 100, "event loop should keep running during the blocking C++ call, got %d" % n
+
+
+def test_ensure_is_thread_safe_single_compile():
+    """Regression: the first-ever nogil() calls arriving from many threads at once must
+    compile the shim exactly once (double-checked lock in _ensure), not once per thread
+    (which raced and made Cling emit a "redefinition of run_nogil" error)."""
+    import importlib
+
+    import numpy as np
+
+    nogil_mod = importlib.import_module("cppyy_kit.nogil")   # the module (cppyy_kit.nogil is the fn)
+
+    cppyy.cppdef(r"""
+    #include <cstdint>
+    #include <cstddef>
+    #include <functional>
+    namespace ck_nogil_mt {
+      std::function<void()> setter(std::uintptr_t out, std::size_t i) {
+        auto* p = reinterpret_cast<long*>(out);
+        return [=] { p[i] = long(i) + 1; };
+      }
+    }
+    """)
+
+    calls = {"n": 0}
+    real = nogil_mod.cache.cppdef_cached
+
+    def counting(*a, **k):
+        if k.get("name") == "nogil_shim":
+            calls["n"] += 1
+        return real(*a, **k)
+
+    n = 8
+    out = np.zeros(n, dtype=np.int64)
+    barrier = threading.Barrier(n)
+
+    def worker(i):
+        barrier.wait()                       # release all threads into _ensure() together
+        nogil_mod.nogil(cppyy.gbl.ck_nogil_mt.setter(out.ctypes.data, i))
+
+    nogil_mod._READY = False                 # force a fresh first-use
+    nogil_mod.cache.cppdef_cached = counting
+    try:
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(n)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        nogil_mod.cache.cppdef_cached = real
+        nogil_mod._READY = True              # shim is compiled now
+
+    assert calls["n"] == 1, "shim compiled %d times, expected exactly 1" % calls["n"]
+    assert list(out) == [i + 1 for i in range(n)], "wrong results: %r" % (list(out),)

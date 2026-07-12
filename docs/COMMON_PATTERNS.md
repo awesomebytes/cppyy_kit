@@ -974,9 +974,10 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
 at bringup — a one-time, idempotent per-process cost (bt ~0.9 s, pcl ~1.3 s).
 Correct and fast at steady state; the only downside is startup latency.
 
-**L1 (freeze) — DONE for bt_kit; the mechanism is a Cling PCH, not a dictionary.**
-The full recipe, artifact lifecycle, numbers and limitations live in
-[FREEZE.md](FREEZE.md); the short version:
+**L1 (freeze) — the mechanism is a Cling PCH, not a dictionary.** This is now applied
+**automatically** by the zero-config auto-PCH (§36 above); the mechanism below is what
+it wraps and remains the manual path for explicit control. The full recipe, artifact
+lifecycle, numbers and limitations live in [FREEZE.md](FREEZE.md); the short version:
 
 - The bringup cost is ~89 % header JIT-parse. A `rootcling`/`genreflex` dictionary
   does **not** help — it supplies reflection/autoload metadata, not a parsed AST,
@@ -1005,10 +1006,12 @@ The full recipe, artifact lifecycle, numbers and limitations live in
 - **Generalises:** the same recipe takes `rclcpp/rclcpp.hpp` from ~1.71 s to ~6 ms
   — the PCH-load floor is header-size-independent, so this is not a BT special case.
 
-**What a kit should do now:** make bringup idempotent and staged; treat the JIT as
-a one-time startup cost. When startup latency matters, freeze it (FREEZE.md) — a
-per-kit PCH build plus, if the freeze surfaces unresolved internal-linkage symbols,
-a one-line force-symbol entry.
+**What a kit should do now:** make bringup idempotent and staged, and register its
+headers once via `cppyy_kit.register_pch_headers(...)` (§36) so the zero-config
+auto-PCH removes the header parse automatically on the second run — no per-kit PCH
+build or launcher needed. The only manual residue is the occasional `force_symbols`
+entry when a freeze surfaces an unresolved internal-linkage static (§1, FREEZE.md);
+the explicit `freeze-<kit>-build` path stays available for CI or full control.
 
 ---
 

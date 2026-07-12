@@ -59,7 +59,7 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # env), so it would actually bring up rclcpp + DDS rather than skip — it runs in its
 # own env via `pixi run -e rclcpp test-rclcpp` (and the `test-tf` gate). The real
 # per-kit proof is the feature-env test-<kit> tasks.
-test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests"
+test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests examples/parallel_demo/test_parallel.py"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
 lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench jitter_bench retarget_pipeline scripts skills examples"
 clean = "rm -rf build"
@@ -133,6 +133,9 @@ bench-cache-pcl = "python scripts/cache/measure_pcl_frame0.py"
 test-accelerate = "pytest examples/accelerate_demo/test_pipeline.py -v"
 demo-accelerate = "python examples/accelerate_demo/fast_pointcloud_pipeline.py"
 bench-accelerate = "python examples/accelerate_demo/bench.py"
+# multithreading: N Python threads driving a C++ kernel via nogil run on N cores.
+demo-parallel = "python examples/parallel_demo/parallel_demo.py"
+test-parallel = "pytest examples/parallel_demo/test_parallel.py -v"
 
 # --- ompl: Open Motion Planning Library --------------------------------------
 [feature.ompl.dependencies]
