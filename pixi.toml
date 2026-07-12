@@ -61,7 +61,7 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # per-kit proof is the feature-env test-<kit> tasks.
 test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
-lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit scripts skills examples"
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench scripts skills examples"
 clean = "rm -rf build"
 
 # --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
@@ -182,6 +182,30 @@ demo-moveit-plan = "python moveit_kit/demos/d02_plan_pose_goal.py"
 bench-moveit = "python moveit_kit/demos/bench_moveit.py"
 # moveit_kit tests (gate on MoveIt + panda config). The base cppyy_kit layer is in test-bt.
 test-moveit = "pytest moveit_kit/tests/test_moveit_kit.py -v"
+
+# --- ik (M6c): IK benchmark suite -------------------------------------------
+# Benchmarks IK solvers through moveit_kit's in-process pluginlib recipe (§19):
+# one Python script drives KDL (packaged, moveit baseline), trac_ik (packaged
+# below), bio_ik + pick_ik (vendored-source builds via §21, compiled against this
+# env's MoveIt), plus a pure-Python Jacobian/DLS baseline. This feature composes
+# with `moveit` (the `ik` env = both features) and adds only the one extra packaged
+# solver; bio_ik/pick_ik carry no conda dep (built from source into build/vendor/).
+# Adding trac_ik to the shared `default` solve-group re-locks it (pixi.lock churns);
+# trac_ik's own generate_parameter_library dep is a header-only Cling wall we never
+# hit because pluginlib dlopen's the compiled plugin .so (REPORT §2.1).
+[feature.ik.dependencies]
+ros-jazzy-trac-ik-kinematics-plugin = "2.0.2.*"  # TRAC-IK (packaged) kinematics plugin
+
+[feature.ik.tasks]
+# THE DELIVERABLE: one Python script runs every available solver on the same Panda
+# targets and prints the solve-rate / success / accuracy table (+ --json).
+bench-ik = "python ik_bench/run_bench.py"
+# Fetch/patch/compile bio_ik + pick_ik from source into build/vendor/ (§21). Once.
+build-bio-ik = "python ik_bench/vendor/build_bio_ik.py"
+build-pick-ik = "python ik_bench/vendor/build_pick_ik.py"
+# ik_bench harness smoke + one FK(IK(pose))~=pose correctness check. Auto-skips
+# outside the env / when a solver is unavailable.
+test-ik = "pytest ik_bench/tests -v"
 
 # --- control: ros2_control ----------------------------------------------------
 [feature.control.dependencies]
@@ -326,6 +350,9 @@ pcl = { features = ["pcl"], solve-group = "default" }
 ompl = { features = ["ompl"], solve-group = "default" }
 nav2 = { features = ["nav2"], solve-group = "default" }
 moveit = { features = ["moveit"], solve-group = "default" }
+# IK benchmark (M6c): moveit_kit + the extra packaged solver (trac_ik). bio_ik and
+# pick_ik are vendored source builds (no conda dep), compiled against this env.
+ik = { features = ["moveit", "ik"], solve-group = "default" }
 control = { features = ["control"], solve-group = "default" }
 vision = { features = ["vision"], solve-group = "default" }
 # WBC exploration (M6e): pinocchio/crocoddyl/tsid + robot models. STANDALONE
