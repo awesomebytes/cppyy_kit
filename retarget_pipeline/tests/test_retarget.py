@@ -166,6 +166,93 @@ def test_retarget_tracks_wrist_motion():
                 assert c > 0.7, "%s axis %d hip-rel corr %.2f too low" % (robot, ax, c)
 
 
+def _full_sweep(n, fps=30.0):
+    """Gross arm sweep: each wrist swings through a wide diagonal arc (the 'raise your
+    arms' motion) relative to the shoulder -- for the ~1:1 amplitude regression."""
+    base = ls._BASE_POSE.copy()
+    out = []
+    for i in range(n):
+        s = math.sin(2 * math.pi * 0.25 * (i / fps))
+        p = base.copy()
+        p[ls.LEFT_WRIST] = base[ls.LEFT_SHOULDER] + np.array(
+            [0.10, 0.10 + 0.45 * s, 0.10 + 0.40 * s], np.float32)
+        p[ls.RIGHT_WRIST] = base[ls.RIGHT_SHOULDER] + np.array(
+            [0.10, -0.10 - 0.45 * s, 0.10 + 0.40 * s], np.float32)
+        out.append(p)
+    return np.array(out, np.float32)
+
+
+def test_full_sweep_amplitude_near_one_to_one():
+    """AMPLITUDE (the ~1:1 mapping the owner tuned to, REACH_FRAC=0.95): a gross human
+    arm sweep must drive a *large* solved-gripper excursion -- well beyond the earlier
+    conservative 13-26 cm map. Talos ~0.75 m, G1 ~0.50 m (shorter arms) at scale 1.0;
+    a higher --motion-scale must not shrink it. Guards against amplitude regressions."""
+    n = 240
+    pw = _full_sweep(n).reshape(n, 99).astype(np.float64)
+    bounds = {"talos": 0.55, "g1": 0.38}                  # solved-gripper 3D p2p floor
+    for robot in ("talos", "g1"):
+        rt = R.Retargeter(R.ROBOTS[robot])
+        for scale in (1.0, 1.5):
+            tgt = R.compute_targets(rt, pw, 1 / 30.0, use_cpp=True, motion_scale=scale)
+            q = rt.q0.copy()
+            ee = np.zeros((n, 3))
+            import pinocchio as pin
+            for i in range(n):
+                r_i = ls.mediapipe_world_to_robot(pw[i].reshape(33, 3))
+                q, _ = rt.solve(tgt[i], q, head_r=r_i)
+                pin.forwardKinematics(rt.model, rt.data, q)
+                pin.updateFramePlacements(rt.model, rt.data)
+                ee[i] = rt.data.oMf[rt.LF].translation
+            amp = float(np.linalg.norm(ee.max(0) - ee.min(0)))
+            assert amp > bounds[robot], \
+                "%s scale %.1f full-sweep amplitude %.3f m too small" % (robot, scale, amp)
+
+
+def _head_r(yaw, pitch):
+    """robot-frame landmarks whose ear-midpoint->nose direction encodes (yaw, pitch)."""
+    fwd = np.array([math.cos(pitch) * math.cos(yaw),
+                    math.cos(pitch) * math.sin(yaw), math.sin(pitch)])
+    r = np.zeros((ls.N_POSE, 3))
+    r[ls.LEFT_EAR], r[ls.RIGHT_EAR] = [0, 0.1, 0], [0, -0.1, 0]
+    r[ls.NOSE] = 0.5 * (r[ls.LEFT_EAR] + r[ls.RIGHT_EAR]) + fwd
+    return r
+
+
+def test_head_tracks_operator_yaw_pitch():
+    """HEAD TRACKING (Talos): the robot head must follow the operator's head yaw/pitch
+    with high correlation and the correct sign (look left -> head left, look up -> head
+    up), softly so it never fights the arms. Talos has a neck (RY pitch + RZ yaw)."""
+    import pinocchio as pin
+    rt = R.Retargeter(R.ROBOTS["talos"])
+    assert rt.has_neck and rt.neck_yaw is not None and rt.neck_pitch is not None
+    n = 120
+    t = np.linspace(0, 4 * math.pi, n)
+    yaws, pitches = 0.5 * np.sin(t), 0.3 * np.sin(0.5 * t)
+    tgt = np.concatenate([rt.anchor_L, rt.anchor_R, rt.anchor_H])
+    out_yaw, out_pitch = np.zeros(n), np.zeros(n)
+    q = rt.q0.copy()
+    for i in range(n):
+        q, _ = rt.solve(tgt, q, head_r=_head_r(yaws[i], pitches[i]))
+        pin.forwardKinematics(rt.model, rt.data, q)
+        pin.updateFramePlacements(rt.model, rt.data)
+        rpy = pin.rpy.matrixToRpy(rt.data.oMf[rt.HD].rotation)
+        out_yaw[i], out_pitch[i] = rpy[2], -rpy[1]         # -pitch: +x-fwd points up
+    assert np.corrcoef(yaws, out_yaw)[0, 1] > 0.9, "head yaw does not track"
+    assert np.corrcoef(pitches, out_pitch)[0, 1] > 0.9, "head pitch does not track"
+    # correct sign: peak look-left gives head-left, peak look-up gives head-up
+    assert out_yaw[np.argmax(yaws)] > 0.1 and out_pitch[np.argmax(pitches)] > 0.05
+
+
+def test_g1_head_is_rigid():
+    """G1 has no neck joints -- its head is mechanically rigid (not a software limit).
+    _detect_neck must report has_neck False, and _apply_head must be a safe no-op."""
+    rt = R.Retargeter(R.ROBOTS["g1"])
+    assert not rt.has_neck
+    q = rt.q0.copy()
+    rt._apply_head(q, _head_r(0.5, 0.3))                   # must not raise / not move q
+    assert np.array_equal(q, rt.q0)
+
+
 def test_trunk_stays_upright():
     """The trunk must NOT pitch to reach (the ~52 deg lean bug). Reach both grippers
     forward; the torso link stays near upright thanks to the per-joint posture pin."""

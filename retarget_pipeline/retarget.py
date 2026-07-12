@@ -173,7 +173,10 @@ def _bringup_glue():
 
 
 # Retarget target defaults, shared by the batch kernel path and the live stepper.
-MINCUT, BETA, REACH_FRAC = 1.2, 0.03, 0.8
+MINCUT, BETA, REACH_FRAC = 1.2, 0.03, 0.95
+# Multiplies the body-proportion scale (robot_torso / human_torso). 1.0 = the natural
+# ~1:1 body-space mapping; >1 amplifies the operator's motion, <1 damps it. --motion-scale.
+MOTION_SCALE = 1.0
 
 
 def _frame_target(r, hip_w, sh, robot_torso, arm, reach_frac):
@@ -194,6 +197,15 @@ def _frame_target(r, hip_w, sh, robot_torso, arm, reach_frac):
         if d > reach_frac * arm and d > 1e-9:
             tgt[e] = sh[e] + (reach_frac * arm / d) * (tgt[e] - sh[e])
     return tgt
+
+
+def head_yaw_pitch(r):
+    """Human head (yaw, pitch) in radians, robot frame (x fwd, y left, z up), from the
+    face-forward direction ear-midpoint -> nose. yaw>0 = looking left, pitch>0 = up."""
+    fwd = r[ls.NOSE] - 0.5 * (r[ls.LEFT_EAR] + r[ls.RIGHT_EAR])
+    yaw = float(np.arctan2(fwd[1], fwd[0]))
+    pitch = float(np.arctan2(fwd[2], np.hypot(fwd[0], fwd[1]) + 1e-9))
+    return yaw, pitch
 
 
 class _EuroState:
@@ -270,18 +282,35 @@ class Retargeter:
         self.hip = self.data.oMf[self.model.getFrameId(cfg.hip)].translation.copy()
         self.robot_torso = float(np.linalg.norm(
             0.5 * (self.anchor_L + self.anchor_R) - self.hip))
+        self._detect_neck()
         self._build_posture_weights()
         self._load_visual_geometry()
 
-    # Per-actuated-DOF posture weight. The retarget only has arm (+head) position
-    # tasks, so with a weak uniform posture the CLIK freely pitches the torso/waist to
-    # reach -- Talos leaned ~52 deg. Fix: pin the non-arm chain (legs, torso/waist)
-    # firmly to the reference pose and leave the arm + head chains free, so reaching
-    # is done by the arms with an upright trunk.
-    # Only the arm chain is freed to reach; the legs, torso/waist AND head/neck are
-    # pinned to the reference (the head can't usefully track here anyway -- see the
-    # REPORT: G1 has no neck joints and Talos's reduced-model head frame does not move
-    # with its neck, so head position IK is a no-op; pinning keeps it stable).
+    def _detect_neck(self):
+        """Find the head/neck yaw + pitch joints so the head can track the operator's
+        head orientation (head-frame *position* is uncontrollable -- the neck is
+        rotational -- but orientation is, so we map yaw/pitch to the neck joints
+        directly). ``neck_yaw``/``neck_pitch`` = (idx_q, lo, hi) or None; some robots
+        (e.g. G1) have no neck joints -> ``has_neck`` False (mechanically rigid head)."""
+        m = self.model
+        self.neck_yaw = self.neck_pitch = None
+        for j in range(2, m.njoints):
+            if not any(t in m.names[j].lower() for t in ("head", "neck")):
+                continue
+            iq = m.joints[j].idx_q
+            info = (iq, float(m.lowerPositionLimit[iq]), float(m.upperPositionLimit[iq]))
+            sn = m.joints[j].shortname()
+            if "RZ" in sn:          # rotation about robot up-axis -> yaw (pan)
+                self.neck_yaw = info
+            elif "RY" in sn:        # rotation about robot left-axis -> pitch (tilt)
+                self.neck_pitch = info
+        self.has_neck = self.neck_yaw is not None or self.neck_pitch is not None
+
+    # Per-actuated-DOF posture weight. The retarget only has arm position tasks, so
+    # with a weak uniform posture the CLIK freely pitched the torso/waist to reach
+    # (Talos leaned ~52 deg). Fix: pin the non-arm chain (legs, torso/waist, and the
+    # neck -- which is driven directly, not by the arm CLIK) firmly to the reference
+    # and free only the arm chain, so reaching is done by the arms with an upright trunk.
     _ARM_TOKENS = ("arm", "shoulder", "elbow", "wrist", "hand", "gripper")
     _FREE_W, _PIN_W = 1e-3, 5.0
 
@@ -348,14 +377,15 @@ class Retargeter:
                         np.asarray(M.rotation, dtype=np.float32)))
         return out
 
-    def solve(self, targets9, q_warm, iters=40, damp=1e-3, whead=0.0):
+    def solve(self, targets9, q_warm, iters=40, damp=1e-3, whead=0.0, head_r=None):
         """CLIK toward the 9-vector [L,R,Head] targets from warm start ``q_warm``.
         Returns ``(q, {frame: err_m})``. The free-flyer base is locked by solving
         over the *actuated* DOFs only (columns 6: of the Jacobian). Posture is
         regularized per-joint (``posture_w``): the legs + torso/waist are pinned to
         the reference so reaching is done by the arms with an upright trunk (a uniform
-        weak posture let the trunk pitch ~52 deg). ``whead`` defaults off -- head
-        position IK is a no-op on the shipped models (see the REPORT); left as a knob."""
+        weak posture let the trunk pitch ~52 deg). ``whead`` (head *position* task) is
+        a no-op knob; head *orientation* is driven directly from ``head_r`` (the
+        robot-frame landmarks) onto the neck yaw/pitch joints -- see ``_apply_head``."""
         pin = self._pin
         q = q_warm.copy()
         na = self.model.nv - 6                       # actuated DOFs (skip base)
@@ -381,11 +411,31 @@ class Retargeter:
             v = np.zeros(self.model.nv)
             v[6:] = np.linalg.solve(H, g)
             q = pin.integrate(self.model, q, v)
+        if head_r is not None:
+            self._apply_head(q, head_r)
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
         errs = {self.cfg.l_grip: float(np.linalg.norm(tL - self.data.oMf[self.LF].translation)),
                 self.cfg.r_grip: float(np.linalg.norm(tR - self.data.oMf[self.RF].translation))}
         return q, errs
+
+    # RY (head_1) is pitch, RZ (head_2) is yaw for Talos. RY+ tilts the face down, so
+    # pitch (look-up = +) maps with a NEGATIVE sign; yaw (look-left = +) maps directly.
+    _NECK_PITCH_SIGN, _NECK_YAW_SIGN = -1.0, 1.0
+
+    def _apply_head(self, q, head_r):
+        """Point the robot head where the operator's head points: map human yaw/pitch
+        (from ``head_r``, robot-frame landmarks) onto the neck joints, clamped to their
+        limits. No-op on a robot with no neck (mechanically rigid head, e.g. G1)."""
+        if not self.has_neck:
+            return
+        yaw, pitch = head_yaw_pitch(head_r)
+        if self.neck_yaw is not None:
+            iq, lo, hi = self.neck_yaw
+            q[iq] = min(hi, max(lo, self._NECK_YAW_SIGN * yaw))
+        if self.neck_pitch is not None:
+            iq, lo, hi = self.neck_pitch
+            q[iq] = min(hi, max(lo, self._NECK_PITCH_SIGN * pitch))
 
     def joint_skeleton(self, q):
         """(points (njoints,3), bones list) of the kinematic tree at ``q`` -- for
@@ -418,21 +468,23 @@ def load_pose_world(stream_path):
 
 
 def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=MINCUT, beta=BETA,
-                    reach_frac=REACH_FRAC):
+                    reach_frac=REACH_FRAC, motion_scale=MOTION_SCALE):
     """Retarget glue: (F,99) landmarks -> (F,9) smoothed HIP-RELATIVE targets. Uses
-    the C++ kernel (cppyy_kit) by default, else the Python loop."""
+    the C++ kernel (cppyy_kit) by default, else the Python loop. ``motion_scale``
+    multiplies the body-proportion scale (feel knob)."""
     hip = np.asarray(rt.hip, dtype=np.float64)
     sh = np.stack([rt.anchor_L, rt.anchor_R]).astype(np.float64)
+    torso = rt.robot_torso * motion_scale
     if use_cpp:
         glue = _bringup_glue()
         out = np.zeros((pw_all.shape[0], 9), dtype=np.float64)
         c = np.ascontiguousarray(pw_all, dtype=np.float64)
         glue.map_stream(c.ctypes.data, int(c.shape[0]), out.ctypes.data,
                         hip[0], hip[1], hip[2], sh[0, 0], sh[0, 1], sh[0, 2],
-                        sh[1, 0], sh[1, 1], sh[1, 2], rt.robot_torso, rt.arm,
+                        sh[1, 0], sh[1, 1], sh[1, 2], torso, rt.arm,
                         dt, mincut, beta, reach_frac)
         return out
-    return map_stream_python(pw_all, hip, sh, rt.robot_torso, rt.arm, dt, mincut,
+    return map_stream_python(pw_all, hip, sh, torso, rt.arm, dt, mincut,
                              beta, reach_frac)
 
 
@@ -446,6 +498,18 @@ def _no_stream_msg(path):
             "then re-run this with --replay %s" % (path, path, path))
 
 
+def _announce_head(rt):
+    """Print (once, at startup) whether the robot's head tracks the operator. G1 has no
+    neck joints -- its head is mechanically rigid, NOT a software limitation."""
+    if rt.has_neck:
+        axes = [n for n, v in (("yaw", rt.neck_yaw), ("pitch", rt.neck_pitch)) if v]
+        print("Head: tracking operator %s (neck joints)." % "/".join(axes), flush=True)
+    else:
+        print("Head: %s has NO neck joints -- its head is mechanically rigid (a "
+              "hardware fact, not a software limitation); the head does not track."
+              % rt.cfg.name, flush=True)
+
+
 def run_retarget(args):
     stream = args.replay or DEFAULT_STREAM
     if not os.path.exists(stream):
@@ -456,13 +520,15 @@ def run_retarget(args):
     print("Robot %s: nq=%d nv=%d, arm reach %.3f m; anchors L=%s R=%s"
           % (cfg.name, rt.model.nq, rt.model.nv, rt.arm,
              np.round(rt.anchor_L, 3), np.round(rt.anchor_R, 3)), flush=True)
+    _announce_head(rt)
 
     pw_all, ts = load_pose_world(stream)
     if len(pw_all) == 0:
         print("No pose frames in %s." % stream)
         return
     dt = 1.0 / args.fps
-    targets = compute_targets(rt, pw_all, dt, use_cpp=not args.no_cpp)
+    targets = compute_targets(rt, pw_all, dt, use_cpp=not args.no_cpp,
+                              motion_scale=args.motion_scale)
     print("Retarget glue: computed %d target frames (%s path)."
           % (len(targets), "Python" if args.no_cpp else "cppyy_kit C++ kernel"),
           flush=True)
@@ -483,14 +549,14 @@ def run_retarget(args):
     ee_err = np.zeros((F, 2))
     solve_ms = []
     for i in range(F):
+        r_i = ls.mediapipe_world_to_robot(pw_all[i].reshape(33, 3))
         t0 = time.perf_counter()
-        q, errs = rt.solve(targets[i], q)
+        q, errs = rt.solve(targets[i], q, head_r=r_i)
         solve_ms.append((time.perf_counter() - t0) * 1e3)
         Q[i] = q
         ee_err[i] = list(errs.values())
         if rr is not None:
-            _log_retarget(rr, rt, i, q, targets[i],
-                          ls.mediapipe_world_to_robot(pw_all[i].reshape(33, 3)), viz_mode)
+            _log_retarget(rr, rt, i, q, targets[i], r_i, viz_mode)
         if (i + 1) % 30 == 0:
             print("  frame %d/%d: solve %.2f ms, EE err L=%.3f R=%.3f m"
                   % (i + 1, F, np.median(solve_ms[-30:]), ee_err[i, 0], ee_err[i, 1]),
@@ -568,6 +634,7 @@ def run_follow(args):
           "then idle-timeout %.1fs); start a perceive --record writing it ..."
           % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.follow,
              args.startup_timeout, args.idle_timeout), flush=True)
+    _announce_head(rt)
     session = None
     rr = None
     viz_mode = "skeleton"
@@ -604,10 +671,11 @@ def run_follow(args):
             if fr["pose_world"] is None:
                 continue
             r = ls.mediapipe_world_to_robot(fr["pose_world"])
-            tgt = euro.step(_frame_target(r, hip_w, sh, rt.robot_torso, rt.arm,
-                                          REACH_FRAC)).reshape(9)
+            tgt = euro.step(_frame_target(r, hip_w, sh,
+                                          rt.robot_torso * args.motion_scale,
+                                          rt.arm, REACH_FRAC)).reshape(9)
             t0 = time.perf_counter()
-            q, errs = rt.solve(tgt, q)
+            q, errs = rt.solve(tgt, q, head_r=r)
             solve_ms.append((time.perf_counter() - t0) * 1e3)
             # End-to-end lag: perceive stamps each frame with time.time() at write;
             # both processes share the wall clock, so (now - t) is the frame's age
@@ -618,8 +686,7 @@ def run_follow(args):
             ts_log.append(fr["t"])
             ee_log.append(list(errs.values()))
             if rr is not None:
-                _log_retarget(rr, rt, len(Q) - 1, q, tgt,
-                              ls.mediapipe_world_to_robot(fr["pose_world"]), viz_mode)
+                _log_retarget(rr, rt, len(Q) - 1, q, tgt, r, viz_mode)
             if len(Q) % 30 == 0:
                 print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
                       "EE L=%.3f R=%.3f m"
@@ -672,6 +739,7 @@ def run_tf(args):
     print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Consuming /tf landmark frames via "
           "rclcpp_kit C++ TransformListener (startup grace %.0fs) ..."
           % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.startup_timeout), flush=True)
+    _announce_head(rt)
 
     session = None
     rr = None
@@ -738,9 +806,10 @@ def run_tf(args):
                 time.sleep(0.002)
                 continue
             t0 = time.perf_counter()
-            tgt = euro.step(_frame_target(r, hip_w, sh, rt.robot_torso, rt.arm,
-                                          REACH_FRAC)).reshape(9)
-            q, errs = rt.solve(tgt, q)
+            tgt = euro.step(_frame_target(r, hip_w, sh,
+                                          rt.robot_torso * args.motion_scale,
+                                          rt.arm, REACH_FRAC)).reshape(9)
+            q, errs = rt.solve(tgt, q, head_r=r)
             solve_ms.append((time.perf_counter() - t0) * 1e3)
             lag.append(now - stamp)
             Q.append(q.copy())
@@ -840,6 +909,12 @@ def main(argv=None):
                          "(covers a cold perceive's env activation + model load)")
     ap.add_argument("--dataset", metavar="PATH", help="where to write the .npz dataset")
     ap.add_argument("--fps", type=float, default=30.0, help="stream fps (for dt)")
+    ap.add_argument("--motion-scale", type=float, default=MOTION_SCALE,
+                    dest="motion_scale",
+                    help="amplitude feel knob: multiplies the body-proportion scale of "
+                         "the hip-relative map (default %.2f = ~1:1). Raise to exaggerate "
+                         "sweeps, lower to damp them; targets stay reach-clamped."
+                         % MOTION_SCALE)
     ap.add_argument("--no-cpp", action="store_true",
                     help="use the Python glue loop instead of the cppyy_kit kernel")
     ap.add_argument("--no-viz", action="store_true", help="skip Rerun")
