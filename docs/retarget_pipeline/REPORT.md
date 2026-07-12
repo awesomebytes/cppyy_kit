@@ -211,8 +211,9 @@ hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `
 - `pixi run test` (default env) → **40 passed, 129 skipped** (unchanged).
 - `pixi run -e pipeline test-pipeline` → **9 passed** (stream contract + synthetic-headless
   round-trip + the /tf-build A>B bench).
-- `pixi run -e wbc test-retarget` → **4 passed** (Talos + G1 build, C++/Python glue agreement,
-  end-to-end bounded-error retarget + dataset).
+- `pixi run -e wbc test-retarget` → **6 passed** (Talos + G1 build, C++/Python glue agreement,
+  end-to-end bounded-error retarget + dataset, live `--follow` consumes a concurrently-written
+  stream, and `--replay`/`--follow` are mutually exclusive).
 - New envs solve (`pixi install -e pipeline`, `pixi install -e wbc`).
 
 ---
@@ -228,15 +229,38 @@ pixi run -e pipeline demo-perceive --source synthetic --duration 10 # no camera 
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --record build/pipeline/demo.jsonl --duration 15
 pixi run -e pipeline bench-perceive --replay build/pipeline/demo.jsonl   # /tf-build 265x
 
-# --- Process B: retargeting (wbc env) ---
+# --- Process B: retargeting (wbc env), OFFLINE replay ---
 pixi run -e wbc demo-retarget --robot talos --replay build/pipeline/demo.jsonl
 pixi run -e wbc demo-retarget --robot g1    --replay build/pipeline/demo.jsonl   # G1 stretch
 pixi run -e wbc bench-retarget --replay build/pipeline/demo.jsonl                # glue 303.8x
 
 # tests
 pixi run -e pipeline test-pipeline    # 9 passed
-pixi run -e wbc test-retarget         # 4 passed
+pixi run -e wbc test-retarget         # 6 passed
 ```
+
+### LIVE teleop (two terminals, no offline step)
+
+Run the perception and retarget halves **concurrently**, coupled by the growing stream file:
+`--follow` tails it and retargets each frame as it arrives (`landmark_stream.follow()` with the
+writer's per-frame flush).
+
+```bash
+# terminal A (producer) — webcam if present, else synthetic; writes the stream live:
+ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --record build/pipeline/live.jsonl --duration 30
+# terminal B (consumer) — start it first (it waits for the file), then A; retargets live:
+pixi run -e wbc demo-retarget --robot g1 --follow build/pipeline/live.jsonl
+```
+
+`--follow` exits cleanly on stream idle-timeout (default 2 s after the last frame), EOF, or Ctrl-C,
+writing the dataset gathered so far. **Measured** (synthetic producer at 30 fps, G1 consumer, 300
+frames consumed as produced): **end-to-end producer→consumer lag median 4.4 ms (p90 6.5, max
+10.1 ms)** — far under one 33 ms frame period, so the consumer tracks in real time rather than
+falling behind; CLIK ~1.3 ms/frame. The webcam source is the same plumbing (synthetic used here
+for a reproducible number). The live path computes each frame's target with the per-frame Python
+stepper (`_frame_target` + `_EuroState`, ~0.03 ms) rather than the batch C++ glue kernel — the
+kernel's whole-stream win is for offline replay/`--bench`; live, the per-frame glue cost is
+negligible against the CLIK solve.
 
 For the full live demo both processes log to Rerun; run them as separate viewers, or connect B
 to A's viewer with `rr.connect_grpc()` (noted as an option, not wired by default in this spike).
