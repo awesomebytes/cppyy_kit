@@ -63,9 +63,10 @@ def _tasks(out, iters):
 
 
 def warm():
-    """Compile the nogil shim + kernel once, single-threaded, before any thread uses
-    them. nogil()'s first-use compile is not thread-safe, so calling it first from
-    several threads at once races; a single-threaded warm-up avoids that."""
+    """Compile the nogil shim + kernel once before the timed runs, so those runs
+    measure the parallel work rather than one-time setup. (nogil()'s first-use
+    compile is now thread-safe, so this warm-up is for timing accuracy, not
+    correctness -- threads may safely take the first-use path concurrently.)"""
     out = np.zeros(1)
     cppyy_kit.nogil(cppyy.gbl.ck_parallel.task(out.ctypes.data, 0, 1000))
 

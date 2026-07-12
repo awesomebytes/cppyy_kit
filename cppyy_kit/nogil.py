@@ -28,6 +28,8 @@ Rules:
   this for you (it takes the GIL on entry), but hand-written C++ that touches
   ``PyObject*`` under ``nogil`` must ``PyGILState_Ensure()``/``Release`` around it.
 """
+import threading
+
 import cppyy
 
 from . import cache
@@ -49,14 +51,22 @@ _DECLS = r"""
 namespace cppyy_kit_nogil { void run_nogil(std::function<void()> f); }
 """
 _READY = False
+_LOCK = threading.Lock()
 
 
 def _ensure():
+    """Compile the GIL-release shim once. Thread-safe (double-checked lock): the
+    first ``nogil()`` calls may arrive from several threads at once -- without the
+    lock each would re-run the ``cppdef``, and Cling would emit a "redefinition"
+    error. The fast path returns before acquiring the lock once the shim is built."""
     global _READY
-    if _READY:
+    if _READY:                       # fast path: no lock once the shim exists
         return
-    cache.cppdef_cached(_SHIM, decls=_DECLS, name="nogil_shim", trampoline=True)
-    _READY = True
+    with _LOCK:
+        if _READY:                   # re-check under the lock
+            return
+        cache.cppdef_cached(_SHIM, decls=_DECLS, name="nogil_shim", trampoline=True)
+        _READY = True
 
 
 def nogil(fn):
