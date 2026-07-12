@@ -131,6 +131,9 @@ nav:
       - Why: dbow_kit/WHY.md
       - Report: dbow_kit/REPORT.md
       - Skill: dbow_kit/SKILL.md
+  - IK Benchmark (M6c):
+    - Why: docs/ik_bench/WHY.md
+    - Report: docs/ik_bench/REPORT.md
   - Tutorials:
     - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - Accelerate (LLM skill):
