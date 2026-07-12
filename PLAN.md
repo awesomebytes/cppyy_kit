@@ -137,8 +137,10 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   /tf landmark frames via rclcpp_kit's C++ TransformListener at 2.5 ms median
   lag [reproduced exactly], ONE shared Rerun viewer [screenshot-verified];
   Cling JIT wall on pinocchio::Model UNCHANGED — solve stays on bindings.
-  Parked polish: no-person phantom tracking — gate perception's /tf+stream on
-  mean landmark visibility; retarget tf mode skips stale/absent frames): webcam → body+hand+face tracking + object detection → TF frames via
+  Demo polish landed same day [owner feedback]: real URDF link meshes in Rerun
+  [G1 35 STL / Talos 47, Asset3D once + FK transforms per frame, +0.55 ms],
+  perceive defaults to run-until-Ctrl-C with clean SIGINT, and the landmark-
+  visibility presence gate [no-person phantom tracking killed]): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
