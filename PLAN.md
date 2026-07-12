@@ -112,6 +112,28 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   control_kit's ControllerManager) and, if needed, `Costmap2DROS` from Python
   to satisfy those ctors; unlock Smac (needs OMPL headers on path — we have
   the ompl env) and the RPP controller; extend nav2_kit + REPORT verdicts.
+- **6f Perception→humanoid retargeting pipeline** (agreed 2026-07-12, decisions
+  locked): webcam → body+hand+face tracking + object detection → TF frames via
+  rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
+  (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
+  recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
+  demonstration capture rig that bootstraps humanoid policy training — the
+  motivating "why cppyy_kit" story. **Hybrid line agreed:** commodity Python ML
+  inference (MediaPipe/ONNX/YOLO — library primitives, per the 6b honest-
+  headline lesson); cppyy_kit owns the genuinely hot glue (TF 6.7–14×,
+  WBC/IK solve 21.7×, custom kernels 15.4×, zero-copy marshaling).
+  Record+replay mode from day one (rehearsal safety). Short-lived kickstart
+  code — timeboxed spike discipline, not a product. Build-first-and-learn:
+  whether this becomes the presentation centerpiece is deferred until it lands
+  (supersedes 6a's "decision after 6b" note).
+- **6g Low-jitter Python control experiment** (agreed 2026-07-12): reuse
+  control_kit's in-process ros2_control loop driven from Python (nogil +
+  frozen/cached) and measure loop-period jitter honestly: cyclictest baseline +
+  control-loop histograms, SCHED_FIFO + mlockall + CPU isolation. Reference
+  numbers on the CURRENT kernel first (6.17 oem, PREEMPT_DYNAMIC — NOT
+  PREEMPT_RT); then re-run under `preempt=voluntary/full` runtime switch for
+  the comparison table. **No Ubuntu Pro / RT-kernel install.** Possible
+  follow-up: same harness on an embedded board (Raspberry Pi).
 - **6e WBC exploration** ✅ DONE (2026-07-12, GO-narrow: Crocoddyl inline-C++ action models at native speed — 0.32 ms vs 6.84 ms Python-authored, 21.7×, bit-identical cost; thin wbc_kit shipped, standalone env [boost 1.86 vs ROS 1.90 — solve-group infeasible, verified]; pinocchio blocked on env boost-variant arity; tsid redundant; OCS2/mc_rtc unpackaged; QP bindings fine): survey spike first — tsid/crocoddyl/pinocchio are on
   conda-forge WITH Python bindings (verified), so the cppyy win must be sharper
   than "bindings exist": candidates = templated-scalar surfaces (pinocchio
