@@ -184,7 +184,7 @@ use: `pcl::VoxelGrid<PointXYZ>` ~594 ms and `pcl::toROSMsg<PointXYZ>` ~593 ms
 (measured). A freeze/PCH does not touch these (they are codegen, not header parse),
 and `warmup()` only relocates them.
 
-The M2 compile cache moves the VoxelGrid cost into a compiled `.so`:
+The compile cache moves the VoxelGrid cost into a compiled `.so`:
 `pcl_kit.voxel_downsample(cloud, leaf)` runs a `VoxelGrid<PointXYZ>` compiled once
 via `cppyy_kit.cppdef_cached` (bringup `_adopt_glue()` caches the bridge glue +
 this helper together; it falls back to the Python-driven `pcl.VoxelGrid[...]` mirror
