@@ -261,6 +261,59 @@ class Retargeter:
         self.anchor_R = self.data.oMf[self.RS].translation.copy()
         self.anchor_H = self.data.oMf[self.HD].translation.copy()
         self.arm = float(np.linalg.norm(self.data.oMf[self.LF].translation - self.anchor_L))
+        self._load_visual_geometry()
+
+    def _load_visual_geometry(self):
+        """Load the URDF's VISUAL geometry (the link meshes) so Rerun can show the
+        real robot, not just the joint skeleton. Best-effort: if the meshes can't be
+        loaded (missing files / no geometry backend), ``has_meshes`` stays False and
+        the caller falls back to the skeleton."""
+        pin = self._pin
+        self.has_meshes = False
+        self.geom_model = None
+        self._mesh_geoms = []       # indices of geoms backed by a real mesh file
+        try:
+            import warnings
+            share = os.path.join(os.environ["CONDA_PREFIX"], "share")
+            with warnings.catch_warnings():          # pinocchio's package-dir notice
+                warnings.simplefilter("ignore")
+                gm = pin.buildGeomFromUrdf(self.model, urdf_path(self.cfg),
+                                           pin.GeometryType.VISUAL, [share])
+            objs = list(gm.geometryObjects)
+            # Some links are inline primitives (BOX/CYLINDER, meshPath is the shape
+            # name, not a file) -- skip those and render the file-backed meshes.
+            self._mesh_geoms = [i for i, g in enumerate(objs)
+                                if os.path.isfile(g.meshPath)]
+            if self._mesh_geoms:
+                self.geom_model = gm
+                self.geom_data = gm.createData()
+                self.has_meshes = True
+                self.n_primitives = len(objs) - len(self._mesh_geoms)
+        except Exception as exc:
+            self._mesh_error = str(exc)
+
+    def visual_meshes(self):
+        """[(entity_name, absolute_mesh_path)] for one-time static Asset3D logging
+        (file-backed visual geoms only; inline primitives are skipped)."""
+        if not self.has_meshes:
+            return []
+        objs = self.geom_model.geometryObjects
+        return [(objs[i].name, objs[i].meshPath) for i in self._mesh_geoms]
+
+    def visual_placements(self, q):
+        """[(entity_name, translation(3,), rotation(3x3))] -- world placement of each
+        file-backed visual mesh at ``q`` (pinocchio FK + geometry update)."""
+        pin = self._pin
+        pin.forwardKinematics(self.model, self.data, q)
+        pin.updateGeometryPlacements(self.model, self.data, self.geom_model,
+                                     self.geom_data, q)
+        objs = self.geom_model.geometryObjects
+        out = []
+        for i in self._mesh_geoms:
+            M = self.geom_data.oMg[i]
+            out.append((objs[i].name, np.asarray(M.translation, dtype=np.float32),
+                        np.asarray(M.rotation, dtype=np.float32)))
+        return out
 
     def anchors_flat(self):
         return np.concatenate([self.anchor_L, self.anchor_R, self.anchor_H])
@@ -380,11 +433,13 @@ def run_retarget(args):
 
     session = None
     rr = None
+    viz_mode = "skeleton"
     if not args.no_viz:
         import rerun as rr
         from retarget_pipeline import viz
         session = viz.init_rerun("retarget", args.rrd,
                                  blueprint=viz.blueprint_retarget())
+        viz_mode = _setup_robot_viz(rr, rt, args)
 
     F = len(targets)
     q = rt.q0.copy()
@@ -399,7 +454,7 @@ def run_retarget(args):
         ee_err[i] = list(errs.values())
         if rr is not None:
             _log_retarget(rr, rt, i, q, targets[i],
-                          ls.mediapipe_world_to_robot(pw_all[i].reshape(33, 3)))
+                          ls.mediapipe_world_to_robot(pw_all[i].reshape(33, 3)), viz_mode)
         if (i + 1) % 30 == 0:
             print("  frame %d/%d: solve %.2f ms, EE err L=%.3f R=%.3f m"
                   % (i + 1, F, np.median(solve_ms[-30:]), ee_err[i, 0], ee_err[i, 1]),
@@ -414,20 +469,41 @@ def run_retarget(args):
         viz.announce(session)
 
 
-def _log_retarget(rr, rt, i, q, targets9, human_robot):
+def _log_retarget(rr, rt, i, q, targets9, human_robot, viz_mode="mesh"):
     """Log one retarget frame. ``human_robot`` is the (33,3) human skeleton already in
     the robot frame (callers convert from MediaPipe world; the TF path reads it
-    pre-converted off /tf)."""
+    pre-converted off /tf). ``viz_mode``: 'mesh' places the real URDF link meshes (the
+    nice-looking robot); 'skeleton' draws the joint tree (the fallback)."""
     from retarget_pipeline import viz
     rr.set_time("frame", sequence=i)
-    pts, bones = rt.joint_skeleton(q)
-    rr.log("robot/joints", rr.Points3D(pts, radii=0.02, colors=[(120, 200, 255)]))
-    rr.log("robot/bones", rr.LineStrips3D(bones, colors=[(120, 200, 255)]))
+    if viz_mode == "mesh" and rt.has_meshes:
+        viz.log_robot_pose(rr, "robot/visual", rt.visual_placements(q))
+    else:
+        pts, bones = rt.joint_skeleton(q)
+        rr.log("robot/joints", rr.Points3D(pts, radii=0.02, colors=[(120, 200, 255)]))
+        rr.log("robot/bones", rr.LineStrips3D(bones, colors=[(120, 200, 255)]))
     tgt = targets9.reshape(3, 3)
     rr.log("robot/targets", rr.Points3D(tgt, radii=0.04, colors=[(255, 140, 60)]))
     if human_robot is not None:
         viz.log_skeleton_3d(rr, "human/pose", human_robot, ls.POSE_CONNECTIONS,
                             color=(160, 160, 160))
+
+
+def _setup_robot_viz(rr, rt, args):
+    """Resolve the robot viz mode and, for mesh mode, log the link meshes once
+    (static). Returns the effective mode ('mesh' or 'skeleton')."""
+    from retarget_pipeline import viz
+    mode = getattr(args, "robot_viz", "mesh")
+    if mode == "mesh":
+        if rt.has_meshes:
+            n = viz.log_robot_meshes_static(rr, "robot/visual", rt.visual_meshes())
+            print("Rerun: %d %s link meshes loaded (real robot model)."
+                  % (n, rt.cfg.name), flush=True)
+        else:
+            print("[retarget] no link meshes for %s; falling back to the joint "
+                  "skeleton." % rt.cfg.name, flush=True)
+            mode = "skeleton"
+    return mode
 
 
 def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source):
@@ -458,11 +534,13 @@ def run_follow(args):
              args.startup_timeout, args.idle_timeout), flush=True)
     session = None
     rr = None
+    viz_mode = "skeleton"
     if not args.no_viz:
         import rerun as rr
         from retarget_pipeline import viz
         session = viz.init_rerun("retarget", args.rrd,
                                  blueprint=viz.blueprint_retarget())
+        viz_mode = _setup_robot_viz(rr, rt, args)
 
     dt = 1.0 / args.fps
     anch = rt.anchors_flat().reshape(3, 3)
@@ -503,7 +581,7 @@ def run_follow(args):
             ee_log.append(list(errs.values()))
             if rr is not None:
                 _log_retarget(rr, rt, len(Q) - 1, q, tgt,
-                              ls.mediapipe_world_to_robot(fr["pose_world"]))
+                              ls.mediapipe_world_to_robot(fr["pose_world"]), viz_mode)
             if len(Q) % 30 == 0:
                 print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
                       "EE L=%.3f R=%.3f m"
@@ -559,6 +637,7 @@ def run_tf(args):
 
     session = None
     rr = None
+    viz_mode = "skeleton"
     if not args.no_viz:
         import rerun as rr
         from retarget_pipeline import viz
@@ -569,6 +648,7 @@ def run_tf(args):
                   % (args.viewer_url or viz.DEFAULT_VIEWER_URL), flush=True)
         else:
             session = viz.init_rerun("retarget", args.rrd, blueprint=viz.blueprint_retarget())
+        viz_mode = _setup_robot_viz(rr, rt, args)
 
     pose_frames = ["pose/" + n for n in ls.POSE_LANDMARK_NAMES]
     nose_frame = pose_frames[ls.NOSE]
@@ -628,7 +708,7 @@ def run_tf(args):
             ts_log.append(stamp)
             ee_log.append(list(errs.values()))
             if rr is not None:
-                _log_retarget(rr, rt, len(Q) - 1, q, tgt, r)
+                _log_retarget(rr, rt, len(Q) - 1, q, tgt, r, viz_mode)
             if len(Q) % 30 == 0:
                 print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
                       "EE L=%.3f R=%.3f m"
@@ -723,6 +803,10 @@ def main(argv=None):
     ap.add_argument("--no-cpp", action="store_true",
                     help="use the Python glue loop instead of the cppyy_kit kernel")
     ap.add_argument("--no-viz", action="store_true", help="skip Rerun")
+    ap.add_argument("--robot-viz", choices=["mesh", "skeleton"], default="mesh",
+                    dest="robot_viz",
+                    help="how to draw the robot in Rerun: 'mesh' = the real URDF link "
+                         "meshes (default), 'skeleton' = the joint tree (fallback)")
     ap.add_argument("--shared-viewer", action="store_true", dest="shared_viewer",
                     help="tf mode: connect to perception's shared Rerun viewer "
                          "(one window: camera + skeleton + robot) instead of opening own")
