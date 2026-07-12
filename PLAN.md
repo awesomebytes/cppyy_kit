@@ -106,7 +106,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   a pure-Python IK baseline. Same robot (Panda), same targets, solve-rate /
   success / accuracy table + docs page. A genuinely new use case: cppyy as the
   harness that makes C++-only solvers benchmarkable from one Python script.
-- **6d Nav2 lifecycle unlock**: the nav2_kit report showed Smac + RPP blocked
+- **6d Nav2 lifecycle unlock** ✅ DONE (2026-07-12: in-process rclcpp_lifecycle::LifecycleNode is the universal key [3rd instance of the in-process node/manager pattern]; real Smac 2D + real RPP now run from Python — all four d02 planner/controller combos reach GOAL; Hybrid-A* honest flaky-partial [OMPL-under-Cling runtime segfault], not shipped; test-nav2 8→14): the nav2_kit report showed Smac + RPP blocked
   on lifecycle-coupled ctors. Way around it: construct a real
   `rclcpp_lifecycle::LifecycleNode` (plain class, in-process — same pattern as
   control_kit's ControllerManager) and, if needed, `Costmap2DROS` from Python
