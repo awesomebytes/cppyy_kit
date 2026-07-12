@@ -1,5 +1,5 @@
 """
-landmark_stream -- the record/replay contract between the two M6f processes.
+landmark_stream -- the record/replay contract between the two pipeline processes.
 
 Process A (perception) WRITES a stream of per-frame human landmarks; Process B
 (retargeting) READS it. The stream is newline-delimited JSON (JSONL): one metadata

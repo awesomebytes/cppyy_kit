@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """
-perceive.py (M6f, Process A) -- the perception half of the capture rig.
+perceive.py (Process A) -- the perception half of the capture rig.
 
     webcam -> MediaPipe HolisticLandmarker (body + hands) -> a landmark stream
     (record) -> TF frames via rclcpp_kit -> live Rerun.
 
 The ML inference is a **library primitive** (MediaPipe, commodity Python -- the
-6b honest-headline lesson: do not wrap inference in cppyy). What cppyy_kit owns here
+webcam demo's honest-headline lesson: do not wrap inference in cppyy). What cppyy_kit owns here
 is the *glue*: publishing the ~75 detected landmark frames onto ``/tf`` every video
 frame. That message is **built in C++** by a ``cppyy.cppdef`` broadcaster that fills
 all the translations from one flat address (COMMON_PATTERNS s6), instead of
@@ -540,7 +540,7 @@ def run_bench(args):
     a_ms = bench(lambda r: bc.update(r.ctypes.data, n_frames, 0, 0))
     b_ms = bench(lambda r: build_tf_message_python(TFMessage, TransformStamped,
                                                    names, r, PARENT_FRAME, 0, 0))
-    print("\n== M6f /tf-build A-vs-B (%d frames/message, %d messages) =="
+    print("\n== /tf-build A-vs-B (%d frames/message, %d messages) =="
           % (n_frames, len(rows)))
     print("  A  cppyy_kit C++ builder (Pattern 6): %8.4f ms/message" % a_ms)
     print("  B  per-field Python loop (cppyy proxies): %8.4f ms/message" % b_ms)

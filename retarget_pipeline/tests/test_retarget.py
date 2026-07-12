@@ -1,5 +1,5 @@
 """
-test_retarget -- headless smoke for the retargeting process (M6f, Process B).
+test_retarget -- headless smoke for the retargeting process (Process B).
 
 Runs in the ``wbc`` env (needs pinocchio). Auto-skips elsewhere, so the default
 suite is unaffected. No ROS, no camera, no display, no network -- it retargets a

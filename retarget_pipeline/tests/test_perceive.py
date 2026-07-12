@@ -1,5 +1,5 @@
 """
-test_perceive -- headless smoke for the perception process (M6f, Process A).
+test_perceive -- headless smoke for the perception process (Process A).
 
 Runs in the ``pipeline`` env (needs rerun for the viz import; mediapipe/webcam are
 NOT needed -- the synthetic scene drives everything). Auto-skips elsewhere, so the

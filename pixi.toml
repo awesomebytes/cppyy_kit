@@ -253,7 +253,7 @@ demo-webcam = "python cv_kit/demos/webcam_demo.py"
 # The A-vs-B table at 640x480 and 1280x720 (synthetic, no viewer, no ROS).
 bench-webcam = "python cv_kit/demos/webcam_demo.py --bench"
 
-# --- pipeline (M6f): perception -> humanoid retargeting capture rig ------------
+# --- pipeline: perception -> humanoid retargeting capture rig ------------------
 # The perception half (Process A): webcam -> MediaPipe HolisticLandmarker
 # (pose + hands, face optional) -> a landmark stream (record/replay) -> TF frames
 # via rclcpp_kit -> live Rerun. The retargeting half (Process B) runs in the
@@ -341,7 +341,7 @@ tsid = "*"                 # task-space inverse dynamics (python bindings + C++ 
 example-robot-data = "*"   # standard robot models (Talos/Solo/arm) for the solves
 casadi = "*"               # pinocchio's shipped autodiff scalar (templated-scalar contrast)
 eigen = "*"                # linear algebra headers (pulled anyway; explicit for JIT includes)
-rerun-sdk = "0.34.*"       # M6f: log the retargeted humanoid to Rerun (retarget.py)
+rerun-sdk = "0.34.*"       # log the retargeted humanoid to Rerun (retarget.py)
 
 [feature.wbc.activation.env]
 # cppyy resolves C++ symbols at call time by scanning LD_LIBRARY_PATH; conda relies
@@ -355,14 +355,17 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/wbc_kit"
 demo-wbc-lower = "python wbc_kit/demos/d01_lower_action_model.py"
 # wbc_kit tests (gate on the WBC C++ libs). The base cppyy_kit layer is in test-bt.
 test-wbc = "pytest wbc_kit/tests/test_wbc_kit.py -v"
-# --- M6f retargeting half (Process B): consume the landmark stream, retarget onto
-# a humanoid via a whole-body CLIK solve (pinocchio), log to Rerun + write the
+# --- retargeting half (Process B): consume the landmark stream, retarget onto a
+# humanoid via a whole-body CLIK solve (pinocchio), log to Rerun + write the
 # policy-kickstart dataset. Runs in this standalone env (pinocchio can't share a
 # process with ROS). --replay <stream> reads a recorded stream (CI/headless);
 # --robot g1 swaps Talos for the Unitree G1 (both URDFs ship with example-robot-data).
 demo-retarget = "python retarget_pipeline/retarget.py"
-# The honest cppyy_kit win: the per-frame CLIK loop authored as inline C++ calling
-# pinocchio natively vs the same loop through pinocchio's Python bindings.
+# The honest cppyy_kit win in this half: the per-frame retarget GLUE kernel (coord
+# transform + target map + sequential One-Euro filter) authored as one cppyy.cppdef
+# C++ pass vs the identical Python per-frame loop. (The IK solve itself uses pinocchio's
+# Python bindings -- pinocchio::Model won't JIT under Cling with this env's boost; see
+# docs/retarget_pipeline/REPORT.md.)
 bench-retarget = "python retarget_pipeline/retarget.py --bench"
 # retarget tests (gate on pinocchio). Headless replay of a tiny recorded stream.
 test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
@@ -414,7 +417,7 @@ moveit = { features = ["moveit"], solve-group = "default" }
 ik = { features = ["moveit", "ik"], solve-group = "default" }
 control = { features = ["control"], solve-group = "default" }
 vision = { features = ["vision"], solve-group = "default" }
-# Perception half of the M6f capture rig: the default ros-base env + rerun + the
+# Perception half of the capture rig: the default ros-base env + rerun + the
 # MediaPipe pip dep (this repo's first). solve-group="default" so the ROS/cppyy
 # stack is the exact same solve as everywhere else; MediaPipe's numpy 2.5.1 matches
 # the default conda numpy, and the default env carries no conda OpenCV to clash with

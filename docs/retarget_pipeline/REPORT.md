@@ -1,4 +1,4 @@
-# retarget_pipeline (M6f) — perception → humanoid retargeting capture rig
+# retarget_pipeline — perception → humanoid retargeting capture rig
 
 **Date:** 2026-07-12 · **Envs:** pixi `pipeline` (perception) = default robostack-jazzy
 ros-base + `cppyy 3.5` + `rerun-sdk 0.34.1` (conda) + `mediapipe 0.10.35` (pypi, brings
@@ -136,7 +136,7 @@ per-element Python-loop trap (§6/§26).
 ## Honest boundaries (library-primitive vs cppyy-won)
 
 - **ML inference is a library primitive** (MediaPipe, CPU ~30 ms/frame) — deliberately NOT
-  wrapped in cppyy (the 6b honest-headline lesson). No cppyy claim is made on it.
+  wrapped in cppyy (the live-webcam demo's honest-headline lesson). No cppyy claim is made on it.
 - **cppyy_kit wins are in the glue, and only where measured:** /tf marshaling **265×**,
   retarget glue kernel **303.8×** — both Pattern 6/26 (build/refill in C++; keep the sequential
   loop in C++), both with numeric agreement checks.
@@ -154,7 +154,7 @@ per-element Python-loop trap (§6/§26).
    from headers under Cling (URDF parse, FK on a real robot, a crocoddyl `StateMultibody`) hits
    boost 1.90's `make_variant_list` arity limit on the 25-type `JointModel` variant. Rule: drive
    pinocchio's rigid-body core via its **Python bindings**; cppyy's win for this stack is the
-   abstract/custom-model path (crocoddyl action models, §M6e) and *non-pinocchio* glue kernels,
+   abstract/custom-model path (crocoddyl action models; see docs/wbc/REPORT.md) and *non-pinocchio* glue kernels,
    not the multibody `Model`.
 2. **Build-once-in-C++, refill-per-frame for ROS messages (sharpens §6).** A persistent C++-side
    message (`TFMessage`) whose data is refilled from a raw address each frame beats
@@ -198,7 +198,7 @@ mismatch. The perception default uses `holistic` (`float16/latest`, downloaded 2
 `e2dab61191e2dcd0a15f943d8e3ed1dce13c82dfa597b9dd39f562975a50c3f8`. (Also pinned: `pose` =
 `4eaa5eb7…`, `hand` = `fbc2a300…`.) Caveat: the URL is Google's `.../latest/`, so a bundle
 rotation will change the hash and be refused — re-pin, or pass `--allow-hash-mismatch` /
-`M6F_ALLOW_HASH_MISMATCH=1` to knowingly accept a new bundle. Verified: a cached bundle whose
+`RETARGET_ALLOW_HASH_MISMATCH=1` to knowingly accept a new bundle. Verified: a cached bundle whose
 hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `.part` cleaned.
 
 ---

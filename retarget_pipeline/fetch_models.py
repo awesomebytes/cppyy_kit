@@ -13,7 +13,7 @@ at runtime. Idempotent: an already-present bundle whose hash matches is left alo
 
 Caveat: the URLs point at Google's ``.../latest/`` path, so if Google rotates a
 bundle its hash will change and the check will (correctly) refuse it. Re-pin the new
-SHA-256 here, or pass ``--allow-hash-mismatch`` / ``M6F_ALLOW_HASH_MISMATCH=1`` to
+SHA-256 here, or pass ``--allow-hash-mismatch`` / ``RETARGET_ALLOW_HASH_MISMATCH=1`` to
 knowingly accept the new bundle.
 
 The perception demo calls :func:`ensure` and falls back to the synthetic scene if a
@@ -65,7 +65,7 @@ def _sha256(path):
 
 
 def _allow_mismatch(flag):
-    return flag or os.environ.get("M6F_ALLOW_HASH_MISMATCH") == "1"
+    return flag or os.environ.get("RETARGET_ALLOW_HASH_MISMATCH") == "1"
 
 
 def have_model(name):
