@@ -936,14 +936,17 @@ language is not what sets the median.
 The Cling PCH that removes a kit's header-parse cost (FREEZE.md) is normally a manual
 build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use into
 `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`, auto-loaded on every later run.**
-- **Activation obeys the import-order rule for free.** `cppyy_kit/__init__` calls
-  `autopch.setup()` *before its own `import cppyy`*, so `CLING_STANDARD_PCH` is set
-  before Cling binds its PCH. The one honest caveat: a program must `import cppyy_kit`
-  (or a kit, which imports it first) **before** importing `cppyy` directly, or that run
-  stays on JIT — the header set is still recorded, so the next run warms up. cppyy sets
-  `CLING_STANDARD_PCH` to its *own* std PCH at import, so "already set" is only a user
-  override when cppyy has not loaded yet (this distinction is the subtle bug to get
-  right).
+- **Activation is independent of import order** because it runs from a `.pth` in the
+  environment's site-packages, whose line executes at every interpreter start *before
+  any user import*. The `.pth` calls a standalone bootstrap (`cppyy_kit._autopch_boot`,
+  stdlib-only, never-raising) that binds `CLING_STANDARD_PCH` from the env's manifest.
+  cppyy_kit self-installs it on first import (`python -m cppyy_kit.autopch --uninstall`
+  to remove). This matters: `import cppyy` early in a program sets `CLING_STANDARD_PCH`
+  to cppyy's *own* std PCH, so an in-process `setup()` that runs after that import is too
+  late — the earlier design silently recorded the manifest forever and never warmed up
+  when cppyy won the import race. The `.pth` runs first, so it always wins. cppyy_kit's
+  own import then prints the one `Cling PCH loaded from …` line from a marker the `.pth`
+  set (a print at every `python` start would be noise).
 - **A kit registers the headers it parses**, once, at bringup:
   `cppyy_kit.register_pch_headers(headers, include_paths=..., force_symbols=None)`. Warm
   run whose PCH already bakes them → cheap no-op; otherwise the set is folded into the
@@ -951,13 +954,17 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
   write), so the next run loads it. `force_symbols` is the §1-FREEZE escape hatch for
   internal-linkage statics — applied only on the warm path (the JIT parse defines them
   otherwise); rclcpp needs none.
-- **Keys invalidate naturally.** The `.pch` filename hashes the env prefix + cppyy
-  versions + the baked header set; a rebuilt env or upgraded cppyy is a clean miss (fall
-  back to JIT), never a silent ABI mismatch — same lifecycle as the manual PCH, and never
-  committed. Opt out with `CPPYY_KIT_NO_AUTOPCH=1`.
-- **Measured (rclcpp):** header parse ~1.9 s → ~0 s, `bringup_rclcpp()` ~1.9 s → ~0.06 s
-  (~30×) on the warm run, with zero user action between the cold and warm runs. Removes
-  the **parse** only (cppyy's first-use call-wrapper JIT is the separate §23 cost).
+- **Keys invalidate naturally; the cache self-prunes.** The `.pch` filename hashes the
+  env prefix + cppyy versions + the baked header set; a rebuilt env or upgraded cppyy is a
+  clean miss (fall back to JIT), never a silent ABI mismatch. After each build the cache
+  is trimmed to the newest few artifacts per environment (keeping any a live manifest
+  references) so artifacts from many environments do not accumulate. Opt out with
+  `CPPYY_KIT_NO_AUTOPCH=1`; never committed.
+- **Measured (rclcpp):** for `bringup_rclcpp()`, the `rclcpp C++ headers loaded (…)` line
+  drops from ~1.9 s to ~0.0 s and the whole call from ~1.9 s to ~0.06 s (~30×) on the warm
+  run, with zero user action between the cold and warm runs — including when the program
+  imports `cppyy` before `cppyy_kit`. Removes the **parse** only (cppyy's first-use
+  call-wrapper JIT is the separate §23 cost).
 
 ---
 
