@@ -119,20 +119,19 @@ an honest DON'T list), **APPLY** (minimal diff per the kit `SKILL.md`), **VERIFY
 Python voxel downsampler **15.6× (47.9 ms → 3.07 ms)** with identical output —
 `pixi run -e pcl test-accelerate` (the contract) and `bench-accelerate` (the table).
 
-## Status: M1b (rclcpp_kit carved)
+## Status
 
-This repo was bootstrapped (M1a) by migrating the kit suite out of rclcppyy **with
-git history**, and (M1b) by carving the rclcpp core layer — **`rclcpp_kit`**
-(bringup, messages, serialization, rosbag2, tf) — out of rclcppyy the same way
-(`git log --follow` traces any file back into rclcppyy). Every ROS-touching kit now
-imports `rclcpp_kit` directly; the M1b-temporary `ros-jazzy-rclcppyy` bridge is gone.
+**Migration complete (M1), base enrichment complete (M2), documentation site live
+(M4), LLM acceleration skill shipped (M5), and all six M6 demo lanes delivered.**
+The suite is extracted from [rclcppyy](https://github.com/awesomebytes/rclcppyy)
+with git history; every ROS-touching kit imports `rclcpp_kit` directly.
+
 Still to come:
 
-- **M1c** — per-package rattler-build recipes + tag-triggered release matrix to
-  the prefix.dev `awesomebytes` channel (which replaces the PYTHONPATH mechanism
-  with proper editable/conda installs).
-- **M3** — slim rclcppyy to thin re-export shims over `rclcpp_kit` + its
-  monkeypatch/brand; parity proven by its own bench/test suite.
+- **M1c** — per-package rattler-build recipes + tag-triggered release to the
+  prefix.dev `awesomebytes` channel.
+- **M3** — slim rclcppyy to thin re-export shims over `rclcpp_kit`.
+- **M7** — presentation assets for ROSCon UK 2026.
 
 ## License
 

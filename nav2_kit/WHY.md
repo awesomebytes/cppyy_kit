@@ -80,7 +80,7 @@ planner_server:
 ```python
 #!/usr/bin/env python
 import numpy as np
-from rclcppyy.kits import nav2_kit
+import nav2_kit
 nav2_kit.bringup_nav2()
 
 grid = np.zeros((100, 100), dtype=np.uint8)                 # your world

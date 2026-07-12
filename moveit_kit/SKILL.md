@@ -1,7 +1,7 @@
 # moveit_kit — cheat sheet for a coding agent
 
 You are writing Python that drives **MoveIt 2** — the C++ motion-planning framework —
-through `rclcppyy.kits.moveit_kit`. The kit **mirrors MoveIt's C++ API**: it returns the
+through `moveit_kit`. The kit **mirrors MoveIt's C++ API**: it returns the
 real `moveit` namespace and you use `moveit.core.RobotState`,
 `planning_scene::PlanningScene`, `RobotState::setFromIK`, a real OMPL `PlannerManager`
 exactly as in the MoveIt C++ tutorials. The kit removes the cppyy friction: staged
@@ -21,7 +21,7 @@ is built around the **panda** test model (`moveit_resources_panda_*`).
   `with_kinematics=True` for KDL IK, `with_planning=True` for OMPL planning. The heavy
   stages are gated (JIT + plugin teardown), so a parse-only user skips them.
 - The **kinematics and planning layers need rclcpp initialized** (the plugins load against
-  a Node): `rclcpp = bringup_rclcpp(); rclcpp.ok() or rclcpp.init()`.
+  a Node): `rclcpp = rclcpp_kit.bringup_rclcpp(); rclcpp.ok() or rclcpp.init()`.
 - **Build the model from strings:** `model = build_robot_model(cfg.urdf, cfg.srdf)` where
   `cfg = panda_config()`. No parameter server needed for the model.
 - **Plugins read node parameters.** The OMPL planner needs the config: build a node with
@@ -37,7 +37,7 @@ is built around the **panda** test model (`moveit_resources_panda_*`).
 *Use for:* loading a robot, reading link transforms. No rclcpp needed.
 
 ```python
-from rclcppyy.kits import moveit_kit
+import moveit_kit
 moveit = moveit_kit.bringup_moveit()
 cfg = moveit_kit.panda_config()
 model = moveit_kit.build_robot_model(cfg.urdf, cfg.srdf)
@@ -56,8 +56,8 @@ p = state.getGlobalLinkTransform("panda_link8").translation()   # FK: p[0], p[1]
 pluginlib in-process.
 
 ```python
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-rclcpp = bringup_rclcpp(); rclcpp.ok() or rclcpp.init()
+import rclcpp_kit
+rclcpp = rclcpp_kit.bringup_rclcpp(); rclcpp.ok() or rclcpp.init()
 moveit = moveit_kit.bringup_moveit(with_kinematics=True)
 
 node = moveit_kit.make_node("ik")                     # plain node: KDL uses its defaults
@@ -117,8 +117,8 @@ print("colliding:", bool(hit.collision))
 `ompl_planning.yaml`.
 
 ```python
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-rclcpp = bringup_rclcpp(); rclcpp.ok() or rclcpp.init()
+import rclcpp_kit
+rclcpp = rclcpp_kit.bringup_rclcpp(); rclcpp.ok() or rclcpp.init()
 moveit = moveit_kit.bringup_moveit(with_kinematics=True, with_planning=True)
 
 scene = moveit_kit.planning_scene(model)
@@ -171,7 +171,7 @@ p = moveit_kit.pose(x, y, z, qx, qy, qz, qw)            # with a quaternion
 ---
 
 ## Gotchas (short version)
-- **Kinematics/planning need rclcpp** (`bringup_rclcpp(); init()`); parse/FK/collision do
+- **Kinematics/planning need rclcpp** (`rclcpp_kit.bringup_rclcpp(); init()`); parse/FK/collision do
   not.
 - **Pose-goal planning needs `load_kinematics_solver`** (OMPL samples the goal via IK);
   joint goals do not.

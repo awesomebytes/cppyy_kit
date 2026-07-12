@@ -239,7 +239,7 @@ artifact is present on first run.
 thunk and the `registerSimpleAction`/`registerStateful` wrapper (the big costs, all
 compiled into the `.so`), but cppyy still JIT-generates a call wrapper the first time
 Python calls *our* trampoline entry points (`register_py_action`, `makePorts`) —
-that codegen is cppyy-internal, not interceptable at our layer. It is a smaller,
+that codegen is cppyy-internal, not interceptable at this layer. It is a smaller,
 simpler-signature wrapper (~60 ms vs ~233 ms), and it is the same cost whether or
 not the `.so` is cached.
 
@@ -253,7 +253,7 @@ cache is library-independent, like the PCH. (Here the win is instantiating a
 **Honest boundary.** This caches the glue/trampolines the kit *authors*. cppyy's
 on-demand template instantiations triggered by arbitrary user calls (e.g.
 `node.getInput[T](key)` for a new `T`), and the call wrappers cppyy makes to reach
-our entry points, are not cached by this. Artifacts are env-version-tagged and
+the kit's entry points, are not cached by this. Artifacts are env-version-tagged and
 gitignored, same lifecycle as the PCH (§3): a cppyy/compiler/source change is a
 clean cache miss, never a silent ABI mismatch. When the compiler/CPyCppyy toolchain
 is unavailable the kit falls back to the JIT registration path (a one-time notice),
@@ -292,13 +292,13 @@ and runs at engine speed. Registration still crosses cppyy once
 
 | File | Role |
 |---|---|
-| `rclcppyy/kits/freeze.py` | artifact path/version tag, frozen-path detection, force-symbol glue |
+| `cppyy_kit/freeze.py` | artifact path/version tag, frozen-path detection, force-symbol glue |
 | `scripts/freeze/build_bt_pch.py` | build the frozen PCH (rootcling `-generate-pch`) |
 | `scripts/freeze/run_frozen.py` | launcher: set `CLING_STANDARD_PCH` before cppyy, exec target |
 | `scripts/freeze/bench_freeze.py` | L0-vs-L1 numbers |
 | `scripts/freeze/l2_approach_object.cpp` / `build_l2_node.py` / `l2_diff.py` | L2 leaf + build + differential test |
-| `test/test_bt_freeze.py`, `test/_freeze_helper.py` | frozen-path tests (parse eliminated + correct) |
-| `rclcppyy/kits/bt_kit.py` | `bringup_bt()` applies force-symbols when frozen; `bt_kit.frozen()` |
+| `bt_kit/tests/test_bt_freeze.py`, `bt_kit/tests/_freeze_helper.py` | frozen-path tests (parse eliminated + correct) |
+| `bt_kit/bt_kit/__init__.py` | `bringup_bt()` applies force-symbols when frozen; `bt_kit.frozen()` |
 
 ## 7. Limitations
 

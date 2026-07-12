@@ -61,6 +61,6 @@ recipe/bump_version.sh 0.2.0
 
 `v*` tag → [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 build all → prove all → `rattler-build upload prefix --channel awesomebytes`
-(OIDC). **Before the first release**, Sam must authorize this repo on prefix.dev:
+(OIDC). **Before the first release**, authorize this repo on prefix.dev:
 `awesomebytes` channel → Repository Access → `awesomebytes/cppyy_kit`,
 `release.yml`, read/write. The rclcppyy authorization does not carry over.
