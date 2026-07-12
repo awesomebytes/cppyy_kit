@@ -16,6 +16,12 @@ The contract is the same tests at every rung: `pixi run -e bt test-bt` (16 tests
 is green on L0 *and* L1, and the L2 leaf is differential-tested against its L0
 Python original.
 
+> **Zero-config path.** §1–§4 describe the *manual* freeze: build an artifact, then
+> launch scripts through a wrapper that sets `CLING_STANDARD_PCH`. §8 wraps the same
+> mechanism so the L1 fast path needs **no configuration at all** — the PCH is built
+> on first use into a standard cache dir and auto-loaded on every later run. rclcpp_kit
+> uses it; its ~1.7 s header parse disappears on the second run with nothing to set.
+
 ---
 
 ## 1. The mechanism (why a PCH, not a dictionary)
@@ -314,3 +320,84 @@ and runs at engine speed. Registration still crosses cppyy once
   (§1); the failure mode is a clear "unresolved while linking" error naming the
   symbol.
 * The launcher must run before any cppyy import (import-order rule, §2).
+
+---
+
+## 8. Zero-config auto-PCH (`cppyy_kit.autopch`)
+
+§1–§4 prove the mechanism but ask the user to build an artifact and launch through a
+wrapper. `cppyy_kit.autopch` removes both steps: the PCH is created on first use into
+a standard cache dir and auto-loaded on every later run, with a clear line printed for
+each event. Nothing to set, no launcher, no pixi task.
+
+### How it engages
+
+`cppyy_kit/__init__` calls `autopch.setup()` **before its own `import cppyy`** — the
+import-order rule (§2) is honoured automatically. `setup()`:
+
+* respects a `CLING_STANDARD_PCH` the user set themselves (deliberate override → hands
+  off) and the `CPPYY_KIT_NO_AUTOPCH=1` opt-out;
+* otherwise reads this environment's manifest of baked headers, and if a matching PCH
+  exists, sets `CLING_STANDARD_PCH` to it and prints
+  `cppyy_kit: Cling PCH loaded from <path>`;
+* if none exists, the run proceeds on the JIT path (never blocks) and a one-time build
+  is scheduled.
+
+A kit declares the headers it parses via the hook
+
+```python
+cppyy_kit.register_pch_headers(headers, include_paths=..., force_symbols=None)
+```
+
+called at bringup around its `cppyy.include(...)`. On a warm run whose active PCH
+already bakes those headers this is a cheap no-op; otherwise the header set is folded
+into the environment manifest and a **detached background build** is kicked off at
+interpreter exit (guarded by a lockfile, written atomically), so the *next* run is
+warm. rclcpp_kit's `bringup_rclcpp()` registers `rclcpp/rclcpp.hpp` +
+`rcl_interfaces/msg/parameter_event.hpp` with every ament include dir; no
+force-symbols are needed for rclcpp (verified: the full `test-rclcpp` suite passes
+with the PCH active).
+
+**Import-order caveat (honest):** the activation only engages when `cppyy_kit` (or a
+kit, which imports `cppyy_kit` first) is imported **before** the program imports
+`cppyy` directly — Cling binds its PCH at cppyy's first import. If `cppyy` is imported
+first, that run stays on JIT but the header set is still recorded, so the next run
+warms up. Ordinary kit usage (`import rclcpp_kit; rclcpp_kit.bringup_rclcpp()`)
+satisfies this.
+
+### Cache layout — `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/`
+
+| File | Role |
+|---|---|
+| `<env-tag>.manifest.json` | the accumulated baked-header set + include paths for this env; `<env-tag>` hashes the env prefix and the cppyy/backend versions |
+| `<pch-key>.pch` | the artifact; `<pch-key>` hashes the same env material **and** the header set, so any change is a clean miss (never a silent ABI mismatch) |
+| `<pch-key>.pch.log` | the background build's output, for diagnosing a failed build |
+| `<pch-key>.pch.lock` | held while a build is in flight (prevents double-builds) |
+
+A rebuilt env or an upgraded cppyy changes the tag/key, so a stale artifact is simply
+not found and the run falls back to JIT — the same lifecycle as the manual PCH (§3),
+and nothing is ever committed.
+
+### Measured (rclcpp bringup, this machine)
+
+Each row is a fresh process; the "header parse" is the `rclcpp C++ headers loaded (…)`
+line, bringup is the whole `bringup_rclcpp()` call.
+
+| Run | header parse | bringup total | notes |
+|---|--:|--:|---|
+| cold (auto-PCH disabled) | ~1.9 s | ~1.91 s | baseline JIT |
+| first run (empty cache) | ~1.9 s | ~1.92 s | JIT + `building …` printed; build scheduled |
+| **warm run (PCH loaded)** | **~0.0 s** | **~0.06 s** | `Cling PCH loaded from …` printed |
+
+The header parse is eliminated (~1.9 s → ~0 s) and bringup drops **~30×** on the warm
+run, with no user action between the two. As with the manual freeze, this removes the
+**parse** only; cppyy's first-use call-wrapper JIT is a separate cost (see §4, the
+compile cache).
+
+### Files
+
+| File | Role |
+|---|---|
+| `cppyy_kit/autopch.py` | cache paths/keys, manifest, `setup()`, `register_pch_headers()`, `generate_pch()`, at-exit scheduler |
+| `cppyy_kit/autopch_build.py` | detached worker that builds a PCH from a manifest and releases the lock |
+| `cppyy_kit/tests/test_autopch.py` | hermetic tests (keys/invalidation, override, manifest union, scheduling, cross-process pickup) + an opt-in real-build test |

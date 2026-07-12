@@ -932,6 +932,33 @@ language is not what sets the median.
   soft-real-time (prototyping / HIL / sim / teleop) from Python now; hard-RT is a tuning
   path on the same kernel, and the graduation to a native `update()` (§31) is unchanged.
 
+### 36. Zero-config PCH: eliminate the header parse with nothing to set
+The Cling PCH that removes a kit's header-parse cost (FREEZE.md) is normally a manual
+build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use into
+`${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`, auto-loaded on every later run.**
+- **Activation obeys the import-order rule for free.** `cppyy_kit/__init__` calls
+  `autopch.setup()` *before its own `import cppyy`*, so `CLING_STANDARD_PCH` is set
+  before Cling binds its PCH. The one honest caveat: a program must `import cppyy_kit`
+  (or a kit, which imports it first) **before** importing `cppyy` directly, or that run
+  stays on JIT — the header set is still recorded, so the next run warms up. cppyy sets
+  `CLING_STANDARD_PCH` to its *own* std PCH at import, so "already set" is only a user
+  override when cppyy has not loaded yet (this distinction is the subtle bug to get
+  right).
+- **A kit registers the headers it parses**, once, at bringup:
+  `cppyy_kit.register_pch_headers(headers, include_paths=..., force_symbols=None)`. Warm
+  run whose PCH already bakes them → cheap no-op; otherwise the set is folded into the
+  env manifest and a **detached background build** runs at exit (lockfile-guarded, atomic
+  write), so the next run loads it. `force_symbols` is the §1-FREEZE escape hatch for
+  internal-linkage statics — applied only on the warm path (the JIT parse defines them
+  otherwise); rclcpp needs none.
+- **Keys invalidate naturally.** The `.pch` filename hashes the env prefix + cppyy
+  versions + the baked header set; a rebuilt env or upgraded cppyy is a clean miss (fall
+  back to JIT), never a silent ABI mismatch — same lifecycle as the manual PCH, and never
+  committed. Opt out with `CPPYY_KIT_NO_AUTOPCH=1`.
+- **Measured (rclcpp):** header parse ~1.9 s → ~0 s, `bringup_rclcpp()` ~1.9 s → ~0.06 s
+  (~30×) on the warm run, with zero user action between the cold and warm runs. Removes
+  the **parse** only (cppyy's first-use call-wrapper JIT is the separate §23 cost).
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS
