@@ -29,6 +29,12 @@ hot glue. Record + replay from day one.
   **end-to-end lag median 2.5 ms** (p90 3.5), *tighter* than the file-tail path. Both halves
   log to **one shared Rerun viewer** (perception spawns, retarget connects; verified visually,
   one window shows camera + human skeleton + retargeted robot + targets).
+- **Demo polish: the real robot model, run-until-Ctrl-C, and a presence gate.** The humanoid is
+  drawn as its **actual URDF link meshes** (`--robot-viz mesh`, default) — pinocchio's visual
+  `GeometryModel` + a static `rr.Asset3D` per link + a per-frame `Transform3D` from FK; ~0.55 ms/
+  frame over the skeleton, visually verified (the solid G1 model posed live in the one viewer).
+  Perception's `--duration` defaults to run-until-Ctrl-C (interactive), and a `--min-visibility`
+  presence gate stops the no-person phantom.
 
 ---
 
@@ -287,23 +293,41 @@ shared Rerun viewer** (perception spawns it; retarget connects over gRPC with th
 id), so one window shows the camera + landmark skeleton + the retargeted humanoid + targets.
 
 ```bash
-# terminal A — perception: publishes /tf AND opens the one shared viewer (start it first):
+# terminal A — perception: publishes /tf AND opens the one shared viewer (start it first).
+# Runs until Ctrl-C (no --duration needed for interactive use):
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --shared-viewer
-# terminal B — retarget: consumes /tf via the C++ listener, connects to A's viewer, adds the robot:
+# terminal B — retarget: consumes /tf via the C++ listener, connects to A's viewer, renders the
+# REAL G1 mesh model:
 ROS_DOMAIN_ID=62 pixi run -e retarget-ros demo-retarget-ros --robot g1 --shared-viewer
 ```
 
+The robot is drawn as its **actual URDF link meshes** by default (`--robot-viz mesh`) — pinocchio
+loads the visual `GeometryModel`, each link's STL is logged once as a static `rr.Asset3D`, and per
+frame only a `rr.Transform3D` per link updates its pose from FK (`--robot-viz skeleton` falls back
+to the joint tree, and any link that is an inline primitive rather than a mesh file is skipped —
+e.g. Talos's wrist-FT/IMU). **Per-frame viz cost** (G1, 35 meshes): mesh **1.31 ms/frame** vs
+skeleton 0.76 ms (Δ ~0.55 ms — the geometry-placement update + 35 transform logs); negligible
+against the 33 ms frame budget.
+
 `--source tf` is the default when neither `--replay` nor `--follow` is given; it waits up to
 `--startup-timeout` (30 s) for the first `/tf` frames and exits when the stream goes idle
-(`--idle-timeout`) or on Ctrl-C, writing the dataset. **Measured** (synthetic perception at 30 fps
-publishing /tf, G1 consumer): **end-to-end publish→retarget lag median 2.5 ms (p90 3.5, max 3.8)
-headless**, i.e. *tighter* than the file-tail path below — the C++ listener ingests /tf off the GIL
-with no file-poll interval; CLIK ~1.2 ms/frame, EE ~4.6 cm. With the shared viewer attached the
-lag stays ~2–9 ms (well under one 33 ms frame). Verified end-to-end: perception spawned one viewer,
-retarget connected to the same gRPC endpoint + recording id, and both streamed live (599 frames)
-into that one window. This is the demo the owner asked for: webcam → skeleton → humanoid in real
-time, one screen. The IK solve is pinocchio's Python bindings (the Cling `Model` wall is unchanged);
-the boost-1.90 rebuild is only what lets pinocchio share the ROS env.
+(`--idle-timeout`) or on Ctrl-C, writing the dataset. Perception's `--duration` now defaults to
+**0 = run until Ctrl-C** (interactive); pass a positive value to cap it (tests / timed benches).
+Both processes shut down cleanly on SIGINT (stream closed, dataset written, viewer flushed).
+
+A **presence gate** (`--min-visibility`, default 0.5) means perception only broadcasts /tf +
+records a pose when the key landmarks' mean visibility clears the threshold — with a webcam but
+nobody in frame, no phantom robot is driven (retarget's tf mode simply sees no fresh frames). Set
+`--min-visibility 0` to disable.
+
+**Measured** (synthetic perception at 30 fps publishing /tf, G1 consumer): **end-to-end
+publish→retarget lag median 2.5 ms (p90 3.5, max 3.8) headless**, i.e. *tighter* than the file-tail
+path below — the C++ listener ingests /tf off the GIL with no file-poll interval; CLIK ~1.2 ms/frame,
+EE ~4.6 cm. Verified end-to-end + visually: perception spawned one viewer, retarget connected to the
+same gRPC endpoint + recording id, and the **real G1 mesh model** posed live in that one window
+alongside the human skeleton. This is the demo the owner asked for: webcam → skeleton → humanoid in
+real time, one screen. The IK solve is pinocchio's Python bindings (the Cling `Model` wall is
+unchanged); the boost-1.90 rebuild is only what lets pinocchio share the ROS env.
 
 ### LIVE teleop via a stream file (`--follow`) — offline-capable fallback
 

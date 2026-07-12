@@ -133,6 +133,28 @@ def log_skeleton_3d(rr, entity, points, connections, color=(120, 200, 255),
         rr.log(entity + "/bones", rr.LineStrips3D(segs, colors=[color]))
 
 
+def log_robot_meshes_static(rr, root, meshes):
+    """Log each visual link mesh ONCE as a static Asset3D (STL/OBJ/GLB). Per frame the
+    caller updates only a Transform3D at the same entity path (:func:`log_robot_pose`),
+    so the mesh geometry streams to the viewer a single time. Returns the number of
+    meshes logged."""
+    n = 0
+    for name, path in meshes:
+        try:
+            rr.log("%s/%s" % (root, name), rr.Asset3D(path=path), static=True)
+            n += 1
+        except Exception:
+            pass          # a bad/unsupported mesh is skipped; skeleton still covers it
+    return n
+
+
+def log_robot_pose(rr, root, placements):
+    """Per-frame: place each visual mesh via a Transform3D at its entity path (the
+    world placement from pinocchio FK). Cheap -- no geometry is re-sent."""
+    for name, t, rot in placements:
+        rr.log("%s/%s" % (root, name), rr.Transform3D(translation=t, mat3x3=rot))
+
+
 def log_targets_3d(rr, entity, targets, color=(255, 140, 60), radius=0.03):
     """Log the retarget end-effector targets as fat 3D points."""
     if not targets:

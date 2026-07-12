@@ -126,6 +126,22 @@ def test_replay_and_follow_are_mutually_exclusive():
         R.main(["--replay", "a.jsonl", "--follow", "b.jsonl"])
 
 
+def test_visual_meshes_load(tmp_path):
+    """Job 1: the real URDF link meshes load for Rerun (Asset3D-able STL paths) and
+    every visual geom gets a world placement from FK -- for both Talos and G1."""
+    for robot, min_n in (("talos", 20), ("g1", 20)):
+        rt = R.Retargeter(R.ROBOTS[robot])
+        assert rt.has_meshes, "%s meshes should load" % robot
+        meshes = rt.visual_meshes()
+        assert len(meshes) >= min_n
+        assert all(p.lower().endswith((".stl", ".obj", ".glb", ".gltf"))
+                   and os.path.isfile(p) for _, p in meshes)
+        placements = rt.visual_placements(rt.q0)
+        assert len(placements) == len(meshes)
+        name, t, rot = placements[0]
+        assert t.shape == (3,) and rot.shape == (3, 3)
+
+
 def test_source_dispatch(monkeypatch, tmp_path):
     """Mode routing: bare (no file mode) -> live tf; --replay -> replay; --follow ->
     follow. Guards that tf is the default source without needing a live ROS graph."""
