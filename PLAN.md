@@ -148,7 +148,12 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   Demo polish landed same day [owner feedback]: real URDF link meshes in Rerun
   [G1 35 STL / Talos 47, Asset3D once + FK transforms per frame, +0.55 ms],
   perceive defaults to run-until-Ctrl-C with clean SIGINT, and the landmark-
-  visibility presence gate [no-person phantom tracking killed]): webcam → body+hand+face tracking + object detection → TF frames via
+  visibility presence gate [no-person phantom tracking killed]. Retarget
+  quality arc closed 2026-07-12: trunk-lean CLIK fix [52°→0°, per-joint
+  posture weights] + hip-relative target map [owner's frame chain: robot_hip +
+  body-ratio × (wrist − hip_mid); corr 0.98–1.0, EE err 1.1 cm] + permanent
+  motion-fidelity regression tests. PARKED by owner: Talos head tracking via
+  the neck-articulated full model [G1 head is mechanically rigid — no neck]): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
