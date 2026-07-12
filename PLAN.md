@@ -130,10 +130,16 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   control_kit's in-process ros2_control loop driven from Python (nogil +
   frozen/cached) and measure loop-period jitter honestly: cyclictest baseline +
   control-loop histograms, SCHED_FIFO + mlockall + CPU isolation. Reference
-  numbers on the CURRENT kernel first (6.17 oem, PREEMPT_DYNAMIC — NOT
-  PREEMPT_RT); then re-run under `preempt=voluntary/full` runtime switch for
-  the comparison table. **No Ubuntu Pro / RT-kernel install.** Possible
-  follow-up: same harness on an embedded board (Raspberry Pi).
+  numbers on the CURRENT kernel first; then re-run under
+  `preempt=voluntary/full` (runtime-switchable via debugfs) for the comparison
+  table. Fact-checked 2026-07-12: **CONFIG_PREEMPT_RT is not needed for this
+  goal** — the stock 6.17-oem kernel compiles in every soft-RT primitive
+  (SCHED_FIFO/DEADLINE, FUTEX_PI, HIGH_RES_TIMERS, threadirqs, NO_HZ_FULL,
+  RCU_NOCB_CPU, RT_MUTEXES, isolcpus, preempt=full via PREEMPT_DYNAMIC);
+  PREEMPT_RT only tightens worst-case tails under adversarial load. Optional
+  free middle step if ever wanted: linux-lowlatency-hwe-24.04 (standard
+  archive). **No Ubuntu Pro.** Possible follow-up: same harness on an
+  embedded board (Raspberry Pi).
 - **6e WBC exploration** ✅ DONE (2026-07-12, GO-narrow: Crocoddyl inline-C++ action models at native speed — 0.32 ms vs 6.84 ms Python-authored, 21.7×, bit-identical cost; thin wbc_kit shipped, standalone env [boost 1.86 vs ROS 1.90 — solve-group infeasible, verified]; pinocchio blocked on env boost-variant arity; tsid redundant; OCS2/mc_rtc unpackaged; QP bindings fine): survey spike first — tsid/crocoddyl/pinocchio are on
   conda-forge WITH Python bindings (verified), so the cppyy win must be sharper
   than "bindings exist": candidates = templated-scalar surfaces (pinocchio
