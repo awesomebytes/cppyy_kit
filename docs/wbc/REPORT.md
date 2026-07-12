@@ -163,6 +163,16 @@ follow-on, not the headline.
     builds also demanded python 3.9). pinocchio/crocoddyl/tsid carry **no ROS
     dependency**, so a standalone conda-forge env is the correct home; it resolves
     cleanly (boost 1.90, py3.12) and **leaves the shared ROS lock untouched**.
+
+> **Dated correction (2026-07-12):** the pinocchio↔ROS half of this clash dissolved —
+> conda-forge rebuilt **pinocchio 4.x against libboost 1.90**, so `pinocchio` +
+> `example-robot-data` now co-solve with the robostack ROS stack under
+> `solve-group="default"` (verified; the retarget lane's `[feature.retarget-ros]` env
+> does exactly this and runs the CLIK retarget alongside rclcpp_kit in one process). The
+> `wbc` env stays standalone only for **crocoddyl/tsid**, which still pull the older boost
+> line here. Unchanged: the Cling header-parse wall on `pinocchio::Model` (the 25-type
+> `boost::variant`, §4 above) — it trips on boost 1.90 too, so driving pinocchio's
+> rigid-body core from cppyy remains blocked regardless of the solve; use the bindings.
   - The standalone `wbc` feature re-declares its own `python`/`cppyy`/`compilers`/
     `numpy`/`pytest`, since it does not inherit the default.
 - **`pixi.lock` re-locked** to add the `wbc` env's solve (a new standalone env; the
