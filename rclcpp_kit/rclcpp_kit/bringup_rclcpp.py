@@ -4,6 +4,7 @@ import cppyy_kit
 import numpy as np
 import os
 import re
+import time
 from typing import Any, List, Optional, Set, Dict
 from ament_index_python.packages import get_package_prefix, get_packages_with_prefixes
 
@@ -644,12 +645,12 @@ def bringup_rclcpp():
     
     add_ros2_include_paths()
     ensure_ros_libraries_loaded()
-    print("Including rclcpp.hpp with cppyy, this may take a few seconds... WIP to remove this slowdown")
+    t0 = time.perf_counter()
     cppyy.include("rclcpp/rclcpp.hpp")
     cppyy.include("rcl_interfaces/msg/parameter_event.hpp")
     cppyy.include("chrono")
     cppyy.include("functional")
-    print("Done bringing up rclcpp.")
+    print("rclcpp C++ headers loaded (%.1fs)" % (time.perf_counter() - t0))
     
     explore_known_rclcpp_classes()
     recursive_symbol_discovery(cppyy.gbl.rclcpp, "rclcpp", max_depth=5)
