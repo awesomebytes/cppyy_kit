@@ -162,7 +162,7 @@ per-element Python-loop trap (§6/§26).
 
 ---
 
-## Motion-fidelity diagnosis + trunk-lean fix (2026-07-12)
+## Motion-fidelity diagnosis + trunk-lean + hip-relative anchor (2026-07-12)
 
 A live-teleop review reported the retargeting looked broken: hands don't follow, the
 target balls barely move, the head is static, and Talos's trunk leans back a lot.
@@ -195,17 +195,34 @@ scores solve-vs-clamped-target, not fidelity to human motion).
   (or a direct neck-joint yaw/pitch mapping) and a robot with an articulated head —
   an owner-visible design choice, left as a `whead` knob (default off).
 
-**Options for the owner (structural, not applied unilaterally):**
-1. **Amplitude/anchor.** To make the hands track the owner's motion more directly:
-   raise the reach clamp (`REACH_FRAC` 0.8→~0.95), or increase the arm-ratio scale, or
-   switch to a **hip-anchored** target (map the wrist relative to the hip/torso rather
-   than the shoulder) so gross arm sweeps map 1:1-ish. Each changes the feel; pick one.
-2. **Head/gaze.** Add an orientation task on an articulated head frame (Talos full model,
-   not `_reduced`), driven by the human head yaw/pitch.
+**Hip-relative anchor — IMPLEMENTED (the owner's chosen chain).** A follow-up review
+specified the mapping precisely: *human wrist relative to the human hips → scale → robot
+EE relative to the robot hip/torso → world*. A frame audit confirmed the code deviated on
+both sides: (human) it used `wrist − shoulder` (shoulder-relative), and (robot) it
+anchored at the shoulder frame, with a **pose-dependent** scale (`arm / current
+shoulder-wrist distance`, which drifts as the arm bends). The map is now:
 
-**Regression tests added** (permanent — would have caught this): `test_retarget_tracks_
-wrist_motion` (known circle → target correlation > 0.7 per axis, non-trivial amplitude)
-and `test_trunk_stays_upright`.
+  `target = robot_hip + (robot_torso / human_torso) · (human_wrist − human_hip_mid)`,
+  then clamped to `reach_frac · arm` of the robot shoulder for reachability,
+
+on **both** the C++ kernel and the Python stepper (the glue-match test keeps them
+identical), so all three input modes (replay, follow, tf) share it. The scale is now a
+**fixed body-proportion ratio** (robot shoulder-to-hip length / the same on the human,
+per frame) rather than pose-dependent. Measured on the known circle: hip-relative
+correlation (`wrist−hip` vs `target−hip`) is **1.0 / 0.98–1.0** per axis for Talos / G1,
+so the robot hand now tracks the operator's hand *position in body space*. Talos's zero
+was fine (free-flyer base is upright at the origin; `base_link`/G1 `pelvis` is the hip
+anchor). EE frames audited: `gripper_*_base_link` / G1 `*_wrist_yaw_link` are the correct
+hand frames.
+
+**Still an owner choice — head/gaze.** Head tracking remains structural: G1 has no neck
+joints and Talos's reduced-model head frame doesn't move with its neck, so head position
+IK is a no-op. It needs an orientation/gaze task on an articulated-head model (`whead`
+knob left, default off).
+
+**Regression tests** (permanent): `test_retarget_tracks_wrist_motion` (now asserts the
+**hip-relative** correlation > 0.7/axis + non-trivial amplitude) and
+`test_trunk_stays_upright` (< 15°).
 
 ---
 
