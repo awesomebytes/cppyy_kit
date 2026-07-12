@@ -69,6 +69,14 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 6. capability/fallback/status codified.
 - **SKILL.md for every kit** (evolve the cheat sheets) + repo-level
   COMMON_PATTERNS as the shared manual.
+- **Zero-config auto-PCH** ✅ DONE (2026-07-12, owner-requested, supervisor-
+  verified end-to-end: cppyy_kit.autopch builds the Cling PCH on first use
+  into ~/.cache/cppyy_kit/pch [env+version-keyed, self-invalidating, atomic
+  background build], auto-loads it before cppyy import thereafter — no env
+  vars, no pixi changes; prints on create and on load. rclcpp_kit registers
+  its headers → bringup 1.96 s→0.30 s, header parse 1.7 s→0.0 s [~30×].
+  Key finding: `import cppyy` sets CLING_STANDARD_PCH itself, so override
+  detection gates on cppyy-not-yet-loaded. COMMON_PATTERNS §36 + FREEZE §8).
 
 ### M3 — rclcppyy slim + first suite release
 - In the rclcppyy repo: replace moved internals with rclcpp_kit imports +
