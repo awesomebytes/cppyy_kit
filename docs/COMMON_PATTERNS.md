@@ -136,6 +136,13 @@ all container/buffer work inside a `cppyy.cppdef` helper.
   Output-by-pointer-array (NavFn's `getPathX()/getPathY()` `float*` + length) is
   the same "keep it in C++": one helper that `memcpy`s the outputs, not marshalling
   C arrays across the boundary.
+- **Build the message once, refill per frame (retarget).** For a ROS message
+  re-published every cycle, construct it **once** in C++ (fixed structure — e.g. a
+  `TFMessage`'s 75 frame names) and each cycle refill only its numeric fields from one
+  flat address, rather than reconstructing the message's proxies field-by-field in
+  Python. Measured **265×** for a 75-frame `/tf` message (0.0005 vs 0.144 ms/message);
+  the reuse is only possible because the message lives in C++ — a Python broadcaster
+  typically rebuilds per frame.
 - **Copy-in vs alias-in (vision).** The above all *own* storage, so one copy in is
   unavoidable. When the C++ type can **alias** an external buffer it is genuinely
   **zero-copy**: `cv::Mat(rows, cols, type, void* data, step)` wraps a ROS
@@ -215,7 +222,14 @@ during transaction revert** (no Python traceback).
   precompiled. This is a **parse** failure, distinct from the ORC static-init wall
   (an *execution* failure). Reproduce with `g++` to confirm it is not a Cling quirk;
   suspect it when a template *class* re-instantiation for a new parameter fails but
-  the shipped specialization works.
+  the shipped specialization works. **2nd instance (retarget): it also blocks the
+  default-`double` `Model`, not just exotic scalars** — instantiating
+  `pinocchio::Model` from headers at all (a URDF parse, FK on a real robot, a crocoddyl
+  `StateMultibody`) trips the same `make_variant_list` limit, a clean compile error at
+  `JointModelTpl<double>` (probed out-of-process, not a crash). So drive pinocchio's
+  rigid-body **multibody core via its Python bindings**; cppyy's win for this stack is
+  the abstract/custom-model path (crocoddyl action models, §31) and *non*-pinocchio glue
+  kernels, not the `Model` itself.
 - **Mitigation:** probe risky glue out-of-process first —
   `cppyy_kit.probe_cppdef(code, include_paths=, headers=, libraries=)` compiles it
   in a throwaway subprocess and returns `(ok, message)` without risking the main
@@ -671,6 +685,15 @@ the whole time.
 - **Callback caveat:** if `fn` calls back into Python while the GIL is released, that
   callback must re-take the GIL first — a cppyy Python callback does so automatically;
   hand-written C++ touching `PyObject*` under `nogil` must `PyGILState_Ensure()`.
+- **Beyond "other threads run": the loop itself jitters less (jitter_bench).** Running
+  the *whole* hot loop (wait + compute) in C++ via `nogil`+`cppdef_cached` also tightens
+  its *scheduling determinism*. A 1 kHz control loop held its **~2 µs median wakeup
+  latency under load** where the equivalent pure-Python loops rose to ~5 µs, and its p99
+  under load was the lowest of the four variants tested: the C++ loop never re-enters the
+  interpreter between wake and next sleep, so the scheduler sees one long-running C++
+  thread rather than a Python thread cycling the interpreter, and load perturbs it less.
+  So for a periodic loop `nogil` is not only "let other threads run" — it is "the loop
+  jitters less." (Full jitter matrix + the bigger unprivileged lever: §35.)
 
 ### 28. `.pyi` stubs for a kit's mirror surface (IDE/mypy corridor)
 A kit assembles its mirror API at runtime, so editors see nothing. `python -m
@@ -840,6 +863,62 @@ C++ excursion can't silently violate the model.
 Positioning: the "I already maintain Pydantic models — make the hot path compact and
 typed without a codegen step" tool (contrast FlatBuffers/protobuf's separate schema +
 build), not a wire format and not a numpy replacement.
+
+### 34. Hybrid pipelines: a commodity-ML front end, a cppyy hot path, two envs
+A realistic robotics pipeline mixes a Python ML library (its inference *is* a library
+primitive — don't wrap it, per §26's honest headline) with a cppyy_kit hot path, and the
+two halves can have **incompatible native dependencies**. The retarget capture rig is the
+worked example: MediaPipe perception feeds a pinocchio retarget solve, but the ROS stack
+pins libboost 1.90 and pinocchio's conda stack pins 1.86 — they **cannot share a
+process**. The pattern for building such a system:
+- **Split at the env boundary; couple with a replayable stream.** When a hard dependency
+  conflict forces two processes, make the seam a **tailable/replayable file** (here a
+  JSONL landmark stream): live coupling = tail it, CI/rehearsal = replay it, so the same
+  live code path runs headless. Record/replay is a design stance from day one, not a mode
+  bolted on. Give the stream a `format` tag and **refuse a mismatched/renamed tag** with
+  an error naming both values (a stale recording is a clear failure, not a silent
+  mismap). The shared **coordinate-frame/contract module** imports only stdlib+numpy so it
+  loads cleanly in *both* envs.
+- **The first pip dependency in a conda/pixi repo needs discipline.** Put it in a
+  dedicated feature env with a `[pypi-dependencies]` section (keep the ROS-free base
+  minimal). Two rules that avoid an ABI split: **verify the pip deps' numpy equals the
+  conda numpy** (mediapipe brought numpy 2.5.1, matching conda's — no split), and
+  **exclude any conda package the pip dep re-provides** (do not compose a conda `opencv`
+  with mediapipe's pip `opencv-contrib-python`). Compose with the ROS default via
+  `solve-group="default"` so the shared stack stays one solve. Pin ML model bundles by
+  URL **and SHA-256** (verify-after-download, refuse a mismatch) — the same supply-chain
+  hygiene as §25's `require(..., sha256=)`.
+- **The cppyy_kit wins land in the glue, and only where measured.** In this rig they were
+  the /tf marshaling (§6 build-once-refill, 265×) and the per-frame retarget glue kernel
+  (coord transform + target map + a sequential One-Euro filter in one `cppdef` pass,
+  **303.8×**, bit-identical) — both §6/§26, both with numeric-agreement checks. The IK
+  *solve* stays a pinocchio-bindings job (§9's `Model` wall); an honest "kit blocked here"
+  cell, documented with the exact wall.
+
+### 35. Low-jitter timed loops from Python: timer slack is the first lever
+A control/HIL loop *orchestrated from Python* can hit a µs-scale period median on a
+**stock (non-PREEMPT_RT) kernel** with only unprivileged tuning — the orchestration
+language is not what sets the median.
+- **`prctl(PR_SET_TIMERSLACK, 1)` is the big, free lever.** Linux' default timer slack is
+  **50 µs** — the kernel may defer any `clock_nanosleep`/`futex`/`poll` wakeup by up to
+  that to batch wakeups, and at 1 kHz that slack *is* the median wakeup latency. One
+  unprivileged `prctl` call drops the median from **~52 µs → ~2.4 µs (~22×)**; the removed
+  ~52 µs was timer slack, not Python overhead. Set it once at loop start.
+- **Then `mlockall` + CPU pinning + `clock_nanosleep(TIMER_ABSTIME)`.** With slack tuned,
+  a bare-Python loop, a cppyy_kit C++ loop, and a real ros2_control loop all sit at
+  **p50 ~2 µs / 1000.0 Hz / <1 % late cycles** idle. `clock_nanosleep` beats
+  deadline-corrected `time.sleep` (thinner tail). Driving a *real* ros2_control
+  `read→update→write` from Python (cross-inherited PD controller) adds negligible median
+  jitter over a bare timer loop.
+- **The cppyy_kit angle is the tail under load, not the median.** A `nogil`+`cppdef_cached`
+  C++ loop (§27) keeps its ~2 µs median under load where pure-Python loops rise to ~5 µs.
+- **The tail is a scheduling problem, not a Python problem.** Idle p99.9 ≈ 2 ms and rare
+  multi-hundred-ms spikes on a busy shared machine are CFS preemption on a non-isolated
+  core — collapsed by privileged tuning (`SCHED_FIFO` + `preempt=full` +
+  `isolcpus`/`nohz_full`/`rcu_nocbs`), and only *bounded* under adversarial load by
+  `CONFIG_PREEMPT_RT`; the stock kernel already ships every soft-RT primitive. Verdict:
+  soft-real-time (prototyping / HIL / sim / teleop) from Python now; hard-RT is a tuning
+  path on the same kernel, and the graduation to a native `update()` (§31) is unchanged.
 
 ---
 
