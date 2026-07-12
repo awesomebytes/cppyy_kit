@@ -188,12 +188,14 @@ scores solve-vs-clamped-target, not fidelity to human motion).
   Measured after: torso pitch **0.0°** for both, and arm tracking is **unchanged**
   (correlation still 0.89–0.97, EE amplitude 13–26 cm). Regression test
   `test_trunk_stays_upright` asserts < 15°.
-- **Head doesn't move — STRUCTURAL (reported, not hacked).** G1 has **no neck joints**
-  (the head is rigid — it cannot move). On Talos, driving the neck joints moves the
-  `head_2_link` frame by **0.000 m / 0.0°** in the reduced model, so a *position* IK
-  task on the head is a no-op. Proper head tracking needs an **orientation/gaze** task
-  (or a direct neck-joint yaw/pitch mapping) and a robot with an articulated head —
-  an owner-visible design choice, left as a `whead` knob (default off).
+- **Head doesn't move — half structural, half a wrong conclusion (CORRECTED below).**
+  G1 genuinely has **no neck joints** (its head is mechanically rigid — a hardware fact).
+  On Talos the diagnosis observed that driving the neck joints moves the `head_2_link`
+  *position* by **0.000 m** and concluded head tracking was "structural / a no-op." That
+  conclusion was **wrong**: the neck is *rotational*, so the link position stays put while
+  its **orientation** swings freely — a re-test shows **~28.6° / 0.5 rad** of head rotation
+  from the same neck joints. Talos's head is fully controllable; it just needs an
+  orientation mapping, not a position IK task. Implemented in the next lane (below).
 
 **Hip-relative anchor — IMPLEMENTED (the owner's chosen chain).** A follow-up review
 specified the mapping precisely: *human wrist relative to the human hips → scale → robot
@@ -215,14 +217,59 @@ was fine (free-flyer base is upright at the origin; `base_link`/G1 `pelvis` is t
 anchor). EE frames audited: `gripper_*_base_link` / G1 `*_wrist_yaw_link` are the correct
 hand frames.
 
-**Still an owner choice — head/gaze.** Head tracking remains structural: G1 has no neck
-joints and Talos's reduced-model head frame doesn't move with its neck, so head position
-IK is a no-op. It needs an orientation/gaze task on an articulated-head model (`whead`
-knob left, default off).
-
 **Regression tests** (permanent): `test_retarget_tracks_wrist_motion` (now asserts the
 **hip-relative** correlation > 0.7/axis + non-trivial amplitude) and
 `test_trunk_stays_upright` (< 15°).
+
+---
+
+## ~1:1 amplitude + Talos head tracking (2026-07-12)
+
+Two structural refinements once the hip-relative anchor was in: make gross arm sweeps
+feel close to 1:1, and make Talos's head follow the operator's head.
+
+**Amplitude — now ~1:1, with a live feel knob.** The reach clamp was raised
+`REACH_FRAC 0.8 → 0.95` (the target may now use 95 % of the robot's arm before being
+capped for reachability), and a new **`--motion-scale`** CLI knob (default `1.0`)
+multiplies the body-proportion scale so the owner can exaggerate or damp sweeps live.
+Measured on a gross full-arm sweep (240 frames), the **solved gripper 3-D peak-to-peak
+excursion** is now:
+
+| Robot | `--motion-scale 1.0` | `1.5` | (old 0.8-clamp map, for reference) |
+|---|---|---|---|
+| **Talos** | **0.75 m** per hand | 1.08 m (target grows; arm reach-clamped) | 13–26 cm |
+| **G1** | **0.50 m** per hand | ~0.48 m (already reach-clamped) | (shorter arms) |
+
+So a full human arm sweep now drives ~0.75 m of Talos hand travel — well beyond the
+earlier 13–26 cm. The map stays reach-clamped, so pushing `--motion-scale` higher grows
+the *target* but the hand saturates at the arm's reach (visible above as G1 not growing).
+
+**Talos head tracking — IMPLEMENTED (correcting the earlier "structural" claim).** The
+operator's head yaw/pitch is read from MediaPipe landmarks — the face-forward direction
+`ear-midpoint → nose` gives `yaw = atan2(fy, fx)`, `pitch = atan2(fz, hypot(fx, fy))` in
+the robot frame — and mapped **directly onto the neck joints** (Talos `head_2_joint` RZ =
+yaw, `head_1_joint` RY = pitch), clamped to their limits. It is applied **after** the arm
+CLIK loop (`_apply_head`), so it can never fight the arm tasks (soft by construction).
+Sign convention verified empirically: look-left → head-left, look-up → head-up. Measured
+correlation between operator and robot-head orientation over a yaw/pitch sweep: **yaw
+1.00, pitch 0.999**, amplitude near 1:1 (yaw 1.02 rad out for 1.00 in; pitch clamped at
+Talos's `head_1` up-look limit ≈0.26 rad, so extreme look-up saturates — a joint-range
+fact). Neck joints are pinned in the posture regulariser (driven directly, not by the
+arm CLIK), so the trunk stays upright. Regression: `test_head_tracks_operator_yaw_pitch`.
+
+**G1 head is mechanically rigid — not a software limitation.** G1 has no neck joints;
+`_detect_neck` reports `has_neck = False`, `_apply_head` is a safe no-op, and the demo
+**prints this once at startup** ("… has NO neck joints — its head is mechanically rigid …")
+so it is never mistaken for a bug. Regression: `test_g1_head_is_rigid`.
+
+**What tracks what (both robots):**
+
+| Human input | Talos | G1 |
+|---|---|---|
+| Left / right wrist (rel. to hips) | left / right gripper, hip-relative, ~1:1 amplitude | left / right wrist, hip-relative (~0.5 m sweep) |
+| Head yaw / pitch (nose vs ears) | **head yaw + pitch** (neck joints, corr ≥0.999) | — (no neck; rigid head) |
+| Trunk | pinned upright (posture regulariser) | pinned upright |
+| Free-flyer base | locked at hip origin | locked at hip origin |
 
 ---
 
