@@ -2,11 +2,20 @@
 
 You are writing Python that composes **your own navigation stack from Nav2's
 algorithm cores** through `rclcppyy.kits.nav2_kit` — **no lifecycle servers, no
-pluginlib, no tf**. Python owns the loop; Nav2's C++ owns the math. The kit
-**mirrors Nav2's own C++ API**: `bringup_nav2()` returns the real `nav2_costmap_2d`
-and `nav2_navfn_planner` namespaces, and you use `Costmap2D`, `NavFn` as in the C++.
-The kit only removes the cppyy friction (bringup, the NumPy↔charmap memcpy, NavFn's
-raw-pointer I/O). You do **not** need to know cppyy.
+pluginlib** (and no tf for the pure cores). Python owns the loop; Nav2's C++ owns the
+math. The kit **mirrors Nav2's own C++ API**: `bringup_nav2()` returns the real
+`nav2_costmap_2d` and `nav2_navfn_planner` namespaces, and you use `Costmap2D`, `NavFn`
+as in the C++. The kit only removes the cppyy friction (bringup, the NumPy↔charmap
+memcpy, raw-pointer I/O). You do **not** need to know cppyy.
+
+**M6d — the lifecycle unlock.** Two cores that were previously BLOCKED now work,
+because the kit can construct a real `rclcpp_lifecycle::LifecycleNode` in-process
+(`nav2_kit.lifecycle_node(...)`): **Smac 2D** (`nav2_kit.smac_plan_2d(...)`) and the
+**real RegulatedPurePursuit controller** (`nav2_kit.RPPController(...)`). These need
+rclcpp initialized (the kit does it) and an in-process `nav2_kit.costmap_ros(...)` where
+noted; they are opt-in and lazy (they do NOT slow the pure `bringup_nav2()` cores).
+Patterns 6–9 below. (Hybrid-A\* is NOT surfaced — a flaky OMPL-under-Cling crash; see
+the REPORT.)
 
 (For *why* this exists and a stock-Nav2 comparison, see [WHY.md](WHY.md); for the
 feasibility matrix, the honest Smac/RPP boundary, and benchmarks, see
@@ -114,10 +123,10 @@ showcase `scripts/nav2_kit_demos/d02_own_nav_stack.py` (map + plan + `TwistStamp
 
 ---
 
-## Pattern 5 — a follow loop (pure pursuit)  (the Python controller half)
-*Use for:* driving along a plan. Nav2's RegulatedPurePursuit controller is
-lifecycle-coupled (not usable standalone — see the REPORT), so a follow controller is
-plain Python. Classic pure pursuit steers by curvature toward a lookahead point:
+## Pattern 5 — a follow loop (pure pursuit)  (a lightweight Python controller)
+*Use for:* driving along a plan when you want a tiny, dependency-free controller. (For
+Nav2's *real* controller, use Pattern 9 — `RPPController`.) Classic pure pursuit steers
+by curvature toward a lookahead point:
 
 ```python
 import math
@@ -137,6 +146,62 @@ def pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w):
 
 ---
 
+## Pattern 6 — construct a LifecycleNode  (the M6d key)
+*Use for:* anything Nav2 that wants a `LifecycleNode` (Smac's collision checker, RPP's
+parent). It is a plain class you build in-process — **no lifecycle server**.
+
+```python
+node = nav2_kit.lifecycle_node("my_lc", parameters={"use_sim_time": False})
+# -> a real rclcpp_lifecycle::LifecycleNode, walked UNCONFIGURED->INACTIVE->ACTIVE
+node.get_clock(); node.get_logger()                  # live; call any node method
+inactive = nav2_kit.lifecycle_node("n2", transitions=("configure",))   # stop at INACTIVE
+raw = nav2_kit.lifecycle_node("n3", transitions=())                    # leave UNCONFIGURED
+```
+Requires rclcpp (the kit brings it up + initializes it). Tracked for ordered teardown.
+
+## Pattern 7 — Smac 2D planning  (real `AStarAlgorithm<Node2D>`)
+*Use for:* grid planning with Nav2's Smac 2D instead of NavFn. Same inputs/outputs as
+`plan_navfn` (cells in, `(N,2)` float32 start..goal out).
+
+```python
+cm = nav2_kit.costmap_from_numpy(grid, resolution=0.05)     # a plain Costmap2D is fine
+path = nav2_kit.smac_plan_2d(cm, start=(20, 50), goal=(80, 50))   # or pass a costmap_ros
+if path is not None:
+    print(path.shape, path[0], path[-1])                    # (N,2), start..goal
+```
+Returns `None` if unreachable. A `LifecycleNode` is created internally if you don't
+pass `node=...`. (Only **2D** — Hybrid-A\* is not surfaced.)
+
+## Pattern 8 — a plugin-free Costmap2DROS  (for RPP / a ROS costmap wrapper)
+*Use for:* when a Nav2 class needs a `Costmap2DROS` (RPP does). No static map, no tf, no
+sensor layers — a blank master grid you fill from NumPy.
+
+```python
+cm_ros = nav2_kit.costmap_ros("my_costmap", grid=grid, resolution=0.05)  # configured
+cm_ros.getCostmap()                                  # the real master Costmap2D
+```
+`costmap_ros(...)` sizes itself to `grid` (or pass `width_m`/`height_m`). It is
+`configure`d (INACTIVE) but not activated (no map-update thread), so your fill stays.
+
+## Pattern 9 — the real RegulatedPurePursuit controller  (M6d)
+*Use for:* following a plan with Nav2's actual RPP controller instead of Pattern 5.
+
+```python
+cm_ros = nav2_kit.costmap_ros("costmap", grid=grid, resolution=0.05)
+rpp = nav2_kit.RPPController(cm_ros, parameters={"desired_linear_vel": 0.6})
+rpp.set_plan(path_xy)                                # world (x,y) waypoints, or a Path msg
+for step in range(N):
+    v, w = rpp.compute((x, y, theta))                # one real RPP step -> (v, w)
+    ...                                              # integrate your kinematics
+```
+Notes: RPP is the *real* controller — it can raise `cppyy.gbl.nav2_core.NoValidControl`
+(its forward collision check; pass `use_collision_detection=False` if your plan is
+already collision-free) and it enters rotate-to-heading near the goal (pass
+`use_rotate_to_heading=False` + a tight `goal_xy_tolerance` to drive straight in). See
+`d02_own_nav_stack.py --planner smac --controller rpp`.
+
+---
+
 ## Gotchas (short version)
 - **`getCost` returns a 1-char `str`** — use `ord(...)`. Kit constants
   (`nav2_kit.LETHAL_OBSTACLE` …) are plain ints for you.
@@ -149,6 +214,10 @@ def pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w):
 - **`setCostmap(..., isROS=True)`** rescales ROS cost values into NavFn's internal
   band and adds an obstacle border, exactly like the Nav2 server.
 - **Grid orientation:** `(H, W)`, `grid[y, x]`; matches `OccupancyGrid` row-major.
-- **Smac and the RPP controller are not surfaced** — lifecycle-coupled (Smac also
-  needs OMPL headers). See the REPORT for the evidence.
-- **`warmup()` once** during init to move the first-use JIT off your first real call.
+- **Smac 2D and the real RPP controller ARE surfaced (M6d)** via the in-process
+  LifecycleNode key (Patterns 6–9); they need rclcpp (auto) + a `costmap_ros` where
+  noted. **Hybrid-A\* is not** — a flaky OMPL-under-Cling crash (REPORT §Probe D2).
+- **Smac plans goal→start internally; `smac_plan_2d` reverses it** to start..goal
+  (matching `plan_navfn`), so both planners return the same convention.
+- **`warmup()` once** during init for the pure cores; **`warmup_lifecycle()`** for the
+  LifecycleNode / Smac / RPP first-use JIT.
