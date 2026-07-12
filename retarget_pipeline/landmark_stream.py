@@ -192,26 +192,49 @@ class StreamReader:
         return list(self.frames())
 
 
-def follow(path, idle_timeout=2.0, poll=0.02):
-    """Tail a landmark stream that another process is still writing (live
-    coupling). Yields decoded frame dicts as they appear; returns when no new line
-    arrives for ``idle_timeout`` seconds (the writer stopped). Skips the meta line.
+def follow(path, idle_timeout=2.0, startup_timeout=30.0, poll=0.02, on_wait=None):
+    """Tail a landmark stream that another process is still writing (live coupling).
+    Yields decoded frame dicts as they appear.
+
+    Two independent waits (this distinction matters for a cold start -- a fresh
+    producer can take several seconds to activate its env + load its model before
+    the first frame):
+
+    * **startup grace** -- up to ``startup_timeout`` seconds for the file to appear
+      AND the *first* frame to arrive. Generous by default so "start the consumer
+      first, then the producer" works cold. ``on_wait(elapsed)`` is called
+      periodically while still waiting (for a heartbeat message).
+    * **idle timeout** -- once frames have been flowing, return when no new frame
+      arrives for ``idle_timeout`` seconds (the producer stopped -> wrap up).
     """
-    # Wait for the file to exist and its meta line to be flushed.
-    deadline = time.monotonic() + idle_timeout
+    start = time.monotonic()
+
+    def _waited():
+        if on_wait is not None:
+            on_wait(time.monotonic() - start)
+
     while not os.path.exists(path):
-        if time.monotonic() > deadline:
+        if time.monotonic() - start > startup_timeout:
             return
+        _waited()
         time.sleep(poll)
     with open(path) as f:
-        f.readline()  # meta (may be partial on first pass; re-read below if so)
+        f.readline()  # meta (may be '' if not flushed yet; the loop re-reads it)
+        got_first = False
         last = time.monotonic()
         buf = ""
         while True:
             line = f.readline()
             if not line:
-                if time.monotonic() - last > idle_timeout:
-                    return
+                # Before the first frame the startup grace applies (measured from
+                # entry); after it, the inter-frame idle timeout (from the last frame).
+                if got_first:
+                    if time.monotonic() - last > idle_timeout:
+                        return
+                else:
+                    if time.monotonic() - start > startup_timeout:
+                        return
+                    _waited()
                 time.sleep(poll)
                 continue
             if not line.endswith("\n"):     # partial write; stash and retry
@@ -224,6 +247,7 @@ def follow(path, idle_timeout=2.0, poll=0.02):
                 continue
             obj = json.loads(line)
             if obj.get("kind") == "frame":
+                got_first = True
                 yield _decode_frame(obj)
 
 
