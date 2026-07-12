@@ -48,7 +48,9 @@ and the ROS stack pins 1.90 — they cannot share a process (docs/wbc/REPORT.md)
 stream file is the seam** — a tailable/replayable JSONL contract (`landmark_stream.py`,
 stdlib+numpy only, imports in both envs). Record/replay is not a mode bolted on later: A always
 can `--record`, B always reads a stream (`--replay`), so CI and rehearsal run the exact live
-code path headless.
+code path headless. Streams identify themselves via a `format` tag
+(`cppyy_kit.retarget.landmarks`); recordings made before this tag was renamed carry the old
+`cppyy_kit.m6f.landmarks` value and are refused with an error naming both — re-record them.
 
 ---
 

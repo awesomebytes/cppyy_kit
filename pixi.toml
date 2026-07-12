@@ -2,8 +2,8 @@
 authors = ["Sam Pfeiffer <sammypfeiffer@gmail.com>"]
 name = "cppyy_kit_ws"
 # robostack-jazzy + conda-forge supply the ROS/cppyy stack and every kit's C++
-# dependency. (M1c will re-add the prefix.dev `awesomebytes` channel for the
-# published kit packages; the M1b workspace resolves every conda package from these
+# dependency. (the published kit packages ship on the prefix.dev `awesomebytes` channel;
+# this dev workspace resolves every conda package from these
 # two channels and finds the local kits — including rclcpp_kit — via PYTHONPATH.)
 channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
@@ -13,7 +13,7 @@ version = "0.1.0"
 # cppyy + toolchain + test/lint tooling): the base cppyy_kit package is ROS-free,
 # but most kits (pcl/nav2/moveit/control/cv/tf) are ROS-adjacent and JIT C++ that
 # needs the ROS message packages, headers and compiler toolchain, and the
-# M1b-temporary bridge is a ROS package — so a ROS-based default keeps the feature
+# early rclcppyy bridge (since dropped) was a ROS package — so a ROS-based default keeps the feature
 # envs purely additive (solve-group = "default") on the same proven stack that
 # rclcppyy's CI already validates. flake8 + its plugins arrive transitively via
 # ros-base (same as rclcppyy), satisfying the `lint` gate.
@@ -44,10 +44,10 @@ ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
 # owning shared library. conda/robostack rely on RPATH and leave LD_LIBRARY_PATH
 # unset, so point it at the env's lib dir or cppyy.gbl.* calls fail to resolve.
 LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
-# M1-era package resolution: the base package cppyy_kit/ is a repo-root package
+# Dev-checkout package resolution: the base package cppyy_kit/ is a repo-root package
 # (import cppyy_kit resolves straight from the root); rclcpp_kit and every domain
 # kit are nested packages (<kit>/<kit>/), so each kit dir goes on the path too.
-# Editable installs / conda recipes replace this in M1c. site-packages (cppyy) is
+# Editable installs / conda recipes replace this for consumers. site-packages (cppyy) is
 # unaffected.
 PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pcl_kit:$PIXI_PROJECT_ROOT/ompl_kit:$PIXI_PROJECT_ROOT/nav2_kit:$PIXI_PROJECT_ROOT/moveit_kit:$PIXI_PROJECT_ROOT/control_kit:$PIXI_PROJECT_ROOT/cv_kit:$PIXI_PROJECT_ROOT/dbow_kit:$PIXI_PROJECT_ROOT/rclcpp_kit:$PIXI_PROJECT_ROOT/wbc_kit"
 
@@ -69,7 +69,7 @@ clean = "rm -rf build"
 # resolved via PYTHONPATH; it needs only the ROS core (rclcpp + tf2, both in the
 # default ros-base env), so this feature carries no extra conda deps. It exists as
 # a standalone env for the rclcpp_kit test suite + tf demos. (This was the
-# M1b-temporary `ros-jazzy-rclcppyy` bridge; M1b carved rclcpp_kit into this repo
+# temporary `ros-jazzy-rclcppyy` bridge; the carve-out moved rclcpp_kit into this repo
 # and dropped the bridge — every kit now imports `rclcpp_kit` directly.)
 [feature.rclcpp.tasks]
 # Full rclcpp_kit suite: bringup, plain pub/sub roundtrip, serialization parity, tf.
@@ -108,7 +108,7 @@ demo-bt-t01-frozen = "python scripts/freeze/run_frozen.py bt_kit/demos/t01_first
 # --- L2 lowering: t01's ApproachObject leaf as a native BT.CPP plugin node ---
 freeze-l2-build = "python scripts/freeze/build_l2_node.py"
 freeze-l2-diff = "python scripts/freeze/l2_diff.py"
-# --- M2 compile cache: validation + the t01 cold-run adoption benchmark ---
+# --- compile cache: validation + the t01 cold-run adoption benchmark ---
 validate-cache-bt = "python scripts/cache/validate_cache_bt.py"
 validate-cache-bt-frozen = "python scripts/freeze/run_frozen.py scripts/cache/validate_cache_bt.py"
 bench-cache-bt = "python scripts/cache/measure_bt_t01.py"
@@ -127,9 +127,9 @@ demo-pcl-voxel = "python pcl_kit/demos/d01_voxel_numpy.py"
 demo-pcl-pipeline = "python pcl_kit/demos/d02_ros_pipeline.py"
 # pcl_kit pipeline (d02) vs plain rclpy+NumPy baseline (d03): latency, CPU%, LOC.
 bench-pcl = "python pcl_kit/demos/bench_pcl_pipeline.py"
-# M2 compile cache: d02 frame-0 first-use, JIT vs cached voxel_downsample.
+# Compile cache: d02 frame-0 first-use, JIT vs cached voxel_downsample.
 bench-cache-pcl = "python scripts/cache/measure_pcl_frame0.py"
-# M5 cppyy-accelerate demo: the differential contract + the before/after table.
+# cppyy-accelerate demo: the differential contract + the before/after table.
 test-accelerate = "pytest examples/accelerate_demo/test_pipeline.py -v"
 demo-accelerate = "python examples/accelerate_demo/fast_pointcloud_pipeline.py"
 bench-accelerate = "python examples/accelerate_demo/bench.py"
@@ -183,7 +183,7 @@ bench-moveit = "python moveit_kit/demos/bench_moveit.py"
 # moveit_kit tests (gate on MoveIt + panda config). The base cppyy_kit layer is in test-bt.
 test-moveit = "pytest moveit_kit/tests/test_moveit_kit.py -v"
 
-# --- ik (M6c): IK benchmark suite -------------------------------------------
+# --- ik: IK benchmark suite -------------------------------------------
 # Benchmarks IK solvers through moveit_kit's in-process pluginlib recipe (§19):
 # one Python script drives KDL (packaged, moveit baseline), trac_ik (packaged
 # below), bio_ik + pick_ik (vendored-source builds via §21, compiled against this
@@ -247,7 +247,7 @@ demo-vision-features = "python cv_kit/demos/demo_features.py"
 demo-vision-loop = "python cv_kit/demos/demo_loop.py"
 demo-vision-posegraph = "python cv_kit/demos/demo_posegraph.py"
 bench-vision = "python cv_kit/demos/bench_vision.py"
-# M6b live webcam demo: two pipelines (cppyy_kit C++ vs naive Python) over the same
+# Live webcam demo: two pipelines (cppyy_kit C++ vs naive Python) over the same
 # live frames, side by side in Rerun. Auto source (webcam if present else synthetic).
 demo-webcam = "python cv_kit/demos/webcam_demo.py"
 # The A-vs-B table at 640x480 and 1280x720 (synthetic, no viewer, no ROS).
@@ -312,7 +312,7 @@ zstandard = "*"
 provision-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py provision"
 validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
 
-# --- wbc (M6e): Whole-Body Control exploration -------------------------------
+# --- wbc: Whole-Body Control exploration -------------------------------
 # tsid / crocoddyl / pinocchio are on conda-forge WITH Python bindings, so this
 # feature exists to PROBE where cppyy is sharper than those bindings (templated
 # scalars, inline C++ action models, custom tasks) — not to re-wrap what the
@@ -370,7 +370,7 @@ bench-retarget = "python retarget_pipeline/retarget.py --bench"
 # retarget tests (gate on pinocchio). Headless replay of a tiny recorded stream.
 test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
 
-# --- pkg (M1c): rattler-build packaging of the 10-package suite --------------
+# --- pkg: rattler-build packaging of the kit suite --------------
 # Standalone (no-default-feature) so the packaging tooling doesn't drag the
 # ROS/cppyy stack. Recipes live in recipe/<pkg>/; the driver builds all ten in
 # dependency order into ./output (gitignored) and runs the fresh-env artifact
@@ -387,7 +387,7 @@ pkg-build-all = "bash recipe/build_all.sh"
 # rclcpp-kit). Run after pkg-build-all.
 pkg-prove = "bash recipe/prove_all.sh"
 
-# --- docs (M4): mkdocs-material documentation site --------------------------
+# --- docs: mkdocs-material documentation site --------------------------
 # Standalone (no-default-feature): the docs build renders Markdown only, no
 # ROS/cppyy stack needed. mkdocs-material bundles mkdocs + pymdown-extensions
 # (superfences/mermaid) + the search plugin, so it is the only dependency.
@@ -412,7 +412,7 @@ pcl = { features = ["pcl"], solve-group = "default" }
 ompl = { features = ["ompl"], solve-group = "default" }
 nav2 = { features = ["nav2"], solve-group = "default" }
 moveit = { features = ["moveit"], solve-group = "default" }
-# IK benchmark (M6c): moveit_kit + the extra packaged solver (trac_ik). bio_ik and
+# IK benchmark: moveit_kit + the extra packaged solver (trac_ik). bio_ik and
 # pick_ik are vendored source builds (no conda dep), compiled against this env.
 ik = { features = ["moveit", "ik"], solve-group = "default" }
 control = { features = ["control"], solve-group = "default" }
@@ -423,7 +423,7 @@ vision = { features = ["vision"], solve-group = "default" }
 # the default conda numpy, and the default env carries no conda OpenCV to clash with
 # pip's cv2. The retargeting half runs in the standalone `wbc` env (below).
 pipeline = { features = ["pipeline"], solve-group = "default" }
-# WBC exploration (M6e): pinocchio/crocoddyl/tsid + robot models. STANDALONE
+# WBC exploration: pinocchio/crocoddyl/tsid + robot models. STANDALONE
 # (no-default-feature): the conda-forge WBC bindings pin libboost 1.86 vs the ROS
 # stack's 1.90 — incompatible under one solve-group (see [feature.wbc.dependencies]).
 wbc = { features = ["wbc"], no-default-feature = true }
@@ -433,7 +433,7 @@ rclcpp = { features = ["rclcpp"], solve-group = "default" }
 cudabuild = { features = ["cudabuild"], no-default-feature = true }
 # Integrated GPU vision: the vision stack + CUDA runtime so cv_kit auto-detects cv::cuda.
 vision-cuda = { features = ["vision", "cudabuild"], solve-group = "default" }
-# Packaging env (M1c): rattler-build only; standalone, no ROS/cppyy stack.
+# Packaging env: rattler-build only; standalone, no ROS/cppyy stack.
 pkg = { features = ["pkg"], no-default-feature = true }
-# Docs env (M4): mkdocs-material only; standalone, no ROS/cppyy stack.
+# Docs env: mkdocs-material only; standalone, no ROS/cppyy stack.
 docs = { features = ["docs"], no-default-feature = true }
