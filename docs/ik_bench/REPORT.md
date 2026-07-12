@@ -1,4 +1,4 @@
-# ik_bench — benchmarking IK solvers from ONE Python script (M6c)
+# ik_bench — benchmarking IK solvers from ONE Python script
 
 **Date:** 2026-07-12 · **Env:** pixi `ik` (= `moveit` + `trac_ik`; robostack-jazzy +
 conda-forge), `ros-jazzy-moveit 2.12.4`, `ros-jazzy-trac-ik-kinematics-plugin 2.0.2`,

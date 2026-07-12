@@ -1,8 +1,8 @@
 # cv_kit — SKILL (seed)
 
 > Seed cheat sheet. A full LLM-facing SKILL.md (when-to-use / copy-paste
-> patterns / gotchas) is an **M2** deliverable (PLAN §M2: "SKILL.md for every
-> kit"). For now this points at the authoritative sources.
+> patterns / gotchas) is a planned deliverable (tracked in the project plan:
+> "SKILL.md for every kit"). For now this points at the authoritative sources.
 
 **What:** drive OpenCV's C++ API (core / imgproc / features2d) from Python via
 cppyy, with a **zero-copy** bridge from a ROS 2 `sensor_msgs/Image` (C++

@@ -24,8 +24,8 @@ UK 2026.**
 
 | Package | Depends on | Content |
 |---|---|---|
-| **`cppyy_kit`** | cppyy | ROS-free base: friction primitives (load / keep_alive / callback / HandleRegistry / warmup / first_use / teardown / probe), `freeze` (PCH + vendored-source tooling). Enriched in M2 (compile cache, `require()`, `@cpp`, `nogil`, stubs, capability/fallback). |
-| **`rclcpp_kit`** | cppyy_kit, rclcpp | The kit for rclcpp (ROS 2 core): bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers. Carved out of rclcppyy in M1b. |
+| **`cppyy_kit`** | cppyy | ROS-free base: friction primitives (load / keep_alive / callback / HandleRegistry / warmup / first_use / teardown / probe), `freeze` (PCH + vendored-source tooling), plus the compile cache, `require()`, `@cpp`, `nogil`, stubs, and capability/fallback. |
+| **`rclcpp_kit`** | cppyy_kit, rclcpp | The kit for rclcpp (ROS 2 core): bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers. Carved out of rclcppyy. |
 | **`bt_kit`** | cppyy_kit | BehaviorTree.CPP v4 from Python. |
 | **`pcl_kit`** | cppyy_kit (+ rclcpp) | Point Cloud Library; clouds stay in C++ end to end. |
 | **`ompl_kit`** | cppyy_kit | Open Motion Planning Library. |
@@ -34,6 +34,7 @@ UK 2026.**
 | **`control_kit`** | cppyy_kit (+ rclcpp) | A Python ros2_control controller inside the real controller_manager. |
 | **`cv_kit`** | cppyy_kit (+ rclcpp) | OpenCV C++ API with a zero-copy `sensor_msgs/Image` → `cv::Mat` bridge. |
 | **`dbow_kit`** | cppyy_kit | DBoW2 place recognition / loop closure (no Python binding, not on conda-forge). |
+| **`wbc_kit`** | cppyy_kit | Whole-body control: custom Crocoddyl action models authored inline in C++, JIT-compiled with no build system (ROS-free). |
 
 Each kit is a top-level package with its own Python package, `demos/`, `tests/`,
 optional `cpp/`, and `SKILL.md` / `WHY.md` / `REPORT.md` docs (kit anatomy —
@@ -65,11 +66,11 @@ run in the `rclcpp` env: `pixi run -e rclcpp test-rclcpp` / `test-tf`.
 
 ## Install (conda packages)
 
-> **Available after the first release.** The suite is packaged (10 rattler-build
-> recipes under [`recipe/`](recipe/), a tag-triggered
-> [release workflow](.github/workflows/release.yml)), but not yet published —
-> the snippets below work once `v0.1.0` is tagged and uploaded to the prefix.dev
-> `awesomebytes` channel. Until then, use the repo (Quickstart above).
+> **Published.** The suite ships as 11 rattler-build recipes under
+> [`recipe/`](recipe/) via a tag-triggered
+> [release workflow](.github/workflows/release.yml); `v0.1.0` is live on the prefix.dev
+> `awesomebytes` channel. The snippets below work as-is (or use the repo directly per
+> the Quickstart above).
 
 Each package is pure-Python (`noarch`) and installs into any pixi/conda env; its
 C++ dependency is declared as a run dependency and pulled by the solver. Add the
@@ -84,6 +85,7 @@ platforms = ["linux-64"]
 
 [dependencies]
 cppyy-kit = "*"                  # ROS-free base (cppyy only)
+wbc-kit = "*"                    # Crocoddyl custom action models (ROS-free)
 ros-jazzy-rclcpp-kit = "*"       # rclcpp core: bringup, messages, tf, rosbag2
 ros-jazzy-bt-kit = "*"           # BehaviorTree.CPP v4
 ros-jazzy-pcl-kit = "*"          # Point Cloud Library
@@ -102,7 +104,7 @@ kits pull `ros-jazzy-rclcpp-kit`, transitively.
 ## Docs
 
 - [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) — the approved kit-suite architecture.
-- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (22 patterns).
+- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (33 patterns).
 - [`docs/FREEZE.md`](docs/FREEZE.md) — the L0→L1→L2 optimization ladder.
 - [`docs/tutorials/`](docs/tutorials/) — end-to-end tutorials (visual loop closure).
 - Per kit: `<kit>/SKILL.md` (LLM-facing), `<kit>/WHY.md` (the pitch), `<kit>/REPORT.md` (evidence).
@@ -121,17 +123,18 @@ Python voxel downsampler **15.6× (47.9 ms → 3.07 ms)** with identical output 
 
 ## Status
 
-**Migration complete (M1), base enrichment complete (M2), documentation site live
-(M4), LLM acceleration skill shipped (M5), and all six M6 demo lanes delivered.**
-The suite is extracted from [rclcppyy](https://github.com/awesomebytes/rclcppyy)
-with git history; every ROS-touching kit imports `rclcpp_kit` directly.
+**Shipped and published.** The migration off rclcppyy is complete, the base is
+enriched (compile cache, `require()`, `@cpp`, `nogil`, stubs, capability/fallback), the
+documentation site is live, the `cppyy-accelerate` LLM skill is out, and every demo
+lane is delivered. All 11 packages are released as `v0.1.0` on the prefix.dev
+`awesomebytes` channel, and rclcppyy is slimmed to thin re-export shims over
+`rclcpp_kit` (0.2.0). The suite is extracted from
+[rclcppyy](https://github.com/awesomebytes/rclcppyy) with git history; every
+ROS-touching kit imports `rclcpp_kit` directly.
 
 Still to come:
 
-- **M1c** — per-package rattler-build recipes + tag-triggered release to the
-  prefix.dev `awesomebytes` channel.
-- **M3** — slim rclcppyy to thin re-export shims over `rclcpp_kit`.
-- **M7** — presentation assets for ROSCon UK 2026.
+- Presentation assets for ROSCon UK 2026.
 
 ## License
 

@@ -1,7 +1,7 @@
 # dbow_kit — SKILL (seed)
 
-> Seed cheat sheet. A full LLM-facing SKILL.md is an **M2** deliverable
-> (PLAN §M2). This points at the authoritative sources.
+> Seed cheat sheet. A full LLM-facing SKILL.md is a planned deliverable
+> (tracked in the project plan). This points at the authoritative sources.
 
 **What:** drive DBoW2 (Gálvez-López & Tardós, "Bags of Binary Words") from
 Python via cppyy for ORB place recognition / loop-closure detection. Pairs with

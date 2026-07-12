@@ -179,18 +179,18 @@ Dependency graph:
 
 ### 4.3 Migration phases (supersedes §3's Phase A)
 
-- **M1 — Bootstrap the new repo**: create `cppyy_kit` repo; migrate kit +
+- **Bootstrap the new repo:** create `cppyy_kit` repo; migrate kit +
   docs + freeze/dataset paths WITH history (`git filter-repo` path filter);
   replicate the proven pixi workspace, CI, and multi-recipe release plumbing;
   all suites green in the new home before anything is deleted here.
-- **M2 — Carve `rclcpp_kit`**: move the ROS-core capability layer out of
+- **Carve `rclcpp_kit`:** move the ROS-core capability layer out of
   rclcppyy into the new repo's `rclcpp_kit` package; its tests move with it;
   then Phase B enrichment lands there (compile cache first — it kills the
   first-use JIT persistently and benefits every package).
-- **M3 — Slim rclcppyy**: replace moved internals with `rclcpp_kit` imports +
+- **Slim rclcppyy:** replace moved internals with `rclcpp_kit` imports +
   deprecation shims; 0.2.0; recipes updated (rclcppyy depends on rclcpp-kit);
   release both repos; parity benchmarks green.
-- **M4 — Publish + outward**: suite on prefix.dev; README cross-links both
+- **Publish + outward:** suite on prefix.dev; README cross-links both
   ways; `cppyy-kit` → conda-forge submission when stable; community-kit
   authoring guide (COMMON_PATTERNS as the manual).
 
