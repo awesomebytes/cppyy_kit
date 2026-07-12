@@ -139,6 +139,7 @@ nav:
   - Tutorials:
     - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - WBC (Crocoddyl): docs/wbc/REPORT.md
+  - Retargeting Pipeline: docs/retarget_pipeline/REPORT.md
   - Accelerate (LLM skill):
     - Skill: skills/cppyy-accelerate/SKILL.md
     - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
