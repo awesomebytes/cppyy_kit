@@ -1,4 +1,4 @@
-# Packaging (M1c) — rattler-build recipes + release matrix
+# Packaging — rattler-build recipes + release matrix
 
 Eleven `noarch: python` conda packages for the cppyy_kit suite, one recipe dir each.
 Every kit is pure Python (it JITs C++ at *runtime* via cppyy — nothing is
