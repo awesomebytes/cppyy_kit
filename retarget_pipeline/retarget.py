@@ -261,7 +261,31 @@ class Retargeter:
         self.anchor_R = self.data.oMf[self.RS].translation.copy()
         self.anchor_H = self.data.oMf[self.HD].translation.copy()
         self.arm = float(np.linalg.norm(self.data.oMf[self.LF].translation - self.anchor_L))
+        self._build_posture_weights()
         self._load_visual_geometry()
+
+    # Per-actuated-DOF posture weight. The retarget only has arm (+head) position
+    # tasks, so with a weak uniform posture the CLIK freely pitches the torso/waist to
+    # reach -- Talos leaned ~52 deg. Fix: pin the non-arm chain (legs, torso/waist)
+    # firmly to the reference pose and leave the arm + head chains free, so reaching
+    # is done by the arms with an upright trunk.
+    # Only the arm chain is freed to reach; the legs, torso/waist AND head/neck are
+    # pinned to the reference (the head can't usefully track here anyway -- see the
+    # REPORT: G1 has no neck joints and Talos's reduced-model head frame does not move
+    # with its neck, so head position IK is a no-op; pinning keeps it stable).
+    _ARM_TOKENS = ("arm", "shoulder", "elbow", "wrist", "hand", "gripper")
+    _FREE_W, _PIN_W = 1e-3, 5.0
+
+    def _build_posture_weights(self):
+        w = np.full(self.model.nv - 6, self._PIN_W)
+        for j in range(2, self.model.njoints):       # skip universe(0) + free-flyer(1)
+            name = self.model.names[j].lower()
+            free = any(tok in name for tok in self._ARM_TOKENS)
+            v0 = self.model.joints[j].idx_v - 6
+            nvj = self.model.joints[j].nv
+            if 0 <= v0 and free:
+                w[v0:v0 + nvj] = self._FREE_W
+        self.posture_w = w
 
     def _load_visual_geometry(self):
         """Load the URDF's VISUAL geometry (the link meshes) so Rerun can show the
@@ -318,15 +342,18 @@ class Retargeter:
     def anchors_flat(self):
         return np.concatenate([self.anchor_L, self.anchor_R, self.anchor_H])
 
-    def solve(self, targets9, q_warm, iters=40, damp=1e-3, wpost=1e-2, whead=0.0):
+    def solve(self, targets9, q_warm, iters=40, damp=1e-3, whead=0.0):
         """CLIK toward the 9-vector [L,R,Head] targets from warm start ``q_warm``.
         Returns ``(q, {frame: err_m})``. The free-flyer base is locked by solving
-        over the *actuated* DOFs only (columns 6: of the Jacobian) -- solving the
-        full system and zeroing the base afterwards would discard the solution's
-        dominant base component and barely move the arms."""
+        over the *actuated* DOFs only (columns 6: of the Jacobian). Posture is
+        regularized per-joint (``posture_w``): the legs + torso/waist are pinned to
+        the reference so reaching is done by the arms with an upright trunk (a uniform
+        weak posture let the trunk pitch ~52 deg). ``whead`` defaults off -- head
+        position IK is a no-op on the shipped models (see the REPORT); left as a knob."""
         pin = self._pin
         q = q_warm.copy()
         na = self.model.nv - 6                       # actuated DOFs (skip base)
+        Wp = self.posture_w                          # per-joint posture weight (na,)
         tL, tR, tH = targets9[:3], targets9[3:6], targets9[6:9]
         tasks = ((self.LF, tL, 1.0), (self.RF, tR, 1.0), (self.HD, tH, whead))
         for _ in range(iters):
@@ -343,8 +370,8 @@ class Retargeter:
                                          pin.LOCAL_WORLD_ALIGNED)[:3, 6:]
                 H += w * (J.T @ J)
                 g += w * (J.T @ e)
-            H += (damp + wpost) * np.eye(na)
-            g += wpost * pin.difference(self.model, q, self.q0)[6:]
+            H += np.diag(Wp) + damp * np.eye(na)
+            g += Wp * pin.difference(self.model, q, self.q0)[6:]
             v = np.zeros(self.model.nv)
             v[6:] = np.linalg.solve(H, g)
             q = pin.integrate(self.model, q, v)

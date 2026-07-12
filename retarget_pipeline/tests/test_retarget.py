@@ -5,6 +5,7 @@ Runs in the ``wbc`` env (needs pinocchio). Auto-skips elsewhere, so the default
 suite is unaffected. No ROS, no camera, no display, no network -- it retargets a
 tiny synthetic landmark stream written on the fly.
 """
+import math
 import os
 import sys
 import threading
@@ -124,6 +125,63 @@ def test_follow_survives_cold_start(tmp_path):
 def test_replay_and_follow_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         R.main(["--replay", "a.jsonl", "--follow", "b.jsonl"])
+
+
+def _circle_motion(n, fps=30.0):
+    """Known motion: both wrists trace 0.3 m circles about a point below each shoulder
+    (raw MediaPipe world frame). The retarget target MUST follow this."""
+    base = ls._BASE_POSE.copy()
+    out = []
+    for i in range(n):
+        a = 2 * math.pi * 0.3 * (i / fps)
+        p = base.copy()
+        p[ls.LEFT_WRIST] = base[ls.LEFT_SHOULDER] + np.array(
+            [0.30 * math.cos(a), 0.35 + 0.30 * math.sin(a), 0.10 * math.sin(a)], np.float32)
+        p[ls.RIGHT_WRIST] = base[ls.RIGHT_SHOULDER] + np.array(
+            [-0.30 * math.cos(a), 0.35 + 0.30 * math.sin(a), 0.10 * math.cos(a)], np.float32)
+        out.append(p)
+    return np.array(out, np.float32)
+
+
+def test_retarget_tracks_wrist_motion():
+    """MOTION FIDELITY (the regression that would have caught 'hands don't follow'):
+    a known wrist circle must drive the EE target with high per-axis correlation and
+    non-trivial amplitude. EE-error alone can't catch a static/wrong target map."""
+    n = 200
+    pw = _circle_motion(n)
+    for robot in ("talos", "g1"):
+        rt = R.Retargeter(R.ROBOTS[robot])
+        anch = rt.anchors_flat().reshape(3, 3)
+        tgt = R.compute_targets(rt, pw.reshape(n, 99).astype(np.float64), 1 / 30.0, use_cpp=True)
+        for wr, sh, cols, aidx in ((ls.LEFT_WRIST, ls.LEFT_SHOULDER, slice(0, 3), 0),
+                                   (ls.RIGHT_WRIST, ls.RIGHT_SHOULDER, slice(3, 6), 1)):
+            inp = np.array([ls.mediapipe_world_to_robot(pw[f])[wr]
+                            - ls.mediapipe_world_to_robot(pw[f])[sh] for f in range(n)])
+            out = tgt[:, cols] - anch[aidx]
+            assert out.std() > 0.02, "%s target barely moves" % robot
+            for ax in range(3):
+                if inp[:, ax].std() < 1e-3:
+                    continue
+                c = np.corrcoef(inp[:, ax], out[:, ax])[0, 1]
+                assert c > 0.7, "%s axis %d corr %.2f too low" % (robot, ax, c)
+
+
+def test_trunk_stays_upright():
+    """The trunk must NOT pitch to reach (the ~52 deg lean bug). Reach both grippers
+    forward; the torso link stays near upright thanks to the per-joint posture pin."""
+    torso = {"talos": "torso_2_link", "g1": "torso_link"}
+    for robot in ("talos", "g1"):
+        rt = R.Retargeter(R.ROBOTS[robot])
+        tid = rt.model.getFrameId(torso[robot])
+        tgt = np.concatenate([rt.anchor_L + [0.2, 0.05, 0.0],
+                              rt.anchor_R + [0.2, -0.05, 0.0], rt.anchor_H])
+        q, _ = rt.solve(tgt, rt.q0.copy(), iters=60)
+        import pinocchio as pin
+        pin.forwardKinematics(rt.model, rt.data, q)
+        pin.updateFramePlacements(rt.model, rt.data)
+        rot = rt.data.oMf[tid].rotation
+        pitch = abs(math.degrees(math.atan2(-rot[2, 0], math.hypot(rot[2, 1], rot[2, 2]))))
+        assert pitch < 15.0, "%s trunk pitched %.1f deg (lean regression)" % (robot, pitch)
 
 
 def test_visual_meshes_load(tmp_path):
