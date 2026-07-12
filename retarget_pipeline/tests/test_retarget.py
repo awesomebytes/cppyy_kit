@@ -151,19 +151,19 @@ def test_retarget_tracks_wrist_motion():
     pw = _circle_motion(n)
     for robot in ("talos", "g1"):
         rt = R.Retargeter(R.ROBOTS[robot])
-        anch = rt.anchors_flat().reshape(3, 3)
         tgt = R.compute_targets(rt, pw.reshape(n, 99).astype(np.float64), 1 / 30.0, use_cpp=True)
-        for wr, sh, cols, aidx in ((ls.LEFT_WRIST, ls.LEFT_SHOULDER, slice(0, 3), 0),
-                                   (ls.RIGHT_WRIST, ls.RIGHT_SHOULDER, slice(3, 6), 1)):
-            inp = np.array([ls.mediapipe_world_to_robot(pw[f])[wr]
-                            - ls.mediapipe_world_to_robot(pw[f])[sh] for f in range(n)])
-            out = tgt[:, cols] - anch[aidx]
+        # HIP-RELATIVE fidelity: the human wrist relative to the human hip must drive
+        # the EE target relative to the robot hip (the owner's chain).
+        for wr, cols in ((ls.LEFT_WRIST, slice(0, 3)), (ls.RIGHT_WRIST, slice(3, 6))):
+            inp = np.array([(lambda r: r[wr] - 0.5 * (r[ls.LEFT_HIP] + r[ls.RIGHT_HIP]))(
+                ls.mediapipe_world_to_robot(pw[f])) for f in range(n)])
+            out = tgt[:, cols] - rt.hip
             assert out.std() > 0.02, "%s target barely moves" % robot
             for ax in range(3):
                 if inp[:, ax].std() < 1e-3:
                     continue
                 c = np.corrcoef(inp[:, ax], out[:, ax])[0, 1]
-                assert c > 0.7, "%s axis %d corr %.2f too low" % (robot, ax, c)
+                assert c > 0.7, "%s axis %d hip-rel corr %.2f too low" % (robot, ax, c)
 
 
 def test_trunk_stays_upright():

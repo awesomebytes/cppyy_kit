@@ -49,22 +49,23 @@ DEFAULT_STREAM = os.path.join(REPO, "build", "pipeline", "demo.jsonl")
 # Robot configs: which URDF, which frames to retarget, per humanoid.
 # --------------------------------------------------------------------------- #
 class RobotConfig:
-    def __init__(self, name, urdf_rel, l_grip, r_grip, head, l_sh, r_sh):
+    def __init__(self, name, urdf_rel, l_grip, r_grip, head, l_sh, r_sh, hip):
         self.name = name
         self.urdf_rel = urdf_rel
         self.l_grip, self.r_grip, self.head = l_grip, r_grip, head
         self.l_sh, self.r_sh = l_sh, r_sh
+        self.hip = hip                 # the robot hip/pelvis frame targets anchor to
 
 
 ROBOTS = {
     "talos": RobotConfig(
         "talos", ("talos_data", "robots", "talos_reduced.urdf"),
         "gripper_left_base_link", "gripper_right_base_link", "head_2_link",
-        "arm_left_1_link", "arm_right_1_link"),
+        "arm_left_1_link", "arm_right_1_link", "base_link"),
     "g1": RobotConfig(
         "g1", ("g1_description", "urdf", "g1_29dof_rev_1_0.urdf"),
         "left_wrist_yaw_link", "right_wrist_yaw_link", "head_link",
-        "left_shoulder_pitch_link", "right_shoulder_pitch_link"),
+        "left_shoulder_pitch_link", "right_shoulder_pitch_link", "pelvis"),
 }
 
 
@@ -90,21 +91,23 @@ static inline double euro_alpha(double cutoff, double dt) {
 
 // in_pw: (F, 99) MediaPipe pose_world (33 landmarks * xyz), row-major.
 // out:   (F, 9)  robot-frame smoothed targets [L(3), R(3), Head(3)].
-// Anchors (Talos shoulder L/R, head nominal) + arm length in robot frame; targets
-// are scaled by (robot arm / human arm), clamped to reach_frac*arm of the shoulder,
-// then One-Euro-smoothed across the F frames (mincut/beta) at timestep dt.
+// HIP-RELATIVE mapping (the owner's chain): human point RELATIVE TO the human hip
+// midpoint -> scaled by (robot torso / human torso, per frame) -> anchored at the
+// robot hip frame (hip). Gripper targets are clamped to reach_frac*arm of the robot
+// shoulder (ls/rs) for reachability, then One-Euro-smoothed across F frames.
 void map_stream(uintptr_t in_pw, int F, uintptr_t out,
+                double hipx, double hipy, double hipz,
                 double lsx, double lsy, double lsz,
                 double rsx, double rsy, double rsz,
-                double hnx, double hny, double hnz,
-                double arm, double dt, double mincut, double beta,
+                double robot_torso, double arm, double dt, double mincut, double beta,
                 double reach_frac) {
   const double* pw = reinterpret_cast<const double*>(in_pw);
   double* o = reinterpret_cast<double*>(out);
-  const int LSH = 11, RSH = 12, LWR = 15, RWR = 16, NOSE = 0;
+  const int LSH = 11, RSH = 12, LWR = 15, RWR = 16, NOSE = 0, LHIP = 23, RHIP = 24;
   double prev[9], dprev[9];
   bool have_prev = false;
-  double anch[9] = {lsx, lsy, lsz, rsx, rsy, rsz, hnx, hny, hnz};
+  double hip[3] = {hipx, hipy, hipz};
+  double shA[6] = {lsx, lsy, lsz, rsx, rsy, rsz};   // robot shoulder clamp centers
   for (int f = 0; f < F; ++f) {
     const double* row = pw + (long)f * 99;
     // MediaPipe world (x left, y down, z toward cam) -> robot (x fwd, y left, z up).
@@ -112,30 +115,28 @@ void map_stream(uintptr_t in_pw, int F, uintptr_t out,
       const double* p = row + idx * 3;
       v[0] = -p[2]; v[1] = p[0]; v[2] = -p[1];
     };
-    double lsh[3], rsh[3], lwr[3], rwr[3], nose[3], shc[3];
+    double lsh[3], rsh[3], lwr[3], rwr[3], nose[3], lhip[3], rhip[3], hipc[3], shc[3];
     rob(LSH, lsh); rob(RSH, rsh); rob(LWR, lwr); rob(RWR, rwr); rob(NOSE, nose);
-    for (int k = 0; k < 3; ++k) shc[k] = 0.5 * (lsh[k] + rsh[k]);
-    double la = 0, ra = 0;
-    for (int k = 0; k < 3; ++k) {
-      la += (lwr[k] - lsh[k]) * (lwr[k] - lsh[k]);
-      ra += (rwr[k] - rsh[k]) * (rwr[k] - rsh[k]);
-    }
-    double hum = 0.5 * (std::sqrt(la) + std::sqrt(ra)) + 1e-6;
-    double s = arm / hum;
+    rob(LHIP, lhip); rob(RHIP, rhip);
+    for (int k = 0; k < 3; ++k) { hipc[k] = 0.5 * (lhip[k] + rhip[k]); shc[k] = 0.5 * (lsh[k] + rsh[k]); }
+    double th = 0;
+    for (int k = 0; k < 3; ++k) th += (shc[k] - hipc[k]) * (shc[k] - hipc[k]);
+    double human_torso = std::sqrt(th) + 1e-6;
+    double s = robot_torso / human_torso;
     double tgt[9];
     for (int k = 0; k < 3; ++k) {
-      tgt[k]     = anch[k]     + s * (lwr[k] - lsh[k]);       // left gripper
-      tgt[3 + k] = anch[3 + k] + s * (rwr[k] - rsh[k]);       // right gripper
-      tgt[6 + k] = anch[6 + k] + s * (nose[k] - shc[k]);      // head
+      tgt[k]     = hip[k] + s * (lwr[k] - hipc[k]);       // left gripper (hip-relative)
+      tgt[3 + k] = hip[k] + s * (rwr[k] - hipc[k]);       // right gripper
+      tgt[6 + k] = hip[k] + s * (nose[k] - hipc[k]);      // head
     }
-    // Clamp gripper targets into the reachable sphere around each shoulder anchor.
+    // Clamp gripper targets into the reachable sphere around each robot shoulder.
     for (int e = 0; e < 2; ++e) {
       double d2 = 0; int b = e * 3;
-      for (int k = 0; k < 3; ++k) d2 += (tgt[b + k] - anch[b + k]) * (tgt[b + k] - anch[b + k]);
+      for (int k = 0; k < 3; ++k) d2 += (tgt[b + k] - shA[b + k]) * (tgt[b + k] - shA[b + k]);
       double d = std::sqrt(d2), maxr = reach_frac * arm;
       if (d > maxr && d > 1e-9) {
         double sc = maxr / d;
-        for (int k = 0; k < 3; ++k) tgt[b + k] = anch[b + k] + sc * (tgt[b + k] - anch[b + k]);
+        for (int k = 0; k < 3; ++k) tgt[b + k] = shA[b + k] + sc * (tgt[b + k] - shA[b + k]);
       }
     }
     // One-Euro filter across frames (sequential -> keep it in C++).
@@ -175,21 +176,23 @@ def _bringup_glue():
 MINCUT, BETA, REACH_FRAC = 1.2, 0.03, 0.8
 
 
-def _frame_target(r, anch, arm, reach_frac):
-    """One frame of the retarget map: robot-frame landmarks ``r`` (33,3) -> the raw
-    (pre-filter) EE targets (3,3) = [left gripper, right gripper, head], scaled by the
-    arm-length ratio and clamped into ``reach_frac`` of the robot's reachable sphere."""
-    lsh, rsh = r[ls.LEFT_SHOULDER], r[ls.RIGHT_SHOULDER]
-    lwr, rwr = r[ls.LEFT_WRIST], r[ls.RIGHT_WRIST]
-    nose, shc = r[ls.NOSE], 0.5 * (r[ls.LEFT_SHOULDER] + r[ls.RIGHT_SHOULDER])
-    hum = 0.5 * (np.linalg.norm(lwr - lsh) + np.linalg.norm(rwr - rsh)) + 1e-6
-    s = arm / hum
-    tgt = np.stack([anch[0] + s * (lwr - lsh), anch[1] + s * (rwr - rsh),
-                    anch[2] + s * (nose - shc)])
+def _frame_target(r, hip_w, sh, robot_torso, arm, reach_frac):
+    """One frame of the HIP-RELATIVE retarget map (the owner's chain): robot-frame
+    landmarks ``r`` (33,3) -> EE targets (3,3) = [left gripper, right gripper, head].
+    Each human point is taken RELATIVE TO the human hip midpoint, scaled by
+    ``robot_torso / human_torso`` (per frame), and anchored at the robot hip frame
+    ``hip_w``; the two gripper targets are then clamped to ``reach_frac*arm`` of the
+    corresponding robot shoulder ``sh`` (=[L,R]) for reachability."""
+    hipc = 0.5 * (r[ls.LEFT_HIP] + r[ls.RIGHT_HIP])
+    shc = 0.5 * (r[ls.LEFT_SHOULDER] + r[ls.RIGHT_SHOULDER])
+    s = robot_torso / (np.linalg.norm(shc - hipc) + 1e-6)
+    tgt = np.stack([hip_w + s * (r[ls.LEFT_WRIST] - hipc),
+                    hip_w + s * (r[ls.RIGHT_WRIST] - hipc),
+                    hip_w + s * (r[ls.NOSE] - hipc)])
     for e in range(2):
-        d = np.linalg.norm(tgt[e] - anch[e])
+        d = np.linalg.norm(tgt[e] - sh[e])
         if d > reach_frac * arm and d > 1e-9:
-            tgt[e] = anch[e] + (reach_frac * arm / d) * (tgt[e] - anch[e])
+            tgt[e] = sh[e] + (reach_frac * arm / d) * (tgt[e] - sh[e])
     return tgt
 
 
@@ -226,16 +229,17 @@ class _EuroState:
         return out
 
 
-def map_stream_python(pw_all, anchors, arm, dt, mincut, beta, reach_frac):
-    """The naive baseline for --bench: the identical retarget glue as a Python
-    per-frame loop (the sequential One-Euro filter is the per-element trap). Same
-    ``_frame_target`` + ``_EuroState`` steppers the live --follow path uses."""
-    anch = np.asarray(anchors, dtype=np.float64).reshape(3, 3)
+def map_stream_python(pw_all, hip_w, sh, robot_torso, arm, dt, mincut, beta, reach_frac):
+    """The naive baseline for --bench: the identical hip-relative retarget glue as a
+    Python per-frame loop (the sequential One-Euro filter is the per-element trap).
+    Same ``_frame_target`` + ``_EuroState`` steppers the live --follow/tf paths use."""
+    hip_w = np.asarray(hip_w, dtype=np.float64)
+    sh = np.asarray(sh, dtype=np.float64).reshape(2, 3)
     euro = _EuroState(dt, mincut, beta)
     out = np.zeros((pw_all.shape[0], 9), dtype=np.float64)
     for f in range(pw_all.shape[0]):
         r = ls.mediapipe_world_to_robot(pw_all[f].reshape(33, 3))
-        out[f] = euro.step(_frame_target(r, anch, arm, reach_frac)).reshape(9)
+        out[f] = euro.step(_frame_target(r, hip_w, sh, robot_torso, arm, reach_frac)).reshape(9)
     return out
 
 
@@ -261,6 +265,11 @@ class Retargeter:
         self.anchor_R = self.data.oMf[self.RS].translation.copy()
         self.anchor_H = self.data.oMf[self.HD].translation.copy()
         self.arm = float(np.linalg.norm(self.data.oMf[self.LF].translation - self.anchor_L))
+        # Robot hip frame (targets are anchored here, hip-relative) + torso length
+        # (shoulder-center to hip), the fixed scale reference vs the human torso.
+        self.hip = self.data.oMf[self.model.getFrameId(cfg.hip)].translation.copy()
+        self.robot_torso = float(np.linalg.norm(
+            0.5 * (self.anchor_L + self.anchor_R) - self.hip))
         self._build_posture_weights()
         self._load_visual_geometry()
 
@@ -339,9 +348,6 @@ class Retargeter:
                         np.asarray(M.rotation, dtype=np.float32)))
         return out
 
-    def anchors_flat(self):
-        return np.concatenate([self.anchor_L, self.anchor_R, self.anchor_H])
-
     def solve(self, targets9, q_warm, iters=40, damp=1e-3, whead=0.0):
         """CLIK toward the 9-vector [L,R,Head] targets from warm start ``q_warm``.
         Returns ``(q, {frame: err_m})``. The free-flyer base is locked by solving
@@ -413,18 +419,21 @@ def load_pose_world(stream_path):
 
 def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=MINCUT, beta=BETA,
                     reach_frac=REACH_FRAC):
-    """Retarget glue: (F,99) landmarks -> (F,9) smoothed targets. Uses the C++
-    kernel (cppyy_kit) by default, else the Python loop."""
-    anch = rt.anchors_flat()
+    """Retarget glue: (F,99) landmarks -> (F,9) smoothed HIP-RELATIVE targets. Uses
+    the C++ kernel (cppyy_kit) by default, else the Python loop."""
+    hip = np.asarray(rt.hip, dtype=np.float64)
+    sh = np.stack([rt.anchor_L, rt.anchor_R]).astype(np.float64)
     if use_cpp:
         glue = _bringup_glue()
         out = np.zeros((pw_all.shape[0], 9), dtype=np.float64)
         c = np.ascontiguousarray(pw_all, dtype=np.float64)
         glue.map_stream(c.ctypes.data, int(c.shape[0]), out.ctypes.data,
-                        anch[0], anch[1], anch[2], anch[3], anch[4], anch[5],
-                        anch[6], anch[7], anch[8], rt.arm, dt, mincut, beta, reach_frac)
+                        hip[0], hip[1], hip[2], sh[0, 0], sh[0, 1], sh[0, 2],
+                        sh[1, 0], sh[1, 1], sh[1, 2], rt.robot_torso, rt.arm,
+                        dt, mincut, beta, reach_frac)
         return out
-    return map_stream_python(pw_all, anch, rt.arm, dt, mincut, beta, reach_frac)
+    return map_stream_python(pw_all, hip, sh, rt.robot_torso, rt.arm, dt, mincut,
+                             beta, reach_frac)
 
 
 # --------------------------------------------------------------------------- #
@@ -570,7 +579,8 @@ def run_follow(args):
         viz_mode = _setup_robot_viz(rr, rt, args)
 
     dt = 1.0 / args.fps
-    anch = rt.anchors_flat().reshape(3, 3)
+    hip_w = np.asarray(rt.hip, dtype=np.float64)
+    sh = np.stack([rt.anchor_L, rt.anchor_R]).astype(np.float64)
     euro = _EuroState(dt)
     q = rt.q0.copy()
     Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
@@ -594,7 +604,8 @@ def run_follow(args):
             if fr["pose_world"] is None:
                 continue
             r = ls.mediapipe_world_to_robot(fr["pose_world"])
-            tgt = euro.step(_frame_target(r, anch, rt.arm, REACH_FRAC)).reshape(9)
+            tgt = euro.step(_frame_target(r, hip_w, sh, rt.robot_torso, rt.arm,
+                                          REACH_FRAC)).reshape(9)
             t0 = time.perf_counter()
             q, errs = rt.solve(tgt, q)
             solve_ms.append((time.perf_counter() - t0) * 1e3)
@@ -680,7 +691,8 @@ def run_tf(args):
     pose_frames = ["pose/" + n for n in ls.POSE_LANDMARK_NAMES]
     nose_frame = pose_frames[ls.NOSE]
     dt = 1.0 / args.fps
-    anch = rt.anchors_flat().reshape(3, 3)
+    hip_w = np.asarray(rt.hip, dtype=np.float64)
+    sh = np.stack([rt.anchor_L, rt.anchor_R]).astype(np.float64)
     euro = _EuroState(dt)
     q = rt.q0.copy()
     Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
@@ -726,7 +738,8 @@ def run_tf(args):
                 time.sleep(0.002)
                 continue
             t0 = time.perf_counter()
-            tgt = euro.step(_frame_target(r, anch, rt.arm, REACH_FRAC)).reshape(9)
+            tgt = euro.step(_frame_target(r, hip_w, sh, rt.robot_torso, rt.arm,
+                                          REACH_FRAC)).reshape(9)
             q, errs = rt.solve(tgt, q)
             solve_ms.append((time.perf_counter() - t0) * 1e3)
             lag.append(now - stamp)
