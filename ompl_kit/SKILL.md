@@ -1,7 +1,7 @@
 # ompl_kit — cheat sheet for a coding agent
 
 You are writing Python that drives the **Open Motion Planning Library (OMPL)** — a
-C++ sampling-based motion planner — through `rclcppyy.kits.ompl_kit`. The kit
+C++ sampling-based motion planner — through `ompl_kit`. The kit
 **mirrors OMPL's C++ API**: `bringup_ompl()` returns the real `ompl::base` /
 `ompl::geometric` namespaces (the conventional `ob` / `og`) and you use
 `ob.RealVectorStateSpace`, `og.SimpleSetup`, `og.RRTConnect`,
@@ -40,7 +40,7 @@ the cross-inheritance mechanics and benchmarks, see [REPORT.md](REPORT.md).)
 *Use for:* planning where the validity/obstacle logic is a plain function.
 
 ```python
-from rclcppyy.kits import ompl_kit
+import ompl_kit
 ob, og = ompl_kit.bringup_ompl()
 
 def is_state_valid(state):                       # planner's inner-loop callback
@@ -75,7 +75,7 @@ if ss.solve(1.0):
 *Use for:* an OMPL-idiomatic checker, or one that holds state / queries a map.
 
 ```python
-from rclcppyy.kits import ompl_kit, cppyy_kit
+import ompl_kit, cppyy_kit
 ob, og = ompl_kit.bringup_ompl()
 
 class CircleChecker(ob.StateValidityChecker):
@@ -137,7 +137,7 @@ calls, ~150x faster inner loop.
 
 ```python
 import cppyy
-from rclcppyy.kits import ompl_kit, cppyy_kit
+import ompl_kit, cppyy_kit
 ob, og = ompl_kit.bringup_ompl()
 
 cppyy.cppdef(r"""
@@ -166,15 +166,15 @@ ss.setStateValidityChecker(ob.StateValidityCheckerPtr(checker))
 ```python
 import os; os.environ.setdefault("ROS_DOMAIN_ID", "45")
 import cppyy
-from rclcppyy.bringup_rclcpp import bringup_rclcpp, add_ros2_include_paths
-from rclcppyy.kits import ompl_kit
+import rclcpp_kit
+import ompl_kit
 
 waypoints = [...]                                # from ompl_kit.path_to_list(...)
-rclcpp = bringup_rclcpp()
+rclcpp = rclcpp_kit.bringup_rclcpp()
 if not rclcpp.ok(): rclcpp.init()
 from nav_msgs.msg import Path                     # Python type registers the topic
 
-add_ros2_include_paths()
+rclcpp_kit.add_ros2_include_paths()
 cppyy.include("nav_msgs/msg/path.hpp"); cppyy.include("geometry_msgs/msg/pose_stamped.hpp")
 msg = cppyy.gbl.nav_msgs.msg.Path()              # the C++ message; poses is a vector
 msg.header.frame_id = "map"

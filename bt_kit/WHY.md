@@ -114,11 +114,11 @@ can execute it.
 #!/usr/bin/env python
 """
 BehaviorTree.CPP official tutorial 1 ("Your first behavior tree"), in Python via
-rclcppyy's bt_kit. This mirrors the C++ tutorial line-for-line -- same factory,
+bt_kit. This mirrors the C++ tutorial line-for-line -- same factory,
 same registerSimpleAction / registerSimpleCondition, same createTreeFromText /
 tickWhileRunning -- only the leaf callbacks are Python.
 """
-from rclcppyy.kits import bt_kit
+import bt_kit
 
 bt = bt_kit.bringup_bt()
 

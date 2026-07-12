@@ -1,7 +1,7 @@
 # bt_kit — cheat sheet for a coding agent
 
 You are writing Python that drives **BehaviorTree.CPP v4** (a C++ behavior-tree
-engine) through `rclcppyy.kits.bt_kit`. The kit **mirrors the C++ API** — the same
+engine) through `bt_kit`. The kit **mirrors the C++ API** — the same
 `BehaviorTreeFactory`, `registerSimpleAction`, `createTreeFromText`,
 `tickWhileRunning` you know from the official BT.CPP tutorials — so write it the way
 you'd write the C++ tutorial, with the leaf callbacks in Python. You do **not** need
@@ -27,7 +27,7 @@ to know cppyy; the kit removes that friction.
 *Use for:* the common case — synchronous leaves that act and return a status.
 
 ```python
-from rclcppyy.kits import bt_kit
+import bt_kit
 bt = bt_kit.bringup_bt()
 
 def approach(node):

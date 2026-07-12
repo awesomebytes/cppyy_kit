@@ -1,11 +1,11 @@
 # cppyy_kit — common patterns for driving a C++ library from Python
 
-This is the shared playbook behind rclcppyy's "kits" (`bt_kit` for
-BehaviorTree.CPP, `pcl_kit` for the Point Cloud Library). A kit wraps a C++
-library so it can be driven from short Python that **mirrors the library's own
-API**, hiding only the cppyy friction. That friction is the same from one library
-to the next, so it is factored into `rclcppyy/kits/cppyy_kit.py`; this document is
-the narrative and the evidence behind it, for the next kit author (human or LLM).
+This is the shared playbook behind the cppyy_kit suite (`bt_kit` for
+BehaviorTree.CPP, `pcl_kit` for the Point Cloud Library, and eight more). A kit
+wraps a C++ library so it can be driven from short Python that **mirrors the
+library's own API**, hiding only the cppyy friction. That friction is the same from
+one library to the next, so it is factored into `cppyy_kit`; this document is the
+narrative and the evidence behind it, for the next kit author (human or LLM).
 
 Two independent kits confirm every pattern below: BehaviorTree.CPP (a callback /
 tree engine) and PCL (templated bulk-data algorithms) stress different edges, and
