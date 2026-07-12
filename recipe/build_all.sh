@@ -1,14 +1,17 @@
 #!/bin/bash
-# Build all 10 cppyy_kit-suite packages in dependency order into ./output,
+# Build all 11 cppyy_kit-suite packages in dependency order into ./output,
 # chaining the local output as a file:// channel so each recipe's fresh-env
 # import test resolves the intra-suite deps built before it.
 #
-#   order: cppyy-kit -> rclcpp-kit -> cv-kit -> {bt,ompl,pcl,nav2,moveit,control} -> dbow-kit
+#   order: cppyy-kit -> rclcpp-kit -> cv-kit -> {bt,ompl,pcl,nav2,moveit,control} -> dbow-kit -> wbc-kit
 #     cppyy-kit  : base (cppyy only)
 #     rclcpp-kit : needs cppyy-kit
 #     cv-kit     : needs cppyy-kit (built early; dbow-kit needs it)
 #     bt/ompl    : need cppyy-kit          pcl/nav2/moveit/control: + rclcpp-kit
-#     dbow-kit   : needs cppyy-kit + cv-kit (last)
+#     dbow-kit   : needs cppyy-kit + cv-kit (last of the ROS-jazzy chain)
+#     wbc-kit    : needs cppyy-kit + crocoddyl (conda-forge; ROS-free, no
+#                  rclcpp-kit dep -- pinocchio comes in transitively via
+#                  crocoddyl). Built last since it is the standalone outlier.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OUT="$PWD/output"
@@ -26,6 +29,7 @@ ORDER=(
   ros-jazzy-moveit-kit
   ros-jazzy-control-kit
   ros-jazzy-dbow-kit
+  wbc-kit
 )
 
 first=1
