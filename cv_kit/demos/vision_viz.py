@@ -178,6 +178,33 @@ def blueprint_loop():
     )
 
 
+def blueprint_webcam_ab():
+    """M6b layout (live webcam A-vs-B): the live camera with the tracked features and
+    their flow arrows on the left; on the right a stack of the head-to-head plots --
+    per-frame processing time, achievable FPS and process CPU% (each carrying an
+    ``A`` series = the kits/cppyy path and a ``B`` series = the naive Python path) --
+    over the accumulated camera trajectory. One glance shows A running fast/cheap
+    while B struggles on the very same frames."""
+    rrb = _rrb()
+    return rrb.Blueprint(
+        rrb.Horizontal(
+            rrb.Spatial2DView(origin="/camera",
+                              name="live camera -- tracked features + flow (pipeline A)"),
+            rrb.Vertical(
+                rrb.TimeSeriesView(origin="/perf/ms",
+                                   name="processing time ms/frame (A=cppyy vs B=python)"),
+                rrb.TimeSeriesView(origin="/perf/fps", name="achievable FPS (1000/ms)"),
+                rrb.TimeSeriesView(origin="/perf/cpu", name="process CPU %"),
+                rrb.Spatial2DView(origin="/world", name="camera trajectory (pipeline A)"),
+                rrb.TextLogView(origin="/log", name="events"),
+                row_shares=[2, 1, 1, 2, 1],
+            ),
+            column_shares=[3, 3],
+        ),
+        collapse_panels=True,
+    )
+
+
 def blueprint_posegraph():
     """M4 layout: the trajectories in a 3D view (drift vs corrected vs ground truth
     + loop edges) beside the mean-error-over-time plot that drops when the optimizer
