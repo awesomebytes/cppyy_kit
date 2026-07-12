@@ -104,7 +104,7 @@ kits pull `ros-jazzy-rclcpp-kit`, transitively.
 ## Docs
 
 - [`docs/ARCHITECTURE_V2.md`](docs/ARCHITECTURE_V2.md) — the approved kit-suite architecture.
-- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (33 patterns).
+- [`docs/COMMON_PATTERNS.md`](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (35 patterns).
 - [`docs/FREEZE.md`](docs/FREEZE.md) — the L0→L1→L2 optimization ladder.
 - [`docs/tutorials/`](docs/tutorials/) — end-to-end tutorials (visual loop closure).
 - Per kit: `<kit>/SKILL.md` (LLM-facing), `<kit>/WHY.md` (the pitch), `<kit>/REPORT.md` (evidence).
