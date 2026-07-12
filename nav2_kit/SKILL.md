@@ -1,7 +1,7 @@
 # nav2_kit — cheat sheet for a coding agent
 
 You are writing Python that composes **your own navigation stack from Nav2's
-algorithm cores** through `rclcppyy.kits.nav2_kit` — **no lifecycle servers, no
+algorithm cores** through `nav2_kit` — **no lifecycle servers, no
 pluginlib** (and no tf for the pure cores). Python owns the loop; Nav2's C++ owns the
 math. The kit **mirrors Nav2's own C++ API**: `bringup_nav2()` returns the real
 `nav2_costmap_2d` and `nav2_navfn_planner` namespaces, and you use `Costmap2D`, `NavFn`
@@ -46,7 +46,7 @@ feasibility matrix, the honest Smac/RPP boundary, and benchmarks, see
 
 ```python
 import numpy as np
-from rclcppyy.kits import nav2_kit
+import nav2_kit
 nav2_kit.bringup_nav2()
 
 grid = np.zeros((200, 200), dtype=np.uint8)          # 0 = free
@@ -98,8 +98,8 @@ output references); the formula above also works for the subpixel path coordinat
 
 ```python
 import cppyy
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-rclcpp = bringup_rclcpp()
+import rclcpp_kit
+rclcpp = rclcpp_kit.bringup_rclcpp()
 if not rclcpp.ok():
     rclcpp.init()
 from nav_msgs.msg import Path                          # Python type registers topic

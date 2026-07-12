@@ -32,8 +32,8 @@ minutes, and every experiment is a C++ compile.
 ## control_kit: the same controller, in Python
 
 ```python
-from rclcppyy.bringup_rclcpp import bringup_rclcpp
-from rclcppyy.kits import control_kit as ck
+import rclcpp_kit
+import control_kit as ck
 
 bringup_rclcpp().init()
 ck.bringup_control()

@@ -7,7 +7,7 @@
 class deriving `controller_interface::ControllerInterface`, exported via a pluginlib
 `plugin_description.xml`, built by CMake/ament into a `.so`, and spawned into a
 `controller_manager` process. Can we instead write the controller in **Python** and run
-it **inside a real `controller_manager::ControllerManager`** in our own process, against
+it **inside a real `controller_manager::ControllerManager`** in a single process, against
 mock hardware, driven by the real `read`→`update`→`write` loop — the ⚠️ UNPROVEN item on
 the exposure note?
 

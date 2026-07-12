@@ -79,7 +79,7 @@ Rerun: live viewer opened -- watch it stream. (headless instead: RCLCPPYY_RERUN_
 stream; headless, that last line reads `Rerun recording saved: build/vision/spine.rrd`.)
 
 One process runs two ROS 2 nodes: a publisher emits the sequence as
-`sensor_msgs/Image`, and a subscriber — subscribing **via rclcppyy**, so its callback
+`sensor_msgs/Image`, and a subscriber — subscribing **via rclcpp_kit**, so its callback
 receives the **C++** `sensor_msgs::msg::Image` — logs each frame to Rerun.
 
 ### The zero-copy bridge
@@ -276,8 +276,8 @@ pixi run -e vision bench-vision            # add --orbvoc for the real-vocab tim
 
 | Metric | Result (synthetic, CPU; shared machine — directional) |
 |---|---|
-| Ingest 640×480 | rclcppyy ~0.008 ms vs rclpy-copy ~0.010 ms (~1.3×) |
-| Ingest 1920×1080 | rclcppyy ~0.001 ms vs rclpy-copy ~0.167 ms (**~155×**) |
+| Ingest 640×480 | rclcpp_kit ~0.008 ms vs rclpy-copy ~0.010 ms (~1.3×) |
+| Ingest 1920×1080 | rclcpp_kit ~0.001 ms vs rclpy-copy ~0.167 ms (**~155×**) |
 | ORB (CPU) | ~270 fps (~3.7 ms/frame, 1000 keypoints) |
 | Small-vocab train | ~7 s (9970 words, k=10 L=4) |
 | Query latency | ~2.8 ms/frame |
@@ -321,7 +321,7 @@ for a large vocabulary on real imagery). The first ORBvoc load parses the 145 MB
 
 Everything above runs at **L0**: cppyy JIT-compiles the libraries' headers at bringup
 (a one-time ~0.2 s for OpenCV; DBoW2's headers are tiny). When startup latency matters,
-the rclcppyy **freeze** machinery applies unchanged:
+the cppyy_kit **freeze** machinery applies unchanged:
 
 - **L1 (freeze):** bake the kit's headers into a Cling precompiled header so bringup
   skips the header parse. See **[docs/FREEZE.md](../FREEZE.md)**.
@@ -350,8 +350,8 @@ the rclcppyy **freeze** machinery applies unchanged:
 
 | File | What |
 |---|---|
-| `rclcppyy/kits/cv_kit.py` | OpenCV bringup, zero-copy `msg_to_mat`, ORB, CUDA auto-detect |
-| `rclcppyy/kits/dbow_kit.py` | DBoW2 vocabulary + database (train/load/query) |
+| `cv_kit/cv_kit/__init__.py` | OpenCV bringup, zero-copy `msg_to_mat`, ORB, CUDA auto-detect |
+| `dbow_kit/dbow_kit/__init__.py` | DBoW2 vocabulary + database (train/load/query) |
 | `scripts/vision/build_dbow2.py` | clone + patch + compile DBoW2 |
 | `scripts/vision/vision_viz.py` | shared Rerun setup: live-viewer-by-default decision + per-demo blueprints |
 | `scripts/vision/loop_detector.py` | temporal-consistency loop gate |

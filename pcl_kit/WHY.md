@@ -84,7 +84,7 @@ before you can execute the binary.
 """A NumPy point cloud goes into a PCL VoxelGrid and comes back out as NumPy."""
 import numpy as np
 
-from rclcppyy.kits import pcl_kit
+import pcl_kit
 
 pcl = pcl_kit.bringup_pcl(with_ros=False)          # NumPy-only, skip the ROS JIT
 

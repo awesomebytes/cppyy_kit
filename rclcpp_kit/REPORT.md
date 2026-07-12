@@ -1,15 +1,14 @@
-# tf spike — is TF via rclcppyy more efficient than the stock Python path?
+# TF via rclcpp_kit — measured efficiency vs the stock Python path
 
 **Date:** 2026-07-11 · **Env:** pixi `default` (robostack-jazzy `ros-base` + conda-forge),
 `cppyy 3.5.0`, Python 3.12.13, `tf2`/`tf2_ros` 0.36.x, cyclonedds, linux-64.
 `ROS_DOMAIN_ID=51`. Shared machine during measurement (a parallel vision job on
 domain 52) — figures are directional, not absolute.
 
-**Sam's question (verbatim):** *"for rclcppyy maybe there's a more efficient/better
-way of using TF. I am not fully sure how TF in python works, but I assume that it
-will be way less efficient than using it via rclcppyy."*
+**Hypothesis:** TF ingest via the C++ `TransformListener` (driven through cppyy)
+should be significantly more efficient than the stock Python path.
 
-**Verdict: Sam is RIGHT, and it's bigger than just ingest. GO.** Running tf2's **C++**
+**Verdict: CONFIRMED, and the win is bigger than just ingest.** Running tf2's **C++**
 `tf2_ros::TransformListener` + `tf2::BufferCore` on an rclcppyy node ingests `/tf`
 entirely in C++ on its own thread — **~7–14× less CPU** than the stock rclpy Python
 listener under a TF storm (the win grows with tf traffic) — **and** each
@@ -121,7 +120,7 @@ C++ glue** (a factory, a `TimePoint`-from-nanos converter, and `can`/`lookup`/
 
 ---
 
-## Job 3 — the benchmark (the answer to Sam)
+## Job 3 — the benchmark
 
 Same synthetic TF storm (a chain `world -> link_0 -> ... -> link_{N-1}` published as one
 `TFMessage` at rate R, so aggregate load = N·R transforms/s), same machine, one variant
@@ -240,11 +239,11 @@ follow-up); a `TransformBroadcaster` helper (the publish side); `lookup_transfor
 
 ---
 
-## Recommendation — GO
+## Recommendation — Validated
 
-Sam's assumption is confirmed and then some: the stock rclpy TransformListener feeds
+The hypothesis is confirmed and then some: the stock rclpy TransformListener feeds
 its buffer entirely in Python (deserialize → per-transform Python→C crossing → GIL),
-and rclcppyy's C++ listener does it in C++ on its own thread for **~7–14× less ingest
+and the C++ listener does it in C++ on its own thread for **~7–14× less ingest
 CPU** under load, with **~5× cheaper lookups** as a bonus. It is delivered as
 `rclcpp_kit.tf` — a thin, mirror-don't-sugar helper in the rclcpp core capability
 layer — with demos, a reproducible benchmark, and a fast test suite that includes the
