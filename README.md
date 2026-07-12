@@ -18,6 +18,10 @@ startup cost, cache the compile, lower a hot leaf) without changing shape. Every
 number on this page is measured on one machine on one day and linked to the row that
 produced it in **[docs/benchmarks.md](docs/benchmarks.md)**.
 
+<p align="center">
+  <img src="docs/media/cppyy_kit_logo.jpg" alt="cppyy_kit logo" width="420">
+</p>
+
 ## Two ways to mix Python and C++
 
 **Drive a whole C++ library from Python** — here the real BehaviorTree.CPP engine
