@@ -80,6 +80,12 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   numbers; per-kit pages (WHY/REPORT/SKILL rendered); the tutorials (vision
   loop-closure + new ones from M6); COMMON_PATTERNS + FREEZE as core chapters;
   quickstart per package (pixi snippets). CI deploys on push to main.
+- Patterns consolidation debt CLEARED (2026-07-12, docs lane merged):
+  COMMON_PATTERNS 29→33 sections (§30 in-process lifecycle bootstrap, §31
+  lower-the-hot-virtual, §32 own-binding+cppyy coexistence, §33 schema-derived
+  structs) + extensions to §9/§16/§19/§21/§26; README updated to published-
+  suite reality; tone/naming sweep (0 person refs, 0 milestone tags in all
+  user-facing md; ledgers exempt).
 
 ### M5 — LLM acceleration tooling
 - The "ask an LLM to make my code faster" story: a **`cppyy-accelerate` skill**
@@ -162,6 +168,10 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
 - COMMON_PATTERNS.md is the canonical playbook; every lane feeds it.
 - No history rewrites containing others' commits; PLAN.md (this file) is the
   project ledger.
+- Docs tone (owner directive 2026-07-12): user-facing docs carry no person
+  references and no internal milestone tags — plain descriptive names only.
+  Ledgers (PLAN.md, HANDOFF.md) are exempt. Note: PLAN.md is published on the
+  docs site as "Project Plan" (mkdocs nav) — intentional transparency.
 
 ### M8 — L3 whole-app lowering (research thread)
 
