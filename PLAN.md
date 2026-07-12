@@ -99,7 +99,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   TF via rclcpp_kit → live Rerun; CPU% overlay showing the headroom vs a plain
   Python/cv2-loop baseline. Must run on a laptop with a webcam, degrade
   gracefully without CUDA.
-- **6c IK benchmark suite**: benchmark IK solvers via moveit_kit's plugin
+- **6c IK benchmark suite** ✅ DONE (2026-07-12: 5-solver table from ONE Python script — KDL ~400/s, TRAC-IK ~900/s, bio_ik [vendored, uninstallable-otherwise] ~1000/s FASTEST, pick_ik ~140/s, pure-Python DLS ~40/s @ 70.5% success; 200 seeded Panda targets, FK-verified successes; new [feature.ik] env; vendored-plugin pattern = CMake into private prefix + AMENT_PREFIX_PATH; g_p_l confirmed parse-wall-only): benchmark IK solvers via moveit_kit's plugin
   loading — KDL (packaged), **trac_ik** (packaged, verified 2.0.2), **bio_ik**
   and **pick_ik** (NOT packaged — vendored-source builds via the §21 recipe;
   pick_ik likely hits the generate_parameter_library wall → known route), plus
