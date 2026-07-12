@@ -81,7 +81,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   loop-closure + new ones from M6); COMMON_PATTERNS + FREEZE as core chapters;
   quickstart per package (pixi snippets). CI deploys on push to main.
 - Patterns consolidation debt CLEARED (2026-07-12, docs lane merged):
-  COMMON_PATTERNS 29→33 sections (§30 in-process lifecycle bootstrap, §31
+  COMMON_PATTERNS 29→35 sections (§30 in-process lifecycle bootstrap, §31
   lower-the-hot-virtual, §32 own-binding+cppyy coexistence, §33 schema-derived
   structs) + extensions to §9/§16/§19/§21/§26; README updated to published-
   suite reality; tone/naming sweep (0 person refs, 0 milestone tags in all
