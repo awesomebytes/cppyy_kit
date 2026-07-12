@@ -79,7 +79,7 @@ def urdf_path(cfg):
 # --------------------------------------------------------------------------- #
 _GLUE = r"""
 #include <cmath>
-namespace m6f_retarget {
+namespace retarget_glue {
 
 static inline double euro_alpha(double cutoff, double dt) {
   double tau = 1.0 / (2.0 * M_PI * cutoff);
@@ -154,7 +154,7 @@ void map_stream(uintptr_t in_pw, int F, uintptr_t out,
   }
 }
 
-}  // namespace m6f_retarget
+}  // namespace retarget_glue
 """
 
 _GLUE_READY = False
@@ -166,7 +166,7 @@ def _bringup_glue():
     if not _GLUE_READY:
         cppyy.cppdef(_GLUE)
         _GLUE_READY = True
-    return cppyy.gbl.m6f_retarget
+    return cppyy.gbl.retarget_glue
 
 
 def map_stream_python(pw_all, anchors, arm, dt, mincut, beta, reach_frac):
@@ -353,7 +353,7 @@ def run_retarget(args):
     if not args.no_viz:
         import rerun as rr
         from retarget_pipeline import viz
-        session = viz.init_rerun("m6f_retarget", args.rrd,
+        session = viz.init_rerun("retarget", args.rrd,
                                  blueprint=viz.blueprint_retarget())
 
     F = len(targets)

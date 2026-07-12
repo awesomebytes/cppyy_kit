@@ -25,7 +25,7 @@ import time
 
 import numpy as np
 
-FORMAT = "cppyy_kit.m6f.landmarks"
+FORMAT = "cppyy_kit.retarget.landmarks"
 VERSION = 1
 
 # MediaPipe pose landmark indices (33-point BlazePose topology).
