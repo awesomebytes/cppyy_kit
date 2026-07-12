@@ -191,6 +191,16 @@ per-element Python-loop trap (§6/§26).
   `demo-retarget`, `bench-retarget`, `test-retarget` (wbc env). `retarget_pipeline` added to the
   `lint` task. The default `test` task is **unchanged** (still 40 passed / 129 skipped).
 
+**Pinned model bundle (supply-chain hygiene).** `fetch_models.py` pins each MediaPipe Tasks
+bundle's URL **and SHA-256**, verifies the hash after download, and refuses (and removes) a
+mismatch. The perception default uses `holistic` (`float16/latest`, downloaded 2026-07-12):
+`holistic_landmarker.task` — 13 683 609 bytes, sha256
+`e2dab61191e2dcd0a15f943d8e3ed1dce13c82dfa597b9dd39f562975a50c3f8`. (Also pinned: `pose` =
+`4eaa5eb7…`, `hand` = `fbc2a300…`.) Caveat: the URL is Google's `.../latest/`, so a bundle
+rotation will change the hash and be refused — re-pin, or pass `--allow-hash-mismatch` /
+`M6F_ALLOW_HASH_MISMATCH=1` to knowingly accept a new bundle. Verified: a cached bundle whose
+hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `.part` cleaned.
+
 ---
 
 ## Gates
