@@ -64,6 +64,14 @@ Kit demos/tests are discovered via `PYTHONPATH` (set in `pixi.toml`
 `ros-base` env — no extra per-kit ROS dependency. The `rclcpp_kit` suite + tf demos
 run in the `rclcpp` env: `pixi run -e rclcpp test-rclcpp` / `test-tf`.
 
+**Startup gets faster on its own.** The first time you bring a kit up you may see
+`cppyy_kit: building Cling PCH cache at …` — a one-time, background build of a
+precompiled header into `~/.cache/cppyy_kit`. Every later run prints
+`cppyy_kit: Cling PCH loaded from …` and skips the header parse (rclcpp bringup
+~1.9 s → ~0.06 s). Nothing to configure; set `CPPYY_KIT_NO_AUTOPCH=1` to opt out, or
+your own `CLING_STANDARD_PCH` to take over. See
+[docs/FREEZE.md](docs/FREEZE.md#8-zero-config-auto-pch-cppyy_kitautopch).
+
 ## Install (conda packages)
 
 > **Published.** The suite ships as 11 rattler-build recipes under
