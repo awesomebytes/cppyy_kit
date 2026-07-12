@@ -248,12 +248,16 @@ writer's per-frame flush).
 ```bash
 # terminal A (producer) — webcam if present, else synthetic; writes the stream live:
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --record build/pipeline/live.jsonl --duration 30
-# terminal B (consumer) — start it first (it waits for the file), then A; retargets live:
+# terminal B (consumer) — start it first; it waits (with a heartbeat) for the file AND the
+# first frame, then A comes up and it retargets live:
 pixi run -e wbc demo-retarget --robot g1 --follow build/pipeline/live.jsonl
 ```
 
-`--follow` exits cleanly on stream idle-timeout (default 2 s after the last frame), EOF, or Ctrl-C,
-writing the dataset gathered so far. **Measured** (synthetic producer at 30 fps, G1 consumer, 300
+`--follow` uses **two independent waits** so the cold "consumer first" flow works: a **startup
+grace** (`--startup-timeout`, default 30 s) for the file + the producer's *first* frame — a fresh
+`demo-perceive` takes several seconds to activate its env and load its model — and, once frames are
+flowing, the **idle timeout** (`--idle-timeout`, default 2 s after the last frame) to wrap up and
+write the dataset. It also exits cleanly on EOF or Ctrl-C. **Measured** (synthetic producer at 30 fps, G1 consumer, 300
 frames consumed as produced): **end-to-end producer→consumer lag median 4.4 ms (p90 6.5, max
 10.1 ms)** — far under one 33 ms frame period, so the consumer tracks in real time rather than
 falling behind; CLIK ~1.3 ms/frame. The webcam source is the same plumbing (synthetic used here

@@ -95,6 +95,32 @@ def test_follow_mode_consumes_live_stream(tmp_path):
     assert os.path.abspath(stream) == str(d["source_stream"])
 
 
+def test_follow_survives_cold_start(tmp_path):
+    """Cold start: the producer takes longer than --idle-timeout to write its FIRST
+    frame (a fresh perceive's env activation + model load is several seconds). The
+    consumer must wait through the startup grace, not give up -- the exact run-book
+    flow ("start the consumer first"). Regression for the idle-vs-startup split."""
+    stream = str(tmp_path / "cold.jsonl")
+    ds = str(tmp_path / "cold_ds.npz")
+
+    def writer():
+        time.sleep(2.5)                            # file appears well after idle-timeout
+        with ls.StreamWriter(stream, source="synthetic", fps_target=30.0) as w:
+            for (_t, pw, pi, lh, rh, ww, hh) in ls.synthetic_frames(15):
+                w.write(t=time.time(), pose_world=pw, pose_image=pi, w=ww, h=hh)
+                time.sleep(0.01)
+
+    th = threading.Thread(target=writer)
+    th.start()
+    # --idle-timeout 1.0 (< the 2.5 s cold delay) must NOT end the consumer before the
+    # first frame; the startup grace (10 s) covers the late first frame.
+    R.main(["--robot", "talos", "--follow", stream, "--dataset", ds, "--no-viz",
+            "--idle-timeout", "1.0", "--startup-timeout", "10"])
+    th.join()
+    d = np.load(ds, allow_pickle=True)
+    assert d["q"].shape[0] >= 12                    # consumed frames after the cold wait
+
+
 def test_replay_and_follow_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         R.main(["--replay", "a.jsonl", "--follow", "b.jsonl"])
