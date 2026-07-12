@@ -165,6 +165,7 @@ _GLUE_READY = False
 
 def _bringup_glue():
     global _GLUE_READY
+    import cppyy_kit  # noqa: F401  (before cppyy so the auto-PCH activates)
     import cppyy
     if not _GLUE_READY:
         cppyy.cppdef(_GLUE)

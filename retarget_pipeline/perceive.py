@@ -198,8 +198,10 @@ _TF_READY = False
 
 def _bringup_tf_glue():
     global _TF_READY
-    import cppyy
+    # Import the kit (which imports cppyy_kit) before cppyy, so the zero-config PCH
+    # activates even if this process has no startup .pth yet (import-order safety).
     from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
+    import cppyy
     rclcpp = bringup_rclcpp()
     if not rclcpp.ok():
         rclcpp.init()
@@ -216,8 +218,9 @@ class TfPublisher:
     (``landmark_tf::Broadcaster``); Python passes a flat xyz array address per frame."""
 
     def __init__(self, frame_names, parent=PARENT_FRAME):
-        import cppyy
+        # cppyy_kit before cppyy: activates the zero-config PCH before Cling binds.
         import cppyy_kit
+        import cppyy
         self._rclcpp = _bringup_tf_glue()
         self._cppyy = cppyy
         self._cppyy_kit = cppyy_kit
@@ -521,6 +524,7 @@ def run_replay(args):
 def run_bench(args):
     """A-vs-B: build the /tf message for the landmark set, C++ helper vs the
     per-field Python loop, over a recorded (or synthetic) stream."""
+    import cppyy_kit  # noqa: F401  (before cppyy so the auto-PCH activates)
     import cppyy
     _bringup_tf_glue()
     TransformStamped = cppyy.gbl.geometry_msgs.msg.TransformStamped
