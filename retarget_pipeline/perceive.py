@@ -321,8 +321,15 @@ def run_live(args):
     session = None
     if not args.no_viz:
         import rerun as rr
-        session = viz.init_rerun("retarget_perceive", args.rrd,
-                                 blueprint=viz.blueprint_perceive())
+        if getattr(args, "shared_viewer", False):
+            # Open the ONE shared viewer for the live ROS demo (retarget connects to
+            # it): one window with the camera + skeleton (here) + robot (from retarget).
+            session = viz.init_rerun_shared("retarget", "spawn", viz.blueprint_shared())
+            print("Rerun: opened the shared viewer; run retarget --source tf "
+                  "--shared-viewer to add the robot to this window.", flush=True)
+        else:
+            session = viz.init_rerun("retarget_perceive", args.rrd,
+                                     blueprint=viz.blueprint_perceive())
     else:
         rr = None
 
@@ -584,6 +591,10 @@ def main(argv=None):
     ap.add_argument("--realtime", action="store_true", help="pace replay to fps")
     ap.add_argument("--no-ros", action="store_true", help="skip /tf publishing")
     ap.add_argument("--no-viz", action="store_true", help="skip Rerun")
+    ap.add_argument("--shared-viewer", action="store_true", dest="shared_viewer",
+                    help="open ONE shared Rerun viewer for the live ROS demo; the "
+                         "retarget half connects to it (camera + skeleton + robot in "
+                         "one window)")
     ap.add_argument("--bench", action="store_true",
                     help="A-vs-B /tf-build micro-bench, then exit")
     ap.add_argument("--bench-n", type=int, default=120, dest="bench_n")

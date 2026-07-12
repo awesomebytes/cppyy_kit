@@ -867,10 +867,22 @@ build), not a wire format and not a numpy replacement.
 ### 34. Hybrid pipelines: a commodity-ML front end, a cppyy hot path, two envs
 A realistic robotics pipeline mixes a Python ML library (its inference *is* a library
 primitive — don't wrap it, per §26's honest headline) with a cppyy_kit hot path, and the
-two halves can have **incompatible native dependencies**. The retarget capture rig is the
-worked example: MediaPipe perception feeds a pinocchio retarget solve, but the ROS stack
-pins libboost 1.90 and pinocchio's conda stack pins 1.86 — they **cannot share a
-process**. The pattern for building such a system:
+two halves can have **incompatible native dependencies**. The retarget capture rig was the
+worked example: MediaPipe perception feeds a pinocchio retarget solve, and the two halves
+were originally split across two envs because the ROS stack pinned libboost 1.90 while
+pinocchio's conda stack pinned 1.86.
+
+> **Dated correction (2026-07-12):** that *specific* clash dissolved — conda-forge rebuilt
+> pinocchio 4.x against libboost 1.90, so pinocchio now co-solves with the robostack ROS
+> stack in one `solve-group`, and the retarget half runs in a ROS-capable env consuming the
+> landmark frames straight off `/tf` (rclcpp_kit's C++ listener). The **two-env pattern
+> below remains the general lesson** for any genuinely incompatible pair; it is simply no
+> longer forced for this pinocchio+ROS case. Note this is the *solve/ABI* boundary only —
+> the Cling **header-parse** wall on `pinocchio::Model` (§9, the 25-type `boost::variant`)
+> is **unchanged**: it trips on boost 1.90 too, so the IK solve stays a bindings job either
+> way.
+
+The pattern for building such a system (still valid whenever two halves truly can't share):
 - **Split at the env boundary; couple with a replayable stream.** When a hard dependency
   conflict forces two processes, make the seam a **tailable/replayable file** (here a
   JSONL landmark stream): live coupling = tail it, CI/rehearsal = replay it, so the same
