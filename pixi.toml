@@ -49,7 +49,7 @@ LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
 # kit are nested packages (<kit>/<kit>/), so each kit dir goes on the path too.
 # Editable installs / conda recipes replace this in M1c. site-packages (cppyy) is
 # unaffected.
-PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pcl_kit:$PIXI_PROJECT_ROOT/ompl_kit:$PIXI_PROJECT_ROOT/nav2_kit:$PIXI_PROJECT_ROOT/moveit_kit:$PIXI_PROJECT_ROOT/control_kit:$PIXI_PROJECT_ROOT/cv_kit:$PIXI_PROJECT_ROOT/dbow_kit:$PIXI_PROJECT_ROOT/rclcpp_kit"
+PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pcl_kit:$PIXI_PROJECT_ROOT/ompl_kit:$PIXI_PROJECT_ROOT/nav2_kit:$PIXI_PROJECT_ROOT/moveit_kit:$PIXI_PROJECT_ROOT/control_kit:$PIXI_PROJECT_ROOT/cv_kit:$PIXI_PROJECT_ROOT/dbow_kit:$PIXI_PROJECT_ROOT/rclcpp_kit:$PIXI_PROJECT_ROOT/wbc_kit"
 
 [tasks]
 # Default smoke: collect every domain-kit test suite. In the default env (no kit
@@ -59,9 +59,9 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # env), so it would actually bring up rclcpp + DDS rather than skip — it runs in its
 # own env via `pixi run -e rclcpp test-rclcpp` (and the `test-tf` gate). The real
 # per-kit proof is the feature-env test-<kit> tasks.
-test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests"
+test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
-lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit scripts skills examples"
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit scripts skills examples"
 clean = "rm -rf build"
 
 # --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
@@ -241,6 +241,49 @@ zstandard = "*"
 provision-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py provision"
 validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
 
+# --- wbc (M6e): Whole-Body Control exploration -------------------------------
+# tsid / crocoddyl / pinocchio are on conda-forge WITH Python bindings, so this
+# feature exists to PROBE where cppyy is sharper than those bindings (templated
+# scalars, inline C++ action models, custom tasks) — not to re-wrap what the
+# bindings already do. example-robot-data supplies real robot models (Talos, Solo,
+# arm) for the WBC solves; casadi is pinocchio's shipped autodiff-scalar backend
+# (the contrast point for the templated-scalar probe).
+#
+# STANDALONE env (no-default-feature), NOT solve-group="default": the conda-forge
+# WBC bindings pin libboost 1.86, but the robostack-jazzy ROS stack in the default
+# solve-group pins libboost 1.90 — an irreconcilable ABI clash under one solve-group
+# (verified: `pixi install` fails on "libboost 1.86 conflicts"). pinocchio/crocoddyl/
+# tsid carry no ROS dependency, so a standalone conda-forge env is the correct home;
+# it also keeps the shared ROS lock untouched. This feature therefore re-declares its
+# own python/cppyy/toolchain rather than inheriting the default.
+[feature.wbc.dependencies]
+python = "3.12.*"
+cppyy = ">=3.5,<4"         # the driver under test
+compilers = "*"            # cppdef / compile-cache toolchain
+pkg-config = "*"
+numpy = "*"
+pytest = ">=7.4,<8"
+setuptools = "<81"
+pinocchio = "*"            # rigid-body dynamics (python bindings + C++ templated core)
+crocoddyl = "*"            # DDP optimal control (python bindings + C++ ActionModel core)
+tsid = "*"                 # task-space inverse dynamics (python bindings + C++ Task core)
+example-robot-data = "*"   # standard robot models (Talos/Solo/arm) for the solves
+casadi = "*"               # pinocchio's shipped autodiff scalar (templated-scalar contrast)
+eigen = "*"                # linear algebra headers (pulled anyway; explicit for JIT includes)
+
+[feature.wbc.activation.env]
+# cppyy resolves C++ symbols at call time by scanning LD_LIBRARY_PATH; conda relies
+# on RPATH and leaves it unset, so point it at the env lib dir (same as the default).
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/wbc_kit"
+
+[feature.wbc.tasks]
+# THE SHOWCASE: author a custom Crocoddyl action model in Python vs inline C++ (JIT,
+# no build system) and solve the same unicycle problem -- numeric match + speedup.
+demo-wbc-lower = "python wbc_kit/demos/d01_lower_action_model.py"
+# wbc_kit tests (gate on the WBC C++ libs). The base cppyy_kit layer is in test-bt.
+test-wbc = "pytest wbc_kit/tests/test_wbc_kit.py -v"
+
 # --- pkg (M1c): rattler-build packaging of the 10-package suite --------------
 # Standalone (no-default-feature) so the packaging tooling doesn't drag the
 # ROS/cppyy stack. Recipes live in recipe/<pkg>/; the driver builds all ten in
@@ -285,6 +328,10 @@ nav2 = { features = ["nav2"], solve-group = "default" }
 moveit = { features = ["moveit"], solve-group = "default" }
 control = { features = ["control"], solve-group = "default" }
 vision = { features = ["vision"], solve-group = "default" }
+# WBC exploration (M6e): pinocchio/crocoddyl/tsid + robot models. STANDALONE
+# (no-default-feature): the conda-forge WBC bindings pin libboost 1.86 vs the ROS
+# stack's 1.90 — incompatible under one solve-group (see [feature.wbc.dependencies]).
+wbc = { features = ["wbc"], no-default-feature = true }
 # Standalone env for the rclcpp_kit test suite + tf demos (see the `rclcpp` feature).
 rclcpp = { features = ["rclcpp"], solve-group = "default" }
 # GPU vision: standalone (vendors the CUDA libs + supplies the CUDA 12.9 runtime).
