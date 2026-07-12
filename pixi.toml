@@ -195,6 +195,7 @@ test-moveit = "pytest moveit_kit/tests/test_moveit_kit.py -v"
 # hit because pluginlib dlopen's the compiled plugin .so (REPORT §2.1).
 [feature.ik.dependencies]
 ros-jazzy-trac-ik-kinematics-plugin = "2.0.2.*"  # TRAC-IK (packaged) kinematics plugin
+range-v3 = "*"  # header-only; a build-time dep of the vendored pick_ik source build
 
 [feature.ik.tasks]
 # THE DELIVERABLE: one Python script runs every available solver on the same Panda
