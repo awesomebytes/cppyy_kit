@@ -448,10 +448,10 @@ def run_follow(args):
     ``_frame_target`` + ``_EuroState`` steppers as replay, so the two paths agree."""
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
-    print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Following %s (idle-timeout %.1fs); "
-          "start a perceive --record writing it ..."
-          % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.follow, args.idle_timeout),
-          flush=True)
+    print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Following %s (startup grace %.0fs, "
+          "then idle-timeout %.1fs); start a perceive --record writing it ..."
+          % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.follow,
+             args.startup_timeout, args.idle_timeout), flush=True)
     session = None
     rr = None
     if not args.no_viz:
@@ -466,8 +466,22 @@ def run_follow(args):
     q = rt.q0.copy()
     Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
     solve_ms = []
+
+    # Heartbeat while waiting for the producer's first frame (a cold perceive takes
+    # a few seconds to activate its env + load its model); throttled to ~5 s.
+    hb = {"last": 0.0}
+
+    def _heartbeat(elapsed):
+        if elapsed - hb["last"] >= 5.0:
+            hb["last"] = elapsed
+            print("  waiting for the producer's first frame ... %.0fs (start a "
+                  "perceive --record; startup grace %.0fs)"
+                  % (elapsed, args.startup_timeout), flush=True)
+
     try:
-        for fr in ls.follow(args.follow, idle_timeout=args.idle_timeout, poll=0.005):
+        for fr in ls.follow(args.follow, idle_timeout=args.idle_timeout,
+                            startup_timeout=args.startup_timeout, poll=0.005,
+                            on_wait=_heartbeat):
             if fr["pose_world"] is None:
                 continue
             r = ls.mediapipe_world_to_robot(fr["pose_world"])
@@ -494,10 +508,10 @@ def run_follow(args):
     except KeyboardInterrupt:
         print("\n[retarget] interrupted; writing what we have.", flush=True)
     if not Q:
-        print("[retarget] no frames arrived on %s within %.1fs -- is a perceive "
-              "--record writing it? (concurrently, same ROS_DOMAIN_ID not required "
-              "-- the coupling is the file)." % (args.follow, args.idle_timeout),
-              flush=True)
+        print("[retarget] no frames arrived on %s within the %.0fs startup grace -- "
+              "is a perceive --record writing it? (raise --startup-timeout if the "
+              "producer is slow to start; the coupling is the file)."
+              % (args.follow, args.startup_timeout), flush=True)
         return
     Q = np.array(Q)
     ee = np.array(ee_log)
@@ -566,7 +580,11 @@ def main(argv=None):
                      help="LIVE teleop: tail a stream a perceive process is still "
                           "writing and retarget each frame as it arrives")
     ap.add_argument("--idle-timeout", type=float, default=2.0, dest="idle_timeout",
-                    help="follow mode: exit this many seconds after the last new frame")
+                    help="follow mode: exit this many seconds after the last new frame "
+                         "(once frames have been flowing)")
+    ap.add_argument("--startup-timeout", type=float, default=30.0, dest="startup_timeout",
+                    help="follow mode: grace period for the producer's FIRST frame "
+                         "(covers a cold perceive's env activation + model load)")
     ap.add_argument("--dataset", metavar="PATH", help="where to write the .npz dataset")
     ap.add_argument("--fps", type=float, default=30.0, help="stream fps (for dt)")
     ap.add_argument("--no-cpp", action="store_true",
