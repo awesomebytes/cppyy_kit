@@ -55,46 +55,57 @@ dispatch, verify, merge, keep the ledgers current, and report crisply.
   the rclcppyy directory inherits it automatically; otherwise read MEMORY.md
   there manually.
 
-## State snapshot (2026-07-12, post-release)
-- **RELEASED AND LIVE on https://repo.prefix.dev/awesomebytes:** the full suite
-  v0.1.0 (11 packages: cppyy-kit, ros-jazzy-rclcpp-kit, 8 domain kits, wbc-kit
-  — all noarch, all fresh-env-proven on the runner) AND ros-jazzy-rclcppyy
-  v0.2.0 (the product, now genuinely depending on the published suite — bridge
-  removed, import provenance verified, artifact proof green). Release
-  workflows in both repos are tag-triggered and OIDC-authorized.
-- **Done & green:** M1 (migration/carve/recipes), M2 (compile cache — bt
-  frozen+cached ~425 ms ≈4.1×; tracer; require; @cpp; nogil measured;
-  stubgen; capability), M3 (slim+parity+cleanup), M4 (docs site live), M5
-  (accelerate skill, 15.6× walkthrough), M6b (webcam A-vs-B: 15.4× @VGA,
-  live 12–13×; honest headline: the win tracks custom-kernel-vs-library-
-  primitive, ~1.1× for pure cv2 ops), M6c (IK bench, 5 solvers, vendored
-  bio_ik fastest), M6d (Nav2 lifecycle unlocked — Smac+RPP from Python),
-  M6e (WBC/Crocoddyl inline-C++ models 21.7×), Pydantic structs RFC merged
-  (16× memory, compile-time type checks).
-- **22+ patterns** in docs/COMMON_PATTERNS.md — required reading for agents.
+## State snapshot (2026-07-12 END OF DAY — supersedes the morning snapshot)
+- **RELEASED AND LIVE on https://repo.prefix.dev/awesomebytes:** suite v0.1.0
+  (11 packages) + ros-jazzy-rclcppyy v0.2.0, tag-triggered OIDC release
+  workflows in both repos. NOTE: main has moved substantially since v0.1.0 —
+  a v0.1.1/0.2.x release pass is a natural next step when Sam wants it.
+- **Landed today (all supervisor-verified, merged, CI+Docs green, live):**
+  - Patterns consolidation cleared: COMMON_PATTERNS now 36 sections.
+  - Docs tone regime (Sam directives, in PLAN.md Constraints + memory):
+    no person refs, no milestone tags in ANYTHING user-facing (docs, config
+    comments, identifiers, printed output); no marketing register (no
+    virtue claims/epithets; every number names its example + links its
+    benchmarks row). Ledgers (PLAN/HANDOFF) exempt.
+  - Retargeting teleop rig (retarget_pipeline/): webcam→HolisticLandmarker→
+    /tf(C++)→CLIK→G1/Talos, live ROS transport (--source tf, 2.5 ms median
+    lag), ONE shared Rerun viewer, real URDF meshes, hip-relative ~1:1
+    mapping (+--motion-scale), Talos head tracking, presence gate,
+    record/--follow/replay modes, policy-kickstart datasets.
+  - jitter_bench/ stage 0: ~2.4 µs p50 @1 kHz from Python on the stock
+    kernel (timerslack prctl is the lever, 22×); nogil loop holds p50 under
+    load. STAGE 1 blocked on Sam's sudo (rt-tests + rtprio limits.d).
+  - Zero-config auto-PCH (cppyy_kit.autopch): .pth-activated at interpreter
+    start (import-order-proof), ~/.cache/cppyy_kit/pch, self-pruning; rclcpp
+    bringup 1.7 s→0.0 s warm.
+  - Benchmarks page (docs/benchmarks.md, live at /docs/benchmarks/): whole
+    suite re-measured on the Core Ultra 9 285H with exact rerun commands.
+  - Both READMEs + docs landing rewritten around "prototype in Python, run
+    at C++ speed"; cppyy_kit↔rclcppyy cross-linked; showcase tables.
+  - The boost 1.86/1.90 env wall DISSOLVED (conda-forge 1.90 migration):
+    pinocchio now co-solves with ROS (retarget-ros env). Cling JIT wall on
+    pinocchio::Model REMAINS — solve stays on bindings.
+- **ROSCon UK 2026 submission:** summary + outline drafted with Sam
+  (scratchpad roscon_submission_draft.txt — session-local; Sam has a copy).
+  Do NOT put conference claims in public docs.
 
 ## Work queue (in priority order)
-1. **Patterns consolidation debt:** M6b/c/d/e + pydantic lesson candidates
-   are NOT yet folded into COMMON_PATTERNS (each REPORT lists candidates:
-   docs/webcam_demo/, ik_bench/, nav2_kit [M6d additions], docs/wbc/,
-   cppyy_kit/design/pydantic_structs.md). Established pass: one doc-only
-   agent, evidence-cited, plus README kit-table updates.
-2. **M6a canonical arc demo (the ROSCon centerpiece):** ONE compact example
-   end-to-end: plain-Python prototype → kits (minimal diff) → tests →
-   freeze/cache/L2 → benchmark table. Cherry-pick proven pieces (accelerate
-   walkthrough 15.6×, cache 425 ms cold start, L2 2.8×, webcam kernels).
-3. **M7 presentation assets** (ROSCon UK 2026): slide numbers, demo
-   run-books (webcam run-book exists in docs/webcam_demo/REPORT.md),
-   rehearsal checklist.
-4. **M8 research:** 8a tracer DONE; 8b trace→C++ emitter, 8c BT
-   static-binary pilot, 8d positioning survey (PLAN.md M8).
-5. **Pydantic follow-ups** (PR #1 deferred list): [feature.pydantic] env,
-   @cpp Model-annotation integration, Enum/datetime.
-6. Misc: rclcppyy working tree has UNCOMMITTED cosmetic edits (PLAN.md/
-   RELEASING.md/ARCHITECTURE_V2.md, personal-name removals — likely Sam's
-   docs agent; do not sweep, let Sam decide); leftover
-   .claude/worktrees/agent-af69… dir in rclcppyy (untracked, removable);
-   Hybrid-A* flaky parked; conda-forge submission of cppyy-kit when stable.
+1. **M6a/centerpiece decision** — deliberately deferred by Sam ("still
+   finding great ideas"). Ingredients now on the shelf: teleop rig, jitter
+   story, accelerate skill. Revisit with Sam before building M7 assets.
+2. **M7 presentation assets** once the centerpiece is picked (run-books
+   exist per demo REPORT; benchmarks page is the numbers source).
+3. **M6g stage 1** — one command per cell once Sam runs the two sudo
+   one-liners (documented in docs/jitter_bench/REPORT.md §Stage 1).
+4. **M8 research:** 8b trace→C++ emitter, 8c BT static-binary pilot,
+   8d positioning survey.
+5. **Pydantic follow-ups** (PR #1 deferred list).
+6. Misc: release pass for the moved main (see above); conda post-link
+   variant of the auto-PCH .pth install at next release; Talos head
+   full-model increment RETIRED (reduced model tracks orientation fine);
+   Hybrid-A* flaky parked; conda-forge submission of cppyy-kit when stable;
+   leftover worktree ../cppyy_kit_m6f_follow (merged content, held for
+   Sam's testing — prune when he confirms).
 
 ## Dispatch template that works
 Worktree-first block → required reading (COMMON_PATTERNS + specific REPORTs)
