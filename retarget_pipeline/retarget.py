@@ -42,6 +42,8 @@ from retarget_pipeline import landmark_stream as ls  # noqa: E402
 # NOTE: retarget_pipeline.viz imports rerun at module load; it is imported lazily
 # (only when visualizing) so --bench / --no-viz / the tests run without rerun.
 
+DEFAULT_STREAM = os.path.join(REPO, "build", "pipeline", "demo.jsonl")
+
 
 # --------------------------------------------------------------------------- #
 # Robot configs: which URDF, which frames to retarget, per humanoid.
@@ -169,45 +171,71 @@ def _bringup_glue():
     return cppyy.gbl.retarget_glue
 
 
+# Retarget target defaults, shared by the batch kernel path and the live stepper.
+MINCUT, BETA, REACH_FRAC = 1.2, 0.03, 0.8
+
+
+def _frame_target(r, anch, arm, reach_frac):
+    """One frame of the retarget map: robot-frame landmarks ``r`` (33,3) -> the raw
+    (pre-filter) EE targets (3,3) = [left gripper, right gripper, head], scaled by the
+    arm-length ratio and clamped into ``reach_frac`` of the robot's reachable sphere."""
+    lsh, rsh = r[ls.LEFT_SHOULDER], r[ls.RIGHT_SHOULDER]
+    lwr, rwr = r[ls.LEFT_WRIST], r[ls.RIGHT_WRIST]
+    nose, shc = r[ls.NOSE], 0.5 * (r[ls.LEFT_SHOULDER] + r[ls.RIGHT_SHOULDER])
+    hum = 0.5 * (np.linalg.norm(lwr - lsh) + np.linalg.norm(rwr - rsh)) + 1e-6
+    s = arm / hum
+    tgt = np.stack([anch[0] + s * (lwr - lsh), anch[1] + s * (rwr - rsh),
+                    anch[2] + s * (nose - shc)])
+    for e in range(2):
+        d = np.linalg.norm(tgt[e] - anch[e])
+        if d > reach_frac * arm and d > 1e-9:
+            tgt[e] = anch[e] + (reach_frac * arm / d) * (tgt[e] - anch[e])
+    return tgt
+
+
+class _EuroState:
+    """A One-Euro low-pass filter over the (3,3) target, carrying state across frames
+    (per-coordinate cutoff = mincut + beta*|velocity|). The sequential dependence is
+    exactly why the *batch* form lives in the C++ kernel; this drives the *live* path
+    one frame at a time with the identical formula, so replay and follow agree."""
+
+    def __init__(self, dt, mincut=MINCUT, beta=BETA):
+        self.dt, self.mincut, self.beta = dt, mincut, beta
+        self.prev = None
+        self.dprev = np.zeros((3, 3))
+
+    def _alpha(self, cutoff):
+        tau = 1.0 / (2.0 * np.pi * cutoff)
+        return 1.0 / (1.0 + tau / self.dt)
+
+    def step(self, tgt):
+        """Filter one raw (3,3) target, updating state; returns the smoothed (3,3)."""
+        if self.prev is None:
+            self.prev = tgt.copy()
+            return tgt.copy()
+        out = np.empty((3, 3))
+        for k in range(3):
+            dx = (tgt[k] - self.prev[k]) / self.dt
+            ad = self._alpha(1.0)
+            dhat = ad * dx + (1 - ad) * self.dprev[k]
+            cutoff = self.mincut + self.beta * np.abs(dhat)
+            a = self._alpha(cutoff)
+            xhat = a * tgt[k] + (1 - a) * self.prev[k]
+            self.prev[k], self.dprev[k] = xhat, dhat
+            out[k] = xhat
+        return out
+
+
 def map_stream_python(pw_all, anchors, arm, dt, mincut, beta, reach_frac):
     """The naive baseline for --bench: the identical retarget glue as a Python
-    per-frame loop (the sequential One-Euro filter is the per-element trap)."""
-    F = pw_all.shape[0]
-    out = np.zeros((F, 9), dtype=np.float64)
+    per-frame loop (the sequential One-Euro filter is the per-element trap). Same
+    ``_frame_target`` + ``_EuroState`` steppers the live --follow path uses."""
     anch = np.asarray(anchors, dtype=np.float64).reshape(3, 3)
-    prev = None
-    dprev = np.zeros((3, 3))
-
-    def euro_alpha(cutoff):
-        tau = 1.0 / (2.0 * np.pi * cutoff)
-        return 1.0 / (1.0 + tau / dt)
-
-    for f in range(F):
+    euro = _EuroState(dt, mincut, beta)
+    out = np.zeros((pw_all.shape[0], 9), dtype=np.float64)
+    for f in range(pw_all.shape[0]):
         r = ls.mediapipe_world_to_robot(pw_all[f].reshape(33, 3))
-        lsh, rsh = r[ls.LEFT_SHOULDER], r[ls.RIGHT_SHOULDER]
-        lwr, rwr = r[ls.LEFT_WRIST], r[ls.RIGHT_WRIST]
-        nose, shc = r[ls.NOSE], 0.5 * (r[ls.LEFT_SHOULDER] + r[ls.RIGHT_SHOULDER])
-        hum = 0.5 * (np.linalg.norm(lwr - lsh) + np.linalg.norm(rwr - rsh)) + 1e-6
-        s = arm / hum
-        tgt = np.stack([anch[0] + s * (lwr - lsh), anch[1] + s * (rwr - rsh),
-                        anch[2] + s * (nose - shc)])
-        for e in range(2):
-            d = np.linalg.norm(tgt[e] - anch[e])
-            if d > reach_frac * arm and d > 1e-9:
-                tgt[e] = anch[e] + (reach_frac * arm / d) * (tgt[e] - anch[e])
-        if prev is None:
-            prev = tgt.copy()
-            out[f] = tgt.reshape(9)
-        else:
-            for k in range(3):
-                dx = (tgt[k] - prev[k]) / dt
-                ad = euro_alpha(1.0)
-                dhat = ad * dx + (1 - ad) * dprev[k]
-                cutoff = mincut + beta * np.abs(dhat)
-                a = euro_alpha(cutoff)
-                xhat = a * tgt[k] + (1 - a) * prev[k]
-                prev[k], dprev[k] = xhat, dhat
-                out[f, k * 3:k * 3 + 3] = xhat
+        out[f] = euro.step(_frame_target(r, anch, arm, reach_frac)).reshape(9)
     return out
 
 
@@ -303,7 +331,8 @@ def load_pose_world(stream_path):
     return pw, ts
 
 
-def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=1.2, beta=0.03, reach_frac=0.8):
+def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=MINCUT, beta=BETA,
+                    reach_frac=REACH_FRAC):
     """Retarget glue: (F,99) landmarks -> (F,9) smoothed targets. Uses the C++
     kernel (cppyy_kit) by default, else the Python loop."""
     anch = rt.anchors_flat()
@@ -329,8 +358,9 @@ def _no_stream_msg(path):
 
 
 def run_retarget(args):
-    if not os.path.exists(args.replay):
-        print("[retarget] " + _no_stream_msg(args.replay), flush=True)
+    stream = args.replay or DEFAULT_STREAM
+    if not os.path.exists(stream):
+        print("[retarget] " + _no_stream_msg(stream), flush=True)
         return 2
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
@@ -338,9 +368,9 @@ def run_retarget(args):
           % (cfg.name, rt.model.nq, rt.model.nv, rt.arm,
              np.round(rt.anchor_L, 3), np.round(rt.anchor_R, 3)), flush=True)
 
-    pw_all, ts = load_pose_world(args.replay)
+    pw_all, ts = load_pose_world(stream)
     if len(pw_all) == 0:
-        print("No pose frames in %s." % args.replay)
+        print("No pose frames in %s." % stream)
         return
     dt = 1.0 / args.fps
     targets = compute_targets(rt, pw_all, dt, use_cpp=not args.no_cpp)
@@ -374,7 +404,7 @@ def run_retarget(args):
                   % (i + 1, F, np.median(solve_ms[-30:]), ee_err[i, 0], ee_err[i, 1]),
                   flush=True)
 
-    _write_dataset(args, cfg, rt, Q, targets, ts, ee_err)
+    _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source=stream)
     print("\nSUMMARY %s: %d frames | CLIK %.2f ms/frame (median) | EE err median "
           "L=%.3f R=%.3f m (mean %.3f)"
           % (cfg.name, F, float(np.median(solve_ms)), float(np.median(ee_err[:, 0])),
@@ -396,7 +426,7 @@ def _log_retarget(rr, rt, i, q, targets9, pw):
                         color=(160, 160, 160))
 
 
-def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err):
+def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source):
     path = args.dataset or os.path.join(REPO, "build", "pipeline",
                                         "dataset_%s.npz" % cfg.name)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -405,9 +435,83 @@ def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err):
              t=np.array(ts[:len(Q)], dtype=np.float64),
              ee_err=ee_err.astype(np.float32),
              joint_names=np.array(list(rt.model.names), dtype=object),
-             source_stream=os.path.abspath(args.replay))
+             source_stream=os.path.abspath(source))
     print("Policy-kickstart dataset -> %s (q %s, targets %s)."
           % (path, Q.shape, targets.shape), flush=True)
+
+
+def run_follow(args):
+    """Live teleop: tail a landmark stream a perceive process is still writing and
+    retarget each frame as it arrives -- no offline record/replay step. Exits cleanly
+    on stream idle-timeout / EOF / Ctrl-C, writing the dataset gathered so far. The
+    Rerun robot updates per frame (that is the point). Per-frame targets use the same
+    ``_frame_target`` + ``_EuroState`` steppers as replay, so the two paths agree."""
+    cfg = ROBOTS[args.robot]
+    rt = Retargeter(cfg)
+    print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Following %s (idle-timeout %.1fs); "
+          "start a perceive --record writing it ..."
+          % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.follow, args.idle_timeout),
+          flush=True)
+    session = None
+    rr = None
+    if not args.no_viz:
+        import rerun as rr
+        from retarget_pipeline import viz
+        session = viz.init_rerun("retarget", args.rrd,
+                                 blueprint=viz.blueprint_retarget())
+
+    dt = 1.0 / args.fps
+    anch = rt.anchors_flat().reshape(3, 3)
+    euro = _EuroState(dt)
+    q = rt.q0.copy()
+    Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
+    solve_ms = []
+    try:
+        for fr in ls.follow(args.follow, idle_timeout=args.idle_timeout, poll=0.005):
+            if fr["pose_world"] is None:
+                continue
+            r = ls.mediapipe_world_to_robot(fr["pose_world"])
+            tgt = euro.step(_frame_target(r, anch, rt.arm, REACH_FRAC)).reshape(9)
+            t0 = time.perf_counter()
+            q, errs = rt.solve(tgt, q)
+            solve_ms.append((time.perf_counter() - t0) * 1e3)
+            # End-to-end lag: perceive stamps each frame with time.time() at write;
+            # both processes share the wall clock, so (now - t) is the frame's age
+            # when we finish solving it -- the true producer->consumer latency.
+            lag.append(time.time() - fr["t"])
+            Q.append(q.copy())
+            targets_log.append(tgt)
+            ts_log.append(fr["t"])
+            ee_log.append(list(errs.values()))
+            if rr is not None:
+                _log_retarget(rr, rt, len(Q) - 1, q, tgt, fr["pose_world"].reshape(99))
+            if len(Q) % 30 == 0:
+                print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
+                      "EE L=%.3f R=%.3f m"
+                      % (len(Q), lag[-1] * 1e3, float(np.median(lag)) * 1e3,
+                         float(np.median(solve_ms)), ee_log[-1][0], ee_log[-1][1]),
+                      flush=True)
+    except KeyboardInterrupt:
+        print("\n[retarget] interrupted; writing what we have.", flush=True)
+    if not Q:
+        print("[retarget] no frames arrived on %s within %.1fs -- is a perceive "
+              "--record writing it? (concurrently, same ROS_DOMAIN_ID not required "
+              "-- the coupling is the file)." % (args.follow, args.idle_timeout),
+              flush=True)
+        return
+    Q = np.array(Q)
+    ee = np.array(ee_log)
+    lag = np.array(lag)
+    _write_dataset(args, cfg, rt, Q, np.array(targets_log), ts_log, ee, source=args.follow)
+    print("\nSUMMARY %s (LIVE follow): %d frames consumed as produced | end-to-end lag "
+          "median %.1f ms (p90 %.1f, max %.1f) | CLIK %.2f ms/frame | EE err median "
+          "L=%.3f R=%.3f m"
+          % (cfg.name, len(Q), float(np.median(lag)) * 1e3,
+             float(np.percentile(lag, 90)) * 1e3, float(np.max(lag)) * 1e3,
+             float(np.median(solve_ms)), float(np.median(ee[:, 0])),
+             float(np.median(ee[:, 1]))), flush=True)
+    if session is not None:
+        viz.announce(session)
 
 
 def run_bench(args):
@@ -453,9 +557,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--robot", choices=list(ROBOTS), default="talos")
-    ap.add_argument("--replay", metavar="FILE",
-                    default=os.path.join(REPO, "build", "pipeline", "demo.jsonl"),
-                    help="landmark stream to retarget (recorded by perceive.py)")
+    # --replay (offline, whole recorded stream) and --follow (live, tail a stream a
+    # perceive is still writing) are the two input modes -- mutually exclusive.
+    src = ap.add_mutually_exclusive_group()
+    src.add_argument("--replay", metavar="FILE", default=None,
+                     help="retarget a recorded landmark stream (default: %s)" % DEFAULT_STREAM)
+    src.add_argument("--follow", metavar="FILE", default=None,
+                     help="LIVE teleop: tail a stream a perceive process is still "
+                          "writing and retarget each frame as it arrives")
+    ap.add_argument("--idle-timeout", type=float, default=2.0, dest="idle_timeout",
+                    help="follow mode: exit this many seconds after the last new frame")
     ap.add_argument("--dataset", metavar="PATH", help="where to write the .npz dataset")
     ap.add_argument("--fps", type=float, default=30.0, help="stream fps (for dt)")
     ap.add_argument("--no-cpp", action="store_true",
@@ -469,6 +580,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.bench:
         return run_bench(args)
+    if args.follow:
+        return run_follow(args)
     return run_retarget(args)
 
 
