@@ -74,7 +74,7 @@ once per machine".
 | # | Claim | Mechanism | Benchmark (proof) | Honest caveat |
 |---|-------|-----------|-------------------|---------------|
 | 1 | **Compact storage** | `list[Model]` (heavyweight Python objects) → `std::vector<Struct>` at `sizeof(Struct)`/elem (measured 64 B for `Detection{4×double, string}`) | RSS of 1M models vs 1M-elem vector; iteration time | Strings still heap-allocate per element; the win is largest for numeric-heavy models |
-| 2 | **Hot compute** | `@cpp`/`cppdef_cached` kernel over `Struct*`+size, auto-marshaled | filter+centroid over 1M `Detection`: pure-Python-over-models **vs** C++-over-vector **vs** numpy-columnar | **numpy wins flat numerics** (it is the incumbent for columnar math). C++-struct wins when the data keeps *model shape* — nested/mixed/branchy logic that doesn't vectorize, or string fields |
+| 2 | **Hot compute** | `@cpp`/`cppdef_cached` kernel over `Struct*`+size, auto-marshaled | filter+centroid over 1M `Detection`: pure-Python-over-models **vs** C++-over-vector **vs** numpy-columnar | **numpy wins clean vectorizable reductions** (incumbent, measured 136× on `sum`). The C++-struct kernel wins **fused/branchy** logic (measured 7× vs numpy's 3× on filter+centroid, since numpy's mask+gather allocates) and keeps nested/mixed *model shape* |
 | 3 | **"Free" type checks** | consumer kernels are compiled against the struct → misused field is a compile error naming it; `to_model()` re-runs validators on exit; `stubgen` covers the Python surface | the type-check transcript (typo → `no member named 'scoree'…did you mean 'score'?`; string used as number → `invalid operands ('double' and 'std::string')`) | the compile-time check must run **out-of-process** (a failed in-process `cppdef` contaminates the interpreter, §9) |
 
 ### Why the compute claim is honestly framed
@@ -97,6 +97,38 @@ should say so.** `pydantic_structs` earns its place when the data arrives as
 **validated model instances** (the whole point of Pydantic) and you want compact
 storage + typed C++ compute + a validated round-trip, *while keeping the model's
 nested/mixed shape* — which a flat numpy array cannot represent.
+
+### Measured results (`design/bench_pydantic_structs.py`, 1M `Detection`, this machine)
+
+**Claim 1 — compact storage (RSS delta, one subprocess per representation):**
+
+| representation | RSS |
+|----------------|-----|
+| `list[Detection]` (Pydantic model instances) | **1112 MB** |
+| `std::vector<Struct>` (+ per-element string labels) | **70 MB** (16× smaller) |
+| numpy columns (4×`float64` + labels) | 49 MB |
+
+**Claim 2 — hot compute. The nuance corrects the lead's blanket "numpy wins flat
+numerics":**
+
+| task | pure Python / models | C++ kernel / `vector<Struct>` | numpy columnar |
+|------|----------------------|-------------------------------|----------------|
+| (A) filter+centroid (`score>0.5`, branchy fused) | 40 ms (1×) | **5.6 ms (7×)** | 11.7 ms (3×) |
+| (B) `sum(score)` (pure contiguous reduction) | 23 ms (1×) | 2.0 ms (12×) | **0.17 ms (136×)** |
+
+- **numpy wins the pure contiguous reduction (B) decisively** — it is the incumbent
+  for columnar math, and its contiguous SIMD `.sum()` beats the C++ loop walking the
+  AoS with a 64-B stride. If your hot path is pure columnar numeric reductions,
+  **use numpy** (and `column()` gives you the zero-copy view to do so).
+- **The C++-struct kernel wins the branchy fused reduction (A)** — numpy's
+  `mask + gather` materializes intermediate arrays (allocations), while the C++ loop
+  is a single alloc-free pass. So the earlier framing is sharpened: it is not
+  "numpy always wins flat numerics"; it is *"numpy wins clean vectorizable
+  reductions; the struct wins fused/branchy logic and keeps the model's nested/mixed
+  shape a flat array cannot represent"* — plus the 16× memory win either way.
+
+**Claim 3 — the type-check transcript** is in §7; both a typo and a string-as-double
+misuse are caught out-of-process with the field named.
 
 ---
 
