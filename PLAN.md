@@ -112,7 +112,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   control_kit's ControllerManager) and, if needed, `Costmap2DROS` from Python
   to satisfy those ctors; unlock Smac (needs OMPL headers on path — we have
   the ompl env) and the RPP controller; extend nav2_kit + REPORT verdicts.
-- **6e WBC exploration**: survey spike first — tsid/crocoddyl/pinocchio are on
+- **6e WBC exploration** ✅ DONE (2026-07-12, GO-narrow: Crocoddyl inline-C++ action models at native speed — 0.32 ms vs 6.84 ms Python-authored, 21.7×, bit-identical cost; thin wbc_kit shipped, standalone env [boost 1.86 vs ROS 1.90 — solve-group infeasible, verified]; pinocchio blocked on env boost-variant arity; tsid redundant; OCS2/mc_rtc unpackaged; QP bindings fine): survey spike first — tsid/crocoddyl/pinocchio are on
   conda-forge WITH Python bindings (verified), so the cppyy win must be sharper
   than "bindings exist": candidates = templated-scalar surfaces (pinocchio
   `Scalar` templates for autodiff), binding-lag APIs, or C++-only frameworks
