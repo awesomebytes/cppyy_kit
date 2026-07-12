@@ -124,3 +124,20 @@ def test_follow_survives_cold_start(tmp_path):
 def test_replay_and_follow_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         R.main(["--replay", "a.jsonl", "--follow", "b.jsonl"])
+
+
+def test_source_dispatch(monkeypatch, tmp_path):
+    """Mode routing: bare (no file mode) -> live tf; --replay -> replay; --follow ->
+    follow. Guards that tf is the default source without needing a live ROS graph."""
+    calls = []
+    monkeypatch.setattr(R, "run_tf", lambda a: calls.append("tf"))
+    monkeypatch.setattr(R, "run_retarget", lambda a: calls.append("replay"))
+    monkeypatch.setattr(R, "run_follow", lambda a: calls.append("follow"))
+    R.main(["--robot", "talos"])
+    assert calls == ["tf"]
+    calls.clear()
+    R.main(["--replay", str(tmp_path / "x.jsonl")])
+    assert calls == ["replay"]
+    calls.clear()
+    R.main(["--follow", str(tmp_path / "y.jsonl")])
+    assert calls == ["follow"]

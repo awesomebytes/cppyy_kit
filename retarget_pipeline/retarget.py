@@ -398,7 +398,8 @@ def run_retarget(args):
         Q[i] = q
         ee_err[i] = list(errs.values())
         if rr is not None:
-            _log_retarget(rr, rt, i, q, targets[i], pw_all[i])
+            _log_retarget(rr, rt, i, q, targets[i],
+                          ls.mediapipe_world_to_robot(pw_all[i].reshape(33, 3)))
         if (i + 1) % 30 == 0:
             print("  frame %d/%d: solve %.2f ms, EE err L=%.3f R=%.3f m"
                   % (i + 1, F, np.median(solve_ms[-30:]), ee_err[i, 0], ee_err[i, 1]),
@@ -413,7 +414,10 @@ def run_retarget(args):
         viz.announce(session)
 
 
-def _log_retarget(rr, rt, i, q, targets9, pw):
+def _log_retarget(rr, rt, i, q, targets9, human_robot):
+    """Log one retarget frame. ``human_robot`` is the (33,3) human skeleton already in
+    the robot frame (callers convert from MediaPipe world; the TF path reads it
+    pre-converted off /tf)."""
     from retarget_pipeline import viz
     rr.set_time("frame", sequence=i)
     pts, bones = rt.joint_skeleton(q)
@@ -421,9 +425,9 @@ def _log_retarget(rr, rt, i, q, targets9, pw):
     rr.log("robot/bones", rr.LineStrips3D(bones, colors=[(120, 200, 255)]))
     tgt = targets9.reshape(3, 3)
     rr.log("robot/targets", rr.Points3D(tgt, radii=0.04, colors=[(255, 140, 60)]))
-    human = ls.mediapipe_world_to_robot(pw.reshape(33, 3))
-    viz.log_skeleton_3d(rr, "human/pose", human, ls.POSE_CONNECTIONS,
-                        color=(160, 160, 160))
+    if human_robot is not None:
+        viz.log_skeleton_3d(rr, "human/pose", human_robot, ls.POSE_CONNECTIONS,
+                            color=(160, 160, 160))
 
 
 def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source):
@@ -435,7 +439,7 @@ def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source):
              t=np.array(ts[:len(Q)], dtype=np.float64),
              ee_err=ee_err.astype(np.float32),
              joint_names=np.array(list(rt.model.names), dtype=object),
-             source_stream=os.path.abspath(source))
+             source_stream=(os.path.abspath(source) if os.path.exists(source) else source))
     print("Policy-kickstart dataset -> %s (q %s, targets %s)."
           % (path, Q.shape, targets.shape), flush=True)
 
@@ -498,7 +502,8 @@ def run_follow(args):
             ts_log.append(fr["t"])
             ee_log.append(list(errs.values()))
             if rr is not None:
-                _log_retarget(rr, rt, len(Q) - 1, q, tgt, fr["pose_world"].reshape(99))
+                _log_retarget(rr, rt, len(Q) - 1, q, tgt,
+                              ls.mediapipe_world_to_robot(fr["pose_world"]))
             if len(Q) % 30 == 0:
                 print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
                       "EE L=%.3f R=%.3f m"
@@ -520,6 +525,129 @@ def run_follow(args):
     print("\nSUMMARY %s (LIVE follow): %d frames consumed as produced | end-to-end lag "
           "median %.1f ms (p90 %.1f, max %.1f) | CLIK %.2f ms/frame | EE err median "
           "L=%.3f R=%.3f m"
+          % (cfg.name, len(Q), float(np.median(lag)) * 1e3,
+             float(np.percentile(lag, 90)) * 1e3, float(np.max(lag)) * 1e3,
+             float(np.median(solve_ms)), float(np.median(ee[:, 0])),
+             float(np.median(ee[:, 1]))), flush=True)
+    if session is not None:
+        viz.announce(session)
+
+
+TF_PARENT = "human_root"
+_TF_CRITICAL = (ls.NOSE, ls.LEFT_SHOULDER, ls.RIGHT_SHOULDER, ls.LEFT_WRIST, ls.RIGHT_WRIST)
+
+
+def run_tf(args):
+    """LIVE ROS teleop (Process B, --source tf): consume the landmark frames
+    perception broadcasts on ``/tf`` via rclcpp_kit's C++ TransformListener (ingest
+    off the GIL on its own thread; Python only crosses on lookup), reconstruct the
+    robot-frame skeleton, then the same target map + CLIK. Dataset written on exit.
+
+    The frames arrive already in the robot frame (perception converts before it
+    broadcasts), so no MediaPipe->robot conversion is needed here."""
+    cfg = ROBOTS[args.robot]
+    rt = Retargeter(cfg)
+    from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
+    from rclcpp_kit import tf as rtf
+    rc = bringup_rclcpp()
+    if not rc.ok():
+        rc.init()
+    listener = rtf.TransformListener()          # C++ ingest thread; lookups cross on demand
+    print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Consuming /tf landmark frames via "
+          "rclcpp_kit C++ TransformListener (startup grace %.0fs) ..."
+          % (cfg.name, rt.model.nq, rt.model.nv, rt.arm, args.startup_timeout), flush=True)
+
+    session = None
+    rr = None
+    if not args.no_viz:
+        import rerun as rr
+        from retarget_pipeline import viz
+        if args.shared_viewer:
+            session = viz.init_rerun_shared("retarget", "connect", viz.blueprint_shared(),
+                                            url=args.viewer_url)
+            print("Rerun: connected to the shared viewer (%s)."
+                  % (args.viewer_url or viz.DEFAULT_VIEWER_URL), flush=True)
+        else:
+            session = viz.init_rerun("retarget", args.rrd, blueprint=viz.blueprint_retarget())
+
+    pose_frames = ["pose/" + n for n in ls.POSE_LANDMARK_NAMES]
+    nose_frame = pose_frames[ls.NOSE]
+    dt = 1.0 / args.fps
+    anch = rt.anchors_flat().reshape(3, 3)
+    euro = _EuroState(dt)
+    q = rt.q0.copy()
+    Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
+    solve_ms = []
+
+    if not listener.can_transform(TF_PARENT, nose_frame, timeout=args.startup_timeout):
+        print("[retarget] no /tf landmark frames within the %.0fs startup grace -- is a "
+              "perceive publishing /tf (same ROS_DOMAIN_ID)? Start perception first."
+              % args.startup_timeout, flush=True)
+        return
+    print("Receiving /tf landmark frames; retargeting live.", flush=True)
+
+    last_stamp = None
+    deadline = time.monotonic() + args.duration if args.duration > 0 else None
+    try:
+        while deadline is None or time.monotonic() < deadline:
+            c0 = time.perf_counter()
+            try:
+                nose = listener.lookup_transform(TF_PARENT, nose_frame)
+            except Exception:
+                time.sleep(0.002)
+                continue
+            stamp = nose.header.stamp.sec + nose.header.stamp.nanosec * 1e-9
+            now = time.time()
+            if last_stamp is not None and stamp == last_stamp:
+                if Q and now - stamp > args.idle_timeout:   # producer stopped
+                    break
+                time.sleep(0.002)
+                continue
+            last_stamp = stamp
+            r = np.zeros((ls.N_POSE, 3))
+            missing_critical = False
+            for idx, fname in enumerate(pose_frames):
+                try:
+                    ts = listener.lookup_transform(TF_PARENT, fname)
+                    r[idx] = [ts.transform.translation.x, ts.transform.translation.y,
+                              ts.transform.translation.z]
+                except Exception:
+                    if idx in _TF_CRITICAL:
+                        missing_critical = True
+                        break
+            if missing_critical:
+                time.sleep(0.002)
+                continue
+            t0 = time.perf_counter()
+            tgt = euro.step(_frame_target(r, anch, rt.arm, REACH_FRAC)).reshape(9)
+            q, errs = rt.solve(tgt, q)
+            solve_ms.append((time.perf_counter() - t0) * 1e3)
+            lag.append(now - stamp)
+            Q.append(q.copy())
+            targets_log.append(tgt)
+            ts_log.append(stamp)
+            ee_log.append(list(errs.values()))
+            if rr is not None:
+                _log_retarget(rr, rt, len(Q) - 1, q, tgt, r)
+            if len(Q) % 30 == 0:
+                print("  live frame %d: lag %.1f ms (median %.1f), solve %.2f ms, "
+                      "EE L=%.3f R=%.3f m"
+                      % (len(Q), lag[-1] * 1e3, float(np.median(lag)) * 1e3,
+                         float(np.median(solve_ms)), ee_log[-1][0], ee_log[-1][1]),
+                      flush=True)
+            time.sleep(max(0.0, dt - (time.perf_counter() - c0)))
+    except KeyboardInterrupt:
+        print("\n[retarget] interrupted; writing what we have.", flush=True)
+    if not Q:
+        print("[retarget] received no usable /tf pose frames.", flush=True)
+        return
+    Q = np.array(Q)
+    ee = np.array(ee_log)
+    lag = np.array(lag)
+    _write_dataset(args, cfg, rt, Q, np.array(targets_log), ts_log, ee,
+                   source="/tf (live ROS transport)")
+    print("\nSUMMARY %s (LIVE /tf): %d frames retargeted | end-to-end lag median %.1f ms "
+          "(p90 %.1f, max %.1f) | CLIK %.2f ms/frame | EE err median L=%.3f R=%.3f m"
           % (cfg.name, len(Q), float(np.median(lag)) * 1e3,
              float(np.percentile(lag, 90)) * 1e3, float(np.max(lag)) * 1e3,
              float(np.median(solve_ms)), float(np.median(ee[:, 0])),
@@ -571,14 +699,19 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--robot", choices=list(ROBOTS), default="talos")
-    # --replay (offline, whole recorded stream) and --follow (live, tail a stream a
-    # perceive is still writing) are the two input modes -- mutually exclusive.
+    # Three input modes: --replay (offline recorded stream), --follow (live, tail a
+    # stream a perceive is still writing), and --source tf (live, consume /tf directly
+    # via rclcpp_kit). tf is the default when neither file mode is given. --replay and
+    # --follow are mutually exclusive; both are file modes usable without ROS.
+    ap.add_argument("--source", choices=["tf"], default="tf",
+                    help="live input source when no --replay/--follow: 'tf' consumes "
+                         "the landmark frames perception broadcasts on /tf")
     src = ap.add_mutually_exclusive_group()
     src.add_argument("--replay", metavar="FILE", default=None,
-                     help="retarget a recorded landmark stream (default: %s)" % DEFAULT_STREAM)
+                     help="retarget a recorded landmark stream (offline; no ROS)")
     src.add_argument("--follow", metavar="FILE", default=None,
                      help="LIVE teleop: tail a stream a perceive process is still "
-                          "writing and retarget each frame as it arrives")
+                          "writing and retarget each frame as it arrives (no ROS)")
     ap.add_argument("--idle-timeout", type=float, default=2.0, dest="idle_timeout",
                     help="follow mode: exit this many seconds after the last new frame "
                          "(once frames have been flowing)")
@@ -590,6 +723,15 @@ def main(argv=None):
     ap.add_argument("--no-cpp", action="store_true",
                     help="use the Python glue loop instead of the cppyy_kit kernel")
     ap.add_argument("--no-viz", action="store_true", help="skip Rerun")
+    ap.add_argument("--shared-viewer", action="store_true", dest="shared_viewer",
+                    help="tf mode: connect to perception's shared Rerun viewer "
+                         "(one window: camera + skeleton + robot) instead of opening own")
+    ap.add_argument("--viewer-url", default=None, dest="viewer_url",
+                    help="gRPC URL of the shared viewer to connect to (default: %s)"
+                         % "the local spawned viewer")
+    ap.add_argument("--duration", type=float, default=0.0,
+                    help="tf mode: run seconds (0 = until the /tf stream goes idle "
+                         "or Ctrl-C)")
     ap.add_argument("--bench", action="store_true",
                     help="retarget-glue A-vs-B micro-bench, then exit")
     ap.add_argument("--bench-n", type=int, default=200, dest="bench_n")
@@ -600,7 +742,9 @@ def main(argv=None):
         return run_bench(args)
     if args.follow:
         return run_follow(args)
-    return run_retarget(args)
+    if args.replay:
+        return run_retarget(args)
+    return run_tf(args)
 
 
 if __name__ == "__main__":
