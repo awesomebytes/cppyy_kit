@@ -354,13 +354,16 @@ def run_live(args):
         except Exception as exc:
             print("[perceive] /tf disabled (%s)." % exc, flush=True)
 
-    stats = {"n": 0, "detect_ms": [], "wall": [], "cpu": [], "detected": 0, "drops": 0}
-    deadline = time.monotonic() + args.duration
+    stats = {"n": 0, "detect_ms": [], "wall": [], "cpu": [], "detected": 0,
+             "absent": 0, "drops": 0}
+    # --duration <= 0 means run until Ctrl-C (the interactive default); a positive
+    # value caps the run (used by tests / timed benches).
+    deadline = (time.monotonic() + args.duration) if args.duration > 0 else None
     synth = _synthetic_iter(args) if detector is None else None
     consecutive_fail = 0
 
     try:
-        while time.monotonic() < deadline:
+        while deadline is None or time.monotonic() < deadline:
             w0, cpu0 = time.perf_counter(), time.process_time()
             if detector is not None:
                 ok, frame = src.read()
@@ -392,8 +395,17 @@ def run_live(args):
                 detect_ms = 0.0
                 frame_bgr = None
 
-            if lm.get("pose_world") is not None:
+            # Presence gate: a detected pose whose key landmarks clear the visibility
+            # threshold. Kills the no-person phantom -- with a webcam but nobody in
+            # frame, MediaPipe returns empty/low-visibility landmarks, so we must NOT
+            # broadcast /tf (a phantom at the origin) or record a bogus pose.
+            present = _pose_present(lm, args.min_visibility)
+            if present:
                 stats["detected"] += 1
+            else:
+                stats["absent"] += 1
+                lm = {"pose_world": None, "pose_image": None, "left_hand": None,
+                      "right_hand": None}
 
             if writer is not None:
                 writer.write(t=time.time(), pose_world=lm.get("pose_world"),
@@ -402,7 +414,7 @@ def run_live(args):
                              right_hand=lm.get("right_hand"),
                              w=(frame_bgr.shape[1] if frame_bgr is not None else 640),
                              h=(frame_bgr.shape[0] if frame_bgr is not None else 480))
-            if tfpub is not None:
+            if tfpub is not None and present:            # no person -> no phantom TF
                 tfpub.publish(landmarks_to_xyz(lm, with_hands=True))
             if rr is not None:
                 log_frame(rr, stats["n"], lm, frame_bgr, detect_ms)
@@ -554,11 +566,31 @@ def run_bench(args):
     print("  A speedup: %.1fx\n" % (b_ms / a_ms if a_ms > 0 else float("nan")))
 
 
+_PRESENCE_KEYS = (ls.NOSE, ls.LEFT_SHOULDER, ls.RIGHT_SHOULDER, ls.LEFT_WRIST,
+                  ls.RIGHT_WRIST)
+
+
+def _pose_present(lm, min_visibility):
+    """True if a usable pose was detected: world landmarks exist AND the mean
+    visibility of the retarget-critical landmarks clears ``min_visibility`` (0
+    disables the check). ``pose_image`` column 3 is MediaPipe's per-landmark
+    visibility; the synthetic source reports 1.0, so it is always present."""
+    pw = lm.get("pose_world")
+    if pw is None:
+        return False
+    if min_visibility <= 0.0:
+        return True
+    pi = lm.get("pose_image")
+    if pi is None or pi.shape[0] < ls.N_POSE or pi.shape[1] < 4:
+        return True
+    return float(np.mean([pi[k, 3] for k in _PRESENCE_KEYS])) >= min_visibility
+
+
 def _progress(stats):
     ms = np.mean(stats["detect_ms"][-30:]) if stats["detect_ms"] else 0.0
     wall = np.mean(stats["wall"][-30:]) if stats["wall"] else 0.0
     fps = 1000.0 / wall if wall > 0 else 0.0
-    print("  frame %d: detect %.1f ms, loop %.1f ms (%.0f fps), detected %d/%d"
+    print("  frame %d: detect %.1f ms, loop %.1f ms (%.0f fps), present %d/%d"
           % (stats["n"], ms, wall, fps, stats["detected"], stats["n"]), flush=True)
 
 
@@ -570,10 +602,10 @@ def _summary(stats, args):
     detect = float(np.mean(stats["detect_ms"]))
     cpu_pct = (100.0 * np.sum(stats["cpu"]) / np.sum(stats["wall"])
                if stats["wall"] and np.sum(stats["wall"]) > 0 else 0.0)
-    print("\nSUMMARY frames=%d detected=%d drops=%d | loop %.2f ms/frame (%.1f fps,"
-          " %.0f%% cpu) | detect %.2f ms/frame"
-          % (stats["n"], stats["detected"], stats["drops"], wall,
-             1000.0 / wall if wall > 0 else 0.0, cpu_pct, detect), flush=True)
+    print("\nSUMMARY frames=%d present=%d absent=%d drops=%d | loop %.2f ms/frame "
+          "(%.1f fps, %.0f%% cpu) | detect %.2f ms/frame"
+          % (stats["n"], stats["detected"], stats.get("absent", 0), stats["drops"],
+             wall, 1000.0 / wall if wall > 0 else 0.0, cpu_pct, detect), flush=True)
 
 
 def main(argv=None):
@@ -584,7 +616,12 @@ def main(argv=None):
     ap.add_argument("--width", type=int, default=640)
     ap.add_argument("--height", type=int, default=480)
     ap.add_argument("--fps", type=float, default=30.0, help="target/synthetic fps")
-    ap.add_argument("--duration", type=float, default=30.0, help="run seconds (live)")
+    ap.add_argument("--duration", type=float, default=0.0,
+                    help="run seconds; 0 (default) runs until Ctrl-C (interactive). "
+                         "Pass a positive value to cap the run (tests / timed benches).")
+    ap.add_argument("--min-visibility", type=float, default=0.5, dest="min_visibility",
+                    help="presence gate: only broadcast /tf + record a pose when the "
+                         "key landmarks' mean visibility clears this (0 disables)")
     ap.add_argument("--model", choices=["holistic"], default="holistic")
     ap.add_argument("--record", metavar="PATH", help="write the landmark stream here")
     ap.add_argument("--replay", metavar="PATH", help="replay a recorded stream")

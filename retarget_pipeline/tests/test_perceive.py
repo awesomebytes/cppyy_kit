@@ -36,6 +36,19 @@ def test_synthetic_record_headless_roundtrips(tmp_path):
     assert frames[0]["pose_world"] is not None
 
 
+def test_presence_gate():
+    """Job 3: the presence gate. A high-visibility pose is present; no pose, or a
+    below-threshold pose, is absent (so no phantom /tf); threshold 0 disables it."""
+    pw = np.zeros((ls.N_POSE, 3), dtype=np.float32)
+    hi = np.ones((ls.N_POSE, 4), dtype=np.float32)          # visibility col (3) = 1.0
+    lo = np.ones((ls.N_POSE, 4), dtype=np.float32)
+    lo[:, 3] = 0.1
+    assert perceive._pose_present({"pose_world": pw, "pose_image": hi}, 0.5) is True
+    assert perceive._pose_present({"pose_world": pw, "pose_image": lo}, 0.5) is False
+    assert perceive._pose_present({"pose_world": pw, "pose_image": lo}, 0.0) is True
+    assert perceive._pose_present({"pose_world": None, "pose_image": hi}, 0.5) is False
+
+
 def test_landmarks_to_xyz_maps_pose_and_hands():
     pw, _ = ls.synthetic_pose(0.5)
     lm = {"pose_world": pw, "left_hand": None, "right_hand": None}
