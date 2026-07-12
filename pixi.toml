@@ -59,9 +59,9 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # env), so it would actually bring up rclcpp + DDS rather than skip — it runs in its
 # own env via `pixi run -e rclcpp test-rclcpp` (and the `test-tf` gate). The real
 # per-kit proof is the feature-env test-<kit> tasks.
-test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests"
+test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
-lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench scripts skills examples"
+lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench jitter_bench scripts skills examples"
 clean = "rm -rf build"
 
 # --- rclcpp: the rclcpp_kit env (ROS 2 core capability layer) -----------------
@@ -223,6 +223,18 @@ demo-control-python = "python control_kit/demos/d02_python_controller.py"
 bench-control = "python control_kit/demos/bench_control_loop.py"
 # control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
 test-control = "pytest control_kit/tests/test_control_kit.py -v"
+# --- M6g: low-jitter Python control experiment (jitter_bench) ---
+# THE REFERENCE MATRIX: every variant (a1/a2/b/c) x {idle, load}, 60 s each, mlockall +
+# CPU-pinned; full stats -> build/jitter_bench.json (gitignored). Set ROS_DOMAIN_ID=63.
+bench-jitter = "python jitter_bench/run_bench.py --duration 60 --mlock --cpu 2 --json build/jitter_bench.json"
+# Fast smoke (no ros2_control needed for a1/a2/b): short, idle-only, no histogram.
+bench-jitter-smoke = "python jitter_bench/run_bench.py --variant a1,a2,b --duration 2 --smoke --no-hist"
+# Stage-1 rerun shape: ONE cell, one command (owner sets preempt mode + rtprio out of band,
+# then re-runs this with --sched fifo). See docs/jitter_bench/REPORT.md Stage 1.
+bench-jitter-cell = "python jitter_bench/run_bench.py --variant a1 --condition idle --duration 60 --mlock --cpu 2"
+# jitter_bench smoke tests in the control env (variant c = real ros2_control runs here,
+# variant b compiles the C++ loop). In the default env these same tests skip variant c.
+test-jitter = "pytest jitter_bench/tests -v"
 
 # --- vision: visual loop-closure tutorial (cv_kit + dbow_kit + gtsam) --------
 [feature.vision.dependencies]
