@@ -128,8 +128,15 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   1.90 [2nd confirmation, now incl. default-double+URDF] so the solve stays on
   pinocchio bindings; repo's first pip dep [mediapipe, sha256-pinned model
   fetch] in isolated `pipeline` env; two-process seam over JSONL landmark
-  stream; docs/retarget_pipeline/REPORT.md + run-book; 5 pattern candidates
-  pending fold-in): webcam → body+hand+face tracking + object detection → TF frames via
+  stream; docs/retarget_pipeline/REPORT.md + run-book; pattern candidates
+  folded into COMMON_PATTERNS §34/§6/§9. ADDENDA same day, all supervisor-
+  verified live: `--follow` live teleop over the tailable stream [4.3 ms median
+  lag, cold-start startup-grace fix]; then ROS-NATIVE transport — the boost
+  1.86/1.90 SOLVE wall dissolved with conda-forge's 1.90 migration [verified],
+  new retarget-ros env in the default solve-group, `--source tf` consumes the
+  /tf landmark frames via rclcpp_kit's C++ TransformListener at 2.5 ms median
+  lag [reproduced exactly], ONE shared Rerun viewer [screenshot-verified];
+  Cling JIT wall on pinocchio::Model UNCHANGED — solve stays on bindings): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
