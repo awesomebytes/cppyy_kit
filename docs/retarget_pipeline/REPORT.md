@@ -2,9 +2,10 @@
 
 **Date:** 2026-07-12 · **Envs:** pixi `pipeline` (perception) = default robostack-jazzy
 ros-base + `cppyy 3.5` + `rerun-sdk 0.34.1` (conda) + `mediapipe 0.10.35` (pypi, brings
-`opencv-contrib-python`/cv2 5.0 + numpy 2.5.1); pixi `wbc` (retarget, standalone) =
-`pinocchio 4.0.0` + `rerun-sdk 0.34.1`, Python 3.12, linux-64. **Machine:** quiet laptop,
-`/dev/video0`, RTX PRO 2000 (GPU unused — MediaPipe ran on CPU here).
+`opencv-contrib-python`/cv2 5.0 + numpy 2.5.1); pixi `retarget-ros` (live retarget) = default
+ros-base + `pinocchio 4.1.0` + `example-robot-data` + `rerun-sdk 0.34.1` (solve-group default);
+pixi `wbc` (offline retarget) = standalone `pinocchio` + `rerun-sdk`, Python 3.12, linux-64.
+**Machine:** quiet laptop, `/dev/video0`, RTX PRO 2000 (GPU unused — MediaPipe ran on CPU here).
 
 **The ask (locked with the owner):** a minimal-code human-demonstration capture rig —
 webcam → body + hand tracking → TF + live Rerun → whole-body retargeting onto a humanoid
@@ -22,6 +23,12 @@ hot glue. Record + replay from day one.
   (perception) and the retarget glue kernel **303.8×** (bit-identical). The IK **solve**
   itself is a pinocchio-bindings job — cppyy is **blocked** there by a documented wall
   (below), which is itself a useful finding.
+- **LIVE ROS-native transport + one viewer (added after the boost wall dissolved): WORKS.**
+  Retarget now runs in a ROS-capable env and consumes perception's `/tf` landmark frames via
+  rclcpp_kit's C++ TransformListener (`--source tf`, the default live mode) — measured
+  **end-to-end lag median 2.5 ms** (p90 3.5), *tighter* than the file-tail path. Both halves
+  log to **one shared Rerun viewer** (perception spawns, retarget connects; verified visually,
+  one window shows camera + human skeleton + retargeted robot + targets).
 
 ---
 
@@ -43,12 +50,26 @@ live Rerun (camera + 2D/3D skeleton + perf)                │
                                                           + dataset_<robot>.npz  (q, targets, ee_err)
 ```
 
-The two run in **separate pixi envs** on purpose: pinocchio's conda stack pins libboost 1.86
-and the ROS stack pins 1.90 — they cannot share a process (docs/wbc/REPORT.md). The **landmark
-stream file is the seam** — a tailable/replayable JSONL contract (`landmark_stream.py`,
-stdlib+numpy only, imports in both envs). Record/replay is not a mode bolted on later: A always
-can `--record`, B always reads a stream (`--replay`), so CI and rehearsal run the exact live
-code path headless. Streams identify themselves via a `format` tag
+The two run in **separate pixi envs**. Originally this was forced: pinocchio's conda stack
+pinned libboost 1.86 while the ROS stack pinned 1.90.
+
+> **Update (2026-07-12) — the boost wall dissolved, and retarget gained a ROS-native mode.**
+> conda-forge rebuilt pinocchio 4.x against libboost 1.90, so pinocchio + example-robot-data
+> now co-solve with the robostack ROS stack in one `solve-group`. A new `[feature.retarget-ros]`
+> env (solve-group `default`) runs the CLIK retarget **in a ROS-capable process**, and
+> `retarget.py --source tf` (the default live mode) consumes the landmark frames perception
+> broadcasts on `/tf` via **rclcpp_kit's C++ TransformListener** (ingest off the GIL; Python
+> only crosses on lookup) — no file hop. The file modes (`--replay` / `--follow`) are unchanged
+> for CI + the dataset, and still run in the ROS-free `wbc` env. What did **not** change: the
+> Cling header-parse wall on `pinocchio::Model` (the 25-type `boost::variant`) trips on boost
+> 1.90 too, so the IK *solve* remains a pinocchio-bindings job either way.
+
+The **landmark stream file remains the offline seam** — a tailable/replayable JSONL contract
+(`landmark_stream.py`, stdlib+numpy only, imports in both envs). Record/replay is not a mode
+bolted on later: A always can `--record`, B always reads a stream (`--replay`), so CI and
+rehearsal run the exact live code path headless. Streams identify themselves via a `format` tag
+(`cppyy_kit.retarget.landmarks`); recordings made before this tag was renamed carry the old
+`cppyy_kit.m6f.landmarks` value and are refused with an error naming both — re-record them. Streams identify themselves via a `format` tag
 (`cppyy_kit.retarget.landmarks`); recordings made before this tag was renamed carry the old
 `cppyy_kit.m6f.landmarks` value and are refused with an error naming both — re-record them.
 
@@ -191,7 +212,20 @@ per-element Python-loop trap (§6/§26).
   moved), because the pipeline env is solve-group=default and wbc is standalone.
 - Tasks added: `fetch-models`, `demo-perceive`, `bench-perceive`, `test-pipeline` (pipeline env);
   `demo-retarget`, `bench-retarget`, `test-retarget` (wbc env). `retarget_pipeline` added to the
-  `lint` task. The default `test` task is **unchanged** (still 40 passed / 129 skipped).
+  `lint` task. The default `test` task is **unchanged**.
+- **New `[feature.retarget-ros]` + `retarget-ros` env** (`solve-group="default"`): the ROS-native
+  retarget home — `pinocchio` + `example-robot-data` + `rerun-sdk` on top of the default ros-base
+  (so rclcpp_kit's C++ TF listener and the pinocchio CLIK run in one process). Proven:
+  `pixi install -e retarget-ros` solves; pinocchio 4.1.0 + rerun + cppyy + rclcpp_kit import and
+  coexist, Talos loads, the C++ TransformListener creates + shuts down cleanly. Tasks:
+  `demo-retarget-ros` (`--source tf`), `test-retarget-ros`.
+- **Lock shift from adding pinocchio to the default solve-group — narrow and benign.** The only
+  shared-package change across the default-group envs (bt, control, ik, moveit, nav2, ompl, pcl,
+  pipeline, rclcpp, vision, vision-cuda) is a **libopenblas threading-backend flip** (`0.3.33
+  pthreads_` → `0.3.33 openmp_`, **same version**) with `+ llvm-openmp` / `_openmp_mutex` gnu→llvm.
+  **No numeric-version changes**; in particular **urdfdom did NOT move** (a worry going in). The
+  standalone envs (wbc, cudabuild, docs, pkg) are untouched. Every affected kit suite re-verified
+  green (see Gates).
 
 **Pinned model bundle (supply-chain hygiene).** `fetch_models.py` pins each MediaPipe Tasks
 bundle's URL **and SHA-256**, verifies the hash after download, and refuses (and removes) a
@@ -208,13 +242,18 @@ hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `
 ## Gates
 
 - `pixi run lint` → **0**.
-- `pixi run test` (default env) → **40 passed, 129 skipped** (unchanged).
-- `pixi run -e pipeline test-pipeline` → **9 passed** (stream contract + synthetic-headless
-  round-trip + the /tf-build A>B bench).
-- `pixi run -e wbc test-retarget` → **6 passed** (Talos + G1 build, C++/Python glue agreement,
-  end-to-end bounded-error retarget + dataset, live `--follow` consumes a concurrently-written
-  stream, and `--replay`/`--follow` are mutually exclusive).
-- New envs solve (`pixi install -e pipeline`, `pixi install -e wbc`).
+- `pixi run test` (default env) → **56 passed, 130 skipped** (unchanged by this lane;
+  `retarget_pipeline/tests` is not in the default task).
+- `pixi run -e pipeline test-pipeline` → **9 passed**.
+- `pixi run -e wbc test-retarget` → **8 passed** (build Talos + G1, C++/Python glue agreement,
+  bounded-error retarget + dataset, live `--follow` cold-start survival, mutual-exclusion,
+  source dispatch).
+- `pixi run -e retarget-ros test-retarget-ros` → **8 passed** (same suite, ROS env).
+- **Every affected default-solve-group kit suite re-verified green** after the libopenblas
+  backend flip (no OpenMP-runtime crash, no numeric change): `rclcpp` 13, `bt` 49/2skip,
+  `control` 7, `ompl` 9, `nav2` 14, `moveit` 11, `ik` 7, `pcl` (accelerate) 3, `vision` 13/14skip.
+- `pixi run docs-build` (strict) → clean.
+- New env solves (`pixi install -e retarget-ros`); full workspace `pixi lock` succeeds.
 
 ---
 
@@ -239,11 +278,39 @@ pixi run -e pipeline test-pipeline    # 9 passed
 pixi run -e wbc test-retarget         # 6 passed
 ```
 
-### LIVE teleop (two terminals, no offline step)
+### LIVE ROS-native teleop (two terminals, ONE viewer) — the primary live mode
+
+Perception broadcasts the ~75 landmark frames on `/tf`; retarget consumes them directly via
+rclcpp_kit's **C++ TransformListener** (ingest on its own thread, off the GIL — the 6.7–14×
+rclcpp_kit ingest win; Python crosses only on lookup). No file hop. Both halves log to **one
+shared Rerun viewer** (perception spawns it; retarget connects over gRPC with the same recording
+id), so one window shows the camera + landmark skeleton + the retargeted humanoid + targets.
+
+```bash
+# terminal A — perception: publishes /tf AND opens the one shared viewer (start it first):
+ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --shared-viewer
+# terminal B — retarget: consumes /tf via the C++ listener, connects to A's viewer, adds the robot:
+ROS_DOMAIN_ID=62 pixi run -e retarget-ros demo-retarget-ros --robot g1 --shared-viewer
+```
+
+`--source tf` is the default when neither `--replay` nor `--follow` is given; it waits up to
+`--startup-timeout` (30 s) for the first `/tf` frames and exits when the stream goes idle
+(`--idle-timeout`) or on Ctrl-C, writing the dataset. **Measured** (synthetic perception at 30 fps
+publishing /tf, G1 consumer): **end-to-end publish→retarget lag median 2.5 ms (p90 3.5, max 3.8)
+headless**, i.e. *tighter* than the file-tail path below — the C++ listener ingests /tf off the GIL
+with no file-poll interval; CLIK ~1.2 ms/frame, EE ~4.6 cm. With the shared viewer attached the
+lag stays ~2–9 ms (well under one 33 ms frame). Verified end-to-end: perception spawned one viewer,
+retarget connected to the same gRPC endpoint + recording id, and both streamed live (599 frames)
+into that one window. This is the demo the owner asked for: webcam → skeleton → humanoid in real
+time, one screen. The IK solve is pinocchio's Python bindings (the Cling `Model` wall is unchanged);
+the boost-1.90 rebuild is only what lets pinocchio share the ROS env.
+
+### LIVE teleop via a stream file (`--follow`) — offline-capable fallback
 
 Run the perception and retarget halves **concurrently**, coupled by the growing stream file:
 `--follow` tails it and retargets each frame as it arrives (`landmark_stream.follow()` with the
-writer's per-frame flush).
+writer's per-frame flush). Works without a shared ROS graph (the retarget half can run in the
+ROS-free `wbc` env), and is what CI replays.
 
 ```bash
 # terminal A (producer) — webcam if present, else synthetic; writes the stream live:
@@ -266,5 +333,6 @@ stepper (`_frame_target` + `_EuroState`, ~0.03 ms) rather than the batch C++ glu
 kernel's whole-stream win is for offline replay/`--bench`; live, the per-frame glue cost is
 negligible against the CLIK solve.
 
-For the full live demo both processes log to Rerun; run them as separate viewers, or connect B
-to A's viewer with `rr.connect_grpc()` (noted as an option, not wired by default in this spike).
+The `--follow` file path logs to its own Rerun viewer (or a headless `.rrd`); the **shared single
+viewer is wired for the ROS-native path** above (`--shared-viewer` on both halves). Headless / no
+display / under pytest, both paths fall back to per-process `.rrd` files.

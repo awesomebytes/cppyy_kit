@@ -306,6 +306,28 @@ bench-perceive = "python retarget_pipeline/perceive.py --bench"
 # headless replay smoke). Auto-skip without rerun/mediapipe. Replay needs no camera.
 test-pipeline = "pytest retarget_pipeline/tests/test_stream.py retarget_pipeline/tests/test_perceive.py -v"
 
+# --- retarget-ros: retargeting in a ROS-capable env (live TF transport) ---------
+# The retarget half consumes the landmark frames perception broadcasts on /tf via
+# rclcpp_kit's C++ TransformListener (ingest off the GIL), so it needs pinocchio AND
+# the ROS core in ONE env. That is newly possible: conda-forge rebuilt pinocchio
+# 4.0.0 against libboost 1.90, so pinocchio now co-solves with the robostack-jazzy
+# ROS stack (the earlier 1.86-vs-1.90 clash that forced the standalone `wbc` env has
+# dissolved for this specific case). solve-group="default" keeps the shared ROS/cppyy
+# stack one solve. crocoddyl/tsid are NOT needed for CLIK, so they are left out (the
+# `wbc` env keeps them for the optimal-control probe). rerun-sdk for the shared viewer.
+[feature.retarget-ros.dependencies]
+pinocchio = "*"            # rigid-body kinematics (python bindings) for the CLIK solve
+example-robot-data = "*"   # Talos / G1 URDFs
+rerun-sdk = "0.34.*"       # log the retargeted humanoid to the shared viewer
+
+[feature.retarget-ros.tasks]
+# LIVE ROS teleop (Process B): consume the /tf landmark frames perception broadcasts
+# (rclcpp_kit C++ listener) -> target map + CLIK -> Rerun + dataset. --source tf is
+# the default when neither --replay nor --follow is given.
+demo-retarget-ros = "python retarget_pipeline/retarget.py --source tf"
+# retarget tests in the ROS env (pinocchio present); same suite as test-retarget.
+test-retarget-ros = "pytest retarget_pipeline/tests/test_retarget.py -v"
+
 # --- cudabuild: provision/validate a CUDA-enabled OpenCV for cv_kit's GPU path -
 # conda-forge ships no CUDA OpenCV (docs in cv_kit/CUDA_OPENCV.md); this vendors a
 # trustworthy prebuilt's .so's + supplies the matching CUDA 12.9 runtime. Standalone.
@@ -367,12 +389,13 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/wbc_kit"
 demo-wbc-lower = "python wbc_kit/demos/d01_lower_action_model.py"
 # wbc_kit tests (gate on the WBC C++ libs). The base cppyy_kit layer is in test-bt.
 test-wbc = "pytest wbc_kit/tests/test_wbc_kit.py -v"
-# --- retargeting half (Process B): consume the landmark stream, retarget onto a
-# humanoid via a whole-body CLIK solve (pinocchio), log to Rerun + write the
-# policy-kickstart dataset. Runs in this standalone env (pinocchio can't share a
-# process with ROS). --replay <stream> reads a recorded stream (CI/headless);
-# --robot g1 swaps Talos for the Unitree G1 (both URDFs ship with example-robot-data).
-demo-retarget = "python retarget_pipeline/retarget.py"
+# --- retargeting half (Process B), OFFLINE replay in this env: consume a recorded
+# landmark stream, retarget onto a humanoid via a whole-body CLIK solve (pinocchio),
+# log to Rerun + write the policy-kickstart dataset. This env has no ROS, so it runs
+# the file modes (--replay/--follow); the LIVE /tf mode lives in the retarget-ros env
+# (demo-retarget-ros). --robot g1 swaps Talos for the Unitree G1 (both URDFs ship with
+# example-robot-data). Explicit --replay: retarget.py's default source is now live tf.
+demo-retarget = "python retarget_pipeline/retarget.py --replay build/pipeline/demo.jsonl"
 # The honest cppyy_kit win in this half: the per-frame retarget GLUE kernel (coord
 # transform + target map + sequential One-Euro filter) authored as one cppyy.cppdef
 # C++ pass vs the identical Python per-frame loop. (The IK solve itself uses pinocchio's
@@ -435,6 +458,10 @@ vision = { features = ["vision"], solve-group = "default" }
 # the default conda numpy, and the default env carries no conda OpenCV to clash with
 # pip's cv2. The retargeting half runs in the standalone `wbc` env (below).
 pipeline = { features = ["pipeline"], solve-group = "default" }
+# Retargeting in a ROS-capable env: default ros-base (rclcpp_kit TF via cppyy) +
+# pinocchio + robot data, solve-group="default". Consumes perception's /tf landmark
+# frames live (--source tf). Possible now that pinocchio is built against boost 1.90.
+retarget-ros = { features = ["retarget-ros"], solve-group = "default" }
 # WBC exploration: pinocchio/crocoddyl/tsid + robot models. STANDALONE
 # (no-default-feature): the conda-forge WBC bindings pin libboost 1.86 vs the ROS
 # stack's 1.90 — incompatible under one solve-group (see [feature.wbc.dependencies]).
