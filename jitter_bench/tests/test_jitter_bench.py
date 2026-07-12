@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke tests for the M6g jitter_bench harness.
+"""Smoke tests for the jitter_bench harness.
 
 Fast, short-duration, and dependency-light so they run green in the default ``pixi run
 test`` env: the pure-Python harness (recorder / stats / histogram / clock plumbing /

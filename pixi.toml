@@ -223,7 +223,7 @@ demo-control-python = "python control_kit/demos/d02_python_controller.py"
 bench-control = "python control_kit/demos/bench_control_loop.py"
 # control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
 test-control = "pytest control_kit/tests/test_control_kit.py -v"
-# --- M6g: low-jitter Python control experiment (jitter_bench) ---
+# --- low-jitter Python control experiment (jitter_bench) ---
 # THE REFERENCE MATRIX: every variant (a1/a2/b/c) x {idle, load}, 60 s each, mlockall +
 # CPU-pinned; full stats -> build/jitter_bench.json (gitignored). Set ROS_DOMAIN_ID=63.
 bench-jitter = "python jitter_bench/run_bench.py --duration 60 --mlock --cpu 2 --json build/jitter_bench.json"
