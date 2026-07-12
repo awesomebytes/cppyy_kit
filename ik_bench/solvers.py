@@ -56,18 +56,13 @@ TIP = "panda_link8"
 _TRAC_IK_PARAMS = {"solve_type": "Speed", "epsilon": 1e-5,
                    "kinematics_solver_timeout": 0.05, "position_only_ik": False}
 
-# pick_ik: a gradient-descent + evolutionary global solver (PickNik). Its params
-# live under the same robot_description_kinematics.<group> namespace.
+# pick_ik: gradient-descent + memetic global solver (PickNik). Params (a g_p_l
+# ParamListener) live under robot_description_kinematics.<group>. "global" lets the
+# initial guess be far from the goal; the thresholds match the benchmark tolerance.
 _PICK_IK_PARAMS = {
-    "kinematics_solver": "pick_ik/PickIkPlugin",
     "mode": "global",
-    "position_scale": 1.0,
-    "rotation_scale": 0.5,
     "position_threshold": 0.001,
     "orientation_threshold": 0.01,
-    "cost_threshold": 0.001,
-    "minimal_displacement_weight": 0.0,
-    "gd_step_size": 0.0001,
 }
 
 REGISTRY = [
