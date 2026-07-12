@@ -152,8 +152,12 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   quality arc closed 2026-07-12: trunk-lean CLIK fix [52°→0°, per-joint
   posture weights] + hip-relative target map [owner's frame chain: robot_hip +
   body-ratio × (wrist − hip_mid); corr 0.98–1.0, EE err 1.1 cm] + permanent
-  motion-fidelity regression tests. PARKED by owner: Talos head tracking via
-  the neck-articulated full model [G1 head is mechanically rigid — no neck]): webcam → body+hand+face tracking + object detection → TF frames via
+  motion-fidelity regression tests. Head + amplitude landed after owner
+  approval [briefly parked, then merged]: --motion-scale knob at ~1:1
+  [Talos full sweeps ~0.75 m/hand], Talos head yaw/pitch tracking [corr
+  1.00/0.999 — the neck is rotational: orientation moves, position doesn't;
+  earlier "structural" claim corrected]; G1 head mechanically rigid, noticed
+  at startup): webcam → body+hand+face tracking + object detection → TF frames via
   rclcpp_kit → live Rerun viz → whole-body retargeting onto **Talos**
   (example-robot-data; wbc_kit/Crocoddyl or ik_bench solver per frame) →
   recorded "policy-kickstart" dataset artifact. Narrative: a minimal-code human-
