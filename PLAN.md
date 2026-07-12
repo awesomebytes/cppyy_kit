@@ -94,7 +94,7 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   plain-Python prototype → kits (minimal diff) → tests → freeze/L2 → benchmark
   table. Candidate: evolve the vision pipeline or a purpose-built compact demo;
   decision after 6b lands.
-- **6b Live webcam demo**: robotics-flavored expensive computation "all in
+- **6b Live webcam demo** ✅ DONE (2026-07-12: A-vs-B split-screen live in Rerun — kits 4.3 ms/231 fps vs naive Python 66 ms/15 fps = 15.4× @VGA [live camera 12–13×, 0 dropped]; honest headline: the win tracks custom-kernel-vs-library-primitive [~1.1× for pure cv2 ops] — both regimes on one screen; TF+image via rclcpp_kit; auto webcam→synthetic fallback; run-book in docs/webcam_demo/REPORT.md): robotics-flavored expensive computation "all in
   Python": webcam → cv_kit (ORB/optical flow, CUDA if present) → pose/track →
   TF via rclcpp_kit → live Rerun; CPU% overlay showing the headroom vs a plain
   Python/cv2-loop baseline. Must run on a laptop with a webcam, degrade
