@@ -1,6 +1,10 @@
 import array
-import cppyy
+# cppyy_kit is imported before cppyy on purpose: importing it activates the
+# zero-config Cling PCH (cppyy_kit.autopch), which must set CLING_STANDARD_PCH
+# before the interpreter's first `import cppyy`. cppyy_kit imports cppyy itself
+# (after that activation), so the line below sees the PCH already bound.
 import cppyy_kit
+import cppyy
 import numpy as np
 import os
 import re
@@ -9,6 +13,10 @@ from typing import Any, List, Optional, Set, Dict
 from ament_index_python.packages import get_package_prefix, get_packages_with_prefixes
 
 RCLCPP_BRINGUP_DONE = False
+
+# Headers bringup_rclcpp() JIT-parses (the ~1.7 s cost). Registered with the
+# zero-config PCH so they are baked and that parse is eliminated on later runs.
+_PCH_HEADERS = ["rclcpp/rclcpp.hpp", "rcl_interfaces/msg/parameter_event.hpp"]
 
 # Declared-type name -> C++ element type, for sequence<...> fields whose
 # elements are primitives rather than nested messages. Keyed on the IDL basic
@@ -73,17 +81,24 @@ def add_ros2_include_path() -> bool:
     ROS2_INCLUDE_PATH = get_ros2_include_path()
     return cppyy.add_include_path(ROS2_INCLUDE_PATH)
 
-def add_ros2_include_paths() -> bool:
-    # All of these are needed for rclcpp to work
-
-    # Instead of hardcoding the list, just get all the available packages
-    pkgs_with_prefixes = get_packages_with_prefixes()
-    for pkg, prefix in pkgs_with_prefixes.items():
+def ros2_include_paths() -> List[str]:
+    """Every ament package's per-package include dir -- the ``-I`` set rclcpp's
+    headers resolve against. Shared by add_ros2_include_paths() (which feeds cppyy)
+    and the auto-PCH registration (which bakes those headers out-of-process)."""
+    paths = []
+    for pkg, prefix in get_packages_with_prefixes().items():
         include_path = os.path.join(prefix, "include", pkg)
-        # The path may not exist if its a Python package (or simply does not have headers)
+        # The path may not exist if it's a Python package (or simply has no headers).
         if os.path.exists(include_path):
-            cppyy.add_include_path(include_path)
+            paths.append(include_path)
+    return paths
 
+
+def add_ros2_include_paths() -> bool:
+    # All of these are needed for rclcpp to work. Instead of hardcoding the list,
+    # get every available package's include dir.
+    for include_path in ros2_include_paths():
+        cppyy.add_include_path(include_path)
     return True
 
 
@@ -645,6 +660,10 @@ def bringup_rclcpp():
     
     add_ros2_include_paths()
     ensure_ros_libraries_loaded()
+    # Bake these headers into cppyy_kit's zero-config PCH so the parse below is
+    # eliminated on later runs. A no-op on a warm run whose PCH already covers them;
+    # otherwise it schedules a one-time background build. This run parses regardless.
+    cppyy_kit.register_pch_headers(_PCH_HEADERS, include_paths=ros2_include_paths())
     t0 = time.perf_counter()
     cppyy.include("rclcpp/rclcpp.hpp")
     cppyy.include("rcl_interfaces/msg/parameter_event.hpp")

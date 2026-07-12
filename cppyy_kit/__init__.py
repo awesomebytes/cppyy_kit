@@ -36,19 +36,29 @@ import subprocess
 import sys
 import time
 
-import cppyy
+# Zero-config Cling PCH: if a prebuilt PCH for this environment exists, activate it
+# so a kit's header parse is eliminated with no setup. This MUST run before the
+# first `import cppyy` below -- Cling binds its PCH at interpreter init, so setting
+# CLING_STANDARD_PCH afterwards is ignored. autopch imports only stdlib (plus
+# cppyy_backend lazily, which does not initialise the interpreter), so it is safe to
+# run at this point; see autopch.py for the mechanism and the cache layout.
+from . import autopch  # noqa: E402
+autopch.setup()
+
+import cppyy  # noqa: E402
 
 # The compile cache and the boundary tracer are the two M2 base features. Imported
 # here so `cppyy_kit.cppdef_cached` / `cppyy_kit.trace` are top-level; these
 # submodules import only stdlib + cppyy (+ freeze lazily), so no import cycle.
-from . import _compile  # noqa: F401  (direct-compile recipe; re-exported for kits)
-from . import trace  # noqa: F401
-from .cache import (  # noqa: F401
+from . import _compile  # noqa: F401,E402  (direct-compile recipe; re-exported for kits)
+from . import trace  # noqa: F401,E402
+from .cache import (  # noqa: F401,E402
     cppdef_cached, prebuild, cache_info, clear_cache, cache_dir)
-from .require import require, RequireError  # noqa: F401
-from ._cpp import cpp  # noqa: F401
-from .nogil import nogil, run_async  # noqa: F401
-from . import capability  # noqa: F401
+from .autopch import register_pch_headers  # noqa: F401,E402  (auto-PCH kit hook)
+from .require import require, RequireError  # noqa: F401,E402
+from ._cpp import cpp  # noqa: F401,E402
+from .nogil import nogil, run_async  # noqa: F401,E402
+from . import capability  # noqa: F401,E402
 
 
 class CppyyKitError(Exception):
