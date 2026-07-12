@@ -142,7 +142,18 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   code — timeboxed spike discipline, not a product. Build-first-and-learn:
   whether this becomes the presentation centerpiece is deferred until it lands
   (supersedes 6a's "decision after 6b" note).
-- **6g Low-jitter Python control experiment** (agreed 2026-07-12): reuse
+- **6g Low-jitter Python control experiment** — STAGE 0 ✅ DONE (2026-07-12,
+  supervisor-verified: jitter_bench/ harness + reference matrix on the stock
+  kernel, 60 s/cell @1 kHz. Headline: prctl(PR_SET_TIMERSLACK,1) — unprivileged
+  — drops pure-Python idle p50 52.4→2.4 µs [22×; reproduced 52.6→2.5]; ALL
+  variants incl. a REAL in-process ros2_control loop driven from Python hold
+  ~2 µs median idle; under load the nogil C++ loop keeps p50 2.1 µs vs Python
+  ~5 µs [its loaded histogram tighter than Python's idle]. mlockall works
+  unprivileged; SCHED_FIFO DENIED as expected [ulimit -r 0]. Tails p99
+  0.5–1.2 ms = Stage 1's target; owner-action sudo commands + rerun matrix
+  [one command/cell] in docs/jitter_bench/REPORT.md. test 56/130,
+  test-jitter 17 [real control loop exercised]. STAGE 1 pending owner sudo):
+  reuse
   control_kit's in-process ros2_control loop driven from Python (nogil +
   frozen/cached) and measure loop-period jitter honestly: cyclictest baseline +
   control-loop histograms, SCHED_FIFO + mlockall + CPU isolation. Reference
