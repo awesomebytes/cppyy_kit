@@ -15,12 +15,32 @@ from typing import List, Optional
 
 import pytest
 
-pydantic = pytest.importorskip("pydantic")
-np = pytest.importorskip("numpy")
+# Guard EVERY pydantic/numpy import behind a HAVE flag and skip at the module
+# level with skipif -- NOT pytest.importorskip. A module-level importorskip that
+# raises during collection aborts the *whole session's* collection under this
+# repo's pytest 7.4 + ament plugin stack (observed: sibling test files silently
+# collect 0 items), which would break the default `pixi run test` directory run.
+# The try/except + skipif pattern (as test_cache.py uses) imports cleanly and
+# skips only this module's tests when the deps are absent.
+try:
+    import numpy as np
+    import pydantic
+    from pydantic import BaseModel, Field
+    from cppyy_kit import pydantic_structs as pyd
+    _HAVE = True
+except ImportError:
+    _HAVE = False
+    np = None
+    pydantic = None
+    pyd = None
 
-from pydantic import BaseModel, Field  # noqa: E402
+    class BaseModel:      # dummy so module-level model defs below don't NameError
+        pass
 
-from cppyy_kit import pydantic_structs as pyd  # noqa: E402
+    def Field(*args, **kwargs):
+        return None
+
+pytestmark = pytest.mark.skipif(not _HAVE, reason="pydantic v2 + numpy required")
 
 
 # --- shared models ----------------------------------------------------------
