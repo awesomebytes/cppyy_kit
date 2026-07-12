@@ -19,8 +19,8 @@ since tf2 is core ROS 2), a `TransformListener` helper whose lookups return the 
 `geometry_msgs::msg::TransformStamped`. Tests run in the `rclcpp` env (8 tests, ~4 s,
 including a real network-ingest test); demos + bench are pixi tasks with clean exit 0.
 
-> **M1b note.** This spike was originally delivered inside the rclcppyy product as
-> `rclcppyy.tf`. M1b carved it (with its bringup/serialization/rosbag2 siblings) into
+> **Provenance note.** This spike was originally delivered inside the rclcppyy product as
+> `rclcppyy.tf`. It was carved (with its bringup/serialization/rosbag2 siblings) into
 > `rclcpp_kit` **with git history**; the mechanism, numbers and reasoning below are
 > unchanged, only the import path is now `rclcpp_kit.tf`. Run it with
 > `pixi run -e rclcpp test-tf`.

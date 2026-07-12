@@ -4,7 +4,7 @@
 > (probe matrix, ingest/ORB/query benchmarks, loop precision/recall) currently
 > lives in [`cv_kit/REPORT.md`](../cv_kit/REPORT.md) and the tutorial
 > [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
-> A dbow-specific report is split out during the M2 documentation pass.
+> A dbow-specific report is split out during a later documentation pass.
 
 ## Status
 

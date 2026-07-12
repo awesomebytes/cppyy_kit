@@ -1,13 +1,12 @@
-# Live webcam demo (M6b) — "expensive computation, all in Python"
+# Live webcam demo — "expensive computation, all in Python"
 
 **Date:** 2026-07-12 · **Env:** pixi `vision` (robostack-jazzy + conda-forge),
 `opencv 4.13.0` (C++ libs + headers + `cv2`), `rerun-sdk 0.34.1`, `cppyy 3.5.0`,
 Python 3.12, linux-64. **Machine:** quiet laptop, `/dev/video0` (built-in webcam,
 640×480 @ ~30 fps), RTX PRO 2000 Blackwell (unused here — see the CUDA note).
 
-**The ask (Sam):** *"Some live demo with a webcam of doing actually expensive
-computation all in Python would be quite cool. Especially with robotics
-background."*
+**The brief:** a compelling live webcam demo doing genuinely expensive computation
+entirely in Python, with a robotics slant.
 
 **What it is.** One script (`cv_kit/demos/webcam_demo.py`) runs a small **visual
 odometry front-end** on the live webcam, **two ways**, over the identical frames,

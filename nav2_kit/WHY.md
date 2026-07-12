@@ -2,7 +2,7 @@
 
 `nav2_kit` lets you build a navigation stack by driving [Nav2](https://nav2.org)'s
 **algorithm cores directly** from Python: the real C++ code owns the costmap grid and
-runs the planner (NavFn or Smac 2D) and, since the M6d lifecycle unlock, the real
+runs the planner (NavFn or Smac 2D) and, since the lifecycle unlock, the real
 RegulatedPurePursuit controller — while your Python owns the loop and the world. It
 does this against the Nav2 that is already installed, with **no lifecycle servers and
 no pluginlib** — and with no code generation and no build step.
@@ -122,13 +122,13 @@ not for running a robot in production.
 
 ## The honest part: what is a clean core, and what is not
 
-nav2_kit draws the line where the evidence does, and the **M6d lifecycle unlock** moved
+nav2_kit draws the line where the evidence does, and the **lifecycle unlock** moved
 it (full detail in [REPORT.md](REPORT.md)):
 
 - **Pure cores (surfaced, no rclcpp at all): `Costmap2D`, `NavFn`.** Plain classes —
   `Costmap2D(w, h, res, ox, oy)`, `NavFn(nx, ny)` on a raw `unsigned char*` cost array.
   No node, no tf, no pluginlib. Directly drivable.
-- **Lifecycle-coupled cores (NOW surfaced, M6d): Smac 2D + the real RegulatedPurePursuit
+- **Lifecycle-coupled cores (NOW surfaced): Smac 2D + the real RegulatedPurePursuit
   controller.** These take a `LifecycleNode` (and RPP a `Costmap2DROS` + `tf2_ros::Buffer`)
   — and the key insight is that **a `LifecycleNode` is a plain class you construct
   in-process from Python**, exactly like the `rclcpp::Node` we already build. So
@@ -185,7 +185,7 @@ Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
 nav2_kit is deliberately **not a Nav2 stack**: no lifecycle *servers*/manager, no
 pluginlib-by-name loading, no tf tree/localization, no dynamic obstacle/inflation
 layers, no recovery behaviors. Surfaced: `Costmap2D` + `NavFn` (pure cores) and — since
-M6d — Smac **2D** + the real RPP controller (via an in-process `LifecycleNode` +
+the lifecycle unlock — Smac **2D** + the real RPP controller (via an in-process `LifecycleNode` +
 plugin-free `Costmap2DROS`, still no servers). Smac **Hybrid-A\*** remains out (a flaky
 OMPL-under-Cling crash). The complementary direction — loading a **Python
 planner/controller plugin *inside* a real Nav2 server** — is a separate planned spike.

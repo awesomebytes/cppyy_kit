@@ -1,10 +1,10 @@
-# wbc_kit spike — Whole-Body Control frameworks via cppyy (M6e)
+# wbc_kit spike — Whole-Body Control frameworks via cppyy
 
 **Date:** 2026-07-12 · **Env:** pixi `wbc` (standalone, conda-forge only),
 `pinocchio 4.0.0`, `crocoddyl 3.2.1`, `tsid 1.x`, `casadi 3.7.2`,
 `example-robot-data 5.0.0`, `libboost 1.90`, `cppyy 3.5.0`, Python 3.12.13, linux-64.
 
-**Question (from PLAN.md M6e):** tsid / crocoddyl / pinocchio are all on conda-forge
+**Question:** tsid / crocoddyl / pinocchio are all on conda-forge
 **with** Python bindings (verified). So the cppyy win — if there is one — must be
 **sharper than "bindings exist"**. Where, for whole-body control, does cppyy do
 something the bindings genuinely cannot? "Bindings are fine, no kit needed" is an
