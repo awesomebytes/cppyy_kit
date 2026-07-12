@@ -188,7 +188,7 @@ def main(argv=None):
     }
 
     print("=" * 78)
-    print("jitter_bench -- M6g low-jitter control reference (current kernel)")
+    print("jitter_bench -- low-jitter control reference (current kernel)")
     print("=" * 78)
     print("kernel=%s  ncpu=%s  rtprio_limit=%s  memlock_limit=%s"
           % (facts["kernel"], facts["ncpu"], facts["rlimit_rtprio"], facts["rlimit_memlock"]))

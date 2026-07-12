@@ -1,4 +1,4 @@
-# jitter_bench — how low can a mostly-Python 1 kHz control loop go on a stock kernel? (M6g)
+# jitter_bench — how low can a mostly-Python 1 kHz control loop go on a stock kernel?
 
 **Date:** 2026-07-12 · **Env:** pixi `control` (robostack-jazzy + conda-forge), `cppyy 3.5.0`,
 Python 3.12, linux-64 · `ROS_DOMAIN_ID=63` · **Machine:** 16-core, kernel

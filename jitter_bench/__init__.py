@@ -1,4 +1,4 @@
-"""jitter_bench -- the M6g low-jitter Python control experiment.
+"""jitter_bench -- the low-jitter Python control experiment.
 
 Measures, honestly, the loop-period jitter of a ~1 kHz control loop orchestrated from
 Python, on the machine's current kernel (6.17 oem, PREEMPT_DYNAMIC -- NOT PREEMPT_RT).
