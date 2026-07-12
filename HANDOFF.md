@@ -55,53 +55,46 @@ dispatch, verify, merge, keep the ledgers current, and report crisply.
   the rclcppyy directory inherits it automatically; otherwise read MEMORY.md
   there manually.
 
-## State snapshot (2026-07-12)
-- **Done & green:** M1 (migration w/ history, rclcpp_kit carve, 10 noarch
-  recipes, 10/10 fresh-env proofs, release matrix), M2 (compile cache —
-  first-use JIT ELIMINATED, bt frozen+cached ~425 ms ≈4.1×; tracer; require;
-  @cpp; nogil (measured); stubgen; capability registry), M3 (rclcppyy slim +
-  parity + duplicate cleanup), M4 (docs site live + strict links), M5
-  (cppyy-accelerate skill; walkthrough: 15.6× with a 3-line diff), M6c (IK
-  bench: 5 solvers one script — vendored bio_ik fastest ~1000/s), M6d (Nav2
-  lifecycle unlocked — real Smac 2D + RPP from Python, in-process
-  LifecycleNode is the universal key), M6e (WBC: Crocoddyl inline-C++ action
-  models at native speed, 21.7×; standalone env — boost 1.86 vs ROS 1.90),
-  Pydantic→C++ structs RFC (PR #1, MERGED: 16× memory, honest bench,
-  compile-time type checks).
-- **Docs cleanup** merged by Sam's own agent (336608e).
-- **22+ documented patterns** in `docs/COMMON_PATTERNS.md` — the canonical
-  playbook every new agent must read first.
+## State snapshot (2026-07-12, post-release)
+- **RELEASED AND LIVE on https://repo.prefix.dev/awesomebytes:** the full suite
+  v0.1.0 (11 packages: cppyy-kit, ros-jazzy-rclcpp-kit, 8 domain kits, wbc-kit
+  — all noarch, all fresh-env-proven on the runner) AND ros-jazzy-rclcppyy
+  v0.2.0 (the product, now genuinely depending on the published suite — bridge
+  removed, import provenance verified, artifact proof green). Release
+  workflows in both repos are tag-triggered and OIDC-authorized.
+- **Done & green:** M1 (migration/carve/recipes), M2 (compile cache — bt
+  frozen+cached ~425 ms ≈4.1×; tracer; require; @cpp; nogil measured;
+  stubgen; capability), M3 (slim+parity+cleanup), M4 (docs site live), M5
+  (accelerate skill, 15.6× walkthrough), M6b (webcam A-vs-B: 15.4× @VGA,
+  live 12–13×; honest headline: the win tracks custom-kernel-vs-library-
+  primitive, ~1.1× for pure cv2 ops), M6c (IK bench, 5 solvers, vendored
+  bio_ik fastest), M6d (Nav2 lifecycle unlocked — Smac+RPP from Python),
+  M6e (WBC/Crocoddyl inline-C++ models 21.7×), Pydantic structs RFC merged
+  (16× memory, compile-time type checks).
+- **22+ patterns** in docs/COMMON_PATTERNS.md — required reading for agents.
 
 ## Work queue (in priority order)
-1. **Patterns consolidation debt:** M6c/d/e + pydantic lesson candidates are
-   NOT yet folded into COMMON_PATTERNS (each REPORT lists "generic-lesson
-   candidates"; the established pass = one doc-only agent, cites evidence,
-   README kit-table updates). Sources: ik_bench/REPORT, nav2_kit REPORT (M6d
-   additions), docs/wbc/REPORT, cppyy_kit/design/pydantic_structs.md.
-2. **M6b webcam live demo** (may already be dispatched — check task board /
-   worktrees): robotics-flavored expensive compute all-in-Python via kits —
-   webcam → cv_kit ORB/optical-flow (CUDA auto if provisioned) → pose/track →
-   TF via rclcpp_kit → live Rerun + CPU overlay vs a plain cv2/python loop.
-   Needs a webcam + display; degrade gracefully headless. Wants a QUIET
-   machine (its CPU numbers are the demo).
-3. **M6a canonical arc demo:** ONE compact example shown end-to-end:
-   plain-Python prototype → kits (minimal diff) → tests → freeze/L2/cache →
-   benchmark table. Cherry-pick proven pieces (accelerate walkthrough 15.6×,
-   cache 425 ms cold start, L2 2.8×). This is the ROSCon centerpiece.
-4. **Release choreography** (rclcppyy/RELEASING.md has exact steps):
-   BLOCKED on Sam: prefix.dev Repository Access for awesomebytes/cppyy_kit +
-   release.yml. BEFORE tagging: add missing recipes (wbc_kit, pydantic env
-   packaging decision, ik extras) to the matrix + re-run pkg-prove. Then tag
-   suite v0.1.0 → swap rclcppyy bridge → tag rclcppyy v0.2.0.
-5. **M7 presentation assets** (nearer ROSCon UK 2026): slide numbers, demo
-   run-books with fallbacks, rehearsal checklist.
-6. **M8 research (L3 whole-app lowering):** 8a tracer DONE; 8b trace→C++
-   emitter, 8c BT static-binary pilot, 8d positioning survey — see PLAN.md M8.
-7. **Pydantic follow-ups** (deferred list in PR #1): [feature.pydantic] env +
-   lock, @cpp Model-annotation integration, Enum/datetime support.
-8. Misc: Hybrid-A* flaky (OMPL-under-Cling segfault) parked; conda-forge
-   submission of cppyy-kit when stable; rclcppyy ARCHITECTURE_V2.md header
-   points to suite repo.
+1. **Patterns consolidation debt:** M6b/c/d/e + pydantic lesson candidates
+   are NOT yet folded into COMMON_PATTERNS (each REPORT lists candidates:
+   docs/webcam_demo/, ik_bench/, nav2_kit [M6d additions], docs/wbc/,
+   cppyy_kit/design/pydantic_structs.md). Established pass: one doc-only
+   agent, evidence-cited, plus README kit-table updates.
+2. **M6a canonical arc demo (the ROSCon centerpiece):** ONE compact example
+   end-to-end: plain-Python prototype → kits (minimal diff) → tests →
+   freeze/cache/L2 → benchmark table. Cherry-pick proven pieces (accelerate
+   walkthrough 15.6×, cache 425 ms cold start, L2 2.8×, webcam kernels).
+3. **M7 presentation assets** (ROSCon UK 2026): slide numbers, demo
+   run-books (webcam run-book exists in docs/webcam_demo/REPORT.md),
+   rehearsal checklist.
+4. **M8 research:** 8a tracer DONE; 8b trace→C++ emitter, 8c BT
+   static-binary pilot, 8d positioning survey (PLAN.md M8).
+5. **Pydantic follow-ups** (PR #1 deferred list): [feature.pydantic] env,
+   @cpp Model-annotation integration, Enum/datetime.
+6. Misc: rclcppyy working tree has UNCOMMITTED cosmetic edits (PLAN.md/
+   RELEASING.md/ARCHITECTURE_V2.md, personal-name removals — likely Sam's
+   docs agent; do not sweep, let Sam decide); leftover
+   .claude/worktrees/agent-af69… dir in rclcppyy (untracked, removable);
+   Hybrid-A* flaky parked; conda-forge submission of cppyy-kit when stable.
 
 ## Dispatch template that works
 Worktree-first block → required reading (COMMON_PATTERNS + specific REPORTs)
