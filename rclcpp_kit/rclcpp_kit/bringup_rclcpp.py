@@ -371,6 +371,22 @@ def _resolve_message_type(message_type):
         raise ValueError(f"Unsupported message type: {message_type} (type: {type(message_type)})")
 
 
+def message_header(message_type: Any):
+    """C++ header path for a Python ROS message class (e.g. ``sensor_msgs/msg/
+    image.hpp``), derived the same way ``_resolve_message_type`` includes it, or
+    ``None`` when it can't be derived (e.g. a C++ cppyy message class). Used by the
+    subscription cache to name the trampoline's ``#include``."""
+    try:
+        if not _is_msg_python(message_type):
+            return None
+        module_parts = message_type.__module__.split('.')
+        if len(module_parts) >= 3:
+            return "%s/msg/%s.hpp" % (module_parts[0], module_parts[2][1:])
+    except Exception:
+        pass
+    return None
+
+
 def adapt_rclcpp_to_python(rclcpp: Any):
     """
     Adapt the rclcpp namespace to be more Pythonic.
@@ -541,7 +557,19 @@ class _BoundCreateSubscription:
         cpp_callback = cppyy.gbl.std.function[
             f"void(std::shared_ptr<const {cpp_type_str}>)"
         ](callback)
-        subscription = self._orig()[cppyy_type](topic, qos, cpp_callback, *args, **kwargs)
+        # Route through the compiled, cached trampoline so the ~2.8 s
+        # create_subscription<MsgT> template instantiation JITs once into a .so, not
+        # on every process. Falls back to the plain template call when no .so is
+        # built yet (this run), for extra positional/keyword args, or when the header
+        # can't be derived -- correctness first, the cache is a pure speedup.
+        subscription = None
+        header = message_header(msg_type)
+        if header and not args and not kwargs:
+            from rclcpp_kit import subscription_cache
+            subscription = subscription_cache.make_subscription(
+                self._node, cpp_type_str, header, topic, qos, cpp_callback)
+        if subscription is None:
+            subscription = self._orig()[cppyy_type](topic, qos, cpp_callback, *args, **kwargs)
         _keep_alive(self._node, callback, cpp_callback)
         return subscription
 
