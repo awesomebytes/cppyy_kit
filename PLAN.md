@@ -76,7 +76,15 @@ same discipline as the rclcppyy 0.1.0 release. Lockstep versions from one tag.
   vars, no pixi changes; prints on create and on load. rclcpp_kit registers
   its headers → bringup 1.96 s→0.30 s, header parse 1.7 s→0.0 s [~30×].
   Key finding: `import cppyy` sets CLING_STANDARD_PCH itself, so override
-  detection gates on cppyy-not-yet-loaded. COMMON_PATTERNS §36 + FREEZE §8).
+  detection gates on cppyy-not-yet-loaded. COMMON_PATTERNS §36 + FREEZE §8.
+  Follow-ups landed 2026-07-13: .pth activation makes it import-order-proof
+  [+ cache self-pruning]; `@cpp(nogil=True)` [GIL released around the C++
+  body only; parallel demo 7.7× on 8 threads; both first-use compile races
+  found+locked] and `@cpp(cached=False)`; unified debug escape hatches
+  [FREEZE §9: disable_caching()/ctx mgr/NO_CACHE=1/NO_AUTOPCH=1]. rclcppyy
+  gained the heavy-topic hz demo [3 MB msgs: rclpy CPU-bound ~207 Hz vs
+  accelerated ~306–417 Hz at half CPU; cold→warm headers 1.8→0.0 s;
+  bridge env pending next suite release]).
 
 ### M3 — rclcppyy slim + first suite release
 - In the rclcppyy repo: replace moved internals with rclcpp_kit imports +
