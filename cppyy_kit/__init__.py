@@ -53,7 +53,8 @@ import cppyy  # noqa: E402
 from . import _compile  # noqa: F401,E402  (direct-compile recipe; re-exported for kits)
 from . import trace  # noqa: F401,E402
 from .cache import (  # noqa: F401,E402
-    cppdef_cached, prebuild, cache_info, clear_cache, cache_dir)
+    cppdef_cached, prebuild, cache_info, clear_cache, cache_dir,
+    disable_caching, enable_caching, caching_disabled, caching_enabled)
 from .autopch import register_pch_headers  # noqa: F401,E402  (auto-PCH kit hook)
 from .require import require, RequireError  # noqa: F401,E402
 from ._cpp import cpp  # noqa: F401,E402

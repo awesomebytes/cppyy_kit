@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Parallelism contract for the multithreading example: N Python threads driving a
-C++ kernel through cppyy_kit.nogil run on N cores, so N jobs finish far faster than
-the same jobs with the GIL held -- and produce identical output either way.
+"""Parallelism contract for the multithreading example: N Python threads each calling
+a @cpp(nogil=True) kernel run on N cores, so N jobs finish far faster than the same
+jobs with the GIL held -- and produce identical output either way.
 
-nogil() releases the GIL around the C++ call (COMMON_PATTERNS section 13); the jobs
-are independent and write into disjoint NumPy slots, so no thread needs the GIL while
-computing. Needs cppyy + a compiler (the default env)."""
+@cpp(nogil=True) releases the GIL around the compiled body (COMMON_PATTERNS section
+13/27); the jobs are independent and write into disjoint NumPy slots, so no thread
+needs the GIL while computing. Needs cppyy + a compiler (the default env)."""
 import os
 import sys
 
@@ -52,7 +52,7 @@ def test_nogil_threads_run_in_parallel():
     parallel, _ = _run(n_threads=n, iters=iters, use_nogil=True)
     speedup = serial / parallel
     # GIL held serializes the threads (speedup ~1x); released, the ceiling is
-    # min(n, cores). 45% of that ceiling passes on a quiet 16-core box (~6x
+    # min(n, cores). 45% of that ceiling passes on a quiet 16-core box (~7.7x
     # measured) and on a 4-vCPU shared CI runner (2.3x measured), while a
     # GIL-bound run (~1x) always fails.
     floor = 0.45 * min(n, _CORES)
