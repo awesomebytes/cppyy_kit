@@ -31,6 +31,7 @@ build dir, never committed, rebuilt on a cppyy/compiler/source change (a mismatc
 just misses -> recompiles). A kit can also *ship warm* by building the ``.so`` at
 package-build time so even the first run on a machine is fast.
 """
+import contextlib
 import hashlib
 import json
 import os
@@ -45,6 +46,56 @@ _LOADED = set()          # so_paths already load_library'd this process (idempot
 _APPLIED = {}            # so_path -> result, for one-cppdef-per-process idempotency
 _NO_DECLS_WARNED = set()  # names warned about the missing-decls degrade (dedup)
 _INCLUDED = set()        # include paths already put on cppyy's search path (dedup)
+_RUNTIME_DISABLED = False  # process-wide runtime bypass (disable_caching / context mgr)
+
+
+# --- Debugging escape hatches: turn the .so compile cache off -------------
+# Three ways to bypass the cache, all making ``cppdef_cached`` behave exactly like
+# ``cppyy.cppdef(code)`` (no .so read, no .so write): the ``CPPYY_KIT_NO_CACHE=1`` env
+# var (whole process, before import), the runtime toggles below (whole process, at
+# runtime), and per-call ``cached=False``. Use them to rule the cache out when
+# debugging a stale/miscompiled kernel .so. The PCH has its own switch
+# (``CPPYY_KIT_NO_AUTOPCH=1``); see docs/FREEZE.md, "Debugging: turning the caches off".
+def _caching_off():
+    """Whether the .so compile cache is currently bypassed process-wide (the runtime
+    toggle or the ``CPPYY_KIT_NO_CACHE=1`` env kill-switch)."""
+    return _RUNTIME_DISABLED or os.environ.get("CPPYY_KIT_NO_CACHE") == "1"
+
+
+def disable_caching():
+    """Turn the compile cache OFF for the rest of the process: every later
+    ``cppdef_cached`` runs a plain in-memory ``cppyy.cppdef`` (no .so read or write).
+    Re-enable with ``enable_caching()``. For a scoped bypass use ``caching_disabled()``.
+    (Already-loaded cached ``.so``s stay loaded; this only affects later calls.)"""
+    global _RUNTIME_DISABLED
+    _RUNTIME_DISABLED = True
+
+
+def enable_caching():
+    """Undo ``disable_caching()`` -- later ``cppdef_cached`` calls use the .so cache
+    again. Note the ``CPPYY_KIT_NO_CACHE=1`` env kill-switch, if set, still wins."""
+    global _RUNTIME_DISABLED
+    _RUNTIME_DISABLED = False
+
+
+def caching_enabled():
+    """Whether the compile cache is currently active (neither the runtime toggle nor
+    the env kill-switch is bypassing it)."""
+    return not _caching_off()
+
+
+@contextlib.contextmanager
+def caching_disabled():
+    """Context manager: bypass the .so compile cache within the block, restoring the
+    previous state on exit. ``with cppyy_kit.caching_disabled(): ...``. (The env
+    kill-switch and per-call ``cached=False`` still force a bypass regardless.)"""
+    global _RUNTIME_DISABLED
+    previous = _RUNTIME_DISABLED
+    _RUNTIME_DISABLED = True
+    try:
+        yield
+    finally:
+        _RUNTIME_DISABLED = previous
 
 
 def _version_tag():
@@ -100,7 +151,7 @@ def _load(so_path):
 
 def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(),
                   libraries=(), link_args=(), defines=(), std="c++17",
-                  trampoline=False, directory=None):
+                  trampoline=False, directory=None, cached=True):
     """Drop-in for ``cppyy.cppdef(code)`` that compiles ``code`` to a ``.so`` once
     and ``load_library``'s it on every later run -- killing cppyy's first-use
     call-wrapper JIT persistently (module docstring).
@@ -119,6 +170,10 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     artifact a readable filename stem. Returns a dict describing what happened
     (``{"cached": bool, "so": path, ...}``) for tests/tracing.
 
+    ``cached=False`` (debugging escape hatch) bypasses the .so cache for this call --
+    a plain in-memory ``cppyy.cppdef(code)``, no cache read or write -- exactly like
+    the process-wide ``CPPYY_KIT_NO_CACHE=1`` / ``disable_caching()`` switches.
+
     On a hit whose ``.so`` fails to load (truncated/ABI-stale/corrupt), the entry
     is discarded and rebuilt -- a bad cache never wedges a run.
     """
@@ -127,8 +182,11 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     def _ms():
         return round((time.perf_counter() - t0) * 1000, 3)
 
-    # Global kill-switch (benchmark/opt-out): behave exactly like cppyy.cppdef.
-    if os.environ.get("CPPYY_KIT_NO_CACHE") == "1":
+    # Escape hatches (debugging): per-call cached=False, the process-wide runtime
+    # toggle (disable_caching), or the CPPYY_KIT_NO_CACHE=1 env kill-switch all make
+    # this behave exactly like cppyy.cppdef -- no .so read, no .so write. See
+    # docs/FREEZE.md, "Debugging: turning the caches off".
+    if cached is False or _caching_off():
         cppyy.cppdef(code)
         trace.record("cppdef_cached", name=name, cached=False, reason="disabled",
                      duration_ms=_ms())
