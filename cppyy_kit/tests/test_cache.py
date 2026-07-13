@@ -127,3 +127,57 @@ def test_cache_info_and_clear(tmp_path):
     removed = cache.clear_cache(directory=d)
     assert removed >= 1
     assert cache.cache_info(directory=d) == []
+
+
+# --- Escape hatches: turning the .so cache off (debugging) ----------------
+def test_cached_false_bypasses_cache(tmp_path):
+    # Per-call cached=False: plain in-memory cppdef, no .so read or write.
+    ns = _unique()
+    code, decls = _snippet(ns)
+    d = str(tmp_path)
+    r = cppyy_kit.cppdef_cached(code, decls=decls, name="nc_" + ns, directory=d, cached=False)
+    assert r["cached"] is False and r["reason"] == "disabled" and r["so"] is None
+    assert int(getattr(cppyy.gbl, ns).triple(4)) == 12      # still correct (plain cppdef)
+    assert cache.cache_info(directory=d) == []              # nothing written
+
+
+def test_disable_caching_bypasses_process_wide(tmp_path):
+    # disable_caching() bypasses the cache for every later call until enable_caching().
+    ns = _unique()
+    code, decls = _snippet(ns)
+    d = str(tmp_path)
+    cache.disable_caching()
+    try:
+        assert cache.caching_enabled() is False
+        r = cppyy_kit.cppdef_cached(code, decls=decls, name="dc_" + ns, directory=d)
+        assert r["so"] is None and r["cached"] is False
+        assert int(getattr(cppyy.gbl, ns).triple(3)) == 9
+    finally:
+        cache.enable_caching()
+    assert cache.caching_enabled() is True                  # re-enabled
+    assert cache.cache_info(directory=d) == []
+
+
+def test_caching_disabled_context_manager_restores(tmp_path):
+    ns = _unique()
+    code, decls = _snippet(ns)
+    d = str(tmp_path)
+    assert cache.caching_enabled() is True
+    with cppyy_kit.caching_disabled():
+        assert cache.caching_enabled() is False
+        r = cppyy_kit.cppdef_cached(code, decls=decls, name="cm_" + ns, directory=d)
+        assert r["so"] is None
+        assert int(getattr(cppyy.gbl, ns).triple(2)) == 6
+    assert cache.caching_enabled() is True                  # previous state restored
+    assert cache.cache_info(directory=d) == []
+
+
+def test_env_no_cache_bypasses(tmp_path, monkeypatch):
+    monkeypatch.setenv("CPPYY_KIT_NO_CACHE", "1")
+    ns = _unique()
+    code, decls = _snippet(ns)
+    d = str(tmp_path)
+    r = cppyy_kit.cppdef_cached(code, decls=decls, name="env_" + ns, directory=d)
+    assert r["so"] is None and r["cached"] is False
+    assert int(getattr(cppyy.gbl, ns).triple(5)) == 15
+    assert cache.cache_info(directory=d) == []
