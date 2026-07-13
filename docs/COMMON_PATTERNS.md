@@ -993,6 +993,32 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
   imports `cppyy` before `cppyy_kit`. Removes the **parse** only (cppyy's first-use
   call-wrapper JIT is the separate §23 cost).
 
+### 37. Cache the subscription template instantiation (`rclcpp_kit.subscription_cache`)
+Creating an rclcpp subscription from Python makes cppyy JIT-instantiate
+`rclcpp::create_subscription<MsgT>` on first use, per message type — measured at ~2.8 s
+for `sensor_msgs::msg::Image`, and the PCH (§36) does not touch it (that removes the
+header *parse*, not template instantiation). This is the §23 compile cache applied to a
+template cppyy instantiates on your behalf: a tiny trampoline that calls
+`create_subscription<MsgT>` is compiled once into a `.so` per type (the template is
+instantiated at compile time), then `load_library`'d thereafter.
+- **Never slower than the plain path.** On a cache miss the rclpy-style
+  `node.create_subscription(MsgType, topic, cb, qos)` uses the plain template call for
+  that run (so it is exactly as fast as before), and the `.so` is compiled in a detached
+  background process at interpreter exit; the next run loads it. The trampoline is used
+  only when its `.so` exists, and any failure falls back to the plain call — the cache is
+  a pure speedup, never a correctness dependency (verified: the pub/sub roundtrip suite
+  passes on both the plain and cached paths).
+- **Machine-persistent, cwd-independent.** Artifacts live under
+  `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/subs/<version-tag>` (not the compile cache's
+  default `<cwd>/build`), so a CLI run from any directory reuses them; env-version-tagged
+  like the other caches. Opt out with `RCLCPP_KIT_NO_SUB_CACHE=1`.
+- **Measured (rclcpp, Image, PCH warm).** Time-to-ready for
+  `import rclcpp_kit; bringup_rclcpp(); node.create_subscription(Image, …)` drops from
+  ~3.26 s to ~0.56 s once the `.so` is built; the `create_subscription` call itself from
+  ~2.9 s to ~0.22 s. The ~0.14 s residual in that call is cppyy's per-signature
+  `std::function` thunk (the Python→C++ callable wrapper), the same non-cacheable boundary
+  as the §23 residual — generated at the call from Python, not carried in the `.so`.
+
 ---
 
 ## Today vs L1 ("freeze") — L1 now WORKS

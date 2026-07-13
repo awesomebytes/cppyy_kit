@@ -43,6 +43,7 @@ from rclcpp_kit import serialization
 from rclcpp_kit import rosbag2_cpp
 from rclcpp_kit import rosbag2_py_compat
 from rclcpp_kit import tf
+from rclcpp_kit import subscription_cache
 
 __all__ = [
     "bringup_rclcpp",
@@ -58,4 +59,5 @@ __all__ = [
     "rosbag2_cpp",
     "rosbag2_py_compat",
     "tf",
+    "subscription_cache",
 ]
