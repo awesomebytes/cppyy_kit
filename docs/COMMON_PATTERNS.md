@@ -547,6 +547,13 @@ package-build time (`cppyy_kit.cache.prebuild`).
   through their own cached helper. Artifacts are env-version-tagged + gitignored
   (same lifecycle as the PCH); a cppyy/compiler/source change is a clean miss, and
   a corrupt/stale `.so` on load is discarded and rebuilt, never wedging a run.
+- **Debugging escape hatches (turn it off).** To rule the cache out when a kernel
+  misbehaves, bypass it so `cppdef_cached` is a plain in-memory `cppyy.cppdef` (no
+  `.so` read/write): per call `cppdef_cached(..., cached=False)` / `@cpp(cached=False)`;
+  process-wide `cppyy_kit.disable_caching()` (or `with cppyy_kit.caching_disabled():`);
+  or the `CPPYY_KIT_NO_CACHE=1` env var. Nuke artifacts with `cppyy_kit.clear_cache()`.
+  The PCH has its own switch (`CPPYY_KIT_NO_AUTOPCH=1`). Full decision tree + artifact
+  locations: **FREEZE.md §9, "Debugging: turning the caches off".**
 
 **Kit adoption recipe (copy-paste).** Both bt_kit and pcl_kit follow this shape;
 it is what a new kit (and the `cppyy-accelerate` skill) should apply. Split the glue into
@@ -655,6 +662,11 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
 - **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
   after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
+- **`@cpp(nogil=True)` releases the GIL around only the compiled body** (the ergonomic
+  form of §27) — plain Python threads calling the kernel run on N cores. **`cached=False`**
+  compiles the kernel in-memory and skips the `.so` cache (the §23 debugging escape
+  hatch, also `cppyy_kit.disable_caching()` / `CPPYY_KIT_NO_CACHE=1`; see FREEZE.md
+  "Debugging: turning the caches off").
 - **The honest headline: the win tracks "custom kernel vs library primitive", not
   "C++ vs Python" (webcam).** Reach for a `@cpp`/`cppdef` kernel where you'd otherwise
   write a **per-element Python loop with no vectorized-NumPy/library one-liner** — a
@@ -675,6 +687,18 @@ drops the GIL (`Py_BEGIN_ALLOW_THREADS`) around it, so concurrent Python threads
 during the call. Measured (test_nogil.py): a 500 ms C++ sleep called directly lets a
 co-thread advance ~1 tick; through `nogil` it advances **~470** — the co-thread runs
 the whole time.
+- **The ergonomic front-end: `@cpp(nogil=True)` (§26).** When the C++ you want to run
+  GIL-free is a kernel you're writing anyway, skip the `std::function` ceremony — add
+  `nogil=True` to `@cpp` and the decorated call releases the GIL around the compiled
+  body directly. `@cpp` compiles a small wrapper (in the same cached `.so`) that
+  forwards the already-marshaled POD arguments into the kernel inside
+  `Py_BEGIN/END_ALLOW_THREADS`, so the GIL is dropped for **only** the C++ body —
+  cppyy's argument/result marshaling stays under the lock on either side. The release
+  wrapper adds ~0.04 µs/call over `nogil=False` (a trivial `add`; measured), and plain
+  Python threads each calling the kernel run on N cores: eight jobs, **7.7× faster**
+  than GIL-held on a 16-core box (`examples/parallel_demo`, the front-page snippet).
+  Reach for the raw `nogil(fn)` below only for a *pre-existing* C++ callable you did not
+  write with `@cpp` (a library's blocking `spin()`/`wait()`).
 - **`fn` must be C++, not Python.** A Python callable would re-acquire the GIL to run
   (cppyy takes it to enter Python), defeating the point. Bind args/results in C++ (a
   `cppdef`/`@cpp` nullary wrapper writing its result into a C++ object you read
@@ -959,7 +983,10 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
   clean miss (fall back to JIT), never a silent ABI mismatch. After each build the cache
   is trimmed to the newest few artifacts per environment (keeping any a live manifest
   references) so artifacts from many environments do not accumulate. Opt out with
-  `CPPYY_KIT_NO_AUTOPCH=1`; never committed.
+  `CPPYY_KIT_NO_AUTOPCH=1` (or `python -m cppyy_kit.autopch --prune` / `--uninstall`);
+  never committed. When debugging, this is the PCH's "off" switch — the compile cache
+  (§23) has its own; see **FREEZE.md §9, "Debugging: turning the caches off"** for the
+  whole story.
 - **Measured (rclcpp):** for `bringup_rclcpp()`, the `rclcpp C++ headers loaded (…)` line
   drops from ~1.9 s to ~0.0 s and the whole call from ~1.9 s to ~0.06 s (~30×) on the warm
   run, with zero user action between the cold and warm runs — including when the program

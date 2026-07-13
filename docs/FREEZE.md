@@ -421,3 +421,61 @@ compile cache).
 | `cppyy_kit/autopch.py` | `setup()`, `register_pch_headers()`, `.pth` self-install/uninstall, `generate_pch()`, at-exit scheduler, `prune()`, the `python -m` CLI |
 | `cppyy_kit/autopch_build.py` | detached worker that builds a PCH from a manifest, prunes, and releases the lock |
 | `cppyy_kit/tests/test_autopch.py` | hermetic tests (keys/invalidation, override, `.pth` install/uninstall/opt-out/crash-proofing, manifest union, scheduling, pruning, cross-process pickup) + an opt-in real-build test |
+
+## 9. Debugging: turning the caches off
+
+cppyy_kit keeps **two independent caches**, and both are pure optimisations you can
+switch off when a run misbehaves and you want to rule caching out. They cover different
+costs and have different switches:
+
+| Cache | What it removes | Artifacts | Turn it off with |
+|---|---|---|---|
+| **auto-PCH** (§8) | the header *parse* at bringup | `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/*.pch` | `CPPYY_KIT_NO_AUTOPCH=1` (env, before launch) |
+| **compile cache** (§4, `cppdef_cached`) | cppyy's first-use call-wrapper *JIT* (kernel `.so`s, incl. `@cpp`) | `$CPPYY_KIT_CACHE_DIR` or `<cwd>/build/cppyy_kit_cache/` | `CPPYY_KIT_NO_CACHE=1` (env) · `cppyy_kit.disable_caching()` (runtime) · `cached=False` (per call) |
+
+Both are content-addressed and self-invalidating, so a *stale* artifact is normally a
+clean miss (rebuild), never a silent wrong answer. These switches are for when you
+suspect the cache anyway — a miscompiled kernel, a debugger that needs source, an
+edit that isn't taking.
+
+### Decision tree
+
+* **Bringup is slow, or a header change isn't taking, or a symbol resolves wrong at
+  parse time → suspect the PCH.** Launch with `CPPYY_KIT_NO_AUTOPCH=1` to run entirely
+  on the JIT path (the `.pth` and `setup()` both honour it — no PCH is bound or built).
+  If the JIT path is healthy, the baked PCH is stale: rebuild it by pruning
+  (`python -m cppyy_kit.autopch --prune`) or remove the startup hook entirely
+  (`python -m cppyy_kit.autopch --uninstall`). `--status` shows what is installed and
+  how many PCHs are cached. Because the PCH binds at interpreter start (via the `.pth`),
+  it can only be disabled by the **env var / CLI** — there is no runtime toggle (by the
+  time Python code runs, Cling has already bound it).
+
+* **A kernel gives wrong results, or a `@cpp`/`cppdef_cached` edit isn't taking, or you
+  need to step into the source → suspect a stale kernel `.so`.** Three bypasses, all
+  making `cppdef_cached` behave exactly like a plain in-memory `cppyy.cppdef(code)` (no
+  `.so` read, no `.so` write):
+  * **Per call:** `@cpp(cached=False)` or `cppyy_kit.cppdef_cached(..., cached=False)`
+    — narrow, leaves everything else cached.
+  * **Runtime, process-wide:** `cppyy_kit.disable_caching()` (undo with
+    `enable_caching()`), or the scoped `with cppyy_kit.caching_disabled(): ...`.
+  * **Whole process, before import:** set `CPPYY_KIT_NO_CACHE=1` in the environment.
+
+  If the run is then correct, the cached `.so` was stale — nuke it (below) so the next
+  cached run rebuilds it clean.
+
+### Where the artifacts live, and how to nuke them safely
+
+* **Compile cache.** `$CPPYY_KIT_CACHE_DIR` if set, else `<cwd>/build/cppyy_kit_cache/`,
+  under a version-tagged subdir. Everything there is regenerable and gitignored.
+  `cppyy_kit.clear_cache()` deletes every artifact in the active (version-tagged) dir
+  and returns the count; `cppyy_kit.cache_info()` lists what's there; `cache_dir()`
+  prints the path. Deleting the directory by hand is equally safe — a missing `.so` is
+  just a miss. (Already-loaded `.so`s stay mapped in the running process; the switches
+  above only affect *later* calls, so bounce the process to fully drop them.)
+* **auto-PCH.** `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/`. `python -m cppyy_kit.autopch
+  --prune` trims to the newest per environment (keeping any a live manifest references);
+  deleting the dir is safe (the next run falls back to JIT and reschedules a build).
+
+Both caches key on the cppyy/compiler versions and the source, so upgrading cppyy or
+editing the C++ is *already* a clean miss — reach for these switches only to force the
+issue while debugging.

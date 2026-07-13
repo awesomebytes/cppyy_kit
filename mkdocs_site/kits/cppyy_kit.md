@@ -23,7 +23,13 @@ documented across [The Patterns](../docs/COMMON_PATTERNS.md) and
   recipes. See [Freeze & Cache](../docs/FREEZE.md).
 - **Compile cache** — content-hash each `cppdef` and compile it **once** to a real
   `.so`, then `dlopen` it: the first-use wrapper JIT is paid once per machine rather
-  than once per process, *persistently*. Composes with the auto-PCH.
+  than once per process, *persistently*. Composes with the auto-PCH. Both caches have
+  **debugging off-switches** (`CPPYY_KIT_NO_AUTOPCH=1` for the PCH; `cached=False` /
+  `cppyy_kit.disable_caching()` / `CPPYY_KIT_NO_CACHE=1` for the compile cache) — see
+  [Freeze & Cache §9, "Debugging: turning the caches off"](../docs/FREEZE.md).
+- **True multi-core threads** — `@cpp(nogil=True)` releases the GIL around only the
+  compiled body, so plain Python threads each calling the kernel run in parallel on N
+  cores (`nogil(fn)` is the lower-level form for a pre-existing blocking C++ callable).
 
 ## Install
 
