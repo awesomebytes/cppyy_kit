@@ -9,13 +9,15 @@ Explicit close should not race an in-flight load or unload request; ordered
 
 from __future__ import annotations
 
+import os
 import threading
 from typing import Any
 
+from ament_index_python.packages import get_package_prefix
 import cppyy
 import cppyy_kit
 
-from rclcpp_kit.bringup_rclcpp import bringup_rclcpp, get_ros2_lib_path
+from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 
 
 _HELPERS_LOCK = threading.Lock()
@@ -33,7 +35,7 @@ def _install_helpers() -> None:
         bringup_rclcpp()
         cppyy_kit.load_libraries(
             ["libcomponent_manager.so"],
-            [get_ros2_lib_path()],
+            [os.path.join(get_package_prefix("rclcpp_components"), "lib")],
         )
         cppyy.include("rclcpp_components/component_manager.hpp")
         cppyy.cppdef(
