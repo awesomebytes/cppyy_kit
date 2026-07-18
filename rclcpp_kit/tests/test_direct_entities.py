@@ -99,3 +99,77 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
     assert received[0] is not borrowed
     assert direct.owning_cpp_copy_count == 1
     assert direct.creation_route == "prebuilt_subscription_trampoline"
+
+
+def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
+    callback = lambda: None
+    calls = []
+
+    class Entity:
+        __cpp_name__ = "rclcpp::WallTimer<std::function<void ()> >"
+
+        def __init__(self):
+            self.canceled = False
+            self.resets = 0
+
+        def cancel(self):
+            self.canceled = True
+
+        def reset(self):
+            self.canceled = False
+            self.resets += 1
+
+        def is_canceled(self):
+            return self.canceled
+
+    entity = Entity()
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == "void()"
+            return lambda selected: calls.append(("callback", selected)) or selected
+
+    class Node:
+        def create_wall_timer(self, duration, cpp_callback):
+            calls.append(("factory", duration, cpp_callback))
+            return entity
+
+    monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(direct_entities, "_wall_duration", lambda value: ("ns", value))
+    timer = direct_entities.create_wall_timer(Node(), 17, callback)
+    assert calls == [
+        ("callback", callback),
+        ("factory", ("ns", 17), callback),
+    ]
+    assert timer.callback is callback
+    assert timer.cpp_callback is callback
+    assert timer.entity is entity
+    assert timer.timer_period_ns == 17
+    assert "rclcpp::WallTimer" in timer.__cpp_name__
+    assert timer.creation_route == "rclcpp_wall_timer"
+
+    timer.cancel()
+    assert timer.is_canceled()
+    timer.reset()
+    assert not timer.is_canceled()
+    assert entity.resets == 1
+    assert timer.destroy()
+    assert not timer.destroy()
+    assert timer.entity is None
+    assert timer.callback is None
+    assert timer.cpp_callback is None
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.reset()
+
+
+def test_wall_timer_rejects_invalid_input_before_native_factory(monkeypatch):
+    calls = []
+    node = type("Node", (), {
+        "create_wall_timer": lambda *args: calls.append(args),
+    })()
+    for period in (0, -1, True, 1.5, "1"):
+        with pytest.raises(TypeError, match="positive integer"):
+            direct_entities.create_wall_timer(node, period, lambda: None)
+    with pytest.raises(TypeError, match="callable"):
+        direct_entities.create_wall_timer(node, 1, object())
+    assert calls == []
