@@ -67,7 +67,11 @@ def _index():
         "subdir": "linux-aarch64",
         "build": "py312_7",
         "build_number": 7,
-        "depends": ["python >=3.12,<3.13", "cppyy ==3.5.0"],
+        "depends": [
+            "python >=3.12,<3.13",
+            "python 3.12.* *_cpython",
+            "cppyy ==3.5.0",
+        ],
         "license": "BSD-3-Clause",
     }
 
@@ -123,7 +127,7 @@ def test_inventory_describes_artifact_and_declared_dependency_graph(tmp_path):
     assert all("Unresolved declared conda requirement" in package["comment"]
                for package in dependencies)
     assert len([relationship for relationship in document["relationships"]
-                if relationship["relationshipType"] == "DEPENDS_ON"]) == 2
+                if relationship["relationshipType"] == "DEPENDS_ON"]) == 3
 
 
 @pytest.mark.parametrize(
@@ -170,4 +174,4 @@ def test_inventory_validator_rejects_incomplete_relationship_graph(tmp_path):
     document["relationships"].pop()
 
     with pytest.raises(MODULE.InventoryError, match="relationship graph"):
-        MODULE.validate_inventory(document, expected_dependency_count=2)
+        MODULE.validate_inventory(document, expected_dependency_count=3)

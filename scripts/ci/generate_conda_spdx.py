@@ -224,7 +224,7 @@ def _validate_index(
     expected_dependency_names: Iterable[str],
     exact_dependency_names: bool,
     expected_dependency_declarations: Iterable[str],
-) -> tuple[list[str], dict[str, str]]:
+) -> tuple[list[str], dict[str, list[str]]]:
     for key in ("name", "version", "subdir", "build"):
         _require(isinstance(index.get(key), str) and index[key],
                  f"package index has no valid {key}")
@@ -245,12 +245,13 @@ def _validate_index(
              f"artifact filename mismatch: expected {expected_filename}")
     dependencies = index.get("depends", [])
     _require(isinstance(dependencies, list), "package dependencies must be a JSON array")
-    identities: dict[str, str] = {}
+    identities: dict[str, list[str]] = {}
     for declaration in dependencies:
         identity = _dependency_identity(declaration)
-        _require(identity not in identities,
-                 f"duplicate dependency identity in package index: {identity}")
-        identities[identity] = declaration
+        declarations = identities.setdefault(identity, [])
+        _require(declaration not in declarations,
+                 f"duplicate dependency declaration in package index: {declaration}")
+        declarations.append(declaration)
 
     expected_names = list(expected_dependency_names)
     for name in expected_names:
@@ -264,9 +265,9 @@ def _validate_index(
                  f"observed {sorted(identities)}")
     for declaration in expected_dependency_declarations:
         identity = _dependency_identity(declaration)
-        _require(identities.get(identity) == declaration,
+        _require(declaration in identities.get(identity, []),
                  "dependency declaration mismatch: "
-                 f"expected {declaration!r}, observed {identities.get(identity)!r}")
+                 f"expected {declaration!r}, observed {identities.get(identity, [])!r}")
     return dependencies, identities
 
 
@@ -365,7 +366,7 @@ def build_inventory(
             "spdxElementId": root_id,
             "relationshipType": "DEPENDS_ON",
             "relatedSpdxElement": dependency_id,
-            "comment": f"Declared conda requirement: {identities[name]}",
+            "comment": f"Declared conda requirement: {declaration}",
         })
     document = {
         "spdxVersion": SPDX_VERSION,
