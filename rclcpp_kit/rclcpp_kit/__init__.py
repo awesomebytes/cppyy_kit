@@ -65,6 +65,11 @@ from rclcpp_kit.type_adapter import (
     register_type_adapter,
     type_adapter_capabilities,
 )
+from rclcpp_kit.native_service import (
+    NativeService,
+    NativeServiceStats,
+    create_native_service,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -96,4 +101,7 @@ __all__ = [
     "get_type_adapter",
     "register_type_adapter",
     "type_adapter_capabilities",
+    "NativeService",
+    "NativeServiceStats",
+    "create_native_service",
 ]

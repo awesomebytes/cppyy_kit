@@ -17,6 +17,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, and explicit every/latest/bounded-batch policies |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
+| `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
 
 Native lowering stays inside the managed ownership boundary:
 

@@ -288,6 +288,25 @@ class NativeSession:
             **options,
         )
 
+    def create_native_service(
+        self,
+        node: Any,
+        service_type: Any,
+        service_name: str,
+        callback_body: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned editable C++ service callback."""
+        from rclcpp_kit.native_service import create_native_service
+        return create_native_service(
+            self,
+            node,
+            service_type,
+            service_name,
+            callback_body,
+            **options,
+        )
+
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
         """Cancel executors, release tracked objects, and shut down the context."""
         if self._closed:
