@@ -103,7 +103,16 @@ jobs:
 
       - name: Test rclcpp_kit
         working-directory: ci/rclcpp_kit
+        env:
+          CPPYY_KIT_NATIVE_SAFETY_EVIDENCE: ${{ github.workspace }}/build/test-results/native-safety-${{ matrix.platform }}.json
         run: pixi run test-rclcpp-ci
+
+      - name: Prove native glue with sanitizers
+        working-directory: ci/rclcpp_kit
+        run: >-
+          pixi run bash ../../scripts/ci/prove_native_safety_sanitizers.sh
+          ../../build/native-safety-sanitizers-${{ matrix.platform }}
+          ../../build/test-results
 
       - name: Build and prove installed core packages
         if: ${{ always() && matrix.package_proof }}

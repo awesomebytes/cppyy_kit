@@ -47,6 +47,7 @@ from rclcpp_kit import subscription_cache
 from rclcpp_kit import borrowed_publish
 from rclcpp_kit.native import (
     NativeCapabilities,
+    NativeExecutorThread,
     NativeSession,
     native,
     publisher_capabilities,
@@ -88,6 +89,7 @@ __all__ = [
     "subscription_cache",
     "borrowed_publish",
     "NativeCapabilities",
+    "NativeExecutorThread",
     "NativeSession",
     "native",
     "publisher_capabilities",

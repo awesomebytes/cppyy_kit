@@ -7,6 +7,7 @@ from rclcpp_kit.native import NativeCapabilities, NativeSession, native
 def test_capabilities_are_structured_and_conservative():
     report = NativeCapabilities().to_dict()
     assert report["managed_context"] is True
+    assert report["managed_executor_thread"] is True
     assert report["intra_process"] is True
     assert report["loaned_messages"] == "publisher_runtime_query"
     assert report["raw_rclcpp"] is True
@@ -18,6 +19,7 @@ def test_native_factory_is_lazy():
     assert session.closed is False
     assert session.nodes == ()
     assert session.executors == ()
+    assert session.executor_threads == ()
     assert session.resources == ()
 
 

@@ -18,8 +18,17 @@ pixi run test-cppyy
 pixi run test-rclcpp
 ```
 
-CI additionally publishes JUnit XML, native runtime metadata, and the resolved
-package list as the `rclcpp-kit-<platform>-test-evidence` artifact.
+CI additionally publishes JUnit XML, native runtime metadata, native ownership
+stress results, sanitizer proof, and the resolved package list as the
+`rclcpp-kit-<platform>-test-evidence` artifact. The sanitizer harness first
+proves that ASan, UBSan, and LSan detect deliberate failures. It then compiles
+the callback, pipeline, and service cache libraries with ASan and UBSan and
+loads those exact libraries for the stress run.
+
+LeakSanitizer is deliberately not enabled for the full Python, Cling, ROS, and
+DDS process because third-party process-lifetime allocations would make that
+result ambiguous. The evidence says `native_glue_lsan=NOT RUN`; only LSan's
+standalone failure probe is claimed.
 
 ## Package status
 

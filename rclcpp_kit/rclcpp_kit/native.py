@@ -31,9 +31,12 @@ def _install_helpers() -> None:
             return
         cppyy.cppdef(
             r"""
+            #include <atomic>
             #include <chrono>
+            #include <cstdint>
             #include <memory>
             #include <string>
+            #include <thread>
             #include <vector>
             #include <rclcpp/rclcpp.hpp>
 
@@ -74,6 +77,85 @@ def _install_helpers() -> None:
                 rclcpp::executors::MultiThreadedExecutor>(
                   options, threads, false, std::chrono::nanoseconds(-1));
             }
+
+            class ExecutorThread {
+            public:
+              explicit ExecutorThread(
+                  std::shared_ptr<rclcpp::Executor> executor)
+              : executor_(std::move(executor)),
+                thread_([this]() {
+                  running_.store(true, std::memory_order_release);
+                  try {
+                    executor_->spin();
+                  } catch (...) {
+                    exceptions_.fetch_add(1, std::memory_order_relaxed);
+                  }
+                  running_.store(false, std::memory_order_release);
+                })
+              {}
+
+              ExecutorThread(const ExecutorThread&) = delete;
+              ExecutorThread& operator=(const ExecutorThread&) = delete;
+
+              ~ExecutorThread() noexcept
+              {
+                close();
+              }
+
+              bool running() const
+              {
+                return running_.load(std::memory_order_acquire);
+              }
+
+              bool closed() const
+              {
+                return closed_.load(std::memory_order_acquire);
+              }
+
+              uint64_t exceptions() const
+              {
+                return exceptions_.load(std::memory_order_relaxed);
+              }
+
+              void close() noexcept
+              {
+                if (closed_.exchange(true, std::memory_order_acq_rel)) {
+                  return;
+                }
+                try {
+                  executor_->cancel();
+                } catch (...) {
+                }
+                if (thread_.joinable()) {
+                  if (thread_.get_id() == std::this_thread::get_id()) {
+                    thread_.detach();
+                  } else {
+                    thread_.join();
+                  }
+                }
+              }
+
+            private:
+              std::shared_ptr<rclcpp::Executor> executor_;
+              std::atomic<bool> running_{false};
+              std::atomic<bool> closed_{false};
+              std::atomic<uint64_t> exceptions_{0};
+              std::thread thread_;
+            };
+
+            std::shared_ptr<ExecutorThread> start_executor(
+                const std::shared_ptr<
+                  rclcpp::executors::SingleThreadedExecutor>& executor)
+            {
+              return std::make_shared<ExecutorThread>(executor);
+            }
+
+            std::shared_ptr<ExecutorThread> start_executor(
+                const std::shared_ptr<
+                  rclcpp::executors::MultiThreadedExecutor>& executor)
+            {
+              return std::make_shared<ExecutorThread>(executor);
+            }
             }  // namespace rclcpp_kit_native
             """
         )
@@ -87,6 +169,7 @@ class NativeCapabilities:
     managed_context: bool = True
     single_threaded_executor: bool = True
     multi_threaded_executor: bool = True
+    managed_executor_thread: bool = True
     callback_groups: bool = True
     intra_process: bool = True
     loaned_messages: str = "publisher_runtime_query"
@@ -117,6 +200,28 @@ def publisher_capabilities(publisher: Any) -> dict[str, Any]:
     }
 
 
+class NativeExecutorThread:
+    """Own a C++ thread spinning an executor without a Python callback frame."""
+
+    def __init__(self, implementation: Any):
+        self._implementation = implementation
+
+    @property
+    def running(self) -> bool:
+        return bool(self._implementation.running())
+
+    @property
+    def closed(self) -> bool:
+        return bool(self._implementation.closed())
+
+    @property
+    def exceptions(self) -> int:
+        return int(self._implementation.exceptions())
+
+    def close(self) -> None:
+        self._implementation.close()
+
+
 class NativeSession:
     """Own a custom ``rclcpp`` context and the objects created through it.
 
@@ -134,6 +239,7 @@ class NativeSession:
         self._context = None
         self._nodes: list[Any] = []
         self._executors: list[Any] = []
+        self._executor_threads: list[NativeExecutorThread] = []
         self._resources: list[Any] = []
         self._closed = False
 
@@ -162,6 +268,10 @@ class NativeSession:
     @property
     def executors(self) -> tuple[Any, ...]:
         return tuple(self._executors)
+
+    @property
+    def executor_threads(self) -> tuple[NativeExecutorThread, ...]:
+        return tuple(self._executor_threads)
 
     @property
     def resources(self) -> tuple[Any, ...]:
@@ -225,6 +335,16 @@ class NativeSession:
             executor = helpers.make_multi_threaded_executor(self._context, threads)
         self._executors.append(executor)
         return executor
+
+    def start_executor(self, executor: Any) -> NativeExecutorThread:
+        """Spin a session-owned executor on a managed native C++ thread."""
+        self._ensure_open()
+        if not any(executor is candidate for candidate in self._executors):
+            raise ValueError("executor is not owned by this NativeSession")
+        implementation = cppyy.gbl.rclcpp_kit_native.start_executor(executor)
+        thread = NativeExecutorThread(implementation)
+        self._executor_threads.append(thread)
+        return thread
 
     def create_callback_group(
         self,
@@ -308,12 +428,17 @@ class NativeSession:
         )
 
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
-        """Cancel executors, release tracked objects, and shut down the context."""
+        """Stop native threads, release tracked objects, and shut down context."""
         if self._closed:
             return
         for executor in reversed(self._executors):
             try:
                 executor.cancel()
+            except Exception:
+                pass
+        for thread in reversed(self._executor_threads):
+            try:
+                thread.close()
             except Exception:
                 pass
         for resource in reversed(self._resources):
@@ -322,6 +447,7 @@ class NativeSession:
             except Exception:
                 pass
         self._resources.clear()
+        self._executor_threads.clear()
         self._executors.clear()
         self._nodes.clear()
         if self._context is not None:
@@ -341,6 +467,7 @@ def native(arguments: Optional[Iterable[str]] = None) -> NativeSession:
 
 __all__ = [
     "NativeCapabilities",
+    "NativeExecutorThread",
     "NativeSession",
     "native",
     "publisher_capabilities",
