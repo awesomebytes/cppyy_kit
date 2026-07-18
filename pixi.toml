@@ -417,13 +417,16 @@ test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
 rattler-build = ">=0.68,<0.69"
 
 [feature.pkg.tasks]
-# Build all 10 packages in dependency order into ./output, chaining the local
+# Build all 11 packages in dependency order into ./output, chaining the local
 # output as a file:// channel so intra-suite deps resolve for each recipe's test.
 pkg-build-all = "bash recipe/build_all.sh"
+# Focused package stack used by PR CI and downstream local-channel proofs.
+pkg-build-rclcpp = "bash recipe/build_rclcpp.sh"
 # Fresh-env artifact proof per package (throwaway pixi workspace, package from
 # the local channel alone): import smoke (+ cppdef for cppyy-kit, bringup for
 # rclcpp-kit). Run after pkg-build-all.
 pkg-prove = "bash recipe/prove_all.sh"
+pkg-prove-rclcpp = "bash recipe/prove_rclcpp.sh"
 
 # --- docs: mkdocs-material documentation site --------------------------
 # Standalone (no-default-feature): the docs build renders Markdown only, no

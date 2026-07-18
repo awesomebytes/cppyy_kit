@@ -71,6 +71,10 @@ keeps `.pixi/`, `build/`, `output/` out of the copy.
 pixi run -e pkg pkg-build-all   # build 11 in dep order into ./output, chaining
                                 # the local output as a file:// channel
 pixi run -e pkg pkg-prove       # fresh-env artifact proof per package
+
+# Focused core stack used on pull requests and by downstream package proofs:
+pixi run -e pkg pkg-build-rclcpp
+pixi run -e pkg pkg-prove-rclcpp
 ```
 
 Dependency build order: `cppyy-kit → rclcpp-kit → cv-kit → {bt,ompl,pcl,nav2,
@@ -80,7 +84,8 @@ nothing downstream of it. `./output` is gitignored.
 
 ## Version
 
-The suite ships lockstep at one version. It lives per-recipe (`context.version`)
+The suite ships lockstep at one version. It lives in root workspace metadata and
+per-recipe (`context.version`)
 plus the `cppyy-kit ==X` / `ros-jazzy-*-kit ==X` pins in dependent recipes —
 rattler-build has no clean cross-recipe single-source for per-dir recipes without
 collapsing to a single multi-output recipe (which the per-package layout here

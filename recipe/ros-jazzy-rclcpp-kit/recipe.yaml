@@ -37,7 +37,7 @@ tests:
   - script:
       # Fresh-env import smoke (rattler-build resolves run deps in an isolated
       # test env). The richer proof runs in the driver (recipe/prove_all.sh).
-      - python -c "import rclcpp_kit; print('rclcpp_kit', rclcpp_kit.__file__)"
+      - python -c "import importlib; from rclcpp_kit import borrowed_publish; native = importlib.import_module('rclcpp_kit.native'); print('borrowed_publish', borrowed_publish.__file__, 'native', native.__file__)"
 
 about:
   homepage: https://github.com/awesomebytes/cppyy_kit

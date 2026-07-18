@@ -57,9 +57,11 @@ jobs:
           - runner: ubuntu-24.04
             platform: linux-64
             machine: x86_64
+            package_proof: true
           - runner: ubuntu-24.04-arm
             platform: linux-aarch64
             machine: aarch64
+            package_proof: false
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 180
     steps:
@@ -102,6 +104,29 @@ jobs:
       - name: Test rclcpp_kit
         working-directory: ci/rclcpp_kit
         run: pixi run test-rclcpp-ci
+
+      - name: Build and prove installed core packages
+        if: ${{ always() && matrix.package_proof }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/test-results build/package-channel
+          pixi run -e pkg bash recipe/build_rclcpp.sh build/package-channel 2>&1 \
+            | tee build/test-results/package-build.log
+          find build/package-channel -name '*.conda' -print \
+            | sort | tee build/test-results/package-artifacts.txt
+          pixi run -e pkg bash recipe/prove_rclcpp.sh build/package-channel 2>&1 \
+            | tee build/test-results/package-proof.txt
+
+      - name: Record ARM64 package support boundary
+        if: ${{ always() && !matrix.package_proof }}
+        run: |
+          mkdir -p build/test-results
+          cat > build/test-results/package-proof.txt <<'EOF'
+          NOT RUN: native source tests build cppyy 3.5.0 from its upstream source
+          distribution. The package metadata correctly requires conda cppyy >=3.5,
+          for which no Python 3.12 linux-aarch64 package currently exists. Source
+          success does not claim that these conda artifacts install on ARM64.
+          EOF
 
       - name: Upload test evidence
         if: always()
