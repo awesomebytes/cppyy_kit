@@ -9,14 +9,13 @@ import os
 from typing import Any
 
 import cppyy
-import cppyy_kit
 
 from rclcpp_kit.bringup_rclcpp import (
     convert_python_msg_to_cpp,
     get_ros2_lib_path,
     ros2_include_paths,
 )
-from rclcpp_kit.native_service import _service_spec
+from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 
 
 def _cache_dir() -> str:
@@ -405,15 +404,18 @@ private:
         "signature": signature,
         "group_signature": group_signature,
     }
-    compile_result = cppyy_kit.cppdef_cached(
-        code,
-        decls=declarations,
-        name="rclcpp_native_client_%s" % source_id,
-        include_paths=tuple(sorted(ros2_include_paths())),
-        library_paths=(get_ros2_lib_path(),),
-        libraries=("rclcpp", "%s__rosidl_typesupport_cpp" % package),
-        directory=_cache_dir(),
-    )
+    compile_options = {
+        "decls": declarations,
+        "name": "rclcpp_native_client_%s" % source_id,
+        "include_paths": tuple(sorted(ros2_include_paths())),
+        "library_paths": (get_ros2_lib_path(),),
+        "libraries": ("rclcpp", "%s__rosidl_typesupport_cpp" % package),
+        "directory": _cache_dir(),
+    }
+    # The declaration-only load path lets native services and clients coexist
+    # without asking Cling to instantiate multiple std::call_once-heavy rclcpp
+    # bodies in the same interpreter.
+    compile_result = _compile_native_glue(code, compile_options)
     namespace = cppyy.gbl.rclcpp_kit_native_client
     if callback_group is None:
         implementation_object = getattr(namespace, factory)(

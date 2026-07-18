@@ -117,6 +117,21 @@ def test_corrupt_cache_recovers(tmp_path):
     assert int(getattr(cppyy.gbl, ns).triple(3)) == 9
 
 
+def test_missing_runtime_compiler_falls_back_to_cling(tmp_path, monkeypatch):
+    ns = _unique()
+    code, decls = _snippet(ns)
+    d = str(tmp_path)
+    monkeypatch.setattr(
+        _compile, "compiler", lambda: "/definitely/missing/cppyy-kit-cxx")
+
+    result = cppyy_kit.cppdef_cached(
+        code, decls=decls, name="missing_compiler", directory=d)
+
+    assert result == {"cached": False, "reason": "build-failed", "so": None}
+    assert int(getattr(cppyy.gbl, ns).triple(6)) == 18
+    assert cache.cache_info(directory=d) == []
+
+
 def test_cache_info_and_clear(tmp_path):
     ns = _unique()
     code, decls = _snippet(ns)

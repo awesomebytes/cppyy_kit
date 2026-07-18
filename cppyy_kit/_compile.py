@@ -74,7 +74,15 @@ def compile_shared(sources, out_path, include_paths=(), library_paths=(),
     cmd += ["-l" + lib for lib in libraries]
     cmd += ["-Wl,-rpath," + p for p in library_paths]
     cmd += list(link_args)
-    proc = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+    except OSError as exc:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise CompileError(
+            "compiler invocation failed (%s):\n%s" % (exc, " ".join(cmd))) from exc
     if proc.returncode != 0:
         try:
             os.unlink(tmp)

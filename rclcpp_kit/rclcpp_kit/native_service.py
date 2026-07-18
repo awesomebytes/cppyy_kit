@@ -11,6 +11,7 @@ from typing import Any, Iterable
 import cppyy
 import cppyy_kit
 from ament_index_python.packages import get_package_prefix
+from cppyy_kit.cache import artifact_paths
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 
@@ -36,6 +37,36 @@ def _cache_dir() -> str:
     base = os.environ.get("XDG_CACHE_HOME") or os.path.join(
         os.path.expanduser("~"), ".cache")
     return os.path.join(base, "cppyy_kit", "native-services")
+
+
+def _compile_native_glue(
+    code: str,
+    compile_options: dict[str, Any],
+) -> dict[str, Any]:
+    """Prefer declaration-only DSO loading while retaining the Cling fallback."""
+    so_path = artifact_paths(
+        code,
+        compile_options["decls"],
+        compile_options["name"],
+        compile_options["include_paths"],
+        compile_options["libraries"],
+        directory=compile_options["directory"],
+    )[0]
+    was_cached = os.path.exists(so_path)
+    try:
+        cppyy_kit.prebuild(code, **compile_options)
+    except cppyy_kit._compile.CompileError:
+        # This preserves an individual adapter on a compilerless runtime.
+        # Declaration-only coexistence still needs a compiler or a shipped warm
+        # artifact. cppdef_cached reports the direct-compile failure in its
+        # result and diagnostic after emitting the definition through Cling.
+        return cppyy_kit.cppdef_cached(code, **compile_options)
+
+    result = cppyy_kit.cppdef_cached(code, **compile_options)
+    if not was_cached:
+        result = dict(result)
+        result.update(cached=False, reason="prebuilt-miss")
+    return result
 
 
 @dataclass(frozen=True)
@@ -171,15 +202,18 @@ private:
         "body": body,
         "signature": signature,
     }
-    cppyy_kit.cppdef_cached(
-        code,
-        decls=declarations,
-        name="rclcpp_native_service_%s" % source_id,
-        include_paths=tuple(sorted(ros2_include_paths())),
-        library_paths=(get_ros2_lib_path(),),
-        libraries=("rclcpp", "%s__rosidl_typesupport_cpp" % package),
-        directory=_cache_dir(),
-    )
+    compile_options = {
+        "decls": declarations,
+        "name": "rclcpp_native_service_%s" % source_id,
+        "include_paths": tuple(sorted(ros2_include_paths())),
+        "library_paths": (get_ros2_lib_path(),),
+        "libraries": ("rclcpp", "%s__rosidl_typesupport_cpp" % package),
+        "directory": _cache_dir(),
+    }
+    # Keep full rclcpp template bodies out of Cling. In particular, loading a
+    # service and client in one cold interpreter otherwise leaves Cling trying
+    # to resolve libstdc++'s std::call_once emulated-TLS implementation.
+    _compile_native_glue(code, compile_options)
     implementation_object = getattr(
         cppyy.gbl.rclcpp_kit_native_service, factory)(node, str(service_name))
     result = NativeService(implementation_object, source_id)
