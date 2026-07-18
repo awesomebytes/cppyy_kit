@@ -25,6 +25,7 @@ from rclcpp_kit.bringup_rclcpp import (
 
 
 _VALID_POLICIES = ("every", "latest", "batch")
+_VALID_OUTPUT_MEMORY = ("fresh", "reuse", "loaned")
 
 
 def _cache_dir() -> str:
@@ -67,16 +68,31 @@ class NativeStats:
     coalesced: int
     exceptions: int
     python_boundary_crossings: int
+    output_instances: int
+    middleware_loaned_messages: int
+    allocator_fallbacks: int
+    compile_cache_hits: int
+    compile_cache_misses: int
 
     def to_dict(self) -> dict[str, int]:
         return asdict(self)
 
 
 class _NativeResource:
-    def __init__(self, implementation: Any, *, source_id: str, policy: str):
+    def __init__(
+        self,
+        implementation: Any,
+        *,
+        source_id: str,
+        policy: str,
+        compile_result: dict[str, Any],
+        output_memory: str = "not_applicable",
+    ):
         self._implementation = implementation
         self.source_id = source_id
         self.policy = policy
+        self.output_memory = output_memory
+        self.compile_result = dict(compile_result)
         self._closed = False
 
     @property
@@ -93,6 +109,11 @@ class _NativeResource:
             coalesced=int(impl.coalesced()),
             exceptions=int(impl.exceptions()),
             python_boundary_crossings=int(impl.python_boundary_crossings()),
+            output_instances=int(impl.output_instances()),
+            middleware_loaned_messages=int(impl.middleware_loaned_messages()),
+            allocator_fallbacks=int(impl.allocator_fallbacks()),
+            compile_cache_hits=int(bool(self.compile_result.get("cached"))),
+            compile_cache_misses=int(not bool(self.compile_result.get("cached"))),
         )
 
     def close(self) -> None:
@@ -126,6 +147,9 @@ public:
   virtual uint64_t coalesced() const = 0;
   virtual uint64_t exceptions() const = 0;
   virtual uint64_t python_boundary_crossings() const = 0;%(value_decl)s
+  virtual uint64_t output_instances() const = 0;
+  virtual uint64_t middleware_loaned_messages() const = 0;
+  virtual uint64_t allocator_fallbacks() const = 0;
   virtual void close() = 0;
 };
 """ % {"name": name, "value_decl": value_decl}
@@ -236,6 +260,9 @@ public:
   uint64_t coalesced() const override { return 0; }
   uint64_t exceptions() const override { return exceptions_.load(); }
   uint64_t python_boundary_crossings() const override { return 0; }
+  uint64_t output_instances() const override { return 0; }
+  uint64_t middleware_loaned_messages() const override { return 0; }
+  uint64_t allocator_fallbacks() const override { return 0; }
   int64_t value() const override { return value_.load(); }
   void close() override { subscription_.reset(); }
 
@@ -267,7 +294,7 @@ std::shared_ptr<%(interface)s> %(factory)s(
         "#include <atomic>\n#include <cstdint>\n",
         1,
     )
-    _compile(
+    compile_result = _compile(
         source_id=source_id,
         code=code,
         declarations=declarations,
@@ -275,7 +302,12 @@ std::shared_ptr<%(interface)s> %(factory)s(
     )
     impl = getattr(cppyy.gbl.rclcpp_kit_native_pipeline, factory)(
         node, str(topic), int(qos_depth))
-    result = NativeCallback(impl, source_id=source_id, policy="every")
+    result = NativeCallback(
+        impl,
+        source_id=source_id,
+        policy="every",
+        compile_result=compile_result,
+    )
     return owner.register_resource(result)
 
 
@@ -343,6 +375,63 @@ def _policy_members(policy: str, cpp_type: str) -> tuple[str, str, str]:
     return constructor, callback, members
 
 
+def _output_memory_source(policy: str, out_type: str) -> tuple[str, str]:
+    """Return process and private-member source for one explicit output policy."""
+    if policy == "fresh":
+        process = """
+    %(out_type)s output{};
+    output_instances_.fetch_add(1, std::memory_order_relaxed);
+    bool publish = true;
+    transform(*input, output, publish);
+    processed_.fetch_add(1, std::memory_order_relaxed);
+    if (publish) {
+      publisher_->publish(std::move(output));
+      published_.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      dropped_.fetch_add(1, std::memory_order_relaxed);
+    }
+""" % {"out_type": out_type}
+        return process, ""
+    if policy == "reuse":
+        process = """
+    std::lock_guard<std::mutex> output_lock(output_mutex_);
+    bool publish = true;
+    transform(*input, reused_output_, publish);
+    processed_.fetch_add(1, std::memory_order_relaxed);
+    if (publish) {
+      publisher_->publish(reused_output_);
+      published_.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      dropped_.fetch_add(1, std::memory_order_relaxed);
+    }
+"""
+        members = """
+  %(out_type)s reused_output_{};
+  std::mutex output_mutex_;
+""" % {"out_type": out_type}
+        return process, members
+    process = """
+    const bool middleware_loan = publisher_->can_loan_messages();
+    auto loaned_output = publisher_->borrow_loaned_message();
+    output_instances_.fetch_add(1, std::memory_order_relaxed);
+    if (middleware_loan) {
+      middleware_loaned_messages_.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      allocator_fallbacks_.fetch_add(1, std::memory_order_relaxed);
+    }
+    bool publish = true;
+    transform(*input, loaned_output.get(), publish);
+    processed_.fetch_add(1, std::memory_order_relaxed);
+    if (publish) {
+      publisher_->publish(std::move(loaned_output));
+      published_.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      dropped_.fetch_add(1, std::memory_order_relaxed);
+    }
+"""
+    return process, ""
+
+
 def create_fused_pipeline(
     owner: Any,
     node: Any,
@@ -356,13 +445,17 @@ def create_fused_pipeline(
     delivery: str = "every",
     batch_size: int = 8,
     queue_capacity: int = 64,
+    output_memory: str = "fresh",
     includes: Iterable[str] = (),
 ) -> FusedPipeline:
     """Compile an editable subscription-transform-publisher C++ object.
 
     The body sees ``const In& input``, mutable ``Out& output``, and mutable
     ``bool& publish``. ``latest`` coalesces pending input; ``batch`` uses a bounded
-    drop-newest queue and processes up to ``batch_size`` items per wakeup.
+    drop-newest queue and processes up to ``batch_size`` items per wakeup. Output
+    memory is explicit: ``fresh`` preserves current behavior, ``reuse`` serializes
+    access to one persistent output which the transform must fully overwrite, and
+    ``loaned`` uses rclcpp loan RAII with its allocator fallback.
     """
     body = _validate_source(transform_body, "transform_body")
     policy = str(delivery).lower()
@@ -370,6 +463,10 @@ def create_fused_pipeline(
         raise ValueError("delivery must be one of %s" % ", ".join(_VALID_POLICIES))
     if batch_size <= 0 or queue_capacity <= 0:
         raise ValueError("batch_size and queue_capacity must be positive")
+    memory_policy = str(output_memory).lower()
+    if memory_policy not in _VALID_OUTPUT_MEMORY:
+        raise ValueError(
+            "output_memory must be one of %s" % ", ".join(_VALID_OUTPUT_MEMORY))
     in_type, in_header, in_package = _message_spec(input_type)
     out_type, out_header, out_package = _message_spec(output_type)
     extra_headers = tuple(str(value) for value in includes)
@@ -381,6 +478,7 @@ def create_fused_pipeline(
         "output_header": out_header,
         "body": body,
         "delivery": policy,
+        "output_memory": memory_policy,
         "includes": extra_headers,
     }
     source_id = _digest(payload)
@@ -412,6 +510,8 @@ std::shared_ptr<%(interface)s> %(factory)s(
         "factory": factory,
     }
     constructor, callback, policy_members = _policy_members(policy, in_type)
+    output_process, output_members = _output_memory_source(memory_policy, out_type)
+    initial_output_instances = 1 if memory_policy == "reuse" else 0
     factory_prefix = "std::shared_ptr<%s> %s" % (interface, factory)
     code = declarations.split(factory_prefix, 1)[0] + """
 class %(implementation)s final : public %(interface)s {
@@ -442,17 +542,8 @@ public:
     %(body)s
   }
   void process_one(const std::shared_ptr<const %(in_type)s>& input) {
-    %(out_type)s output{};
-    bool publish = true;
     try {
-      transform(*input, output, publish);
-      processed_.fetch_add(1, std::memory_order_relaxed);
-      if (publish) {
-        publisher_->publish(std::move(output));
-        published_.fetch_add(1, std::memory_order_relaxed);
-      } else {
-        dropped_.fetch_add(1, std::memory_order_relaxed);
-      }
+      %(output_process)s
     } catch (...) {
       exceptions_.fetch_add(1, std::memory_order_relaxed);
     }
@@ -464,6 +555,11 @@ public:
   uint64_t coalesced() const override { return coalesced_.load(); }
   uint64_t exceptions() const override { return exceptions_.load(); }
   uint64_t python_boundary_crossings() const override { return 0; }
+  uint64_t output_instances() const override { return output_instances_.load(); }
+  uint64_t middleware_loaned_messages() const override {
+    return middleware_loaned_messages_.load();
+  }
+  uint64_t allocator_fallbacks() const override { return allocator_fallbacks_.load(); }
   void close() override {
     if (stopping_.exchange(true, std::memory_order_acq_rel)) { return; }
     subscription_.reset();
@@ -474,6 +570,7 @@ public:
 
 private:
   %(policy_members)s
+  %(output_members)s
   rclcpp::Publisher<%(out_type)s>::SharedPtr publisher_;
   rclcpp::Subscription<%(in_type)s>::SharedPtr subscription_;
   std::atomic<bool> stopping_{false};
@@ -488,6 +585,9 @@ private:
   std::atomic<uint64_t> dropped_{0};
   std::atomic<uint64_t> coalesced_{0};
   std::atomic<uint64_t> exceptions_{0};
+  std::atomic<uint64_t> output_instances_{%(initial_output_instances)s};
+  std::atomic<uint64_t> middleware_loaned_messages_{0};
+  std::atomic<uint64_t> allocator_fallbacks_{0};
 };
 
 std::shared_ptr<%(interface)s> %(factory)s(
@@ -511,6 +611,9 @@ std::shared_ptr<%(interface)s> %(factory)s(
         "constructor": constructor,
         "body": body,
         "policy_members": policy_members,
+        "output_process": output_process,
+        "output_members": output_members,
+        "initial_output_instances": initial_output_instances,
         "factory": factory,
     }
     code = code.replace(
@@ -519,7 +622,7 @@ std::shared_ptr<%(interface)s> %(factory)s(
         "#include <deque>\n#include <mutex>\n#include <thread>\n#include <vector>\n",
         1,
     )
-    _compile(
+    compile_result = _compile(
         source_id=source_id,
         code=code,
         declarations=declarations,
@@ -533,7 +636,13 @@ std::shared_ptr<%(interface)s> %(factory)s(
         int(batch_size),
         int(queue_capacity),
     )
-    result = FusedPipeline(impl, source_id=source_id, policy=policy)
+    result = FusedPipeline(
+        impl,
+        source_id=source_id,
+        policy=policy,
+        compile_result=compile_result,
+        output_memory=memory_policy,
+    )
     return owner.register_resource(result)
 
 

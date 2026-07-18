@@ -15,7 +15,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 |---|---|
 | `bringup_rclcpp` | `bringup_rclcpp()` (JIT `rclcpp/rclcpp.hpp` + load core libs), `add_ros2_include_paths()`, `shutdown_rclcpp()`, the rclpy-style `rclcpp.Node` adapters (create_publisher / create_subscription / create_timer / destroy_node), C++ message resolution + the shared recursive `convert_python_msg_to_cpp` |
 | `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
-| `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, and explicit every/latest/bounded-batch policies |
+| `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, explicit every/latest/bounded-batch delivery, and fresh/reused/loaned output memory |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 | `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
 
@@ -28,9 +28,19 @@ with rclcpp_kit.native(["pipeline"]) as ros:
         node, String, String, "input", "output",
         'output.data = input.data + ":native";',
         delivery="latest",
+        output_memory="loaned",
     )
-    assert relay.stats().python_boundary_crossings == 0
+    stats = relay.stats()
+    assert stats.python_boundary_crossings == 0
+    assert stats.middleware_loaned_messages + stats.allocator_fallbacks \
+        == stats.output_instances
 ```
+
+`output_memory="fresh"` constructs an output for every transform and is the
+default. `"reuse"` keeps one output behind a mutex, so the transform must fully
+overwrite it and concurrent transforms are serialized. `"loaned"` uses
+`rclcpp::LoanedMessage` RAII; the counters distinguish middleware loans from the
+publisher allocator fallback. A loan is not by itself a zero-copy guarantee.
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
 | `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |

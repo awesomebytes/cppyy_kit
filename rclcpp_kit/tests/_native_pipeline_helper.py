@@ -68,6 +68,67 @@ def main():
         assert stats.published == 1
         assert stats.exceptions == 0
         assert stats.python_boundary_crossings == 0
+        assert stats.output_instances == 1
+        assert stats.middleware_loaned_messages == 0
+        assert stats.allocator_fallbacks == 0
+        assert stats.compile_cache_hits + stats.compile_cache_misses == 1
+
+        memory_outputs = {"reuse": [], "loaned": []}
+        reuse = ros.create_fused_pipeline(
+            node,
+            String,
+            String,
+            "reuse_in",
+            "reuse_out",
+            'output.data = input.data + ":reuse";',
+            output_memory="reuse",
+        )
+        loaned = ros.create_fused_pipeline(
+            node,
+            String,
+            String,
+            "loaned_in",
+            "loaned_out",
+            'output.data = input.data + ":loaned";',
+            output_memory="loaned",
+        )
+        reuse_source = peer.create_publisher(String, "reuse_in", 10)
+        loaned_source = peer.create_publisher(String, "loaned_in", 10)
+        reuse_sink = peer.create_subscription(
+            String, "reuse_out",
+            lambda message: memory_outputs["reuse"].append(str(message.data)), 10)
+        loaned_sink = peer.create_subscription(
+            String, "loaned_out",
+            lambda message: memory_outputs["loaned"].append(str(message.data)), 10)
+        assert reuse_sink is not None and loaned_sink is not None
+        for _ in range(30):
+            executor.spin_some()
+        for value in ("first", "second"):
+            reuse_source.publish(String(data=value))
+            loaned_source.publish(String(data=value))
+        spin_until(
+            executor,
+            lambda: all(len(values) == 2 for values in memory_outputs.values()),
+        )
+        assert memory_outputs == {
+            "reuse": ["first:reuse", "second:reuse"],
+            "loaned": ["first:loaned", "second:loaned"],
+        }
+        reuse_stats = reuse.stats()
+        loaned_stats = loaned.stats()
+        assert reuse.output_memory == "reuse"
+        assert reuse_stats.output_instances == 1
+        assert reuse_stats.middleware_loaned_messages == 0
+        assert reuse_stats.allocator_fallbacks == 0
+        assert loaned.output_memory == "loaned"
+        assert loaned_stats.output_instances == 2
+        assert (
+            loaned_stats.middleware_loaned_messages
+            + loaned_stats.allocator_fallbacks
+        ) == 2
+        assert reuse_stats.compile_cache_hits + reuse_stats.compile_cache_misses == 1
+        assert loaned_stats.compile_cache_hits + loaned_stats.compile_cache_misses == 1
+        print("FUSED_OUTPUT_MEMORY_OK")
 
         latest = ros.create_fused_pipeline(
             node,
@@ -112,7 +173,8 @@ def main():
         print("FUSED_EVERY_OK")
         print("FUSED_POLICIES_OK")
 
-    assert callback.closed and pipeline.closed and latest.closed and batch.closed
+    assert all(resource.closed for resource in (
+        callback, pipeline, reuse, loaned, latest, batch))
     print("NATIVE_PIPELINE_TEARDOWN_OK")
 
 

@@ -17,6 +17,7 @@ from std_srvs.srv import SetBool
 TIMEOUT_S = 20.0
 RETAINED_COUNT = 48
 OVERFLOW_COUNT = 200
+MEMORY_COUNT = 8
 
 RETAINED_TRANSFORM = """
 std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -31,6 +32,9 @@ if (input.data == "explode") {
   throw std::runtime_error("expected transform failure");
 }
 output.data = input.data;
+"""
+MEMORY_TRANSFORM = """
+output.data = input.data + ":native";
 """
 CONCURRENT_CALLBACK = """
 static std::atomic<int> active{0};
@@ -123,6 +127,26 @@ def create_resources(ros, prefix):
             qos_depth=32,
             includes=("stdexcept",),
         ),
+        "reuse": ros.create_fused_pipeline(
+            pipeline_node,
+            String,
+            String,
+            prefix + "/reuse_in",
+            prefix + "/reuse_out",
+            MEMORY_TRANSFORM,
+            qos_depth=32,
+            output_memory="reuse",
+        ),
+        "loaned": ros.create_fused_pipeline(
+            pipeline_node,
+            String,
+            String,
+            prefix + "/loaned_in",
+            prefix + "/loaned_out",
+            MEMORY_TRANSFORM,
+            qos_depth=32,
+            output_memory="loaned",
+        ),
         "callback_a": ros.create_native_callback(
             callback_node_a,
             String,
@@ -177,10 +201,19 @@ def run_stress(evidence_path):
         native_executor.add_node(node)
 
     retained_replies = []
+    memory_replies = {"reuse": [], "loaned": []}
     retained_sub = peer.create_subscription(
         String, prefix + "/retained_out",
         lambda message: retained_replies.append(str(message.data)), 256)
     retained_pub = peer.create_publisher(String, prefix + "/retained_in", 256)
+    reuse_sub = peer.create_subscription(
+        String, prefix + "/reuse_out",
+        lambda message: memory_replies["reuse"].append(str(message.data)), 32)
+    loaned_sub = peer.create_subscription(
+        String, prefix + "/loaned_out",
+        lambda message: memory_replies["loaned"].append(str(message.data)), 32)
+    reuse_pub = peer.create_publisher(String, prefix + "/reuse_in", 32)
+    loaned_pub = peer.create_publisher(String, prefix + "/loaned_in", 32)
     overflow_pub = peer.create_publisher(String, prefix + "/overflow_in", 512)
     exception_pub = peer.create_publisher(String, prefix + "/exception_in", 32)
     callback_pub_a = peer.create_publisher(String, prefix + "/callback_a", 32)
@@ -196,12 +229,15 @@ def run_stress(evidence_path):
         "retained_input": {},
         "bounded_overflow": {},
         "exceptions": {},
+        "output_memory": {},
         "shutdown": {},
         "python_boundary_crossings": {},
     }
     try:
         publishers = (
             retained_pub,
+            reuse_pub,
+            loaned_pub,
             overflow_pub,
             exception_pub,
             callback_pub_a,
@@ -214,8 +250,11 @@ def run_stress(evidence_path):
         )
         wait_until(
             peer_executor,
-            lambda: peer.count_publishers(prefix + "/retained_out") >= 1,
-            "native output publisher discovery",
+            lambda: all(
+                peer.count_publishers(prefix + "/" + name + "_out") >= 1
+                for name in ("retained", "reuse", "loaned")
+            ),
+            "native output publishers discovery",
         )
         wait_until(
             peer_executor,
@@ -230,6 +269,13 @@ def run_stress(evidence_path):
             reused_message.data = value
             retained_expected.append(value)
             retained_pub.publish(reused_message)
+
+        memory_expected = ["memory-%02d:native" % index
+                           for index in range(MEMORY_COUNT)]
+        for index in range(MEMORY_COUNT):
+            message = String(data="memory-%02d" % index)
+            reuse_pub.publish(message)
+            loaned_pub.publish(message)
 
         exception_pub.publish(String(data="before"))
         exception_pub.publish(String(data="explode"))
@@ -300,6 +346,40 @@ def run_stress(evidence_path):
         assert retained_stats.exceptions == 0
         evidence["retained_input"] = retained_stats.to_dict()
 
+        wait_until(
+            peer_executor,
+            lambda: all(len(values) == MEMORY_COUNT
+                        for values in memory_replies.values()),
+            "explicit output-memory policy streams",
+        )
+        assert memory_replies == {
+            "reuse": memory_expected,
+            "loaned": memory_expected,
+        }
+        reuse_stats = resources["reuse"].stats()
+        loaned_stats = resources["loaned"].stats()
+        assert reuse_stats.received == MEMORY_COUNT
+        assert reuse_stats.processed == MEMORY_COUNT
+        assert reuse_stats.published == MEMORY_COUNT
+        assert reuse_stats.output_instances == 1
+        assert reuse_stats.middleware_loaned_messages == 0
+        assert reuse_stats.allocator_fallbacks == 0
+        assert loaned_stats.received == MEMORY_COUNT
+        assert loaned_stats.processed == MEMORY_COUNT
+        assert loaned_stats.published == MEMORY_COUNT
+        assert loaned_stats.output_instances == MEMORY_COUNT
+        assert (
+            loaned_stats.middleware_loaned_messages
+            + loaned_stats.allocator_fallbacks
+        ) == MEMORY_COUNT
+        for stats in (reuse_stats, loaned_stats):
+            assert stats.compile_cache_hits + stats.compile_cache_misses == 1
+        evidence["output_memory"] = {
+            "reuse": reuse_stats.to_dict(),
+            "loaned": loaned_stats.to_dict(),
+            "ordered_values": memory_expected,
+        }
+
         transform_stats = resources["transform_exception"].stats()
         assert transform_stats.received == 3
         assert transform_stats.processed == 2
@@ -355,6 +435,10 @@ def run_stress(evidence_path):
         peer.destroy_publisher(exception_pub)
         peer.destroy_publisher(overflow_pub)
         peer.destroy_publisher(retained_pub)
+        peer.destroy_publisher(loaned_pub)
+        peer.destroy_publisher(reuse_pub)
+        peer.destroy_subscription(loaned_sub)
+        peer.destroy_subscription(reuse_sub)
         peer.destroy_subscription(retained_sub)
         peer_executor.remove_node(peer)
         peer_executor.shutdown(timeout_sec=1.0)
@@ -370,6 +454,7 @@ def run_stress(evidence_path):
     print("NATIVE_EXCEPTION_CONTAINMENT_OK")
     print("NATIVE_MULTITHREADED_OK")
     print("NATIVE_PENDING_SHUTDOWN_OK")
+    print("NATIVE_OUTPUT_MEMORY_OK")
     print("NATIVE_SAFETY_STRESS_OK")
 
 

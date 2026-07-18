@@ -42,10 +42,26 @@ def test_bounded_policy_sizes_are_positive(batch_size, queue_capacity):
         )
 
 
+@pytest.mark.parametrize("output_memory", ["pool", "reuse ", "LOAN"])
+def test_output_memory_policy_is_explicit(output_memory):
+    with pytest.raises(ValueError, match="output_memory"):
+        create_fused_pipeline(
+            None,
+            None,
+            _Message,
+            _Message,
+            "in",
+            "out",
+            "output = input;",
+            output_memory=output_memory,
+        )
+
+
 def test_native_callback_and_fused_policies_have_no_python_hot_crossing():
     proc = run_helper("_native_pipeline_helper.py", timeout=180)
     assert proc.returncode == 0, format_output(proc)
     assert "NATIVE_CALLBACK_OK" in proc.stdout
     assert "FUSED_EVERY_OK" in proc.stdout
+    assert "FUSED_OUTPUT_MEMORY_OK" in proc.stdout
     assert "FUSED_POLICIES_OK" in proc.stdout
     assert "NATIVE_PIPELINE_TEARDOWN_OK" in proc.stdout

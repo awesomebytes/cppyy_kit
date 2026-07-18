@@ -9,4 +9,5 @@ def test_native_ownership_and_teardown_stress():
     assert "NATIVE_EXCEPTION_CONTAINMENT_OK" in proc.stdout
     assert "NATIVE_MULTITHREADED_OK" in proc.stdout
     assert "NATIVE_PENDING_SHUTDOWN_OK" in proc.stdout
+    assert "NATIVE_OUTPUT_MEMORY_OK" in proc.stdout
     assert "NATIVE_SAFETY_STRESS_OK" in proc.stdout
