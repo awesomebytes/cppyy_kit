@@ -9,7 +9,10 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_context"] is True
     assert report["managed_executor_thread"] is True
     assert report["callback_group_entity_options"] is True
+    assert report["managed_native_services"] is True
     assert report["managed_native_clients"] is True
+    assert report["native_service_client_coexistence"] == (
+        "runtime_compiler_or_warm_cache")
     assert report["managed_native_action_clients"] is True
     assert report["managed_lifecycle_nodes"] is True
     assert report["managed_component_containers"] is True

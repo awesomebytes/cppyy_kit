@@ -28,6 +28,7 @@ class ActionPeer
 {
 public:
   ActionPeer(const std::shared_ptr<rclcpp::Node> & node, const std::string & action_name)
+  : node_(node), feedback_topic_(action_name + "/_action/feedback")
   {
     server_ = rclcpp_action::create_server<Action>(
       node,
@@ -76,6 +77,15 @@ public:
 private:
   void execute(const std::shared_ptr<GoalHandle> & goal_handle)
   {
+    const auto discovery_deadline = std::chrono::steady_clock::now() + 5s;
+    while (node_->count_subscribers(feedback_topic_) == 0 &&
+      std::chrono::steady_clock::now() < discovery_deadline)
+    {
+      std::this_thread::sleep_for(1ms);
+    }
+    if (node_->count_subscribers(feedback_topic_) == 0) {
+      return;
+    }
     for (std::size_t index = 0; index < kFeedbackCount; ++index) {
       goal_handle->publish_feedback(std::make_shared<Action::Feedback>());
       std::this_thread::sleep_for(20ms);
@@ -96,6 +106,8 @@ private:
     completed_.store(true, std::memory_order_release);
   }
 
+  std::shared_ptr<rclcpp::Node> node_;
+  std::string feedback_topic_;
   rclcpp_action::Server<Action>::SharedPtr server_;
   std::thread worker_;
   std::atomic<bool> completed_{false};

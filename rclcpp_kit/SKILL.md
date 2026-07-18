@@ -213,6 +213,11 @@ service protocol rather than mirroring it.
 - **A managed client is asynchronous.** Its executor must spin before `ready(token)`
   can become true. `take(token)` is single-use and rejects an unready token; call
   `cancel(token)` when abandoning work so `rclcpp` pending state is released.
+- **Cold service/client coexistence needs a compiler or a warm artifact.** The kit
+  compiles glue first and loads declarations into Cling, avoiding conflicting
+  `std::call_once` TLS state. Without a runtime compiler, one adapter retains its
+  Cling fallback, but multiple cold glue facilities in one interpreter are not a
+  guaranteed combination.
 - **Raw lifecycle access transfers lifetime responsibility.** Retaining
   `lifecycle.raw_node` keeps its shared C++ node alive after adapter close. Drop raw
   owners before session teardown when deterministic destruction matters.

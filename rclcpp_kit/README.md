@@ -17,11 +17,11 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups and callback-group entity options, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, explicit every/latest/bounded-batch delivery, and fresh/reused/loaned output memory |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
-| `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
-| `native_client` | Cached typed C++ clients with C++-owned async futures, stock-server interoperability, cancellation/counters, raw-client access, and managed teardown |
-| `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, bounded feedback, raw handles, counters, and managed teardown |
+| `native_service` | Content-addressed editable C++ service callbacks with stock and AOT-client interoperability, counters, zero Python request crossings, and managed teardown |
+| `native_client` | Cached typed C++ clients with C++-owned async futures, stock and AOT-server interoperability, cancellation/counters, raw-client access, and managed teardown |
+| `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, stock and AOT-server interoperability, bounded feedback, raw handles, counters, and managed teardown |
 | `native_component` | Real `rclcpp_components::ComponentManager` containers on the managed context, stock composition services, AOT component loading, raw-manager access, and ordered teardown |
-| `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock-client lifecycle services, raw-node access, and ordered teardown |
+| `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock and AOT-client lifecycle services, raw-node access, and ordered teardown |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
 | `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |
@@ -64,6 +64,13 @@ raw_client = client.raw_client
 
 Calls submitted through the adapter must be taken or canceled through it. Session
 teardown cancels any calls still pending before releasing the client.
+
+Cold native service and client glue is compiled to a content-addressed DSO before
+its declarations are loaded into Cling. This permits both facilities to coexist in
+one interpreter without conflicting `std::call_once` TLS state. If no runtime
+compiler is available, an individual adapter retains the original Cling fallback,
+but cold same-interpreter multi-glue coexistence is not guaranteed; query
+`ros.capabilities.native_service_client_coexistence`.
 
 Managed action clients apply the same narrow rule to `rclcpp_action` template and
 future state. They expose opaque goal tokens plus the original typed client and

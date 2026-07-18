@@ -188,7 +188,9 @@ class NativeCapabilities:
     managed_executor_thread: bool = True
     callback_groups: bool = True
     callback_group_entity_options: bool = True
+    managed_native_services: bool = True
     managed_native_clients: bool = True
+    native_service_client_coexistence: str = "runtime_compiler_or_warm_cache"
     managed_native_action_clients: bool = True
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
