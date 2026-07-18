@@ -49,6 +49,7 @@ ros-jazzy-rmw-cyclonedds-cpp = "*"
 EOF
 
 cat >"$workdir/smoke.py" <<'PY'
+import importlib
 import os
 import time
 
@@ -62,6 +63,8 @@ from rclpy.publisher import Publisher
 from rclcpp_kit import borrowed_publish
 
 
+native_module = importlib.import_module("rclcpp_kit.native")
+native_pipeline_module = importlib.import_module("rclcpp_kit.native_pipeline")
 context = Context()
 context.init(args=[])
 node = rclpy.create_node(
@@ -81,6 +84,8 @@ assert type(node) is Node
 assert type(publisher) is Publisher
 assert not rclpy.ok(), "the default context must remain uninitialized"
 print("borrowed_publish:", borrowed_publish.__file__)
+print("native:", native_module.__file__)
+print("native_pipeline:", native_pipeline_module.__file__)
 route = borrowed_publish.prepare(ParameterEvent)
 
 deadline = time.monotonic() + 10.0
