@@ -20,6 +20,8 @@ version = "0.2.0"
 [dependencies]
 ros-jazzy-ros-base = ">=0.11"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
+# The native loan proof selects Fast DDS explicitly; Cyclone DDS remains the default.
+ros-jazzy-rmw-fastrtps-cpp = "*"
 cppyy = ">=3.5,<4"
 colcon-common-extensions = "*"
 cmake = "*"
