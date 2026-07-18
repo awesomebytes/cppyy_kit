@@ -42,7 +42,7 @@ def main():
         return CancelResponse.ACCEPT
 
     def handle_accepted(goal_handle):
-        if goal_handle.request.target_frame == "cancel":
+        if goal_handle.request.target_frame in ("cancel", "hold"):
             deferred_cancel_goals.append(goal_handle)
         else:
             goal_handle.execute()
@@ -169,6 +169,18 @@ def main():
         assert stats.python_result_crossings == 2
         assert stats.compile_cache_hits + stats.compile_cache_misses == 1
         assert executor_thread.exceptions == 0
+
+        pending = client.send_goal(LookupTransform.Goal(
+            target_frame="hold", source_frame="base"))
+        wait_until(lambda: client.goal_response_ready(pending))
+        assert client.goal_accepted(pending)
+        wait_until(lambda: len(deferred_cancel_goals) == 2)
+        assert client.stats().active_goals == 1
+        client.close()
+        assert client.closed
+        assert client.stats().active_goals == 0
+        assert client.stats().goals_sent == 4
+        assert client.stats().goals_accepted == 3
         print("NATIVE_ACTION_OK")
 
     assert client.closed
