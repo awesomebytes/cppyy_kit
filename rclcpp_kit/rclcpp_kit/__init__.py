@@ -88,6 +88,10 @@ from rclcpp_kit.native_action import (
     NativeActionResult,
     create_native_action_client,
 )
+from rclcpp_kit.native_component import (
+    NativeComponentManager,
+    create_native_component_manager,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -132,4 +136,6 @@ __all__ = [
     "NativeActionClientStats",
     "NativeActionResult",
     "create_native_action_client",
+    "NativeComponentManager",
+    "create_native_component_manager",
 ]

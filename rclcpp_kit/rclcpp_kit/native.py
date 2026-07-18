@@ -191,6 +191,7 @@ class NativeCapabilities:
     managed_native_clients: bool = True
     managed_native_action_clients: bool = True
     managed_lifecycle_nodes: bool = True
+    managed_component_containers: bool = True
     intra_process: bool = True
     loaned_messages: str = "publisher_runtime_query"
     raw_rclcpp: bool = True
@@ -498,6 +499,15 @@ class NativeSession:
         from rclcpp_kit.native_action import create_native_action_client
         return create_native_action_client(
             self, node, action_type, action_name, **options)
+
+    def create_native_component_manager(
+        self,
+        executor: Any,
+        **options: Any,
+    ) -> Any:
+        """Create an owned component container on a session executor."""
+        from rclcpp_kit.native_component import create_native_component_manager
+        return create_native_component_manager(self, executor, **options)
 
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
         """Stop native threads, release tracked objects, and shut down context."""

@@ -20,6 +20,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
 | `native_client` | Cached typed C++ clients with C++-owned async futures, stock-server interoperability, cancellation/counters, raw-client access, and managed teardown |
 | `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, bounded feedback, raw handles, counters, and managed teardown |
+| `native_component` | Real `rclcpp_components::ComponentManager` containers on the managed context, stock composition services, AOT component loading, raw-manager access, and ordered teardown |
 | `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock-client lifecycle services, raw-node access, and ordered teardown |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
@@ -86,6 +87,22 @@ with rclcpp_kit.native(["lifecycle"]) as ros:
 The raw node is a shared-pointer escape hatch. Retaining it after `close()` extends
 the C++ node lifetime by design, so deterministic managed teardown assumes callers
 do not retain an extra raw owner.
+
+Managed component containers load ordinary AOT C++ components registered in the
+ament resource index and keep the standard `composition_interfaces` services:
+
+```python
+with rclcpp_kit.native(["container"]) as ros:
+    executor = ros.create_executor("multi_threaded", threads=2)
+    container = ros.create_native_component_manager(
+        executor, name="native_container")
+    ros.start_executor(executor)
+    raw_manager = container.raw_manager
+```
+
+Component packages remain separate runtime dependencies. The adapter deliberately
+does not turn Python classes into components, and explicit close must not race an
+active load or unload request.
 
 ```python
 import rclcpp_kit

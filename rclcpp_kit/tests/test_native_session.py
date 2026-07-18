@@ -12,6 +12,7 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_native_clients"] is True
     assert report["managed_native_action_clients"] is True
     assert report["managed_lifecycle_nodes"] is True
+    assert report["managed_component_containers"] is True
     assert report["intra_process"] is True
     assert report["loaned_messages"] == "publisher_runtime_query"
     assert report["raw_rclcpp"] is True

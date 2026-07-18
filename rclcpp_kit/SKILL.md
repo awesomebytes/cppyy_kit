@@ -177,6 +177,27 @@ Use `request_cancel(token)` for remote cancellation and `forget(token)` only to
 release local state. The feedback queue is bounded and drop-oldest; inspect
 `client.stats()` rather than assuming every feedback sample was retained.
 
+## Pattern 8 — load registered AOT components
+*Use for:* standard ROS composition from Python while the container, loaded nodes,
+context, and executor remain C++ owned.
+
+```python
+from rclcpp_kit.native import native
+
+with native(["container"]) as ros:
+    executor = ros.create_executor("multi_threaded", threads=2)
+    container = ros.create_native_component_manager(
+        executor, name="native_container")
+    ros.start_executor(executor)
+
+    # Use ordinary composition_interfaces LoadNode/ListNodes/UnloadNode clients.
+    raw_manager = container.raw_manager
+```
+
+Only AOT C++ plugins registered in the ament resource index are loadable. Install
+each component package separately; the adapter preserves the stock composition
+service protocol rather than mirroring it.
+
 ---
 
 ## Gotchas (the cppyy friction this kit hides, so you know the boundary)
@@ -199,5 +220,8 @@ release local state. The feedback queue is bounded and drop-oldest; inspect
   goals should be completed or forgotten through the adapter. First use of a type
   performs a synchronous content-addressed AOT glue build; raw generated `uint8`
   fields can appear as one-character strings through cppyy.
+- **Component close is not a concurrent composition operation.** Stop or quiesce
+  load/unload requests before explicit close. Ordered session teardown already
+  stops native executor threads before releasing the container and loaded nodes.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
   ROS library, `cppyy_kit.load_libraries([...])` it first (see cppyy_kit's SKILL).

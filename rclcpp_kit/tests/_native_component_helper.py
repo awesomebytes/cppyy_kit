@@ -7,7 +7,6 @@ from rcl_interfaces.msg import ParameterType
 from rcl_interfaces.msg import Parameter as ParameterMsg
 from rcl_interfaces.msg import ParameterValue
 from rclcpp_kit.native import native
-from rclcpp_kit.native_component import create_native_component_manager
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -51,8 +50,7 @@ def main():
 
     with native(["native-component-test"]) as ros:
         executor = ros.create_executor()
-        manager = create_native_component_manager(
-            ros,
+        manager = ros.create_native_component_manager(
             executor,
             name="managed_component_container",
         )
