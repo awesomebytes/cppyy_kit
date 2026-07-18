@@ -210,26 +210,30 @@ def clone(message: Any) -> Any:
 def install(bindings) -> FacadeInstallation:
     """Install prepared facades at generated and public import locations."""
     replacements = []
-    for binding in bindings:
-        if not isinstance(binding, FacadeBinding):
-            raise TypeError("install expects prepared FacadeBinding objects")
-        original = binding.original_type
-        facade = binding.facade_type
-        name = original.__name__
-        modules = (
-            importlib.import_module(original.__module__),
-            importlib.import_module(original.__module__.rsplit(".", 1)[0]),
-        )
-        for module in modules:
-            current = getattr(module, name, None)
-            if current is facade:
-                continue
-            if current is not original:
-                raise RuntimeError(
-                    "%s.%s changed before facade installation" % (
-                        module.__name__, name))
-            setattr(module, name, facade)
-            replacements.append((module, name, original, facade))
+    try:
+        for binding in bindings:
+            if not isinstance(binding, FacadeBinding):
+                raise TypeError("install expects prepared FacadeBinding objects")
+            original = binding.original_type
+            facade = binding.facade_type
+            name = original.__name__
+            modules = (
+                importlib.import_module(original.__module__),
+                importlib.import_module(original.__module__.rsplit(".", 1)[0]),
+            )
+            for module in modules:
+                current = getattr(module, name, None)
+                if current is facade:
+                    continue
+                if current is not original:
+                    raise RuntimeError(
+                        "%s.%s changed before facade installation" % (
+                            module.__name__, name))
+                setattr(module, name, facade)
+                replacements.append((module, name, original, facade))
+    except Exception:
+        FacadeInstallation(replacements).restore()
+        raise
     return FacadeInstallation(replacements)
 
 

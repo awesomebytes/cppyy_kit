@@ -29,6 +29,22 @@ def test_serialized_take_glue_owns_and_deserializes_each_message():
     assert "rcl_reset_error" in source
 
 
+def test_installation_rolls_back_earlier_replacements(monkeypatch):
+    import std_msgs.msg as public_module
+    import std_msgs.msg._string as generated_module
+    from std_msgs.msg import String
+
+    binding = message_facade.prepare(String)
+    monkeypatch.setattr(public_module, "String", object())
+    try:
+        message_facade.install((binding,))
+    except RuntimeError as exception:
+        assert "changed before facade installation" in str(exception)
+    else:
+        raise AssertionError("module replacement conflict was accepted")
+    assert generated_module.String is String
+
+
 def test_facade_same_handle_roundtrip_and_lifecycle():
     proc = run_helper("_message_facade_helper.py")
     details = format_output(proc)
