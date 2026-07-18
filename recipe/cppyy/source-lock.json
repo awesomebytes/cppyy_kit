@@ -4,6 +4,35 @@
     "cppyy-cling": "6.32.8",
     "cpycppyy": "1.13.0"
   },
+  "component_artifacts": {
+    "cppyy-backend": {
+      "build": "py312hf18b547_0",
+      "filename": "cppyy-backend-1.15.3-py312hf18b547_0.conda",
+      "sha256": "5b03988007c5efbfb0b5070005dfc9faf310be4dce5b265c9bb20d76e6062962",
+      "size_bytes": 128064,
+      "subdir": "linux-aarch64",
+      "url": "https://conda.anaconda.org/conda-forge/linux-aarch64/cppyy-backend-1.15.3-py312hf18b547_0.conda",
+      "version": "1.15.3"
+    },
+    "cppyy-cling": {
+      "build": "py312hca09ef0_0",
+      "filename": "cppyy-cling-6.32.8-py312hca09ef0_0.conda",
+      "sha256": "45229a4b1d972140e48c142578f5373526f7ddfb0c84cdde2c873d62ab5cbdbc",
+      "size_bytes": 54475641,
+      "subdir": "linux-aarch64",
+      "url": "https://conda.anaconda.org/conda-forge/linux-aarch64/cppyy-cling-6.32.8-py312hca09ef0_0.conda",
+      "version": "6.32.8"
+    },
+    "cpycppyy": {
+      "build": "py312hf18b547_0",
+      "filename": "cpycppyy-1.13.0-py312hf18b547_0.conda",
+      "sha256": "4306fbb565748c864c60fcc5a5323373b94714b023d27059adfb16a666b388f8",
+      "size_bytes": 402444,
+      "subdir": "linux-aarch64",
+      "url": "https://conda.anaconda.org/conda-forge/linux-aarch64/cpycppyy-1.13.0-py312hf18b547_0.conda",
+      "version": "1.13.0"
+    }
+  },
   "feedstock": {
     "commit": "00180b2137912ac79b0dd4d64730f2429a877462",
     "repository": "https://github.com/conda-forge/cppyy-feedstock"

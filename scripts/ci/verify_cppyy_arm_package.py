@@ -9,11 +9,15 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
+import urllib.parse
+import urllib.request
 
 
 SCHEMA = "cppyy-kit.cppyy-package-proof/v1"
 SOURCE_SCHEMA = "cppyy-kit.upstream-package-source/v1"
+SHA256_RE = re.compile(r"[0-9a-f]{64}")
 
 
 def _sha256(path: Path) -> str:
@@ -49,6 +53,73 @@ def _inspection(artifact: Path) -> dict:
     return json.loads(process.stdout)
 
 
+def _download_component(url: str) -> dict[str, object]:
+    digest = hashlib.sha256()
+    size = 0
+    with urllib.request.urlopen(url, timeout=120) as response:  # noqa: S310
+        resolved_url = response.geturl()
+        while chunk := response.read(1024 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+    return {
+        "requested_url": url,
+        "resolved_url": resolved_url,
+        "sha256": digest.hexdigest(),
+        "size_bytes": size,
+    }
+
+
+def _component_matchspec(name: str, component: dict[str, object]) -> str:
+    return f"{name} =={component['version']} {component['build']}"
+
+
+def _verify_component_locks(source: dict, recipe_text: str) -> dict[str, dict]:
+    versions = source.get("components", {})
+    artifacts = source.get("component_artifacts", {})
+    _require(set(artifacts) == set(versions),
+             "component artifact locks do not match component versions")
+    evidence = {}
+    for name, version in sorted(versions.items()):
+        component = artifacts[name]
+        _require(component.get("version") == version,
+                 f"component artifact version mismatch: {name}")
+        _require(component.get("subdir") == source["package"]["platform"],
+                 f"component artifact platform mismatch: {name}")
+        build = str(component.get("build", ""))
+        filename = str(component.get("filename", ""))
+        expected_filename = f"{name}-{version}-{build}.conda"
+        _require(build and filename == expected_filename,
+                 f"component artifact identity mismatch: {name}")
+        url = str(component.get("url", ""))
+        parsed_url = urllib.parse.urlparse(url)
+        _require(parsed_url.scheme == "https" and Path(parsed_url.path).name == filename,
+                 f"component artifact URL mismatch: {name}")
+        expected_sha256 = str(component.get("sha256", ""))
+        _require(SHA256_RE.fullmatch(expected_sha256) is not None,
+                 f"component artifact SHA-256 is invalid: {name}")
+        expected_size = component.get("size_bytes")
+        _require(isinstance(expected_size, int) and expected_size > 0,
+                 f"component artifact size is invalid: {name}")
+        matchspec = _component_matchspec(name, component)
+        _require(matchspec in recipe_text,
+                 f"component build pin missing from recipe: {matchspec}")
+
+        downloaded = _download_component(url)
+        _require(downloaded["sha256"] == expected_sha256,
+                 f"component artifact hash mismatch: {name}")
+        _require(downloaded["size_bytes"] == expected_size,
+                 f"component artifact size mismatch: {name}")
+        evidence[name] = {
+            **downloaded,
+            "build": build,
+            "filename": filename,
+            "subdir": component["subdir"],
+            "version": version,
+            "verified": True,
+        }
+    return evidence
+
+
 def verify(
     *,
     artifact: Path,
@@ -68,9 +139,7 @@ def verify(
         source["source"]["sha256"],
     ):
         _require(value in recipe_text, "source lock does not match the package recipe")
-    for name, version in source["components"].items():
-        _require(f"{name} =={version}" in recipe_text,
-                 f"component pin missing from recipe: {name} =={version}")
+    component_evidence = _verify_component_locks(source, recipe_text)
     for patch in source["patches"]:
         patch_path = source_lock.parent / patch["path"]
         _require(_sha256(patch_path) == patch["sha256"],
@@ -85,9 +154,10 @@ def verify(
     _require(index.get("arch") == "aarch64", "package architecture mismatch")
     _require(index.get("build", "").startswith("py312"), "package is not built for Python 3.12")
     dependencies = set(index.get("depends", []))
-    for name, version in source["components"].items():
-        _require(f"{name} =={version}" in dependencies,
-                 f"artifact component pin mismatch: {name} =={version}")
+    for name, component in source["component_artifacts"].items():
+        matchspec = _component_matchspec(name, component)
+        _require(matchspec in dependencies,
+                 f"artifact component pin mismatch: {matchspec}")
 
     machine = platform.machine()
     native = machine in ("aarch64", "arm64")
@@ -116,6 +186,7 @@ def verify(
     return {
         "schema": SCHEMA,
         "source": source,
+        "locked_component_artifacts": component_evidence,
         "source_snapshot": {
             "commit": commit,
             "dirty": dirty,

@@ -8,10 +8,13 @@ It is deliberately skipped on every other architecture.
 ## Immutable inputs
 
 [`source-lock.json`](source-lock.json) records the exact PyPI source URL and
-SHA-256, conda-forge feedstock revision, component versions, and patch hash.
-[`recipe.yaml`](recipe.yaml) repeats the source hash and uses exact component
-pins in both host and runtime requirements. The patch is the feedstock change
-that prevents the already-packaged compiled dictionary from being rebuilt.
+SHA-256, conda-forge feedstock revision, component versions, build strings,
+artifact URLs and hashes, and patch hash. [`recipe.yaml`](recipe.yaml) repeats
+the source hash and uses exact version-and-build component matchspecs in both
+host and runtime requirements. The native proof downloads and hashes every
+locked component URL, so a version-equivalent rebuild is not accepted. The
+patch is the feedstock change that prevents the already-packaged compiled
+dictionary from being rebuilt.
 
 The package build number is the bridge recipe revision. Increment it whenever
 the recipe, patch, or dependency construction changes; do not replace an

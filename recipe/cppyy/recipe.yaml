@@ -33,14 +33,14 @@ requirements:
     - python
     - pip
     - setuptools
-    - cpycppyy ==1.13.0
-    - cppyy-backend ==1.15.3
-    - cppyy-cling ==6.32.8
+    - cpycppyy ==1.13.0 py312hf18b547_0
+    - cppyy-backend ==1.15.3 py312hf18b547_0
+    - cppyy-cling ==6.32.8 py312hca09ef0_0
   run:
     - python
-    - cpycppyy ==1.13.0
-    - cppyy-backend ==1.15.3
-    - cppyy-cling ==6.32.8
+    - cpycppyy ==1.13.0 py312hf18b547_0
+    - cppyy-backend ==1.15.3 py312hf18b547_0
+    - cppyy-cling ==6.32.8 py312hca09ef0_0
 
 tests:
   - script:
