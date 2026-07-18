@@ -227,7 +227,7 @@ jobs:
           retention-days: 90
 
   sbom:
-    name: attest SBOM (${{ matrix.package }})
+    name: attest SBOM (${{ matrix.name }})
     needs: [build, cppyy-arm]
     runs-on: ubuntu-latest
     permissions:
@@ -238,20 +238,88 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - cppyy
-          - cppyy-kit
-          - ros-jazzy-bt-kit
-          - ros-jazzy-control-kit
-          - ros-jazzy-cv-kit
-          - ros-jazzy-dbow-kit
-          - ros-jazzy-moveit-kit
-          - ros-jazzy-nav2-kit
-          - ros-jazzy-ompl-kit
-          - ros-jazzy-pcl-kit
-          - ros-jazzy-rclcpp-kit
-          - wbc-kit
+        include:
+          - name: cppyy
+            version: "3.5.0"
+            platform: linux-aarch64
+            build: py312hf18b547_0
+            dependencies: >-
+              python cpycppyy cppyy-backend cppyy-cling libstdcxx libgcc
+              python_abi
+          - name: cppyy-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy
+          - name: ros-jazzy-bt-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy-kit ros-jazzy-behaviortree-cpp
+          - name: ros-jazzy-control-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: >-
+              python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control
+          - name: ros-jazzy-cv-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy-kit opencv
+          - name: ros-jazzy-dbow-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy-kit ros-jazzy-cv-kit opencv
+          - name: ros-jazzy-moveit-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: >-
+              python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-moveit
+              ros-jazzy-ament-index-python
+          - name: ros-jazzy-nav2-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: >-
+              python cppyy-kit ros-jazzy-rclcpp-kit
+              ros-jazzy-nav2-costmap-2d ros-jazzy-nav2-navfn-planner
+              ros-jazzy-nav2-smac-planner
+              ros-jazzy-nav2-regulated-pure-pursuit-controller
+              ros-jazzy-nav2-msgs
+          - name: ros-jazzy-ompl-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy-kit ros-jazzy-ompl
+          - name: ros-jazzy-pcl-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: >-
+              python cppyy-kit ros-jazzy-rclcpp-kit pcl
+              ros-jazzy-pcl-conversions
+          - name: ros-jazzy-rclcpp-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: >-
+              python cppyy-kit ros-jazzy-rclcpp ros-jazzy-rclcpp-action
+              ros-jazzy-rclcpp-components ros-jazzy-rclcpp-lifecycle
+              ros-jazzy-rclpy ros-jazzy-action-msgs
+              ros-jazzy-composition-interfaces ros-jazzy-lifecycle-msgs
+              ros-jazzy-ament-index-python
+          - name: wbc-kit
+            version: "0.2.0"
+            platform: noarch
+            build: pyh4616a5c_0
+            dependencies: python cppyy-kit crocoddyl
     steps:
+      - name: Checkout exact tag source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
       - name: Download proven packages
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
@@ -267,7 +335,7 @@ jobs:
       - name: Identify package artifact
         id: artifact
         env:
-          PACKAGE: ${{ matrix.package }}
+          PACKAGE: ${{ matrix.name }}
         run: |
           set -euo pipefail
           if [ "$PACKAGE" = "cppyy" ]; then
@@ -283,33 +351,43 @@ jobs:
           printf 'path=%s\n' "${artifacts[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Generate package SPDX SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
-        with:
-          file: ${{ steps.artifact.outputs.path }}
-          format: spdx-json
-          output-file: ${{ matrix.package }}.spdx.json
-          upload-artifact: false
-          upload-release-assets: false
+        env:
+          EXPECTED_DEPENDENCIES: ${{ matrix.dependencies }}
+        run: |
+          set -euo pipefail
+          dependency_arguments=()
+          for dependency in $EXPECTED_DEPENDENCIES; do
+            dependency_arguments+=(--expect-dependency-name "$dependency")
+          done
+          python3 scripts/ci/generate_conda_spdx.py \
+            --artifact "${{ steps.artifact.outputs.path }}" \
+            --output "${{ matrix.name }}.spdx.json" \
+            --expect-name "${{ matrix.name }}" \
+            --expect-version "${{ matrix.version }}" \
+            --expect-platform "${{ matrix.platform }}" \
+            --expect-build "${{ matrix.build }}" \
+            --exact-dependency-names \
+            "${dependency_arguments[@]}"
 
       - name: Attest package SBOM
         id: sbom-attestation
         uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4
         with:
           subject-path: ${{ steps.artifact.outputs.path }}
-          sbom-path: ${{ matrix.package }}.spdx.json
+          sbom-path: ${{ matrix.name }}.spdx.json
 
       - name: Preserve portable SBOM attestation bundle
         run: |
           cp "${{ steps.sbom-attestation.outputs.bundle-path }}" \
-            "${{ matrix.package }}.sbom.sigstore.json"
+            "${{ matrix.name }}.sbom.sigstore.json"
 
       - name: Preserve package SBOM
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sbom-${{ matrix.package }}
+          name: sbom-${{ matrix.name }}
           path: |
-            ${{ matrix.package }}.spdx.json
-            ${{ matrix.package }}.sbom.sigstore.json
+            ${{ matrix.name }}.spdx.json
+            ${{ matrix.name }}.sbom.sigstore.json
           if-no-files-found: error
           retention-days: 90
 

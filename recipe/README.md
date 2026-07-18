@@ -117,6 +117,13 @@ release**, authorize this repo on prefix.dev:
 `awesomebytes` channel → Repository Access → `awesomebytes/cppyy_kit`,
 `release.yml`, read/write. The rclcppyy authorization does not carry over.
 
+Each release SBOM reads the package's embedded `info/index.json`, records the
+artifact identity and SHA-256, and represents every declared conda requirement
+with an SPDX `DEPENDS_ON` relationship. Before attestation, the workflow checks
+the expected name, version, subdir, build string, filename, and exact dependency
+name set. Dependency constraints remain declarations rather than claims about a
+resolved environment.
+
 Release publication is retry-safe by byte identity. Before upload, the
 workflow downloads and hashes every existing exact `subdir/filename`; it uploads
 only confirmed 404s, then downloads and rehashes all twelve published artifacts.

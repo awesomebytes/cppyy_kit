@@ -56,9 +56,34 @@ def test_release_requires_dual_arch_source_and_sanitizer_preflight():
     assert "cppyy-arm-package-proof.json" in arm_commands
     assert "cppyy-arm-runtime-proof.log" in arm_commands
 
-    sbom_packages = jobs["sbom"]["strategy"]["matrix"]["package"]
+    sbom_packages = jobs["sbom"]["strategy"]["matrix"]["include"]
     assert len(sbom_packages) == 12
-    assert "cppyy" in sbom_packages
+    assert {item["name"] for item in sbom_packages} >= {
+        "cppyy", "cppyy-kit", "ros-jazzy-rclcpp-kit"}
+    assert all({"name", "version", "platform", "build", "dependencies"}
+               <= set(item) for item in sbom_packages)
+    for item in sbom_packages:
+        recipe = yaml.safe_load(
+            (ROOT / "recipe" / item["name"] / "recipe.yaml").read_text())
+        declared_names = {
+            requirement.split(maxsplit=1)[0]
+            for requirement in recipe["requirements"]["run"]
+        }
+        expected_names = set(item["dependencies"].split())
+        assert item["version"] == recipe["context"]["version"]
+        if item["name"] == "cppyy":
+            assert expected_names == declared_names | {
+                "libstdcxx", "libgcc", "python_abi"}
+        else:
+            assert expected_names == declared_names
+    sbom_commands = "\n".join(
+        step.get("run", "") for step in jobs["sbom"]["steps"])
+    assert "generate_conda_spdx.py" in sbom_commands
+    assert "--exact-dependency-names" in sbom_commands
+    assert "--expect-version" in sbom_commands
+    assert "--expect-platform" in sbom_commands
+    assert "--expect-build" in sbom_commands
+    assert "anchore/sbom-action" not in str(jobs["sbom"])
 
     release_commands = "\n".join(
         step.get("run", "") for step in jobs["release"]["steps"])
