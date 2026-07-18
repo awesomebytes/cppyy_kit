@@ -7,7 +7,8 @@ from rclcpp_kit import borrowed_publish
 
 def test_publish_glue_checks_rcl_return_and_resets_error():
     source = borrowed_publish._PUBLISH_GLUE
-    assert "rcl_publish(" in source
+    assert "rclcpp::Serialization<MessageT>" in source
+    assert "rcl_publish_serialized_message(" in source
     assert "result != RCL_RET_OK" in source
     assert "rcl_get_error_string" in source
     assert "rcl_reset_error" in source

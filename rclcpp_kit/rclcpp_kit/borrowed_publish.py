@@ -2,8 +2,10 @@
 
 This module preserves the Python publisher object, graph endpoint, context, and
 destruction contract. It borrows the publisher's ``rcl_publisher_t`` only for the
-duration of one call and invokes ``rcl_publish`` with the ROS C++ message object.
-No second node, context, or publisher is created.
+duration of one call. The C++ message is serialized with
+``rclcpp::Serialization<T>`` and sent with ``rcl_publish_serialized_message`` so
+the stock publisher's C typesupport never interprets a C++ object layout. No
+second node, context, or publisher is created.
 
 The pointer is a private rclpy ABI surface. Callers must capability-gate this
 module by ROS distribution and architecture and retain a stock fallback.
@@ -30,6 +32,8 @@ _INITIALIZED = False
 _PUBLISH_GLUE = r"""
 #include <rcl/error_handling.h>
 #include <rcl/publisher.h>
+#include <rclcpp/serialization.hpp>
+#include <rclcpp/serialized_message.hpp>
 
 #include <cstdint>
 #include <stdexcept>
@@ -45,11 +49,16 @@ void publish(uintptr_t publisher_address, const MessageT & message)
     throw std::invalid_argument("rclpy publisher handle address is null");
   }
   auto * publisher = reinterpret_cast<const rcl_publisher_t *>(publisher_address);
-  const rcl_ret_t result = rcl_publish(publisher, &message, nullptr);
+  rclcpp::Serialization<MessageT> serializer;
+  rclcpp::SerializedMessage serialized;
+  serializer.serialize_message(&message, &serialized);
+  auto & raw = serialized.get_rcl_serialized_message();
+  const rcl_ret_t result = rcl_publish_serialized_message(publisher, &raw, nullptr);
   if (result != RCL_RET_OK) {
     const auto error_state = rcl_get_error_string();
     const char * detail = error_state.str;
-    std::string error = "rcl_publish failed (" + std::to_string(result) + ")";
+    std::string error = "rcl_publish_serialized_message failed (" +
+      std::to_string(result) + ")";
     if (detail != nullptr && detail[0] != '\0') {
       error += ": ";
       error += detail;
