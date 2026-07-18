@@ -24,6 +24,7 @@ from rclcpp_kit.bringup_rclcpp import (
     bringup_rclcpp,
     convert_python_msg_to_cpp,
 )
+import rclcpp_kit.message_facade as message_facade
 
 
 _INITIALIZE_LOCK = threading.RLock()
@@ -270,6 +271,10 @@ class PreparedPublisher:
         }
 
     def _to_cpp(self, message):
+        facade_binding = message_facade.binding_for_message(message)
+        if facade_binding is not None:
+            return message_facade.cpp_message(
+                message, expected_original=self.message_type)
         if _is_msg_cpp(message):
             if not isinstance(message, self.cpp_message_type):
                 raise TypeError(
