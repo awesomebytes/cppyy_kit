@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: ros-jazzy-bt-kit
   # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.1.0"
+  version: "0.2.0"
 
 package:
   name: ${{ name }}
@@ -28,7 +28,7 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.1.0
+    - cppyy-kit ==0.2.0
     - ros-jazzy-behaviortree-cpp >=4.9,<5
 
 tests:

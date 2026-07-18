@@ -10,5 +10,7 @@ sed -i -E "s/^(  version: )\"[0-9]+\.[0-9]+\.[0-9]+\"/\1\"${new}\"/" */recipe.ya
 sed -i -E "s/(- (cppyy-kit|ros-jazzy-[a-z0-9-]+-kit) ==)[0-9]+\.[0-9]+\.[0-9]+/\1${new}/" */recipe.yaml
 # build.sh PKG_VERSION
 sed -i -E "s/(export PKG_VERSION=\")[0-9]+\.[0-9]+\.[0-9]+/\1${new}/" */build.sh
+# Keep the root workspace metadata aligned with the packaged suite.
+sed -i -E "s/^(version = )\"[0-9]+\.[0-9]+\.[0-9]+\"/\1\"${new}\"/" ../pixi.toml
 echo "bumped suite to ${new}:"
 grep -h 'version:' */recipe.yaml | sort -u
