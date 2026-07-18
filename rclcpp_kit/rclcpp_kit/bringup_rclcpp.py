@@ -470,15 +470,12 @@ def convert_python_msg_to_cpp(msg_py: Any, msg_cpp: Any) -> Any:
             else:
                 rclcpp_element_type = element_type_py.replace("/", "::msg::")
                 rclcpp_vector = cppyy.gbl.std.vector[rclcpp_element_type]()
-                # Resolve the element message class once (avoids re-resolving per
-                # element). Matches the monkeypatch path: non-empty sequences are
-                # treated as message sequences.
-                rclcpp_element_class = None
-                if len(field) > 0:
-                    _, rclcpp_element_class = _resolve_message_type(field[0])
-                for element in field:
-                    rclcpp_vector.push_back(
-                        convert_python_msg_to_cpp(element, rclcpp_element_class()))
+                # Fill the vector's owned elements directly. Constructing a
+                # temporary cppyy proxy and copying it with push_back retains
+                # native proxy bookkeeping for every converted element.
+                rclcpp_vector.resize(len(field))
+                for index, element in enumerate(field):
+                    convert_python_msg_to_cpp(element, rclcpp_vector[index])
                 setattr(msg_cpp, field_name, rclcpp_vector)
         # Plain scalar field.
         else:
