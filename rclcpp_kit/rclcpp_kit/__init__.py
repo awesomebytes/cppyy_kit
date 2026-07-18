@@ -82,6 +82,12 @@ from rclcpp_kit.native_lifecycle import (
     NativeLifecycleNode,
     create_native_lifecycle_node,
 )
+from rclcpp_kit.native_action import (
+    NativeActionClient,
+    NativeActionClientStats,
+    NativeActionResult,
+    create_native_action_client,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -122,4 +128,8 @@ __all__ = [
     "create_native_client",
     "NativeLifecycleNode",
     "create_native_lifecycle_node",
+    "NativeActionClient",
+    "NativeActionClientStats",
+    "NativeActionResult",
+    "create_native_action_client",
 ]

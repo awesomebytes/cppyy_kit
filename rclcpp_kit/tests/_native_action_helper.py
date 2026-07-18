@@ -6,7 +6,6 @@ import time
 from action_msgs.msg import GoalStatus
 from action_msgs.srv import CancelGoal
 from rclcpp_kit.native import native
-from rclcpp_kit.native_action import create_native_action_client
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.context import Context
@@ -82,8 +81,7 @@ def main():
         client_executor = ros.create_executor("multi_threaded", threads=2)
         client_executor.add_node(client_node)
         executor_thread = ros.start_executor(client_executor)
-        client = create_native_action_client(
-            ros,
+        client = ros.create_native_action_client(
             client_node,
             LookupTransform,
             "native_lookup",

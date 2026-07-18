@@ -151,6 +151,32 @@ The standard lifecycle services are enabled by default and become responsive aft
 executor attachment. Use `raw_node` for the actual lifecycle API; the adapter owns
 only construction, executor membership, and teardown.
 
+## Pattern 7 — typed action clients with C++-owned goal state
+*Use for:* action goals, feedback, results, and cancellation when the typed
+`rclcpp_action` state should remain in C++.
+
+```python
+import time
+
+from tf2_msgs.action import LookupTransform
+
+client = ros.create_native_action_client(
+    node, LookupTransform, "lookup", feedback_capacity=16)
+assert client.wait_for_server(2.0)
+token = client.send_goal(LookupTransform.Goal(
+    target_frame="map", source_frame="base"))
+while not client.goal_response_ready(token):
+    time.sleep(0.001)
+if client.goal_accepted(token):
+    while not client.result_ready(token):
+        time.sleep(0.001)
+    result = client.take_result(token)
+```
+
+Use `request_cancel(token)` for remote cancellation and `forget(token)` only to
+release local state. The feedback queue is bounded and drop-oldest; inspect
+`client.stats()` rather than assuming every feedback sample was retained.
+
 ---
 
 ## Gotchas (the cppyy friction this kit hides, so you know the boundary)
@@ -169,5 +195,9 @@ only construction, executor membership, and teardown.
 - **Raw lifecycle access transfers lifetime responsibility.** Retaining
   `lifecycle.raw_node` keeps its shared C++ node alive after adapter close. Drop raw
   owners before session teardown when deterministic destruction matters.
+- **Managed actions are client-only and polling-oriented.** Adapter-submitted
+  goals should be completed or forgotten through the adapter. First use of a type
+  performs a synchronous content-addressed AOT glue build; raw generated `uint8`
+  fields can appear as one-character strings through cppyy.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
   ROS library, `cppyy_kit.load_libraries([...])` it first (see cppyy_kit's SKILL).

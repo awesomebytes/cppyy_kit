@@ -189,6 +189,7 @@ class NativeCapabilities:
     callback_groups: bool = True
     callback_group_entity_options: bool = True
     managed_native_clients: bool = True
+    managed_native_action_clients: bool = True
     managed_lifecycle_nodes: bool = True
     intra_process: bool = True
     loaned_messages: str = "publisher_runtime_query"
@@ -485,6 +486,18 @@ class NativeSession:
         """Create an owned real ``rclcpp_lifecycle::LifecycleNode``."""
         from rclcpp_kit.native_lifecycle import create_native_lifecycle_node
         return create_native_lifecycle_node(self, name, **options)
+
+    def create_native_action_client(
+        self,
+        node: Any,
+        action_type: Any,
+        action_name: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned typed action client with C++-managed state."""
+        from rclcpp_kit.native_action import create_native_action_client
+        return create_native_action_client(
+            self, node, action_type, action_name, **options)
 
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
         """Stop native threads, release tracked objects, and shut down context."""

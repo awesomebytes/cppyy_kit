@@ -19,6 +19,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 | `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
 | `native_client` | Cached typed C++ clients with C++-owned async futures, stock-server interoperability, cancellation/counters, raw-client access, and managed teardown |
+| `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, bounded feedback, raw handles, counters, and managed teardown |
 | `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock-client lifecycle services, raw-node access, and ordered teardown |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
@@ -62,6 +63,13 @@ raw_client = client.raw_client
 
 Calls submitted through the adapter must be taken or canceled through it. Session
 teardown cancels any calls still pending before releasing the client.
+
+Managed action clients apply the same narrow rule to `rclcpp_action` template and
+future state. They expose opaque goal tokens plus the original typed client and
+accepted goal handles. Feedback is an explicit bounded drop-oldest queue, and
+`forget(token)` releases local state without canceling the remote goal. The first
+use of an action type synchronously builds content-addressed glue because this
+toolchain cannot safely instantiate its type support through Cling alone.
 
 Lifecycle nodes keep only ownership and executor attachment behind the adapter;
 transitions and lifecycle-specific facilities remain the real C++ API:
