@@ -26,18 +26,18 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: read
-  id-token: write
-
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: build all, prove artifacts, upload
+  build:
+    name: build and prove all artifacts
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -60,7 +60,122 @@ jobs:
       # as its only dep must import cleanly (+ cppdef for cppyy-kit, bringup for
       # rclcpp-kit) — no repo on PYTHONPATH.
       - name: Prove artifacts install + import from the channel
-        run: pixi run -e pkg pkg-prove
+        run: |
+          set -o pipefail
+          mkdir -p build/release
+          pixi run -e pkg pkg-prove 2>&1 | tee build/release/package-proof.log
+
+      - name: Record artifact checksums
+        run: |
+          set -euo pipefail
+          mapfile -t artifacts < <(find output -type f -name '*.conda' | sort)
+          test "${#artifacts[@]}" -eq 11
+          sha256sum "${artifacts[@]}" | tee build/release/SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: output/**/*.conda
+
+      - name: Preserve packages and raw gate evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: |
+            output/**/*.conda
+            build/release
+          if-no-files-found: error
+          retention-days: 90
+
+  sbom:
+    name: attest SBOM (${{ matrix.package }})
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - cppyy-kit
+          - ros-jazzy-bt-kit
+          - ros-jazzy-control-kit
+          - ros-jazzy-cv-kit
+          - ros-jazzy-dbow-kit
+          - ros-jazzy-moveit-kit
+          - ros-jazzy-nav2-kit
+          - ros-jazzy-ompl-kit
+          - ros-jazzy-pcl-kit
+          - ros-jazzy-rclcpp-kit
+          - wbc-kit
+    steps:
+      - name: Download proven packages
+        uses: actions/download-artifact@v5
+        with:
+          name: release-packages
+          path: release-input
+
+      - name: Identify package artifact
+        id: artifact
+        env:
+          PACKAGE: ${{ matrix.package }}
+        run: |
+          set -euo pipefail
+          mapfile -t artifacts < <(
+            find release-input -type f -name "${PACKAGE}-*.conda" | sort
+          )
+          test "${#artifacts[@]}" -eq 1
+          printf 'path=%s\n' "${artifacts[0]}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate package SPDX SBOM
+        uses: anchore/sbom-action@v0.24.0
+        with:
+          file: ${{ steps.artifact.outputs.path }}
+          format: spdx-json
+          output-file: ${{ matrix.package }}.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest package SBOM
+        uses: actions/attest@v4
+        with:
+          subject-path: ${{ steps.artifact.outputs.path }}
+          sbom-path: ${{ matrix.package }}.spdx.json
+
+      - name: Preserve package SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.package }}
+          path: ${{ matrix.package }}.spdx.json
+          if-no-files-found: error
+          retention-days: 90
+
+  release:
+    name: upload proven and attested artifacts
+    needs: [build, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          environments: pkg
+
+      - name: Download proven packages
+        uses: actions/download-artifact@v5
+        with:
+          name: release-packages
+          path: release-input
 
       # Upload every built .conda to the prefix.dev channel `awesomebytes` via
       # OIDC. REQUIRES the Repository Access authorization flagged in the header.
@@ -68,4 +183,4 @@ jobs:
         run: |
           set -euxo pipefail
           pixi run -e pkg rattler-build upload prefix --channel awesomebytes \
-            $(find output -name '*.conda' | sort)
+            $(find release-input -name '*.conda' | sort)
