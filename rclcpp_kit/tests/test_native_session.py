@@ -47,6 +47,14 @@ def test_unknown_executor_kind_fails_before_creation(kind):
         session.create_executor(kind)
 
 
+def test_release_node_rejects_unowned_node():
+    session = NativeSession()
+    session._context = type("Context", (), {"is_valid": lambda self: True})()
+    session._rclcpp = object()
+    with pytest.raises(ValueError, match="not owned"):
+        session.release_node(object())
+
+
 def test_managed_context_pubsub_and_teardown():
     proc = run_helper("_native_session_helper.py")
     assert proc.returncode == 0, format_output(proc)

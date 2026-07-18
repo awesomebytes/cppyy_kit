@@ -377,6 +377,24 @@ class NativeSession:
         self._executors.append(executor)
         return executor
 
+    def release_node(self, node: Any) -> None:
+        """Remove and release one session-owned node before session teardown."""
+        self._ensure_open()
+        try:
+            index = next(
+                position
+                for position, candidate in enumerate(self._nodes)
+                if node is candidate
+            )
+        except StopIteration as exc:
+            raise ValueError("node is not owned by this NativeSession") from exc
+        for executor in self._executors:
+            try:
+                executor.remove_node(node)
+            except Exception:
+                pass
+        del self._nodes[index]
+
     def start_executor(self, executor: Any) -> NativeExecutorThread:
         """Spin a session-owned executor on a managed native C++ thread."""
         self._ensure_open()

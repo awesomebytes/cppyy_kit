@@ -49,6 +49,7 @@ from rclcpp_kit import subscription_cache
 from rclcpp_kit import borrowed_publish
 from rclcpp_kit import borrowed_subscription
 from rclcpp_kit import message_facade
+from rclcpp_kit import direct_entities
 from rclcpp_kit.native import (
     NativeCapabilities,
     NativeExecutorThread,
@@ -113,6 +114,7 @@ __all__ = [
     "borrowed_publish",
     "borrowed_subscription",
     "message_facade",
+    "direct_entities",
     "NativeCapabilities",
     "NativeExecutorThread",
     "NativeSession",
