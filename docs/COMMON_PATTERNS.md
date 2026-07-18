@@ -285,14 +285,14 @@ loop, a spin) never contends.
   instead: a plain-function `std::thread` in a `cppdef` helper (note `std::async`
   does **not** JIT in Cling — use `std::thread`). control_kit's blocking
   controller-switch does exactly this.
-- **The efficiency face — "let C++ own the loop; cross only on demand" (tf).** The
-  flip side of the GIL rule is a *design win*: a library that already spins its own
-  C++ thread is an **ideal** cppyy target. `tf2_ros::TransformListener(spin_thread=
+- **The ownership pattern — "let C++ own the loop; cross only on demand" (tf).** A
+  library that already spins its own C++ thread can be a useful cppyy target.
+  `tf2_ros::TransformListener(spin_thread=
   true)` ingests `/tf` on its own `std::thread`, entirely off the GIL; Python only
-  crosses on `lookup`. Measured **~7–14× less ingest CPU** than an equivalent Python
-  listener (whose callback runs under the GIL), and the win **compounds with
-  traffic**. Prefer wrapping the library's own loop over re-implementing it in a
-  Python thread.
+  crosses on `lookup`. One shared-host pass observed Python/C++ ingest CPU ratios of
+  6.7–14 as traffic increased. That is characterization, not a portable performance
+  claim or winner. Prefer evaluating the library's own loop before re-implementing
+  it in a Python thread, then measure the target workload.
 
 ### 14. Teardown: release global-state C++ objects before Python finalizes
 A cppyy process ends by running two teardown mechanisms with **no ordering
@@ -987,37 +987,40 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
   never committed. When debugging, this is the PCH's "off" switch — the compile cache
   (§23) has its own; see **FREEZE.md §9, "Debugging: turning the caches off"** for the
   whole story.
-- **Measured (rclcpp):** for `bringup_rclcpp()`, the `rclcpp C++ headers loaded (…)` line
-  drops from ~1.9 s to ~0.0 s and the whole call from ~1.9 s to ~0.06 s (~30×) on the warm
-  run, with zero user action between the cold and warm runs — including when the program
-  imports `cppyy` before `cppyy_kit`. Removes the **parse** only (cppyy's first-use
-  call-wrapper JIT is the separate §23 cost).
+- **Characterized (rclcpp, one shared host):** for `bringup_rclcpp()`, the
+  `rclcpp C++ headers loaded (…)` line was ~1.9 s cold and ~0.0 s warm, while the
+  whole call was ~1.9 s and ~0.06 s (an observed ~30× ratio). This verifies cache
+  pickup, including when the program imports `cppyy` before `cppyy_kit`; it is not a
+  portable startup claim or threshold. It removes the **parse** only (cppyy's
+  first-use call-wrapper JIT is the separate §23 cost).
 
 ### 37. Cache the subscription template instantiation (`rclcpp_kit.subscription_cache`)
 Creating an rclcpp subscription from Python makes cppyy JIT-instantiate
-`rclcpp::create_subscription<MsgT>` on first use, per message type — measured at ~2.8 s
-for `sensor_msgs::msg::Image`, and the PCH (§36) does not touch it (that removes the
-header *parse*, not template instantiation). This is the §23 compile cache applied to a
-template cppyy instantiates on your behalf: a tiny trampoline that calls
+`rclcpp::create_subscription<MsgT>` on first use, per message type. The shared-host
+characterization observed ~2.8 s for `sensor_msgs::msg::Image`; the PCH (§36) does not
+touch it (that removes the header *parse*, not template instantiation). This is the
+§23 compile cache applied to a template cppyy instantiates on your behalf: a tiny
+trampoline that calls
 `create_subscription<MsgT>` is compiled once into a `.so` per type (the template is
 instantiated at compile time), then `load_library`'d thereafter.
-- **Never slower than the plain path.** On a cache miss the rclpy-style
+- **A miss retains the plain path.** On a cache miss the rclpy-style
   `node.create_subscription(MsgType, topic, cb, qos)` uses the plain template call for
-  that run (so it is exactly as fast as before), and the `.so` is compiled in a detached
+  that run, and the `.so` is compiled in a detached
   background process at interpreter exit; the next run loads it. The trampoline is used
-  only when its `.so` exists, and any failure falls back to the plain call — the cache is
-  a pure speedup, never a correctness dependency (verified: the pub/sub roundtrip suite
-  passes on both the plain and cached paths).
+  only when its `.so` exists, and any failure falls back to the plain call. The cache is
+  an optional startup optimization, never a correctness dependency (verified: the
+  pub/sub roundtrip suite passes on both the plain and cached paths).
 - **Machine-persistent, cwd-independent.** Artifacts live under
   `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/subs/<version-tag>` (not the compile cache's
   default `<cwd>/build`), so a CLI run from any directory reuses them; env-version-tagged
   like the other caches. Opt out with `RCLCPP_KIT_NO_SUB_CACHE=1`.
-- **Measured (rclcpp, Image, PCH warm).** Time-to-ready for
-  `import rclcpp_kit; bringup_rclcpp(); node.create_subscription(Image, …)` drops from
-  ~3.26 s to ~0.56 s once the `.so` is built; the `create_subscription` call itself from
-  ~2.9 s to ~0.22 s. The ~0.14 s residual in that call is cppyy's per-signature
+- **Characterized (rclcpp, Image, PCH warm, one shared host).** Time-to-ready for
+  `import rclcpp_kit; bringup_rclcpp(); node.create_subscription(Image, …)` was
+  ~3.26 s without the `.so` and ~0.56 s with it; the `create_subscription` call itself
+  was ~2.9 s and ~0.22 s. The ~0.14 s residual in that call is cppyy's per-signature
   `std::function` thunk (the Python→C++ callable wrapper), the same non-cacheable boundary
   as the §23 residual — generated at the call from Python, not carried in the `.so`.
+  These raw values verify the intended path but are not a portable startup claim.
 
 ---
 
@@ -1056,8 +1059,9 @@ lifecycle, numbers and limitations live in [FREEZE.md](FREEZE.md); the short ver
   call wrappers (`registerSimpleAction`'s `std::function` thunk etc. — ~0.7 s for
   t01, unchanged L0↔L1). A header PCH only kills the *parse*. Cutting the first-use
   JIT is a separate step (L2 native lowering, or caching the instantiations).
-- **Generalises:** the same recipe takes `rclcpp/rclcpp.hpp` from ~1.71 s to ~6 ms
-  — the PCH-load floor is header-size-independent, so this is not a BT special case.
+- **Second functional data point:** on the same host, the recipe changed the observed
+  `rclcpp/rclcpp.hpp` include from ~1.71 s to ~6 ms. This verifies that the mechanism
+  loads a non-BT header set from a PCH; the raw ratio is not a portable timing claim.
 
 **What a kit should do now:** make bringup idempotent and staged, and register its
 headers once via `cppyy_kit.register_pch_headers(...)` (§36) so the zero-config

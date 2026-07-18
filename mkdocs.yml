@@ -97,6 +97,7 @@ nav:
       - Overview: rclcpp_kit/README.md
       - Why: rclcpp_kit/WHY.md
       - Report: rclcpp_kit/REPORT.md
+      - Native Choices Evidence: rclcpp_kit/NATIVE_CHOICES_BENCHMARK.md
       - Skill: rclcpp_kit/SKILL.md
     - bt_kit:
       - Why: bt_kit/WHY.md

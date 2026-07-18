@@ -187,18 +187,19 @@ answer — it stays useful only as a fallback when no compiler/CPyCppyy toolchai
 present. Measured freeze+cache cold start: ~1.77 s → ~0.43 s (below), versus L0's
 ~920 ms bringup and an unpredictable ~680 ms stall on the first live tick.
 
-### The mechanism generalises (second data point)
+### A second functional data point
 
-Same recipe applied to `rclcpp/rclcpp.hpp` (the rclcpp bringup's dominant cost):
+The same recipe was applied to `rclcpp/rclcpp.hpp` (the rclcpp bringup's dominant
+parse cost) on the same shared host:
 
-| | L0 JIT | L1 frozen |
-|---|--:|--:|
-| `include("rclcpp/rclcpp.hpp")` | **~1.71 s** | **~6 ms** (~290×) |
+| | L0 JIT | L1 frozen | observed cold/warm ratio |
+|---|--:|--:|--:|
+| `include("rclcpp/rclcpp.hpp")` | ~1.71 s | ~6 ms | ~290× |
 
-Both libraries collapse to the same ~6 ms PCH-load floor regardless of header
-size — evidence the freeze is library-independent, not a BT.CPP special case. (The
-rclcpp measurement is parse-elimination only; a full frozen rclcpp bringup would
-need its own force-symbol pass and is out of scope here.)
+Both header sets loaded from their PCH in roughly 6 ms in this run. That verifies
+that the mechanism is not tied to the BT header set; it does not establish a
+portable load time or ratio. The rclcpp observation is parse-elimination only; a
+full frozen rclcpp bringup would need its own force-symbol pass and is out of scope.
 
 ### The compile cache: eliminate the first-use JIT, don't just relocate it
 
@@ -408,10 +409,11 @@ line, bringup is the whole `bringup_rclcpp()` call.
 | first run (empty cache) | ~1.9 s | ~1.92 s | JIT + `building …` printed; build scheduled |
 | **warm run (PCH loaded)** | **~0.0 s** | **~0.06 s** | `Cling PCH loaded from …` printed |
 
-The header parse is eliminated (~1.9 s → ~0 s) and bringup drops **~30×** on the warm
-run, with no user action between the two. As with the manual freeze, this removes the
-**parse** only; cppyy's first-use call-wrapper JIT is a separate cost (see §4, the
-compile cache).
+The header parse is eliminated in this run (~1.9 s → ~0 s), whose raw cold/warm
+bringup ratio is ~30×. This is single-host cache characterization, not a portable
+startup claim, regression threshold, or guarantee. As with the manual freeze, this
+removes the **parse** only; cppyy's first-use call-wrapper JIT is a separate cost
+(see §4, the compile cache).
 
 ### Files
 

@@ -124,8 +124,10 @@ from rclcpp_kit import serialization as ser
 blob = ser.serialized_message_to_bytes(ser.serialize_message(cpp_msg))
 ```
 
-The surface mirrors the names the rclcppyy product exposed, so rclcppyy is slimmed
-to thin re-export shims over this package and stays a drop-in rclpy accelerator.
+The surface mirrors the names the rclcppyy product exposed, so that product can keep
+thin re-export shims over this package. Whether a C++ route improves a workload is a
+separate measurement question; the TF report retains shared-host characterization
+without promoting it as a portable performance claim.
 
 ## Running it
 

@@ -1,4 +1,4 @@
-# Benchmarks — measured on one machine, one day
+# Benchmarks — characterization on one shared machine, one day
 
 **Machine:** Intel Core Ultra 9 285H (16 threads), Ubuntu 24.04.4 LTS, kernel
 6.17.0-1028-oem. **Date:** 2026-07-12.
@@ -10,11 +10,12 @@ crocoddyl 3.2.1 · tsid 1.10.0.
 All numbers below were measured on this machine, on this date, with the exact
 command shown per row. This is one consolidated re-run pass, not a fresh document —
 each kit's own `REPORT.md` remains the dated record of the original measurement;
-where a fresh number here differs from the historical claim by more than ~20% it is
-flagged. Every bench here ran on a shared development machine with other agent
-lanes active concurrently (documented where it visibly affected a result, e.g. the
-jitter cell below) — treat absolute numbers as directional, ratios as the more
-stable signal, same caveat every underlying `REPORT.md` already carries.
+where a fresh number here differs from the historical value by more than ~20% it is
+flagged. Every bench here ran on a shared development machine with other work active
+concurrently (documented where it visibly affected a result, e.g. the jitter cell
+below). These are reproducible raw characterization values, not portable performance
+claims, regression thresholds, or winners. Neither the absolute values nor their
+ratios have controlled repeated-run evidence on a dedicated machine.
 
 ## PCL showcase — cloud stays in C++ end to end
 
@@ -187,16 +188,17 @@ here), consistent with a busier shared machine on this pass.
 
 `ROS_DOMAIN_ID=66 pixi run -e rclcpp bench-tf`
 
-| scenario | ingest CPU% py / cpp | speedup |
+| scenario | ingest CPU% py / cpp | observed py/cpp ratio |
 |---|---|--:|
 | idle (no storm) | 0.0 / 0.0 | — |
 | 1k tf/s | 3.7 / 0.5 | 7.4x |
 | 5k tf/s | 11.2 / 0.8 | 14.0x |
 | 10k tf/s | 15.2 / 0.9 | 16.9x |
 
-Historical: 6.7–14x lower ingest CPU. The 10k tf/s row (16.9x) is above that
-range — noted, not alarming (higher load rows are the most CPU-bound and most
-sensitive to what else is running on the machine at the same moment).
+The historical shared-host pass observed ratios of 6.7–14. The 10k tf/s row here
+observed 16.9, illustrating why these single-pass ratios are not promoted. The
+mechanism and value correctness are tested separately; this table does not choose a
+winner or establish an improvement for another machine or workload.
 
 ## Auto-PCH — zero-config cold vs warm bringup
 
@@ -218,8 +220,10 @@ XDG_CACHE_HOME=<fresh dir> CPPYY_KIT_NO_AUTOPCH=1 pixi run -e rclcpp python -c \
 | first run (empty fresh cache) | 1.7 s | 1.735 s |
 | **warm run (PCH loaded)** | **~0.0 s** | **0.064 s** |
 
-**~27x** drop in bringup total, header parse eliminated — matches
-`docs/FREEZE.md` §8's historical ~1.9 s → ~0.06 s (~30x) closely.
+This run observed a ~27x cold/warm ratio and an eliminated header parse. The raw
+values are consistent with `docs/FREEZE.md` §8's historical ~1.9 s and ~0.06 s
+observations, but a single-host cache characterization is not a portable startup
+claim or regression threshold.
 
 ## Not re-run
 

@@ -1,19 +1,20 @@
-# TF via rclcpp_kit — measured efficiency vs the stock Python path
+# TF via rclcpp_kit — shared-host characterization against the stock Python path
 
 **Date:** 2026-07-11 · **Env:** pixi `default` (robostack-jazzy `ros-base` + conda-forge),
 `cppyy 3.5.0`, Python 3.12.13, `tf2`/`tf2_ros` 0.36.x, cyclonedds, linux-64.
-`ROS_DOMAIN_ID=51`. Shared machine during measurement (a parallel vision job on
-domain 52) — figures are directional, not absolute.
+`ROS_DOMAIN_ID=51`. This was one pass per variant on a shared machine during
+measurement (a parallel vision job ran on domain 52). The values below are retained
+as reproducible characterization only. They do not establish a portable performance
+claim, a regression budget, or a winner; controlled repetitions on a dedicated
+machine are required for any such conclusion.
 
 **Hypothesis:** TF ingest via the C++ `TransformListener` (driven through cppyy)
 should be significantly more efficient than the stock Python path.
 
-**Verdict: CONFIRMED, and the win is bigger than just ingest.** Running tf2's **C++**
-`tf2_ros::TransformListener` + `tf2::BufferCore` on an rclcppyy node ingests `/tf`
-entirely in C++ on its own thread — **~7–14× less CPU** than the stock rclpy Python
-listener under a TF storm (the win grows with tf traffic) — **and** each
-`lookup_transform` is **~5× cheaper** (1.4 µs vs 7.5 µs) because the Python `Buffer`
-pays two C-extension round-trips plus a Python message build per call. Delivered as
+**Result:** the C++ ownership mechanism and numeric behavior were confirmed. In this
+shared-host pass, the raw Python/C++ CPU ratios ranged from 6.7 to 14 under the TF
+storm, and the idle lookup medians were 7.5 µs and 1.4 µs. Those observations are
+inputs to a future controlled comparison, not an accepted speedup claim. Delivered as
 `rclcpp_kit/tf.py` (surfaced as `rclcpp_kit.tf` — the rclcpp core capability layer,
 since tf2 is core ROS 2), a `TransformListener` helper whose lookups return the real
 `geometry_msgs::msg::TransformStamped`. Tests run in the `rclcpp` env (8 tests, ~4 s,
@@ -132,36 +133,30 @@ process at a time (`scripts/tf_demos/bench_tf.py`; run it with `pixi run bench-t
 
 **ingest CPU%** = process-wide CPU (all threads, `time.process_time`) to keep the buffer
 fed over a 3 s window with the main thread idle. **lookup** rows in the storm scenarios
-are measured **under ingest load**.
+are measured **under ingest load**. Each table row is a single shared-host observation;
+the table intentionally reports no winner or performance conclusion.
 
-| scenario        | ingest CPU%  py / cpp | lookup µs med  py / cpp | lookups/s  py / cpp |
-|-----------------|:---------------------:|:-----------------------:|:-------------------:|
-| idle (no storm) | 0.0 / 0.0             | **7.5 / 1.4**  (5.4×)   | 131 791 / 563 265   |
-| 1 k tf/s        | **4.0 / 0.6**  (6.7×) | 7.0 / 1.4               | 131 663 / 531 871   |
-| 5 k tf/s        | **12.1 / 1.1** (11×)  | 9.4 / 2.5               | 93 330 / 326 391    |
-| 10 k tf/s       | **19.3 / 1.4** (14×)  | 13.5 / 4.5  (3×)        | 59 194 / 192 204    |
+| scenario | ingest CPU% py / cpp | lookup µs median py / cpp | lookups/s py / cpp | observed py/cpp ratios |
+|---|---:|---:|---:|---:|
+| idle (no storm) | 0.0 / 0.0 | 7.5 / 1.4 | 131 791 / 563 265 | lookup 5.4× |
+| 1 k tf/s | 4.0 / 0.6 | 7.0 / 1.4 | 131 663 / 531 871 | ingest 6.7×; lookup 5.0× |
+| 5 k tf/s | 12.1 / 1.1 | 9.4 / 2.5 | 93 330 / 326 391 | ingest 11×; lookup 3.8× |
+| 10 k tf/s | 19.3 / 1.4 | 13.5 / 4.5 | 59 194 / 192 204 | ingest 14×; lookup 3.0× |
 
 (p99 lookup tracks the median: e.g. idle py 9.5 µs / cpp 1.6 µs.)
 
-**Interpretation — honest about where the win is big and where it's marginal:**
+**Interpretation boundary:**
 
-- **Ingest is the headline, and the win grows with load.** At 1 k tf/s the Python
-  listener already burns ~7× the CPU of the C++ one; by 10 k tf/s it is **~14×**
-  (19 % of a core vs ~1.4 %). This is exactly the mechanism in Job 1: the Python path
-  deserializes every message into Python and crosses each transform individually under
-  the GIL, while the C++ path decodes and inserts wholly in C++.
-- **Lookups are cheaper too — even at idle (~5×).** The stock Python `lookup_transform`
-  pays two C-extension calls (`can_transform_core` + `lookup_transform_core`) and
-  builds a Python `TransformStamped` per call; the rclcppyy path is one cppyy call
-  returning a proxy. This part of the win is *independent of tf traffic*.
-- **Under load the Python lookup degrades further (7 → 13.5 µs) — a GIL effect.** The
-  Python listener's ingest thread holds the GIL, so a Python lookup contends with it;
-  the C++ listener never holds the GIL, so rclcppyy lookups stay fast while ingest runs.
-- **Where it's marginal:** the *math* is identical (both ultimately call the same
-  `tf2::BufferCore`), so for a robot with a *quiet* tf tree and occasional lookups the
-  absolute CPU difference is small (sub-1 % either way). The C++ path wins decisively
-  when the tf tree is busy (many frames / high rate) or lookups are frequent — i.e.
-  precisely the cases where TF cost actually shows up in a profile.
+- The raw ingest separation increased across the 1 k, 5 k, and 10 k tf/s rows. That
+  is consistent with the verified ownership difference: the Python path deserializes
+  and crosses each transform under the GIL, while the C++ path decodes and inserts in
+  C++. One pass cannot quantify the effect or separate it from host interference.
+- The raw lookup medians were lower for the C++ path in every row. The Python path
+  performs two extension calls and builds a Python message, while the C++ path returns
+  a cppyy proxy. Repeated controlled samples are still needed before attributing or
+  generalizing the observed ratio.
+- The idle ingest row recorded 0.0% for both paths. Absolute CPU differences and the
+  usefulness of either path remain workload-specific.
 
 ---
 
@@ -222,13 +217,13 @@ follow-up); a `TransformBroadcaster` helper (the publish side); `lookup_transfor
    doesn't resolve from Python** ("class has no public constructors") — third instance of
    "build the object in a small C++ factory" (§6 make_shared, control_kit, nav2). Add it
    to the make_shared bullet.
-3. **A library that already spins its own C++ thread is the *ideal* cppyy target
+3. **A library that already spins its own C++ thread is a useful cppyy target
    (sharpens §13).** `tf2_ros::TransformListener(spin_thread=true)` ingests `/tf` on its
    own `std::thread`, entirely off the GIL; Python only crosses on `lookup`. Measured
-   ~7–14× less ingest CPU than the equivalent Python listener whose callback runs under
-   the GIL — and Python-side lookups don't contend with a Python ingest thread. "Let C++
-   own the loop/thread; cross into Python only on demand" is a first-class efficiency
-   pattern, not just a deadlock-avoidance one.
+   raw Python/C++ ingest CPU ratios of 6.7–14 in this single shared-host pass. That is
+   characterization, not a portable speedup claim. "Let C++ own the loop/thread; cross
+   into Python only on demand" remains an ownership pattern worth evaluating, not a
+   guaranteed performance result.
 4. **Teardown: a C++ object owning an executor + `std::thread` must be released before
    `rclcpp::shutdown()` (third instance of §14/§19).** `register_teardown` a callback
    that drops the listener (its dtor cancels the executor + joins the thread); it runs
@@ -239,12 +234,13 @@ follow-up); a `TransformBroadcaster` helper (the publish side); `lookup_transfor
 
 ---
 
-## Recommendation — Validated
+## Recommendation — mechanism validated, performance unpromoted
 
-The hypothesis is confirmed and then some: the stock rclpy TransformListener feeds
-its buffer entirely in Python (deserialize → per-transform Python→C crossing → GIL),
-and the C++ listener does it in C++ on its own thread for **~7–14× less ingest
-CPU** under load, with **~5× cheaper lookups** as a bonus. It is delivered as
+The ownership hypothesis is confirmed: the stock rclpy TransformListener feeds its
+buffer through Python, while the C++ listener does that work on its own C++ thread.
+The retained shared-host measurements observed Python/C++ ingest CPU ratios of
+6.7–14 and lower raw lookup medians for the C++ path, but they do not establish a
+portable performance advantage. It is delivered as
 `rclcpp_kit.tf` — a thin, mirror-don't-sugar helper in the rclcpp core capability
 layer — with demos, a reproducible benchmark, and a fast test suite that includes the
 real network-ingest path. The friction was two familiar cppyy walls (overload mis-resolution,

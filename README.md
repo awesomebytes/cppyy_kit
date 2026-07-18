@@ -123,7 +123,7 @@ pull `ros-jazzy-rclcpp-kit`, transitively. To hack on the suite instead, see
 | Kit | What it drives | Headline |
 |---|---|---|
 | **[cppyy_kit](docs/COMMON_PATTERNS.md)** (base) | the ROS-free machinery: load / callback / lifetime, `@cpp`, `require`, `nogil`, [freeze & compile-cache](docs/FREEZE.md) | first-use JIT paid once per machine: 632 → 91 ms on the PCL VoxelGrid kernel [↗](docs/benchmarks.md#pcl-compile-cache--frame-0-first-use-jit-vs-cached) |
-| **[rclcpp_kit](rclcpp_kit/WHY.md)** | rclcpp (ROS 2 core): bringup, messages, tf, rosbag2, CDR | TF ingest **7.4–16.9×** lower CPU [↗](docs/benchmarks.md#tf-ingest--c-tf2-listener-vs-python-callback) |
+| **[rclcpp_kit](rclcpp_kit/WHY.md)** | rclcpp (ROS 2 core): bringup, messages, tf, rosbag2, CDR | shared-host TF characterization observed 7.4–16.9× Python/C++ CPU ratios; no portable claim [↗](docs/benchmarks.md#tf-ingest--c-tf2-listener-vs-python-callback) |
 | **[bt_kit](bt_kit/WHY.md)** | BehaviorTree.CPP v4 (no Python binding exists) | Groot2-compatible trees from Python; cache 218→62 ms [↗](docs/benchmarks.md#bt_kit-compile-cache--t01-cold-run-adoption) |
 | **[pcl_kit](pcl_kit/WHY.md)** | Point Cloud Library (no maintained binding) | **15.1× latency / 7.4× CPU** at 74-LOC parity [↗](docs/benchmarks.md#pcl-showcase--cloud-stays-in-c-end-to-end) |
 | **[ompl_kit](ompl_kit/WHY.md)** | Open Motion Planning Library | Python validity-checker in the planner's inner loop, no codegen [↗](ompl_kit/REPORT.md) |
@@ -183,7 +183,8 @@ The same code climbs rungs as you need more speed — the kit API does not chang
   where the cloud stays in C++ end to end at 74-LOC parity.
 - **Freeze.** A zero-config Cling PCH of the library headers is built once into
   `~/.cache/cppyy_kit` and auto-loaded thereafter, eliminating the header parse —
-  ~27× on rclcpp bringup (~1.73 s → 0.064 s) in the
+  a shared-host characterization observed ~1.73 s → 0.064 s (~27×); this is not a
+  portable startup claim. See the
   [auto-PCH measurement](docs/benchmarks.md#auto-pch--zero-config-cold-vs-warm-bringup).
   The compile cache does the same for `@cpp`/`cppdef` kernels: the first-use JIT —
   632 → 91 ms on the
@@ -226,7 +227,8 @@ Full documentation site: **<https://awesomebytes.github.io/cppyy_kit/>**
 
 - [The Patterns](docs/COMMON_PATTERNS.md) — the canonical cppyy playbook (36 patterns).
 - [Freeze & Cache](docs/FREEZE.md) — the L0 → L1 → L2 + compile-cache ladder.
-- [Benchmarks](docs/benchmarks.md) — every number on this page, one machine, one day, reproducible.
+- [Benchmarks](docs/benchmarks.md) — every number on this page, one shared machine,
+  one day, reproducible as characterization rather than a portable claim or winner.
 - [Architecture](docs/ARCHITECTURE_V2.md) — how the suite is put together.
 - [Tutorials](docs/tutorials/vision_loop_closure.md) — end-to-end walkthroughs.
 - Per kit: its **Why** (the pitch), **Report** (the evidence), **Skill** (LLM cheat sheet).

@@ -1,7 +1,7 @@
 # Why rclcpp_kit
 
 **The one-liner:** run ROS 2's *C++* core — rclcpp, tf2, rosbag2, CDR
-serialization — from Python, so the expensive per-message work happens in C++
+serialization — from Python, so selected per-message work happens in C++
 (off the GIL) while your orchestration stays in short Python. `rclcpp_kit` is the
 capability layer that makes that ergonomic; every ROS-touching kit (and the
 rclcppyy drop-in accelerator) is built on it.
@@ -21,22 +21,24 @@ The stock rclpy path pays Python for work that is fundamentally C++:
 `TransformListener` ingests `/tf` wholly in C++ on its own dedicated thread;
 publishers/subscribers move the C++ message; serialization is rclcpp's own CDR.
 
-## The evidence (TF, measured)
+## TF characterization
 
-Same synthetic TF storm, one variant at a time (full method + table in
-[REPORT.md](REPORT.md)):
+The following raw values came from one pass per variant on a shared development
+machine. They characterize that run only: they are not a portable performance
+claim, regression budget, or declaration of a winner. The full environment,
+method, reproduction command, and limitations are in [REPORT.md](REPORT.md).
 
-| scenario | ingest CPU% py / cpp | lookup µs med py / cpp |
-|---|---|---|
-| idle (no storm) | 0.0 / 0.0 | 7.5 / 1.4  (5.4×) |
-| 1 k tf/s | 4.0 / 0.6  (6.7×) | 7.0 / 1.4 |
-| 10 k tf/s | 19.3 / 1.4  (**14×**) | 13.5 / 4.5  (3×) |
+| scenario | ingest CPU% py / cpp | lookup µs median py / cpp | observed py/cpp ratio |
+|---|---|---|---|
+| idle (no storm) | 0.0 / 0.0 | 7.5 / 1.4 | lookup 5.4× |
+| 1 k tf/s | 4.0 / 0.6 | 7.0 / 1.4 | ingest 6.7×; lookup 5.0× |
+| 10 k tf/s | 19.3 / 1.4 | 13.5 / 4.5 | ingest 14×; lookup 3.0× |
 
-**Ingest is the headline and the win grows with load** — ~7× at 1 k tf/s, ~14× at
-10 k — because the C++ listener decodes and inserts wholly in C++ while the Python
-one crosses each transform under the GIL. Lookups are ~5× cheaper too, even idle.
-The *math* is identical (both call the same `tf2::BufferCore`), so the win shows up
-precisely where TF cost shows up in a profile: busy trees, frequent lookups.
+The C++ listener decodes and inserts wholly in C++, while the Python path crosses
+each transform under the GIL. That mechanism is verified independently of timing.
+The raw separation above is consistent with the hypothesis that this matters for
+busy trees and frequent lookups, but this single shared-host pass does not establish
+the size, stability, or portability of an improvement.
 
 ## What you get, and the honest boundary
 
@@ -47,8 +49,9 @@ precisely where TF cost shows up in a profile: busy trees, frequent lookups.
   bags and wire bytes interoperate.
 - **Clean teardown** — the rclcpp context and DDS layer are released in a defined
   order at exit (via `cppyy_kit`'s ordered teardown), no `os._exit` hacks.
-- **Where it's marginal:** a quiet tf tree with occasional lookups is sub-1% CPU
-  either way. This is an efficiency layer for the hot paths, not a free rewrite.
+- **Where the raw run was close in absolute CPU:** the idle row recorded 0.0% for
+  both variants. Workload-specific repeated measurement is required before choosing
+  a path for performance.
 
 For copy-paste patterns see [SKILL.md](SKILL.md); for the base primitives it builds
 on, [`cppyy_kit`](../cppyy_kit).
