@@ -88,16 +88,29 @@ jobs:
       - name: Record runtime architecture
         working-directory: ci/rclcpp_kit
         run: |
+          mkdir -p ../../build/test-results
+          uname -a | tee ../../build/test-results/runtime.txt
           pixi run python -c \
-            'import cppyy, platform; print(f"machine={platform.machine()} cppyy={cppyy.__version__}")'
+            'import cppyy, platform, sys; print(f"machine={platform.machine()} python={sys.version} cppyy={cppyy.__version__}")' \
+            | tee -a ../../build/test-results/runtime.txt
+          pixi list > ../../build/test-results/packages.txt
 
       - name: Test cppyy_kit
         working-directory: ci/rclcpp_kit
-        run: pixi run test-cppyy
+        run: pixi run test-cppyy-ci
 
       - name: Test rclcpp_kit
         working-directory: ci/rclcpp_kit
-        run: pixi run test-rclcpp
+        run: pixi run test-rclcpp-ci
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rclcpp-kit-${{ matrix.platform }}-test-evidence
+          path: build/test-results
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Save generated C++ caches
         if: >-

@@ -18,6 +18,9 @@ pixi run test-cppyy
 pixi run test-rclcpp
 ```
 
+CI additionally publishes JUnit XML, native runtime metadata, and the resolved
+package list as the `rclcpp-kit-<platform>-test-evidence` artifact.
+
 ## Package status
 
 The `cppyy-kit` and `ros-jazzy-rclcpp-kit` artifacts are noarch Python

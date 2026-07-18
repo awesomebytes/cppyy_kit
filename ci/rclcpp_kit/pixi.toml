@@ -43,3 +43,5 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT/../..:$PIXI_PROJECT_ROOT/../../rclcpp_kit:$PIXI
 [tasks]
 test-rclcpp = "pytest ../../rclcpp_kit/tests -v -ra"
 test-cppyy = "pytest ../../cppyy_kit/tests -v -ra"
+test-rclcpp-ci = "pytest ../../rclcpp_kit/tests -v -ra --junitxml=../../build/test-results/rclcpp-kit.xml"
+test-cppyy-ci = "pytest ../../cppyy_kit/tests -v -ra --junitxml=../../build/test-results/cppyy-kit.xml"
