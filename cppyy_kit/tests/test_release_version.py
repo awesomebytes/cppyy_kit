@@ -60,6 +60,13 @@ def test_release_requires_dual_arch_source_and_sanitizer_preflight():
     assert len(sbom_packages) == 12
     assert "cppyy" in sbom_packages
 
+    release_commands = "\n".join(
+        step.get("run", "") for step in jobs["release"]["steps"])
+    assert "verify_prefix_upload.py" in release_commands
+    assert "--require-present" in release_commands
+    assert "--skip-existing" not in release_commands
+    assert 'test "${#artifacts[@]}" -eq 12' in release_commands
+
 
 def test_ci_requires_native_package_proof_on_both_architectures():
     workflow = yaml.safe_load(

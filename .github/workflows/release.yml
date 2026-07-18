@@ -343,11 +343,47 @@ jobs:
           name: release-cppyy-arm-package
           path: release-input
 
-      # Upload every built .conda to the prefix.dev channel `awesomebytes` via
-      # OIDC. REQUIRES the Repository Access authorization flagged in the header.
-      - name: Upload to prefix.dev channel `awesomebytes` (OIDC)
+      - name: Compare local artifacts with existing channel bytes
         run: |
-          set -euxo pipefail
-          pixi run -e pkg rattler-build upload prefix --skip-existing \
-            --channel awesomebytes \
-            $(find release-input -name '*.conda' | sort)
+          set -euo pipefail
+          mkdir -p build/release-upload
+          mapfile -t artifacts < <(
+            find release-input -type f -name '*.conda' | sort
+          )
+          test "${#artifacts[@]}" -eq 12
+          python3 scripts/ci/verify_prefix_upload.py \
+            --output build/release-upload/preflight.json \
+            --missing-output build/release-upload/missing.txt \
+            "${artifacts[@]}"
+
+      # Upload only identities proven absent. Existing identities are accepted
+      # only when their downloaded bytes match the locally attested artifact.
+      - name: Upload absent artifacts to prefix.dev (OIDC)
+        run: |
+          set -euo pipefail
+          mapfile -t artifacts < build/release-upload/missing.txt
+          if [ "${#artifacts[@]}" -gt 0 ]; then
+            pixi run -e pkg rattler-build upload prefix \
+              --channel awesomebytes "${artifacts[@]}"
+          else
+            echo "All artifact identities already contain the exact release bytes"
+          fi
+
+      - name: Verify published channel bytes
+        run: |
+          set -euo pipefail
+          mapfile -t artifacts < <(
+            find release-input -type f -name '*.conda' | sort
+          )
+          python3 scripts/ci/verify_prefix_upload.py \
+            --require-present --attempts 12 --delay-seconds 5 \
+            --output build/release-upload/postflight.json \
+            "${artifacts[@]}"
+
+      - name: Preserve upload verification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-upload-verification-${{ github.ref_name }}
+          path: build/release-upload
+          if-no-files-found: error
+          retention-days: 90

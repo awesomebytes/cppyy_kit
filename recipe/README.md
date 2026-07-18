@@ -116,3 +116,13 @@ prove all twelve, attest provenance and an SPDX SBOM per artifact, then run
 release**, authorize this repo on prefix.dev:
 `awesomebytes` channel → Repository Access → `awesomebytes/cppyy_kit`,
 `release.yml`, read/write. The rclcppyy authorization does not carry over.
+
+Release publication is retry-safe by byte identity. Before upload, the
+workflow downloads and hashes every existing exact `subdir/filename`; it uploads
+only confirmed 404s, then downloads and rehashes all twelve published artifacts.
+HTTP/authentication failures are not treated as missing. If an upload stops part
+way through, retry the failed job so it reuses the original workflow artifacts
+and uploads the remaining identities. If a full rebuild produces different
+bytes for an already-published filename, verification fails deliberately: remove
+the invalid remote artifact or increment the affected recipe build number. Never
+bypass this with `--skip-existing`.
