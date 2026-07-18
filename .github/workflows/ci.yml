@@ -42,3 +42,69 @@ jobs:
       # cleanly. The per-kit green proof runs in the feature envs (test-<kit>).
       - name: Test (kit suites collect + auto-skip)
         run: pixi run test
+
+  rclcpp-kit:
+    name: rclcpp-kit (${{ matrix.platform }})
+    env:
+      # Limit the ARM64 cppyy/Cling source build to avoid exhausting the
+      # standard runner while still compiling in parallel.
+      MAKE_NPROCS: "2"
+      STDCXX: "17"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-64
+            machine: x86_64
+          - runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+            machine: aarch64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify native runner architecture
+        run: test "$(uname -m)" = "${{ matrix.machine }}"
+
+      - name: Set up pixi
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          working-directory: ci/rclcpp_kit
+          cache: true
+          cache-key: rclcpp-kit-${{ matrix.platform }}-
+          cache-write: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+
+      - name: Restore generated C++ caches
+        id: generated-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/cppyy_kit
+          key: generated-cppyy-kit-${{ matrix.platform }}-${{ hashFiles('ci/rclcpp_kit/pixi.lock') }}
+
+      - name: Record runtime architecture
+        working-directory: ci/rclcpp_kit
+        run: |
+          pixi run python -c \
+            'import cppyy, platform; print(f"machine={platform.machine()} cppyy={cppyy.__version__}")'
+
+      - name: Test cppyy_kit
+        working-directory: ci/rclcpp_kit
+        run: pixi run test-cppyy
+
+      - name: Test rclcpp_kit
+        working-directory: ci/rclcpp_kit
+        run: pixi run test-rclcpp
+
+      - name: Save generated C++ caches
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          steps.generated-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/cppyy_kit
+          key: generated-cppyy-kit-${{ matrix.platform }}-${{ hashFiles('ci/rclcpp_kit/pixi.lock') }}

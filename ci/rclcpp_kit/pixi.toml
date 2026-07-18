@@ -1,0 +1,45 @@
+[workspace]
+authors = ["Sam Pfeiffer <sammypfeiffer@gmail.com>"]
+name = "cppyy_kit_rclcpp_ci"
+channels = ["robostack-jazzy", "conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+version = "0.1.0"
+
+# Keep this workspace deliberately small. The repository workspace contains
+# every domain kit and cannot be solved on ARM64 until all third-party packages
+# support that architecture. This environment proves the shared cppyy_kit and
+# rclcpp_kit foundations on both native Linux architectures.
+[dependencies]
+ros-jazzy-ros-base = ">=0.11"
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+cmake = "*"
+ninja = "*"
+make = "*"
+compilers = "*"
+pkg-config = "*"
+python = "3.12.*"
+pytest = ">=7.4,<8"
+numpy = "*"
+pydantic = ">=2,<3"
+setuptools = "<81"
+psutil = ">=7.2.2,<8"
+
+# cppyy 3.5 has conda packages on x86-64. On ARM64, conda-forge currently only
+# provides cppyy 2.3 for Python 3.9, which cannot coexist with Jazzy's Python
+# 3.12 stack. Build the same upstream 3.5 release from its source distribution
+# on the native ARM64 runner instead.
+[target.linux-64.dependencies]
+cppyy = ">=3.5,<4"
+
+[target.linux-aarch64.pypi-dependencies]
+cppyy = "==3.5.0"
+
+[activation.env]
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../..:$PIXI_PROJECT_ROOT/../../rclcpp_kit:$PIXI_PROJECT_ROOT/../../bt_kit"
+
+[tasks]
+test-rclcpp = "pytest ../../rclcpp_kit/tests -v -ra"
+test-cppyy = "pytest ../../cppyy_kit/tests -v -ra"

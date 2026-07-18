@@ -15,6 +15,21 @@ cd "$(dirname "$0")/.."
 OUT="$PWD/output"
 PASS=0; FAIL=0; RESULTS=""
 
+# Prove against the native host platform by default. PIXI_PLATFORM is an escape
+# hatch for callers that already know their conda subdir.
+PLATFORM="${PIXI_PLATFORM:-}"
+if [ -z "$PLATFORM" ]; then
+  case "$(uname -m)" in
+    x86_64) PLATFORM="linux-64" ;;
+    aarch64|arm64) PLATFORM="linux-aarch64" ;;
+    *) echo "Unsupported native package-proof architecture: $(uname -m)" >&2; exit 2 ;;
+  esac
+fi
+case "$PLATFORM" in
+  linux-64|linux-aarch64) ;;
+  *) echo "Unsupported PIXI_PLATFORM: $PLATFORM" >&2; exit 2 ;;
+esac
+
 prove() {
   local conda_name="$1" import_name="$2" extra="$3" channel_set="${4:-robostack}"
   local wd; wd="$(mktemp -d)"
@@ -30,7 +45,7 @@ prove() {
 [workspace]
 name = "prove-${conda_name}"
 channels = [${chan_list}]
-platforms = ["linux-64"]
+platforms = ["${PLATFORM}"]
 version = "0.0.0"
 
 [activation.env]
