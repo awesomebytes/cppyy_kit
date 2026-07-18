@@ -18,6 +18,7 @@ def test_native_factory_is_lazy():
     assert session.closed is False
     assert session.nodes == ()
     assert session.executors == ()
+    assert session.resources == ()
 
 
 @pytest.mark.parametrize("kind", ["bad", "events"])

@@ -51,6 +51,13 @@ from rclcpp_kit.native import (
     native,
     publisher_capabilities,
 )
+from rclcpp_kit.native_pipeline import (
+    FusedPipeline,
+    NativeCallback,
+    NativeStats,
+    create_fused_pipeline,
+    create_native_callback,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -72,4 +79,9 @@ __all__ = [
     "NativeSession",
     "native",
     "publisher_capabilities",
+    "FusedPipeline",
+    "NativeCallback",
+    "NativeStats",
+    "create_fused_pipeline",
+    "create_native_callback",
 ]

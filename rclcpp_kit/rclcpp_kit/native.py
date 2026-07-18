@@ -134,6 +134,7 @@ class NativeSession:
         self._context = None
         self._nodes: list[Any] = []
         self._executors: list[Any] = []
+        self._resources: list[Any] = []
         self._closed = False
 
     def __enter__(self) -> "NativeSession":
@@ -161,6 +162,10 @@ class NativeSession:
     @property
     def executors(self) -> tuple[Any, ...]:
         return tuple(self._executors)
+
+    @property
+    def resources(self) -> tuple[Any, ...]:
+        return tuple(self._resources)
 
     @property
     def closed(self) -> bool:
@@ -240,6 +245,13 @@ class NativeSession:
             raise ValueError("callback-group kind must be 'mutually_exclusive' or 'reentrant'")
         return node.create_callback_group(group_type, bool(automatically_add_to_executor))
 
+    def register_resource(self, resource: Any) -> Any:
+        """Retain a closeable native helper until ordered session teardown."""
+        self._ensure_open()
+        if resource not in self._resources:
+            self._resources.append(resource)
+        return resource
+
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
         """Cancel executors, release tracked objects, and shut down the context."""
         if self._closed:
@@ -249,6 +261,12 @@ class NativeSession:
                 executor.cancel()
             except Exception:
                 pass
+        for resource in reversed(self._resources):
+            try:
+                resource.close()
+            except Exception:
+                pass
+        self._resources.clear()
         self._executors.clear()
         self._nodes.clear()
         if self._context is not None:
