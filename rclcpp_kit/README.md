@@ -14,6 +14,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | Module | Surface |
 |---|---|
 | `bringup_rclcpp` | `bringup_rclcpp()` (JIT `rclcpp/rclcpp.hpp` + load core libs), `add_ros2_include_paths()`, `shutdown_rclcpp()`, the rclpy-style `rclcpp.Node` adapters (create_publisher / create_subscription / create_timer / destroy_node), C++ message resolution + the shared recursive `convert_python_msg_to_cpp` |
+| `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
 | `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |

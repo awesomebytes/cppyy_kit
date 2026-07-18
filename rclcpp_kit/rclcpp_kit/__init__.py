@@ -45,6 +45,12 @@ from rclcpp_kit import rosbag2_py_compat
 from rclcpp_kit import tf
 from rclcpp_kit import subscription_cache
 from rclcpp_kit import borrowed_publish
+from rclcpp_kit.native import (
+    NativeCapabilities,
+    NativeSession,
+    native,
+    publisher_capabilities,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -62,4 +68,8 @@ __all__ = [
     "tf",
     "subscription_cache",
     "borrowed_publish",
+    "NativeCapabilities",
+    "NativeSession",
+    "native",
+    "publisher_capabilities",
 ]
