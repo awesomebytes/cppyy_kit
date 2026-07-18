@@ -51,8 +51,16 @@ void publish(uintptr_t publisher_address, const MessageT & message)
   auto * publisher = reinterpret_cast<const rcl_publisher_t *>(publisher_address);
   rclcpp::Serialization<MessageT> serializer;
   rclcpp::SerializedMessage serialized;
-  serializer.serialize_message(&message, &serialized);
+  try {
+    serializer.serialize_message(&message, &serialized);
+  } catch (...) {
+    rcl_reset_error();
+    throw;
+  }
   auto & raw = serialized.get_rcl_serialized_message();
+  // Some type-support dispatchers probe an incompatible implementation before
+  // succeeding. Do not leak that stale diagnostic into the next RCL operation.
+  rcl_reset_error();
   const rcl_ret_t result = rcl_publish_serialized_message(publisher, &raw, nullptr);
   if (result != RCL_RET_OK) {
     const auto error_state = rcl_get_error_string();
