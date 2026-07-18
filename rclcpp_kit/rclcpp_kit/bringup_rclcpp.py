@@ -1,4 +1,5 @@
 import array
+from functools import lru_cache
 # cppyy_kit is imported before cppyy on purpose: importing it activates the
 # zero-config Cling PCH (cppyy_kit.autopch), which must set CLING_STANDARD_PCH
 # before the interpreter's first `import cppyy`. cppyy_kit imports cppyy itself
@@ -302,6 +303,12 @@ def _is_msg_python(message_type):
     # Fast check: Python ROS messages have __slots__ attribute that cppyy messages don't
     return hasattr(message_type, '__slots__')
 
+
+@lru_cache(maxsize=1024)
+def _message_conversion_fields(message_type: Any):
+    """Cache the immutable generated field layout used by every conversion."""
+    return tuple(message_type.get_fields_and_field_types().items())
+
 # @lru_cache(maxsize=1000)
 @staticmethod
 def _resolve_message_type(message_type):
@@ -442,7 +449,7 @@ def convert_python_msg_to_cpp(msg_py: Any, msg_cpp: Any) -> Any:
     recursively; sequence/array fields become the matching std::vector. Shared by
     the plain-bringup publish path and RclcppyyNode so both convert identically.
     """
-    for field_name in msg_py.get_fields_and_field_types():
+    for field_name, field_type_py in _message_conversion_fields(msg_py.__class__):
         field = getattr(msg_py, field_name)
         # Nested message (has get_fields_and_field_types): recurse into the
         # corresponding C++ sub-message.
@@ -455,7 +462,6 @@ def convert_python_msg_to_cpp(msg_py: Any, msg_cpp: Any) -> Any:
         # string primitives), array.array (numeric primitives with a typecode:
         # int64, double, ...), or occasionally a numpy array -- accept all three.
         elif isinstance(field, (list, tuple, array.array, np.ndarray)):
-            field_type_py = msg_py.__class__.get_fields_and_field_types().get(field_name)
             # e.g. 'sequence<rcl_interfaces/Parameter>' -> 'rcl_interfaces/Parameter'
             element_type_py = field_type_py.replace("sequence<", "").replace(">", "")
             primitive_cpp_type = _PRIMITIVE_SEQUENCE_ELEMENT_TYPES.get(element_type_py)
