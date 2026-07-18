@@ -44,6 +44,7 @@ from rclcpp_kit import rosbag2_cpp
 from rclcpp_kit import rosbag2_py_compat
 from rclcpp_kit import tf
 from rclcpp_kit import subscription_cache
+from rclcpp_kit import borrowed_publish
 
 __all__ = [
     "bringup_rclcpp",
@@ -60,4 +61,5 @@ __all__ = [
     "rosbag2_py_compat",
     "tf",
     "subscription_cache",
+    "borrowed_publish",
 ]
