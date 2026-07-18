@@ -1,8 +1,62 @@
 """Contract tests for publishing through an authoritative stock handle."""
 
+from concurrent.futures import ThreadPoolExecutor
+
 from _run_helper import format_output, run_helper
 
 from rclcpp_kit import borrowed_publish
+
+
+def test_prepare_caches_cppyy_binding_but_returns_independent_routes(monkeypatch):
+    message_type = type("Message", (), {})
+    calls = []
+
+    class Binding:
+        cpp_type_name = "example::msg::Message"
+        cpp_message_type = object()
+        publish_cpp = object()
+
+        def __init__(self, requested_type):
+            calls.append(requested_type)
+
+    monkeypatch.setattr(borrowed_publish, "_PublisherBinding", Binding)
+    monkeypatch.setattr(borrowed_publish, "_BINDINGS", {})
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        routes = list(executor.map(borrowed_publish.prepare, [message_type] * 32))
+
+    assert calls == [message_type]
+    assert len({id(route) for route in routes}) == len(routes)
+    assert all(route.message_type is message_type for route in routes)
+    assert all(route._publish_cpp is routes[0]._publish_cpp for route in routes)
+
+
+def test_failed_binding_is_not_cached(monkeypatch):
+    message_type = type("Message", (), {})
+    calls = []
+
+    class Binding:
+        def __init__(self, requested_type):
+            calls.append(requested_type)
+            if len(calls) == 1:
+                raise RuntimeError("binding failed")
+            self.cpp_type_name = "example::msg::Message"
+            self.cpp_message_type = object()
+            self.publish_cpp = object()
+
+    monkeypatch.setattr(borrowed_publish, "_PublisherBinding", Binding)
+    monkeypatch.setattr(borrowed_publish, "_BINDINGS", {})
+
+    try:
+        borrowed_publish.prepare(message_type)
+    except RuntimeError as exception:
+        assert str(exception) == "binding failed"
+    else:
+        raise AssertionError("failed binding was accepted")
+
+    route = borrowed_publish.prepare(message_type)
+    assert route.message_type is message_type
+    assert calls == [message_type, message_type]
 
 
 def test_publish_glue_checks_rcl_return_and_resets_error():

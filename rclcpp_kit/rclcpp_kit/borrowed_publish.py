@@ -28,6 +28,8 @@ from rclcpp_kit.bringup_rclcpp import (
 
 _INITIALIZE_LOCK = threading.RLock()
 _INITIALIZED = False
+_BINDING_LOCK = threading.RLock()
+_BINDINGS = {}
 
 _PUBLISH_GLUE = r"""
 #include <rcl/error_handling.h>
@@ -94,6 +96,32 @@ def _initialize():
         _INITIALIZED = True
 
 
+class _PublisherBinding:
+    """Immutable process-lifetime cppyy binding for one ROS message class."""
+
+    __slots__ = ("cpp_type_name", "cpp_message_type", "publish_cpp")
+
+    def __init__(self, message_type):
+        _initialize()
+        self.cpp_type_name, self.cpp_message_type = _resolve_message_type(message_type)
+        self.publish_cpp = cppyy.gbl.rclcpp_kit_borrowed.publish[
+            self.cpp_message_type]
+
+
+def _binding_for(message_type):
+    try:
+        return _BINDINGS[message_type]
+    except KeyError:
+        pass
+    with _BINDING_LOCK:
+        try:
+            return _BINDINGS[message_type]
+        except KeyError:
+            binding = _PublisherBinding(message_type)
+            _BINDINGS[message_type] = binding
+            return binding
+
+
 class PreparedPublisher:
     """Type-resolved hot path for a stock publisher.
 
@@ -104,11 +132,11 @@ class PreparedPublisher:
     """
 
     def __init__(self, message_type):
-        _initialize()
         self.message_type = message_type
-        self.cpp_type_name, self.cpp_message_type = _resolve_message_type(message_type)
-        self._publish_cpp = cppyy.gbl.rclcpp_kit_borrowed.publish[
-            self.cpp_message_type]
+        binding = _binding_for(message_type)
+        self.cpp_type_name = binding.cpp_type_name
+        self.cpp_message_type = binding.cpp_message_type
+        self._publish_cpp = binding.publish_cpp
 
     def _to_cpp(self, message):
         if _is_msg_cpp(message):
