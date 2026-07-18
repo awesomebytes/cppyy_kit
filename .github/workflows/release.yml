@@ -73,9 +73,15 @@ jobs:
           sha256sum "${artifacts[@]}" | tee build/release/SHA256SUMS
 
       - name: Attest build provenance
+        id: provenance
         uses: actions/attest@v4
         with:
           subject-path: output/**/*.conda
+
+      - name: Preserve portable provenance bundle
+        run: |
+          cp "${{ steps.provenance.outputs.bundle-path }}" \
+            build/release/provenance.sigstore.json
 
       - name: Preserve packages and raw gate evidence
         uses: actions/upload-artifact@v4
@@ -140,16 +146,24 @@ jobs:
           upload-release-assets: false
 
       - name: Attest package SBOM
+        id: sbom-attestation
         uses: actions/attest@v4
         with:
           subject-path: ${{ steps.artifact.outputs.path }}
           sbom-path: ${{ matrix.package }}.spdx.json
 
+      - name: Preserve portable SBOM attestation bundle
+        run: |
+          cp "${{ steps.sbom-attestation.outputs.bundle-path }}" \
+            "${{ matrix.package }}.sbom.sigstore.json"
+
       - name: Preserve package SBOM
         uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ matrix.package }}
-          path: ${{ matrix.package }}.spdx.json
+          path: |
+            ${{ matrix.package }}.spdx.json
+            ${{ matrix.package }}.sbom.sigstore.json
           if-no-files-found: error
           retention-days: 90
 
