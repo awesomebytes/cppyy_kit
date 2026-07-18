@@ -84,6 +84,9 @@ demo-tf-lookup = "python rclcpp_kit/demos/d01_lookup_example.py"
 demo-tf-storm = "python rclcpp_kit/demos/tf_storm_publisher.py --frames 50 --rate 100"
 # Stock rclpy Python listener vs rclcpp_kit C++ listener: ingest CPU% + lookup latency.
 bench-tf = "python rclcpp_kit/demos/bench_tf.py"
+# Strict raw characterization of independent native rclcpp choices.
+bench-native-choices-smoke = "python -m rclcpp_kit.benchmarks.native_choices --mode smoke --output build/native-choices-smoke.json"
+bench-native-choices = "python -m rclcpp_kit.benchmarks.native_choices --mode measurement --output build/native-choices.json"
 
 # --- bt: BehaviorTree.CPP v4 -------------------------------------------------
 [feature.bt.dependencies]

@@ -138,6 +138,8 @@ pixi run -e rclcpp test-tf         # the tf gate (8 tests)
 pixi run -e rclcpp demo-tf-lookup  # C++ listener ingests /tf; Python looks it up
 pixi run -e rclcpp demo-tf-storm   # synthetic TF storm publisher
 pixi run -e rclcpp bench-tf        # stock rclpy listener vs rclcpp_kit C++ listener
+pixi run -e rclcpp bench-native-choices-smoke  # verified eight-case raw smoke
+pixi run -e rclcpp bench-native-choices        # repeated raw characterization
 ```
 
 Unlike the domain kits, `rclcpp_kit`'s tests genuinely bring up rclcpp + DDS (they
@@ -149,3 +151,5 @@ the default `pixi run test` collect-and-skip smoke.
 - [`SKILL.md`](SKILL.md) — LLM-facing: when to use, copy-paste patterns, gotchas.
 - [`WHY.md`](WHY.md) — the pitch (why drive rclcpp/tf from Python via cppyy).
 - [`REPORT.md`](REPORT.md) — the tf spike evidence (mechanism + benchmark).
+- [`NATIVE_CHOICES_BENCHMARK.md`](NATIVE_CHOICES_BENCHMARK.md) — correctness
+  contract, reproduction commands, raw native-choice measurements, and limits.
