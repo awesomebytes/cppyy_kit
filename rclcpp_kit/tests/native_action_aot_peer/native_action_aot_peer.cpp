@@ -86,6 +86,10 @@ private:
     if (node_->count_subscribers(feedback_topic_) == 0) {
       return;
     }
+    // The server-side graph count can update just before the client's executor
+    // has installed the matched reader locally. Give that handoff a bounded
+    // settling interval so the first feedback sample is part of the proof.
+    std::this_thread::sleep_for(200ms);
     for (std::size_t index = 0; index < kFeedbackCount; ++index) {
       goal_handle->publish_feedback(std::make_shared<Action::Feedback>());
       std::this_thread::sleep_for(20ms);
