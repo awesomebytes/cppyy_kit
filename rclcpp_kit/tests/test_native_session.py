@@ -17,6 +17,13 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_lifecycle_nodes"] is True
     assert report["managed_component_containers"] is True
     assert report["intra_process"] is True
+    assert report["direct_cpp_message_entities"] is True
+    assert report["raw_node_options"] is True
+    assert report["raw_qos_profiles"] is True
+    assert report["actual_qos_introspection"] == (
+        "publisher_and_subscription_runtime_query")
+    assert report["managed_entity_options_proof"] == "tested_axes_only"
+    assert report["arbitrary_entity_option_combinations"] == "unknown"
     assert report["loaned_messages"] == "publisher_runtime_query"
     assert report["raw_rclcpp"] is True
 

@@ -195,6 +195,24 @@ class NativeCapabilities:
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
     intra_process: bool = True
+    direct_cpp_message_entities: bool = True
+    raw_node_options: bool = True
+    raw_qos_profiles: bool = True
+    actual_qos_introspection: str = "publisher_and_subscription_runtime_query"
+    managed_entity_options_proof: str = "tested_axes_only"
+    tested_entity_option_axes: tuple[str, ...] = (
+        "keep_last_reliable_volatile",
+        "keep_last_best_effort_volatile",
+        "reliable_transient_local",
+        "keep_all_reliable_volatile",
+        "deadline_lifespan_liveliness_introspection",
+        "publisher_callback_group_options",
+        "subscription_callback_group_options",
+        "namespace_and_remap",
+        "intra_process",
+        "parameter_services",
+    )
+    arbitrary_entity_option_combinations: str = "unknown"
     loaned_messages: str = "publisher_runtime_query"
     raw_rclcpp: bool = True
 
