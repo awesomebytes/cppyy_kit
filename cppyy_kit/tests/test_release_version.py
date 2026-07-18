@@ -32,6 +32,10 @@ def test_release_requires_dual_arch_source_and_sanitizer_preflight():
     jobs = workflow["jobs"]
     preflight = jobs["preflight"]
     assert jobs["build"]["needs"] == "preflight"
+    assert jobs["cppyy-arm"]["needs"] == "preflight"
+    assert jobs["cppyy-arm"]["runs-on"] == "ubuntu-24.04-arm"
+    assert jobs["sbom"]["needs"] == ["build", "cppyy-arm"]
+    assert jobs["release"]["needs"] == ["build", "cppyy-arm", "sbom"]
     assert {
         (item["platform"], item["machine"])
         for item in preflight["strategy"]["matrix"]["include"]
@@ -45,3 +49,27 @@ def test_release_requires_dual_arch_source_and_sanitizer_preflight():
     assert "test-cppyy-ci" in commands
     assert "test-rclcpp-ci" in commands
     assert "prove_native_safety_sanitizers.sh" in commands
+
+    arm_commands = "\n".join(
+        step.get("run", "") for step in jobs["cppyy-arm"]["steps"])
+    assert "build_cppyy_arm.sh" in arm_commands
+    assert "cppyy-arm-package-proof.json" in arm_commands
+    assert "cppyy-arm-runtime-proof.log" in arm_commands
+
+    sbom_packages = jobs["sbom"]["strategy"]["matrix"]["package"]
+    assert len(sbom_packages) == 12
+    assert "cppyy" in sbom_packages
+
+
+def test_ci_requires_native_package_proof_on_both_architectures():
+    workflow = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "ci.yml").read_text())
+    matrix = workflow["jobs"]["rclcpp-kit"]["strategy"]["matrix"]["include"]
+
+    assert {
+        (item["platform"], item["machine"], item["package_proof"])
+        for item in matrix
+    } == {
+        ("linux-64", "x86_64", True),
+        ("linux-aarch64", "aarch64", True),
+    }

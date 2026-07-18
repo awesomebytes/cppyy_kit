@@ -23,6 +23,10 @@ def metadata_versions(repo_root: Path) -> dict[str, str]:
     with (repo_root / "pixi.toml").open("rb") as stream:
         versions = {"pixi.toml": str(tomllib.load(stream)["workspace"]["version"])}
     for recipe in sorted((repo_root / "recipe").glob("*/recipe.yaml")):
+        if recipe.parent.name == "cppyy":
+            # This architecture bridge follows its immutable upstream release,
+            # not the lockstep suite version checked by the suite tag.
+            continue
         versions[str(recipe.relative_to(repo_root))] = _match(
             recipe, r'^  version: "([^\"]+)"$', "recipe")
     for build_script in sorted((repo_root / "recipe").glob("*/build.sh")):
