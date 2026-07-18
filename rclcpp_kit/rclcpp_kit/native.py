@@ -78,6 +78,22 @@ def _install_helpers() -> None:
                   options, threads, false, std::chrono::nanoseconds(-1));
             }
 
+            std::shared_ptr<rclcpp::PublisherOptions> make_publisher_options(
+                std::shared_ptr<rclcpp::CallbackGroup> callback_group)
+            {
+              auto options = std::make_shared<rclcpp::PublisherOptions>();
+              options->callback_group = std::move(callback_group);
+              return options;
+            }
+
+            std::shared_ptr<rclcpp::SubscriptionOptions> make_subscription_options(
+                std::shared_ptr<rclcpp::CallbackGroup> callback_group)
+            {
+              auto options = std::make_shared<rclcpp::SubscriptionOptions>();
+              options->callback_group = std::move(callback_group);
+              return options;
+            }
+
             class ExecutorThread {
             public:
               explicit ExecutorThread(
@@ -171,6 +187,8 @@ class NativeCapabilities:
     multi_threaded_executor: bool = True
     managed_executor_thread: bool = True
     callback_groups: bool = True
+    callback_group_entity_options: bool = True
+    managed_native_clients: bool = True
     intra_process: bool = True
     loaned_messages: str = "publisher_runtime_query"
     raw_rclcpp: bool = True
@@ -365,6 +383,20 @@ class NativeSession:
             raise ValueError("callback-group kind must be 'mutually_exclusive' or 'reentrant'")
         return node.create_callback_group(group_type, bool(automatically_add_to_executor))
 
+    def create_publisher_options(self, callback_group: Any) -> Any:
+        """Create options with a callback group cppyy cannot assign directly."""
+        self._ensure_open()
+        smart_group = getattr(
+            callback_group, "__smartptr__", lambda: callback_group)()
+        return cppyy.gbl.rclcpp_kit_native.make_publisher_options(smart_group)
+
+    def create_subscription_options(self, callback_group: Any) -> Any:
+        """Create options with a callback group cppyy cannot assign directly."""
+        self._ensure_open()
+        smart_group = getattr(
+            callback_group, "__smartptr__", lambda: callback_group)()
+        return cppyy.gbl.rclcpp_kit_native.make_subscription_options(smart_group)
+
     def register_resource(self, resource: Any) -> Any:
         """Retain a closeable native helper until ordered session teardown."""
         self._ensure_open()
@@ -424,6 +456,23 @@ class NativeSession:
             service_type,
             service_name,
             callback_body,
+            **options,
+        )
+
+    def create_native_client(
+        self,
+        node: Any,
+        service_type: Any,
+        service_name: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned typed client with C++-managed async futures."""
+        from rclcpp_kit.native_client import create_native_client
+        return create_native_client(
+            self,
+            node,
+            service_type,
+            service_name,
             **options,
         )
 

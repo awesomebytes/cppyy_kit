@@ -16,6 +16,8 @@ pieces every ROS-touching kit (and the rclcppyy product itself) needs:
     and a ``rosbag2_py``-compatible shim (``rclcpp_kit.rosbag2_py_compat``);
   * **tf** -- the tf2 C++ transform stack (``rclcpp_kit.tf``): a
     ``tf2_ros::TransformListener`` ingesting ``/tf`` wholly in C++ on its own thread.
+  * **managed native entities** -- C++ callbacks, services, and typed clients whose
+    futures and teardown remain owned by a ``NativeSession``.
 
 It builds on the ROS-free ``cppyy_kit`` base (load_libraries / keep_alive /
 register_teardown / pretty_cpp_error). The surface mirrors the names the rclcppyy
@@ -71,6 +73,11 @@ from rclcpp_kit.native_service import (
     NativeServiceStats,
     create_native_service,
 )
+from rclcpp_kit.native_client import (
+    NativeClient,
+    NativeClientStats,
+    create_native_client,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -106,4 +113,7 @@ __all__ = [
     "NativeService",
     "NativeServiceStats",
     "create_native_service",
+    "NativeClient",
+    "NativeClientStats",
+    "create_native_client",
 ]

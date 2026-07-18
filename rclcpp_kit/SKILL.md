@@ -97,6 +97,39 @@ for sbm in rosbag2_cpp.iter_messages(reader):            # C++ SerializedBagMess
 from rclcpp_kit import rosbag2_py_compat as rosbag2_py    # rosbag2_py-shaped API
 ```
 
+## Pattern 5 — typed async clients with C++-owned futures
+*Use for:* calling a stock ROS service while keeping `rclcpp` template and future
+ownership out of Python.
+
+```python
+import time
+
+from rclcpp_kit.native import native
+from std_srvs.srv import SetBool
+
+with native(["client"]) as ros:
+    node = ros.create_node("client")
+    executor = ros.create_executor()
+    executor.add_node(node)
+    ros.start_executor(executor)
+
+    group = ros.create_callback_group(node, "reentrant")
+    client = ros.create_native_client(
+        node, SetBool, "set_bool", callback_group=group)
+    assert client.wait_for_service(1.0)
+    token = client.send(SetBool.Request(data=True))
+    while not client.ready(token):
+        time.sleep(0.001)
+    response = client.take(token)  # real C++ Response
+```
+
+`client.raw_client` is the original typed `rclcpp::Client<ServiceT>`. Calls sent
+through the adapter must also be taken or canceled through it. The session cancels
+outstanding calls during ordered teardown. For raw publisher/subscription creation,
+use `ros.create_publisher_options(group)` and
+`ros.create_subscription_options(group)` because cppyy cannot assign the shared
+callback-group member directly.
+
 ---
 
 ## Gotchas (the cppyy friction this kit hides, so you know the boundary)
@@ -109,5 +142,8 @@ from rclcpp_kit import rosbag2_py_compat as rosbag2_py    # rosbag2_py-shaped AP
 - **Objects that own C++ threads/executors must be released before shutdown.**
   `tf.TransformListener.close()` (also auto-registered) drops the listener before
   `rclcpp::shutdown()`; don't hold one past teardown.
+- **A managed client is asynchronous.** Its executor must spin before `ready(token)`
+  can become true. `take(token)` is single-use and rejects an unready token; call
+  `cancel(token)` when abandoning work so `rclcpp` pending state is released.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
   ROS library, `cppyy_kit.load_libraries([...])` it first (see cppyy_kit's SKILL).

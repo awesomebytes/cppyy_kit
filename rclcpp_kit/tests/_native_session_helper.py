@@ -24,15 +24,22 @@ def main():
 
         exclusive = ros.create_callback_group(node)
         reentrant = ros.create_callback_group(node, "reentrant")
+        peer_group = ros.create_callback_group(peer, "reentrant")
         assert exclusive is not None
         assert reentrant is not None
 
-        publisher = node.create_publisher(String, "native_session_topic", 10)
+        publisher_options = ros.create_publisher_options(exclusive)
+        subscription_options = ros.create_subscription_options(peer_group)
+        assert publisher_options.callback_group.__smartptr__()
+        assert subscription_options.callback_group.__smartptr__()
+        publisher = node.create_publisher(
+            String, "native_session_topic", 10, publisher_options)
         subscription = peer.create_subscription(
             String,
             "native_session_topic",
             lambda message: received.append(str(message.data)),
             10,
+            subscription_options,
         )
         assert subscription is not None
         assert set(publisher_capabilities(publisher)) == {"loaned_messages", "reason"}

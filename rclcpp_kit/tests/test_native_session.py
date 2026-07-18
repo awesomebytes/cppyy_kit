@@ -8,6 +8,8 @@ def test_capabilities_are_structured_and_conservative():
     report = NativeCapabilities().to_dict()
     assert report["managed_context"] is True
     assert report["managed_executor_thread"] is True
+    assert report["callback_group_entity_options"] is True
+    assert report["managed_native_clients"] is True
     assert report["intra_process"] is True
     assert report["loaned_messages"] == "publisher_runtime_query"
     assert report["raw_rclcpp"] is True

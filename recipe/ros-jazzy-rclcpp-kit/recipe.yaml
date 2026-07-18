@@ -37,7 +37,7 @@ tests:
   - script:
       # Fresh-env import smoke (rattler-build resolves run deps in an isolated
       # test env). The richer proof runs in the driver (recipe/prove_all.sh).
-      - python -c "import importlib; from rclcpp_kit import borrowed_publish; native = importlib.import_module('rclcpp_kit.native'); pipeline = importlib.import_module('rclcpp_kit.native_pipeline'); print('borrowed_publish', borrowed_publish.__file__, 'native', native.__file__, 'native_pipeline', pipeline.__file__)"
+      - python -c "import importlib; from rclcpp_kit import borrowed_publish; native = importlib.import_module('rclcpp_kit.native'); pipeline = importlib.import_module('rclcpp_kit.native_pipeline'); client = importlib.import_module('rclcpp_kit.native_client'); print('borrowed_publish', borrowed_publish.__file__, 'native', native.__file__, 'native_pipeline', pipeline.__file__, 'native_client', client.__file__)"
 
 about:
   homepage: https://github.com/awesomebytes/cppyy_kit
@@ -48,7 +48,8 @@ about:
   description: |
     rclcpp_kit is the kit for rclcpp (ROS 2 core): rclcpp bringup, C++ message
     resolution/conversion, serialization, rosbag2_cpp, tf, and executor/node
-    helpers, all driven from Python via cppyy. The ROS-touching kits build on it.
+    helpers, managed native services and clients, all driven from Python via cppyy.
+    The ROS-touching kits build on it.
 
 extra:
   recipe-maintainers:

@@ -14,10 +14,15 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | Module | Surface |
 |---|---|
 | `bringup_rclcpp` | `bringup_rclcpp()` (JIT `rclcpp/rclcpp.hpp` + load core libs), `add_ros2_include_paths()`, `shutdown_rclcpp()`, the rclpy-style `rclcpp.Node` adapters (create_publisher / create_subscription / create_timer / destroy_node), C++ message resolution + the shared recursive `convert_python_msg_to_cpp` |
-| `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
+| `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups and callback-group entity options, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, explicit every/latest/bounded-batch delivery, and fresh/reused/loaned output memory |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 | `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
+| `native_client` | Cached typed C++ clients with C++-owned async futures, stock-server interoperability, cancellation/counters, raw-client access, and managed teardown |
+| `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
+| `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
+| `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |
+| `tf` | the tf2 C++ transform stack: a `tf2_ros::TransformListener` ingesting `/tf` wholly in C++ on its own thread (`TransformListener.lookup_transform` / `can_transform` / `set_transform`) |
 
 Native lowering stays inside the managed ownership boundary:
 
@@ -41,10 +46,21 @@ default. `"reuse"` keeps one output behind a mutex, so the transform must fully
 overwrite it and concurrent transforms are serialized. `"loaned"` uses
 `rclcpp::LoanedMessage` RAII; the counters distinguish middleware loans from the
 publisher allocator fallback. A loan is not by itself a zero-copy guarantee.
-| `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
-| `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
-| `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |
-| `tf` | the tf2 C++ transform stack: a `tf2_ros::TransformListener` ingesting `/tf` wholly in C++ on its own thread (`TransformListener.lookup_transform` / `can_transform` / `set_transform`) |
+
+Managed clients keep only the template and future-lifetime friction behind a
+small adapter. They accept ordinary generated Python requests or direct C++
+requests, return opaque call tokens, and leave the original typed client exposed:
+
+```python
+client = ros.create_native_client(node, SetBool, "set_bool")
+token = client.send(SetBool.Request(data=True))
+if client.ready(token):
+    response = client.take(token)  # the C++ response object
+raw_client = client.raw_client
+```
+
+Calls submitted through the adapter must be taken or canceled through it. Session
+teardown cancels any calls still pending before releasing the client.
 
 ```python
 import rclcpp_kit
