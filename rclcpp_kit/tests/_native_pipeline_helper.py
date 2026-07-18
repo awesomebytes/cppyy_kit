@@ -3,10 +3,6 @@
 import time
 
 from rclcpp_kit.native import native
-from rclcpp_kit.native_pipeline import (
-    create_fused_pipeline,
-    create_native_callback,
-)
 from std_msgs.msg import String
 
 
@@ -29,8 +25,7 @@ def main():
         executor.add_node(node)
         executor.add_node(peer)
 
-        callback = create_native_callback(
-            ros,
+        callback = ros.create_native_callback(
             node,
             String,
             "native_callback_in",
@@ -38,8 +33,7 @@ def main():
         )
         callback_publisher = peer.create_publisher(String, "native_callback_in", 10)
 
-        pipeline = create_fused_pipeline(
-            ros,
+        pipeline = ros.create_fused_pipeline(
             node,
             String,
             String,
@@ -75,8 +69,7 @@ def main():
         assert stats.exceptions == 0
         assert stats.python_boundary_crossings == 0
 
-        latest = create_fused_pipeline(
-            ros,
+        latest = ros.create_fused_pipeline(
             node,
             String,
             String,
@@ -85,8 +78,7 @@ def main():
             "output.data = input.data;",
             delivery="latest",
         )
-        batch = create_fused_pipeline(
-            ros,
+        batch = ros.create_fused_pipeline(
             node,
             String,
             String,

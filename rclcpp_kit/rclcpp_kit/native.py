@@ -252,6 +252,42 @@ class NativeSession:
             self._resources.append(resource)
         return resource
 
+    def create_native_callback(
+        self,
+        node: Any,
+        message_type: Any,
+        topic: str,
+        process_body: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned, editable C++ subscription callback."""
+        from rclcpp_kit.native_pipeline import create_native_callback
+        return create_native_callback(
+            self, node, message_type, topic, process_body, **options)
+
+    def create_fused_pipeline(
+        self,
+        node: Any,
+        input_type: Any,
+        output_type: Any,
+        input_topic: str,
+        output_topic: str,
+        transform_body: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned editable C++ subscription-transform-publisher."""
+        from rclcpp_kit.native_pipeline import create_fused_pipeline
+        return create_fused_pipeline(
+            self,
+            node,
+            input_type,
+            output_type,
+            input_topic,
+            output_topic,
+            transform_body,
+            **options,
+        )
+
     def close(self, reason: str = "rclcpp_kit NativeSession closed") -> None:
         """Cancel executors, release tracked objects, and shut down the context."""
         if self._closed:
