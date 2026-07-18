@@ -35,6 +35,13 @@ class DirectSubscription:
     callback: Callable[[Any], None]
     dispatch_callback: Callable[[Any], None]
     cpp_callback: Any
+    creation_route: str
+    _owning_cpp_copy_count: list[int]
+
+    @property
+    def owning_cpp_copy_count(self) -> int:
+        """Number of owning native copies constructed for Python callbacks."""
+        return self._owning_cpp_copy_count[0]
 
 
 def resolve_supported_type(message_type: Any) -> tuple[str, Any, str]:
@@ -78,11 +85,14 @@ def create_subscription(
     if not callable(callback):
         raise TypeError("subscription callback must be callable")
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
+    owning_cpp_copy_count = [0]
 
     def dispatch_callback(message):
         # cppyy's borrowed callback proxy expires with the shared_ptr argument.
         # Give Python an owning C++ object so retaining a callback message is safe.
-        callback(cpp_type(message))
+        owning_message = cpp_type(message)
+        owning_cpp_copy_count[0] += 1
+        callback(owning_message)
 
     cpp_callback = cppyy.gbl.std.function[
         "void(std::shared_ptr<const %s>)" % cpp_type_name
@@ -95,12 +105,21 @@ def create_subscription(
         qos,
         cpp_callback,
     )
+    creation_route = "prebuilt_subscription_trampoline"
     if entity is None:
         original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
         if original is None:
             raise TypeError("node has no original typed rclcpp subscription factory")
         entity = original[cpp_type](str(topic), qos, cpp_callback)
-    return DirectSubscription(entity, callback, dispatch_callback, cpp_callback)
+        creation_route = "rclcpp_template"
+    return DirectSubscription(
+        entity,
+        callback,
+        dispatch_callback,
+        cpp_callback,
+        creation_route,
+        owning_cpp_copy_count,
+    )
 
 
 __all__ = [

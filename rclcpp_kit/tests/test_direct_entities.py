@@ -97,3 +97,5 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
     assert copies == [borrowed]
     assert received[0].value == 17
     assert received[0] is not borrowed
+    assert direct.owning_cpp_copy_count == 1
+    assert direct.creation_route == "prebuilt_subscription_trampoline"
