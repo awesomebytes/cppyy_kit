@@ -18,10 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.10.0
+        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           # Pin pixi to the version that generated and validated pixi.lock
           # locally, so CI resolves the same environment.
@@ -66,13 +66,13 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Verify native runner architecture
         run: test "$(uname -m)" = "${{ matrix.machine }}"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@v0.10.0
+        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           pixi-version: v0.70.0
           working-directory: ci/rclcpp_kit
@@ -82,7 +82,7 @@ jobs:
 
       - name: Restore generated C++ caches
         id: generated-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/cppyy_kit
           key: generated-cppyy-kit-${{ matrix.platform }}-${{ hashFiles('ci/rclcpp_kit/pixi.lock') }}
@@ -130,7 +130,7 @@ jobs:
 
       - name: Upload test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rclcpp-kit-${{ matrix.platform }}-test-evidence
           path: build/test-results
@@ -142,7 +142,7 @@ jobs:
           github.event_name == 'push' &&
           github.ref == 'refs/heads/main' &&
           steps.generated-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/cppyy_kit
           key: generated-cppyy-kit-${{ matrix.platform }}-${{ hashFiles('ci/rclcpp_kit/pixi.lock') }}
