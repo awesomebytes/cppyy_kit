@@ -19,6 +19,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 | `native_service` | Content-addressed editable C++ service callbacks with stock-client interoperability, counters, zero Python request crossings, and managed teardown |
 | `native_client` | Cached typed C++ clients with C++-owned async futures, stock-server interoperability, cancellation/counters, raw-client access, and managed teardown |
+| `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock-client lifecycle services, raw-node access, and ordered teardown |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
 | `rosbag2_cpp` | the C++ `rosbag2_cpp` reader/writer (open_reader / open_writer / iterate) |
 | `rosbag2_py_compat` | a `rosbag2_py`-compatible shim (SequentialReader/Writer, StorageOptions, …) backed by `rosbag2_cpp` |
@@ -61,6 +62,22 @@ raw_client = client.raw_client
 
 Calls submitted through the adapter must be taken or canceled through it. Session
 teardown cancels any calls still pending before releasing the client.
+
+Lifecycle nodes keep only ownership and executor attachment behind the adapter;
+transitions and lifecycle-specific facilities remain the real C++ API:
+
+```python
+with rclcpp_kit.native(["lifecycle"]) as ros:
+    lifecycle = ros.create_native_lifecycle_node("worker")
+    executor = ros.create_executor()
+    lifecycle.attach_executor(executor)
+    thread = ros.start_executor(executor)
+    raw_node = lifecycle.raw_node
+```
+
+The raw node is a shared-pointer escape hatch. Retaining it after `close()` extends
+the C++ node lifetime by design, so deterministic managed teardown assumes callers
+do not retain an extra raw owner.
 
 ```python
 import rclcpp_kit

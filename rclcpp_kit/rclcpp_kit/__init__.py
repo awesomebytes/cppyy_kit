@@ -78,6 +78,10 @@ from rclcpp_kit.native_client import (
     NativeClientStats,
     create_native_client,
 )
+from rclcpp_kit.native_lifecycle import (
+    NativeLifecycleNode,
+    create_native_lifecycle_node,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -116,4 +120,6 @@ __all__ = [
     "NativeClient",
     "NativeClientStats",
     "create_native_client",
+    "NativeLifecycleNode",
+    "create_native_lifecycle_node",
 ]

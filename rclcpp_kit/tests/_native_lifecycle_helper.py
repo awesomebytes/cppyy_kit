@@ -5,7 +5,6 @@ import time
 from lifecycle_msgs.msg import State, Transition
 from lifecycle_msgs.srv import ChangeState, GetState
 from rclcpp_kit.native import native
-from rclcpp_kit.native_lifecycle import create_native_lifecycle_node
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -41,7 +40,7 @@ def main():
     client_executor.add_node(client_node)
 
     with native(["native-lifecycle-test"]) as ros:
-        lifecycle = create_native_lifecycle_node(ros, "managed_lifecycle")
+        lifecycle = ros.create_native_lifecycle_node("managed_lifecycle")
         assert lifecycle in ros.resources
         raw_node = lifecycle.raw_node
         assert int(raw_node.get_current_state().id()) == (

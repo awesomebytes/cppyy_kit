@@ -130,6 +130,27 @@ use `ros.create_publisher_options(group)` and
 `ros.create_subscription_options(group)` because cppyy cannot assign the shared
 callback-group member directly.
 
+## Pattern 6 — real lifecycle nodes from Python
+*Use for:* lifecycle publishers, transitions, and other
+`rclcpp_lifecycle::LifecycleNode` facilities without a custom binding package.
+
+```python
+from rclcpp_kit.native import native
+
+with native(["lifecycle"]) as ros:
+    lifecycle = ros.create_native_lifecycle_node("worker")
+    executor = ros.create_executor()
+    lifecycle.attach_executor(executor)
+    ros.start_executor(executor)
+
+    raw_node = lifecycle.raw_node  # real rclcpp_lifecycle shared pointer
+    assert str(raw_node.get_current_state().label()) == "unconfigured"
+```
+
+The standard lifecycle services are enabled by default and become responsive after
+executor attachment. Use `raw_node` for the actual lifecycle API; the adapter owns
+only construction, executor membership, and teardown.
+
 ---
 
 ## Gotchas (the cppyy friction this kit hides, so you know the boundary)
@@ -145,5 +166,8 @@ callback-group member directly.
 - **A managed client is asynchronous.** Its executor must spin before `ready(token)`
   can become true. `take(token)` is single-use and rejects an unready token; call
   `cancel(token)` when abandoning work so `rclcpp` pending state is released.
+- **Raw lifecycle access transfers lifetime responsibility.** Retaining
+  `lifecycle.raw_node` keeps its shared C++ node alive after adapter close. Drop raw
+  owners before session teardown when deterministic destruction matters.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
   ROS library, `cppyy_kit.load_libraries([...])` it first (see cppyy_kit's SKILL).

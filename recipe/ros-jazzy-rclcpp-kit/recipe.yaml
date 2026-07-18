@@ -30,14 +30,16 @@ requirements:
     - python
     - cppyy-kit ==0.2.0
     - ros-jazzy-rclcpp
+    - ros-jazzy-rclcpp-lifecycle
     - ros-jazzy-rclpy
+    - ros-jazzy-lifecycle-msgs
     - ros-jazzy-ament-index-python
 
 tests:
   - script:
       # Fresh-env import smoke (rattler-build resolves run deps in an isolated
       # test env). The richer proof runs in the driver (recipe/prove_all.sh).
-      - python -c "import importlib; from rclcpp_kit import borrowed_publish; native = importlib.import_module('rclcpp_kit.native'); pipeline = importlib.import_module('rclcpp_kit.native_pipeline'); client = importlib.import_module('rclcpp_kit.native_client'); print('borrowed_publish', borrowed_publish.__file__, 'native', native.__file__, 'native_pipeline', pipeline.__file__, 'native_client', client.__file__)"
+      - python -c "import importlib; from rclcpp_kit import borrowed_publish; native = importlib.import_module('rclcpp_kit.native'); pipeline = importlib.import_module('rclcpp_kit.native_pipeline'); client = importlib.import_module('rclcpp_kit.native_client'); lifecycle = importlib.import_module('rclcpp_kit.native_lifecycle'); print('borrowed_publish', borrowed_publish.__file__, 'native', native.__file__, 'native_pipeline', pipeline.__file__, 'native_client', client.__file__, 'native_lifecycle', lifecycle.__file__)"
 
 about:
   homepage: https://github.com/awesomebytes/cppyy_kit
@@ -48,7 +50,8 @@ about:
   description: |
     rclcpp_kit is the kit for rclcpp (ROS 2 core): rclcpp bringup, C++ message
     resolution/conversion, serialization, rosbag2_cpp, tf, and executor/node
-    helpers, managed native services and clients, all driven from Python via cppyy.
+    helpers, managed native services, clients, and lifecycle nodes, all driven
+    from Python via cppyy.
     The ROS-touching kits build on it.
 
 extra:
