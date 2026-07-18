@@ -31,8 +31,71 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  preflight:
+    name: source preflight (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    env:
+      MAKE_NPROCS: "2"
+      STDCXX: "17"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-64
+            machine: x86_64
+          - runner: ubuntu-24.04-arm
+            platform: linux-aarch64
+            machine: aarch64
+    steps:
+      - name: Checkout exact tag source
+        uses: actions/checkout@v5
+
+      - name: Verify tag and runner architecture
+        run: |
+          test "$(uname -m)" = "${{ matrix.machine }}"
+          python3 scripts/verify_release_version.py "${GITHUB_REF_NAME}"
+
+      - name: Set up core source-test environment
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          working-directory: ci/rclcpp_kit
+          cache: true
+          cache-key: release-preflight-${{ matrix.platform }}-
+          cache-write: false
+
+      - name: Run core source contracts
+        working-directory: ci/rclcpp_kit
+        env:
+          CPPYY_KIT_NATIVE_SAFETY_EVIDENCE: ${{ github.workspace }}/build/test-results/native-safety-${{ matrix.platform }}.json
+        run: |
+          mkdir -p ../../build/test-results
+          pixi run test-cppyy-ci
+          pixi run test-rclcpp-ci
+
+      - name: Prove generated native glue with sanitizers
+        working-directory: ci/rclcpp_kit
+        run: >-
+          pixi run bash ../../scripts/ci/prove_native_safety_sanitizers.sh
+          ../../build/release-sanitizers-${{ matrix.platform }}
+          ../../build/test-results
+
+      - name: Upload preflight evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: suite-release-preflight-${{ matrix.platform }}-${{ github.ref_name }}
+          path: build/test-results
+          if-no-files-found: error
+          retention-days: 90
+
   build:
     name: build and prove all artifacts
+    needs: preflight
     runs-on: ubuntu-latest
     permissions:
       contents: read
