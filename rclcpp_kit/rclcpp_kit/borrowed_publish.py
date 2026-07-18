@@ -30,6 +30,7 @@ _INITIALIZE_LOCK = threading.RLock()
 _INITIALIZED = False
 _BINDING_LOCK = threading.RLock()
 _BINDINGS = {}
+_MAX_RETAINED_SERIALIZED_CAPACITY = 8 * 1024 * 1024
 
 _PUBLISH_GLUE = r"""
 #include <rcl/error_handling.h>
@@ -45,38 +46,92 @@ namespace rclcpp_kit_borrowed
 {
 
 template<class MessageT>
-void publish(uintptr_t publisher_address, const MessageT & message)
+class PublishScratch
 {
-  if (publisher_address == 0) {
-    throw std::invalid_argument("rclpy publisher handle address is null");
-  }
-  auto * publisher = reinterpret_cast<const rcl_publisher_t *>(publisher_address);
-  rclcpp::Serialization<MessageT> serializer;
-  rclcpp::SerializedMessage serialized;
-  try {
-    serializer.serialize_message(&message, &serialized);
-  } catch (...) {
-    rcl_reset_error();
-    throw;
-  }
-  auto & raw = serialized.get_rcl_serialized_message();
-  // Some type-support dispatchers probe an incompatible implementation before
-  // succeeding. Do not leak that stale diagnostic into the next RCL operation.
-  rcl_reset_error();
-  const rcl_ret_t result = rcl_publish_serialized_message(publisher, &raw, nullptr);
-  if (result != RCL_RET_OK) {
-    const auto error_state = rcl_get_error_string();
-    const char * detail = error_state.str;
-    std::string error = "rcl_publish_serialized_message failed (" +
-      std::to_string(result) + ")";
-    if (detail != nullptr && detail[0] != '\0') {
-      error += ": ";
-      error += detail;
+public:
+  bool publish(
+    uintptr_t publisher_address,
+    const MessageT & message,
+    size_t max_retained_capacity)
+  {
+    auto & raw = serialized_.get_rcl_serialized_message();
+    raw.buffer_length = 0;
+    if (publisher_address == 0) {
+      throw std::invalid_argument("rclpy publisher handle address is null");
     }
+    auto * publisher = reinterpret_cast<const rcl_publisher_t *>(publisher_address);
+    const size_t capacity_before = serialized_.capacity();
+    try {
+      serializer_.serialize_message(&message, &serialized_);
+    } catch (...) {
+      raw.buffer_length = 0;
+      rcl_reset_error();
+      throw;
+    }
+    if (serialized_.capacity() != capacity_before) {
+      ++reallocations_;
+    }
+    if (serialized_.capacity() > peak_capacity_) {
+      peak_capacity_ = serialized_.capacity();
+    }
+    // Some type-support dispatchers probe an incompatible implementation before
+    // succeeding. Do not leak that stale diagnostic into the next RCL operation.
     rcl_reset_error();
-    throw std::runtime_error(error);
+    const rcl_ret_t result = rcl_publish_serialized_message(publisher, &raw, nullptr);
+    if (result != RCL_RET_OK) {
+      raw.buffer_length = 0;
+      const auto error_state = rcl_get_error_string();
+      const char * detail = error_state.str;
+      std::string error = "rcl_publish_serialized_message failed (" +
+        std::to_string(result) + ")";
+      if (detail != nullptr && detail[0] != '\0') {
+        error += ": ";
+        error += detail;
+      }
+      rcl_reset_error();
+      throw std::runtime_error(error);
+    }
+    ++publishes_;
+    return serialized_.capacity() > max_retained_capacity;
   }
-}
+
+  bool exceeds_capacity(size_t max_retained_capacity) const
+  {
+    return serialized_.capacity() > max_retained_capacity;
+  }
+
+  size_t capacity() const
+  {
+    return serialized_.capacity();
+  }
+
+  size_t peak_capacity() const
+  {
+    return peak_capacity_;
+  }
+
+  size_t length() const
+  {
+    return serialized_.size();
+  }
+
+  size_t publishes() const
+  {
+    return publishes_;
+  }
+
+  size_t reallocations() const
+  {
+    return reallocations_;
+  }
+
+private:
+  rclcpp::Serialization<MessageT> serializer_;
+  rclcpp::SerializedMessage serialized_;
+  size_t peak_capacity_{0};
+  size_t publishes_{0};
+  size_t reallocations_{0};
+};
 
 }  // namespace rclcpp_kit_borrowed
 """
@@ -99,12 +154,12 @@ def _initialize():
 class _PublisherBinding:
     """Immutable process-lifetime cppyy binding for one ROS message class."""
 
-    __slots__ = ("cpp_type_name", "cpp_message_type", "publish_cpp")
+    __slots__ = ("cpp_type_name", "cpp_message_type", "scratch_type")
 
     def __init__(self, message_type):
         _initialize()
         self.cpp_type_name, self.cpp_message_type = _resolve_message_type(message_type)
-        self.publish_cpp = cppyy.gbl.rclcpp_kit_borrowed.publish[
+        self.scratch_type = cppyy.gbl.rclcpp_kit_borrowed.PublishScratch[
             self.cpp_message_type]
 
 
@@ -136,7 +191,83 @@ class PreparedPublisher:
         binding = _binding_for(message_type)
         self.cpp_type_name = binding.cpp_type_name
         self.cpp_message_type = binding.cpp_message_type
-        self._publish_cpp = binding.publish_cpp
+        self._scratch_type = binding.scratch_type
+        self._scratch_local = threading.local()
+        self._max_retained_serialized_capacity = (
+            _MAX_RETAINED_SERIALIZED_CAPACITY)
+
+    def _scratch_state(self):
+        try:
+            return self._scratch_local.state
+        except AttributeError:
+            state = {
+                "depth": 0,
+                "slots": [],
+                "created": 0,
+                "reused": 0,
+                "evictions": 0,
+                "retired_peak_capacity": 0,
+                "retired_publishes": 0,
+                "retired_reallocations": 0,
+            }
+            self._scratch_local.state = state
+            return state
+
+    def _acquire_scratch(self):
+        state = self._scratch_state()
+        index = state["depth"]
+        if index == len(state["slots"]):
+            scratch = self._scratch_type()
+            state["slots"].append(scratch)
+            state["created"] += 1
+        else:
+            scratch = state["slots"][index]
+            if scratch is None:
+                scratch = self._scratch_type()
+                state["slots"][index] = scratch
+                state["created"] += 1
+            else:
+                state["reused"] += 1
+        state["depth"] += 1
+        return state, index, scratch
+
+    @staticmethod
+    def _retire_scratch(state, index, scratch):
+        state["retired_peak_capacity"] = max(
+            state["retired_peak_capacity"], int(scratch.peak_capacity()))
+        state["retired_publishes"] += int(scratch.publishes())
+        state["retired_reallocations"] += int(scratch.reallocations())
+        state["slots"][index] = None
+        state["evictions"] += 1
+
+    def _release_scratch(self, state, index, scratch, evict):
+        try:
+            if evict:
+                self._retire_scratch(state, index, scratch)
+        finally:
+            state["depth"] -= 1
+
+    def _scratch_stats(self):
+        """Return value-only diagnostics for the calling thread's scratch pool."""
+        state = self._scratch_state()
+        active = [scratch for scratch in state["slots"] if scratch is not None]
+        return {
+            "created": state["created"],
+            "reused": state["reused"],
+            "evictions": state["evictions"],
+            "retained_slots": len(active),
+            "retained_capacity": sum(int(item.capacity()) for item in active),
+            "retained_length": sum(int(item.length()) for item in active),
+            "peak_capacity": max(
+                [state["retired_peak_capacity"]] +
+                [int(item.peak_capacity()) for item in active]),
+            "publishes": (
+                state["retired_publishes"] +
+                sum(int(item.publishes()) for item in active)),
+            "reallocations": (
+                state["retired_reallocations"] +
+                sum(int(item.reallocations()) for item in active)),
+        }
 
     def _to_cpp(self, message):
         if _is_msg_cpp(message):
@@ -162,7 +293,20 @@ class PreparedPublisher:
             raise TypeError("publisher has no rclpy native handle") from exc
         cpp_message = self._to_cpp(message)
         with handle:
-            self._publish_cpp(int(handle.pointer), cpp_message)
+            state, index, scratch = self._acquire_scratch()
+            evict = False
+            try:
+                evict = bool(scratch.publish(
+                    int(handle.pointer),
+                    cpp_message,
+                    self._max_retained_serialized_capacity,
+                ))
+            except Exception:
+                evict = bool(scratch.exceeds_capacity(
+                    self._max_retained_serialized_capacity))
+                raise
+            finally:
+                self._release_scratch(state, index, scratch, evict)
 
 
 def prepare(message_type):
