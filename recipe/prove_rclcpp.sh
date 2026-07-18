@@ -6,10 +6,7 @@ set -euo pipefail
 
 case "$(uname -m)" in
   x86_64) platform="linux-64" ;;
-  aarch64|arm64)
-    echo "ARM64 conda proof unavailable: cppyy >=3.5 has no Python 3.12 conda package." >&2
-    exit 2
-    ;;
+  aarch64|arm64) platform="linux-aarch64" ;;
   *)
     echo "Unsupported package-proof architecture: $(uname -m)" >&2
     exit 2

@@ -25,12 +25,17 @@ pydantic = ">=2,<3"
 setuptools = "<81"
 psutil = ">=7.2.2,<8"
 
-# cppyy 3.5 has conda packages on x86-64. On ARM64, conda-forge currently only
-# provides cppyy 2.3 for Python 3.9, which cannot coexist with Jazzy's Python
-# 3.12 stack. Build the same upstream 3.5 release from its source distribution
-# on the native ARM64 runner instead.
+# cppyy 3.5 has a top-level conda package on x86-64. ARM64 source tests retain
+# the exact small upstream Python shim while resolving every compiled component
+# from conda-forge. The package-proof lane separately builds and installs the
+# top-level ARM64 conda bridge from the same source and component versions.
 [target.linux-64.dependencies]
 cppyy = ">=3.5,<4"
+
+[target.linux-aarch64.dependencies]
+cpycppyy = "==1.13.0"
+cppyy-backend = "==1.15.3"
+cppyy-cling = "==6.32.8"
 
 [target.linux-aarch64.pypi-dependencies]
 cppyy = "==3.5.0"

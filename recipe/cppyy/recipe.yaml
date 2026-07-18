@@ -1,0 +1,64 @@
+schema_version: 1
+
+context:
+  version: "3.5.0"
+
+package:
+  name: cppyy
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/c/cppyy/cppyy-3.5.0.tar.gz
+  sha256: b9cfd48bd0c6e0c7399a82cca2105d7d90699adb3083904aaf30bf3632224e79
+  patches:
+    - 0001-do-not-rebuild-allDict.patch
+
+build:
+  number: 0
+  skip:
+    - not aarch64
+  script: ${{ PYTHON }} -m pip install . --no-deps -vv
+  prefix_detection:
+    ignore_binary_files: false
+
+requirements:
+  build:
+    - if: build_platform != target_platform
+      then:
+        - python
+        - cross-python_${{ target_platform }}
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+  host:
+    - python
+    - pip
+    - setuptools
+    - cpycppyy ==1.13.0
+    - cppyy-backend ==1.15.3
+    - cppyy-cling ==6.32.8
+  run:
+    - python
+    - cpycppyy ==1.13.0
+    - cppyy-backend ==1.15.3
+    - cppyy-cling ==6.32.8
+
+tests:
+  - script:
+      - python -c "import cppyy, platform; assert cppyy.__version__ == '3.5.0'; assert platform.machine() == 'aarch64'; print('CPPYY_ARM_IMPORT_OK', cppyy.__version__)"
+      - python -c "import cppyy; cppyy.cppdef('int cppyy_arm_add(int a, int b) { return a + b; }'); assert cppyy.gbl.cppyy_arm_add(20, 22) == 42; print('CPPYY_ARM_CPPDEF_OK')"
+
+about:
+  license: BSD-3-Clause
+  license_file: LICENSE.txt
+  summary: Python-C++ bindings interface based on Cling/LLVM
+  description: |
+    Architecture-scoped rebuild of the upstream cppyy 3.5.0 Python package for
+    Linux ARM64. The compiled CPyCppyy, backend, and Cling components remain the
+    exact conda-forge packages pinned above.
+  homepage: https://pypi.org/project/cppyy/
+  repository: https://github.com/wlav/cppyy
+  documentation: https://cppyy.readthedocs.io/
+
+extra:
+  recipe-maintainers:
+    - awesomebytes

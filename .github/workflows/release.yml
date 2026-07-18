@@ -1,8 +1,8 @@
 name: Release
 
-# On a version tag (v*): build all 11 cppyy_kit-suite conda packages in
-# dependency order, prove each installs+imports from a channel with no repo
-# checkout, then upload them to the prefix.dev channel `awesomebytes`.
+# On a version tag (v*): build all 11 cppyy_kit-suite conda packages plus the
+# architecture-scoped cppyy 3.5.0 ARM64 bridge, prove each from an isolated
+# channel, then upload them to the prefix.dev channel `awesomebytes`.
 #
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │ ⚠  MANUAL STEP REQUIRED BEFORE THE FIRST RELEASE — Sam, action needed:       │
@@ -14,7 +14,7 @@ name: Release
 # │   authorize  awesomebytes/cppyy_kit , workflow  release.yml , read/write.    │
 # │                                                                              │
 # │ The build + artifact-proof steps run and gate regardless, so a tag pushed    │
-# │ before authorization still validates all 11 packages; only the upload 401s.  │
+# │ before authorization still validates all 12 packages; only the upload 401s.  │
 # └────────────────────────────────────────────────────────────────────────────┘
 #
 # Authentication: OIDC trusted publishing (no API token stored). `id-token:
@@ -159,9 +159,76 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  cppyy-arm:
+    name: build and prove cppyy ARM64 bridge
+    needs: preflight
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout exact tag source
+        uses: actions/checkout@v5
+
+      - name: Verify tag and native runner
+        run: |
+          test "$(uname -m)" = "aarch64"
+          python3 scripts/verify_release_version.py "${GITHUB_REF_NAME}"
+
+      - name: Set up reproducible package builder
+        uses: prefix-dev/setup-pixi@v0.10.0
+        with:
+          pixi-version: v0.70.0
+          working-directory: ci/package
+          cache: true
+          cache-key: release-cppyy-arm-
+          cache-write: false
+
+      - name: Build, install, import, and exercise cppdef
+        run: |
+          set -euo pipefail
+          mkdir -p output build/release-cppyy-arm
+          pixi run --locked -m ci/package/pixi.toml \
+            bash recipe/build_cppyy_arm.sh output 2>&1 \
+            | tee build/release-cppyy-arm/package-build.log
+          mapfile -t artifacts < <(
+            find output/linux-aarch64 -type f \
+              -name 'cppyy-3.5.0-py312*.conda' | sort
+          )
+          test "${#artifacts[@]}" -eq 1
+          sha256sum "${artifacts[@]}" \
+            output/cppyy-arm-package-proof.json \
+            output/cppyy-arm-runtime-proof.log \
+            | tee build/release-cppyy-arm/SHA256SUMS
+
+      - name: Attest build provenance
+        id: provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: output/linux-aarch64/cppyy-3.5.0-py312*.conda
+
+      - name: Preserve portable provenance bundle
+        run: |
+          cp "${{ steps.provenance.outputs.bundle-path }}" \
+            build/release-cppyy-arm/provenance.sigstore.json
+
+      - name: Preserve bridge package and proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-cppyy-arm-package
+          path: |
+            output/linux-aarch64/cppyy-3.5.0-py312*.conda
+            output/cppyy-arm-package-proof.json
+            output/cppyy-arm-runtime-proof.log
+            build/release-cppyy-arm
+          if-no-files-found: error
+          retention-days: 90
+
   sbom:
     name: attest SBOM (${{ matrix.package }})
-    needs: build
+    needs: [build, cppyy-arm]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -172,6 +239,7 @@ jobs:
       fail-fast: false
       matrix:
         package:
+          - cppyy
           - cppyy-kit
           - ros-jazzy-bt-kit
           - ros-jazzy-control-kit
@@ -190,15 +258,27 @@ jobs:
           name: release-packages
           path: release-input
 
+      - name: Download proven ARM64 bridge
+        uses: actions/download-artifact@v5
+        with:
+          name: release-cppyy-arm-package
+          path: release-input
+
       - name: Identify package artifact
         id: artifact
         env:
           PACKAGE: ${{ matrix.package }}
         run: |
           set -euo pipefail
-          mapfile -t artifacts < <(
-            find release-input -type f -name "${PACKAGE}-*.conda" | sort
-          )
+          if [ "$PACKAGE" = "cppyy" ]; then
+            mapfile -t artifacts < <(
+              find release-input -type f -name 'cppyy-[0-9]*.conda' | sort
+            )
+          else
+            mapfile -t artifacts < <(
+              find release-input -type f -name "${PACKAGE}-*.conda" | sort
+            )
+          fi
           test "${#artifacts[@]}" -eq 1
           printf 'path=%s\n' "${artifacts[0]}" >> "$GITHUB_OUTPUT"
 
@@ -235,7 +315,7 @@ jobs:
 
   release:
     name: upload proven and attested artifacts
-    needs: [build, sbom]
+    needs: [build, cppyy-arm, sbom]
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -257,10 +337,17 @@ jobs:
           name: release-packages
           path: release-input
 
+      - name: Download proven ARM64 bridge
+        uses: actions/download-artifact@v5
+        with:
+          name: release-cppyy-arm-package
+          path: release-input
+
       # Upload every built .conda to the prefix.dev channel `awesomebytes` via
       # OIDC. REQUIRES the Repository Access authorization flagged in the header.
       - name: Upload to prefix.dev channel `awesomebytes` (OIDC)
         run: |
           set -euxo pipefail
-          pixi run -e pkg rattler-build upload prefix --channel awesomebytes \
+          pixi run -e pkg rattler-build upload prefix --skip-existing \
+            --channel awesomebytes \
             $(find release-input -name '*.conda' | sort)

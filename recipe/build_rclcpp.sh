@@ -16,10 +16,24 @@ mkdir -p "$requested_output"
 output_dir="$(cd "$requested_output" && pwd)"
 cd "$repo_root"
 
+channels=(-c conda-forge)
+case "$(uname -m)" in
+  x86_64) ;;
+  aarch64|arm64)
+    echo "Building and proving cppyy 3.5.0 for the native ARM64 package channel"
+    bash recipe/build_cppyy_arm.sh "$output_dir"
+    channels=(-c "file://$output_dir" -c conda-forge)
+    ;;
+  *)
+    echo "Unsupported package-build architecture: $(uname -m)" >&2
+    exit 2
+    ;;
+esac
+
 echo "Building cppyy-kit 0.2.0 into $output_dir"
 rattler-build build \
   --recipe recipe/cppyy-kit/recipe.yaml \
-  -c conda-forge \
+  "${channels[@]}" \
   --output-dir "$output_dir"
 
 echo "Building ros-jazzy-rclcpp-kit 0.2.0 against the local base artifact"

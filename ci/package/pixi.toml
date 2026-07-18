@@ -1,0 +1,9 @@
+[workspace]
+name = "cppyy-kit-package-builder"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+version = "0.0.0"
+
+[dependencies]
+python = "3.12.*"
+rattler-build = ">=0.68,<0.69"

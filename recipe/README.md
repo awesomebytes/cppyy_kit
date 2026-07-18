@@ -5,6 +5,12 @@ Every kit is pure Python (it JITs C++ at *runtime* via cppyy — nothing is
 compiled at build time), so `noarch: python` is correct and verified: one
 artifact per package works on any platform/python, and the build is seconds.
 
+Linux ARM64 additionally needs the architecture-scoped `cppyy` 3.5.0 bridge in
+[`cppyy/`](cppyy/README.md). Its compiled components already come from
+conda-forge; only the small upstream Python package is rebuilt. The bridge is
+built and tested on a native ARM64 runner, then serves as a local channel input
+for the same eleven suite recipes.
+
 ## Packages & dependencies (derived from actual imports)
 
 | conda package | import | run deps (beyond `python`) |
@@ -73,9 +79,15 @@ pixi run -e pkg pkg-build-all   # build 11 in dep order into ./output, chaining
 pixi run -e pkg pkg-prove       # fresh-env artifact proof per package
 
 # Focused core stack used on pull requests and by downstream package proofs:
-pixi run -e pkg pkg-build-rclcpp
-pixi run -e pkg pkg-prove-rclcpp
+pixi run --locked -m ci/package/pixi.toml bash recipe/build_rclcpp.sh output
+pixi run --locked -m ci/package/pixi.toml bash recipe/prove_rclcpp.sh output
 ```
+
+On x86_64 the focused build resolves the published conda-forge `cppyy`. On
+ARM64 it first builds, installs, imports, and exercises `cppdef` through the
+local bridge. A releasable ARM proof requires a clean Git checkout and records
+the exact source, patch, component pins, artifact hash, checkout commit, and
+isolated runtime-log hash in `output/cppyy-arm-package-proof.json`.
 
 Dependency build order: `cppyy-kit → rclcpp-kit → cv-kit → {bt,ompl,pcl,nav2,
 moveit,control} → dbow-kit → wbc-kit`. `wbc-kit` only needs `cppyy-kit` +
@@ -98,7 +110,9 @@ recipe/bump_version.sh 0.2.0
 ## Release
 
 `v*` tag → [`.github/workflows/release.yml`](../.github/workflows/release.yml):
-build all → prove all → `rattler-build upload prefix --channel awesomebytes`
-(OIDC). **Before the first release**, authorize this repo on prefix.dev:
+build the eleven suite packages on x86_64, build the bridge on native ARM64,
+prove all twelve, attest provenance and an SPDX SBOM per artifact, then run
+`rattler-build upload prefix --channel awesomebytes` (OIDC). **Before the first
+release**, authorize this repo on prefix.dev:
 `awesomebytes` channel → Repository Access → `awesomebytes/cppyy_kit`,
 `release.yml`, read/write. The rclcppyy authorization does not carry over.

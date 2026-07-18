@@ -1,0 +1,5 @@
+--- a/setup.py
++++ b/setup.py
+@@ -157,2 +157,0 @@
+-    cmdclass=cmdclass,
+-
