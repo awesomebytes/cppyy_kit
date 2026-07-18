@@ -420,3 +420,33 @@ def msg_from_cloud(cloud, msg=None):
         msg = cppyy.gbl.sensor_msgs.msg.PointCloud2()
     pcl.toROSMsg(cloud, msg)  # C++ name, verbatim
     return msg
+
+
+_TYPE_ADAPTER = None
+
+
+def type_adapter():
+    """Return and register the PointCloud2-to-PCL adapter capability."""
+    global _TYPE_ADAPTER
+    if _TYPE_ADAPTER is None:
+        from rclcpp_kit.type_adapter import (
+            AdapterCapabilities,
+            TypeAdapter,
+            register_type_adapter,
+        )
+        capabilities = AdapterCapabilities(
+            name="sensor_msgs.point_cloud2/pcl.point_cloud",
+            ros_type="sensor_msgs::msg::PointCloud2",
+            native_type="pcl::PointCloud<T>",
+            to_native_copy="cpp_copy",
+            from_native_copy="cpp_copy",
+            retains_source_owner=False,
+            mutable_alias=False,
+            limitations=(
+                "conversion runs in C++ but PCL owns separate aligned storage",
+                "point type defaults to pcl::PointXYZ and may be selected explicitly",
+            ),
+        )
+        _TYPE_ADAPTER = register_type_adapter(
+            TypeAdapter(capabilities, cloud_from_msg, msg_from_cloud))
+    return _TYPE_ADAPTER

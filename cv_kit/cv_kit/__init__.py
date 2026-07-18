@@ -80,6 +80,15 @@ namespace rclcppyy_cvkit {
     return reinterpret_cast<uintptr_t>(m.data);
   }
   inline size_t mat_step(const cv::Mat& m) { return m.step; }
+  inline size_t mat_elem_size(const cv::Mat& m) { return m.elemSize(); }
+  inline void copy_mat_to_vec(const cv::Mat& m, std::vector<uint8_t>& out) {
+    const size_t row_bytes = static_cast<size_t>(m.cols) * m.elemSize();
+    out.resize(static_cast<size_t>(m.rows) * row_bytes);
+    for (int row = 0; row < m.rows; ++row) {
+      std::memcpy(out.data() + static_cast<size_t>(row) * row_bytes,
+                  m.ptr(row), row_bytes);
+    }
+  }
 
   // Copy an Nx32 CV_8U descriptor Mat into a caller-owned (N*32) byte buffer.
   inline void copy_u8_mat(const cv::Mat& m, uintptr_t dst) {
@@ -203,6 +212,69 @@ def msg_to_mat(image_msg):
     # used (best-effort: a cppyy proxy may reject the attribute).
     cppyy_kit.keep_alive(mat, image_msg)
     return mat
+
+
+def mat_to_msg(mat, msg=None, encoding=None):
+    """Copy an 8-bit ``cv::Mat`` into a C++ ``sensor_msgs::msg::Image``.
+
+    The forward Image-to-Mat adapter aliases storage; this reverse direction is
+    an explicit row-aware C++ copy because the message must own its output buffer.
+    """
+    glue = _glue()
+    channels = int(mat.channels())
+    elem_size = int(glue.mat_elem_size(mat))
+    inferred = {1: "mono8", 3: "bgr8", 4: "bgra8"}.get(channels)
+    selected = encoding or inferred
+    if selected not in _ENCODING:
+        raise ValueError("mat_to_msg requires a supported encoding")
+    expected_size = _ENCODING[selected][1]
+    if elem_size != expected_size:
+        raise ValueError(
+            "encoding %s expects %d bytes/pixel, Mat has %d" % (
+                selected, expected_size, elem_size))
+    if msg is None:
+        from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
+        add_ros2_include_paths()
+        cppyy.include("sensor_msgs/msg/image.hpp")
+        msg = cppyy.gbl.sensor_msgs.msg.Image()
+    msg.height = int(mat.rows)
+    msg.width = int(mat.cols)
+    msg.encoding = selected
+    msg.is_bigendian = 0
+    msg.step = int(mat.cols) * elem_size
+    glue.copy_mat_to_vec(mat, msg.data)
+    return msg
+
+
+_TYPE_ADAPTER = None
+
+
+def type_adapter():
+    """Return and register the Image-to-OpenCV adapter capability."""
+    global _TYPE_ADAPTER
+    if _TYPE_ADAPTER is None:
+        from rclcpp_kit.type_adapter import (
+            AdapterCapabilities,
+            TypeAdapter,
+            register_type_adapter,
+        )
+        capabilities = AdapterCapabilities(
+            name="sensor_msgs.image/opencv.mat",
+            ros_type="sensor_msgs::msg::Image",
+            native_type="cv::Mat",
+            to_native_copy="zero_copy",
+            from_native_copy="cpp_copy",
+            retains_source_owner=True,
+            mutable_alias=True,
+            limitations=(
+                "zero-copy Mat aliases Image.data",
+                "use the alias only while its owning message remains alive",
+                "reverse conversion copies rows into message-owned storage",
+            ),
+        )
+        _TYPE_ADAPTER = register_type_adapter(
+            TypeAdapter(capabilities, msg_to_mat, mat_to_msg))
+    return _TYPE_ADAPTER
 
 
 def numpy_to_mat(array):

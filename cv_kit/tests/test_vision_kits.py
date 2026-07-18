@@ -111,6 +111,24 @@ def test_msg_to_mat_zero_copy_pointer_identity(cv):
     assert cv_kit.mat_to_numpy(mat, copy=False)[100, 50] == 222
 
 
+def test_image_adapter_roundtrip_and_capabilities(cv):
+    import cppyy
+    from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
+    add_ros2_include_paths()
+    cppyy.include("sensor_msgs/msg/image.hpp")
+    Image = cppyy.gbl.sensor_msgs.msg.Image
+    source = _synthetic_frame(3)
+    mat = cv_kit.numpy_to_mat(source)
+    msg = cv_kit.mat_to_msg(mat, encoding="mono8")
+    assert isinstance(msg, Image)
+    assert int(msg.height) == 240 and int(msg.width) == 320
+    assert str(msg.encoding) == "mono8"
+    assert np.array_equal(cv_kit.mat_to_numpy(cv_kit.msg_to_mat(msg)), source)
+    capabilities = cv_kit.type_adapter().capabilities
+    assert capabilities.to_native_copy == "zero_copy"
+    assert capabilities.from_native_copy == "cpp_copy"
+
+
 # --- dbow_kit -----------------------------------------------------------------
 
 @pytest.fixture(scope="module")

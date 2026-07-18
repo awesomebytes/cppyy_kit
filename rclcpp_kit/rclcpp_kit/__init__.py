@@ -58,6 +58,13 @@ from rclcpp_kit.native_pipeline import (
     create_fused_pipeline,
     create_native_callback,
 )
+from rclcpp_kit.type_adapter import (
+    AdapterCapabilities,
+    TypeAdapter,
+    get_type_adapter,
+    register_type_adapter,
+    type_adapter_capabilities,
+)
 
 __all__ = [
     "bringup_rclcpp",
@@ -84,4 +91,9 @@ __all__ = [
     "NativeStats",
     "create_fused_pipeline",
     "create_native_callback",
+    "AdapterCapabilities",
+    "TypeAdapter",
+    "get_type_adapter",
+    "register_type_adapter",
+    "type_adapter_capabilities",
 ]

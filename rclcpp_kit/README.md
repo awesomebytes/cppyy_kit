@@ -16,6 +16,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `bringup_rclcpp` | `bringup_rclcpp()` (JIT `rclcpp/rclcpp.hpp` + load core libs), `add_ros2_include_paths()`, `shutdown_rclcpp()`, the rclpy-style `rclcpp.Node` adapters (create_publisher / create_subscription / create_timer / destroy_node), C++ message resolution + the shared recursive `convert_python_msg_to_cpp` |
 | `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, and explicit every/latest/bounded-batch policies |
+| `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 
 Native lowering stays inside the managed ownership boundary:
 
