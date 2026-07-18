@@ -11,8 +11,12 @@ import signal
 import subprocess
 import time
 from typing import Any, Callable
+import xml.etree.ElementTree as ElementTree
 
-from ament_index_python.packages import get_package_prefix
+from ament_index_python.packages import (
+    get_package_prefix,
+    get_package_share_directory,
+)
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
@@ -31,7 +35,6 @@ from rclcpp_kit.native import native, publisher_capabilities
 
 
 SAMPLE_PREFIX = "NATIVE_CHOICES_SAMPLE="
-QOS_DEPTH = 4096
 TIMEOUT_S = 15.0
 ROBOT_DESCRIPTION = (
     "<robot name='native_choices'><link name='base_link'/></robot>"
@@ -107,6 +110,27 @@ def _measurement(start_elapsed: int, start_cpu: int, units: int, unit: str) -> d
     }
 
 
+def _ros_package(package_name: str) -> dict[str, str]:
+    package_xml = Path(get_package_share_directory(package_name)) / "package.xml"
+    root = ElementTree.parse(package_xml).getroot()
+    version = root.findtext("version")
+    assert isinstance(version, str) and version
+    return {"version": version, "package_xml": str(package_xml.resolve())}
+
+
+def _backend(case: dict[str, Any]) -> dict[str, Any]:
+    loaded = get_rmw_implementation_identifier()
+    return {
+        "requested_rmw": case["rmw"],
+        "loaded_rmw": loaded,
+        "verified": loaded == case["rmw"],
+        "ros_packages": {
+            "rclcpp": _ros_package("rclcpp"),
+            case["rmw"]: _ros_package(case["rmw"]),
+        },
+    }
+
+
 def _runtime_common(
     case: dict[str, Any],
     repetition: int,
@@ -125,11 +149,7 @@ def _runtime_common(
         "repetition": repetition,
         "pid": os.getpid(),
         "ros_domain_id": domain_id,
-        "backend": {
-            "requested_rmw": case["rmw"],
-            "loaded_rmw": get_rmw_implementation_identifier(),
-            "verified": get_rmw_implementation_identifier() == case["rmw"],
-        },
+        "backend": _backend(case),
         "correctness": {
             "passed": True,
             "messages_expected": messages,
@@ -157,6 +177,7 @@ def _run_route(
     messages: int, warmup: int,
 ) -> dict[str, Any]:
     enabled = bool(case["intra_process"])
+    qos_depth = max(16, messages, warmup)
     with native(["native-choice-route"]) as ros:
         publisher_node = ros.create_node(
             "native_choice_route_publisher", use_intra_process=enabled)
@@ -168,9 +189,9 @@ def _run_route(
         executor.add_node(publisher_node)
         executor.add_node(subscriber_node)
         source = publisher_node.create_publisher(
-            UInt64, "native_choice_route", QOS_DEPTH)
+            UInt64, "native_choice_route", qos_depth)
         sink = make_uint64_sink(
-            subscriber_node, "native_choice_route", QOS_DEPTH)
+            subscriber_node, "native_choice_route", qos_depth)
         thread = ros.start_executor(executor)
         _wait_for(lambda: thread.running, "native executor thread")
         _wait_for(
@@ -222,6 +243,7 @@ def _run_loan(
     case: dict[str, Any], repetition: int, domain_id: int,
     messages: int, warmup: int,
 ) -> dict[str, Any]:
+    qos_depth = max(16, messages, warmup)
     with native(["native-choice-loan"]) as ros:
         pipeline_node = ros.create_node(
             "native_choice_loan_pipeline", use_intra_process=False)
@@ -238,16 +260,16 @@ def _run_loan(
             "native_choice_loan_input",
             "native_choice_loan_output",
             "output.data = input.data * 2;",
-            qos_depth=QOS_DEPTH,
+            qos_depth=qos_depth,
             output_memory="loaned",
         )
         source = peer_node.create_publisher(
-            UInt64, "native_choice_loan_input", QOS_DEPTH)
+            UInt64, "native_choice_loan_input", qos_depth)
         capability_publisher = pipeline_node.create_publisher(
-            UInt64, "native_choice_loan_capability", QOS_DEPTH)
+            UInt64, "native_choice_loan_capability", qos_depth)
         capability = publisher_capabilities(capability_publisher)
         sink = make_uint64_sink(
-            peer_node, "native_choice_loan_output", QOS_DEPTH)
+            peer_node, "native_choice_loan_output", qos_depth)
         thread = ros.start_executor(executor)
         _wait_for(lambda: thread.running, "native executor thread")
         _wait_for(
@@ -337,11 +359,7 @@ def _composition_sample(
         "repetition": repetition,
         "pid": os.getpid(),
         "ros_domain_id": domain_id,
-        "backend": {
-            "requested_rmw": case["rmw"],
-            "loaded_rmw": get_rmw_implementation_identifier(),
-            "verified": get_rmw_implementation_identifier() == case["rmw"],
-        },
+        "backend": _backend(case),
         "correctness": {
             "passed": True,
             "deployments_expected": 1,

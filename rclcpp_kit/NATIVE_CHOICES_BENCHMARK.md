@@ -16,7 +16,9 @@ Every result document uses the versioned
 | Composition | separate AOT process, managed component container | The installed `robot_state_publisher` executable or component shared library must be an ELF file with a recorded SHA-256; graph visibility and teardown are exact, and the container case also proves load/list/unload services |
 
 Each sample runs in a fresh process on a distinct ROS domain. Backend selection
-is set in that process and checked using the loaded RMW identifier. Runtime cases
+is set in that process and checked using the loaded RMW identifier; the exact
+installed `rclcpp` and selected RMW package versions and package manifests are
+recorded with that evidence. Runtime cases
 send `1..N` through a reliable `UInt64` route after discovery and warmup. The
 validator requires exact message counts, checksum, final value, zero Python
 callback crossings, and case-specific transport or allocation counters before it

@@ -136,6 +136,15 @@ def _validate_backend(sample: dict[str, Any], case: dict[str, Any]) -> None:
         raise ValueError("loaded RMW does not match the requested backend")
     if backend.get("verified") is not True:
         raise ValueError("sample backend must be verified")
+    packages = backend.get("ros_packages")
+    if not isinstance(packages, dict):
+        raise ValueError("backend ROS package versions are required")
+    for package_name in ("rclcpp", case["rmw"]):
+        package = packages.get(package_name)
+        if not isinstance(package, dict):
+            raise ValueError("backend package %s is required" % package_name)
+        if not isinstance(package.get("version"), str) or not package["version"]:
+            raise ValueError("backend package version is required")
 
 
 def _validate_measurement(sample: dict[str, Any], *, units: int) -> None:
@@ -479,12 +488,18 @@ def validate_document(document: dict[str, Any]) -> None:
     if not isinstance(results, list) or not isinstance(failures, list):
         raise ValueError("results and failures must be arrays")
     observed: set[tuple[str, int]] = set()
+    process_ids = []
+    observed_domains = []
     for sample in results:
         validate_sample(sample, messages=messages)
         key = (sample["case_id"], sample["repetition"])
         if key in observed:
             raise ValueError("duplicate benchmark sample")
         observed.add(key)
+        process_ids.append(sample["pid"])
+        observed_domains.append(sample["ros_domain_id"])
+    if len(process_ids) != len(set(process_ids)):
+        raise ValueError("successful samples must run in fresh processes")
     for failure in failures:
         if not isinstance(failure, dict):
             raise ValueError("failure entries must be objects")
@@ -495,7 +510,11 @@ def validate_document(document: dict[str, Any]) -> None:
             raise ValueError("failure error text is required")
         if key in observed:
             raise ValueError("a sample cannot be both successful and failed")
+        failure_domain = failure.get("ros_domain_id")
+        if not _is_int(failure_domain) or not 0 <= failure_domain <= 232:
+            raise ValueError("failure ROS domain evidence is invalid")
         observed.add(key)
+        observed_domains.append(failure_domain)
     expected = {
         (case["case_id"], repetition)
         for case in CASES
@@ -503,6 +522,8 @@ def validate_document(document: dict[str, Any]) -> None:
     }
     if observed != expected:
         raise ValueError("results and failures do not cover the exact matrix")
+    if sorted(observed_domains) != sorted(domains):
+        raise ValueError("sample domains do not match the isolated domain plan")
 
 
 def dumps(document: dict[str, Any]) -> str:
@@ -516,4 +537,3 @@ def write(document: dict[str, Any], path: Path) -> None:
     temporary = destination.with_name(destination.name + ".tmp")
     temporary.write_text(dumps(document), encoding="utf-8")
     temporary.replace(destination)
-

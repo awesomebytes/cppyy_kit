@@ -55,7 +55,7 @@ def _communicate(command: list[str], env: dict[str, str], timeout: float):
             "worker timed out after %.1fs\nstdout:\n%s\nstderr:\n%s"
             % (timeout, stdout, stderr)
         )
-    return process.returncode, stdout, stderr
+    return process.returncode, stdout, stderr, process.pid
 
 
 def _extract_sample(stdout: str) -> dict[str, Any]:
@@ -74,11 +74,13 @@ def _extract_sample(stdout: str) -> dict[str, Any]:
 
 def _failure(
     case: dict[str, Any], repetition: int, error: str,
-    *, returncode: int | None = None, stdout: str = "", stderr: str = "",
+    *, ros_domain_id: int, returncode: int | None = None,
+    stdout: str = "", stderr: str = "",
 ) -> dict[str, Any]:
     return {
         "case_id": case["case_id"],
         "repetition": repetition,
+        "ros_domain_id": ros_domain_id,
         "error": str(error),
         "returncode": returncode,
         "stdout": stdout[-12000:],
@@ -113,8 +115,9 @@ def run_matrix(
             returncode = None
             stdout = ""
             stderr = ""
+            worker_pid = None
             try:
-                returncode, stdout, stderr = _communicate(
+                returncode, stdout, stderr, worker_pid = _communicate(
                     command, environment, worker_timeout)
                 if returncode != 0:
                     raise RuntimeError("worker exited with code %d" % returncode)
@@ -124,12 +127,15 @@ def run_matrix(
                     raise ValueError("worker repetition evidence is invalid")
                 if sample["ros_domain_id"] != domain_id:
                     raise ValueError("worker ROS domain evidence is invalid")
+                if sample["pid"] != worker_pid:
+                    raise ValueError("worker process identity evidence is invalid")
                 results.append(sample)
             except Exception as exception:
                 failures.append(_failure(
                     case,
                     repetition,
                     str(exception),
+                    ros_domain_id=domain_id,
                     returncode=returncode,
                     stdout=stdout,
                     stderr=stderr,
@@ -203,4 +209,3 @@ def main(arguments: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

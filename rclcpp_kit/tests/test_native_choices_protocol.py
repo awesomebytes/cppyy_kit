@@ -69,12 +69,16 @@ def _runtime_sample(case, repetition=0):
         "dimension": case["dimension"],
         "variant": case["variant"],
         "repetition": repetition,
-        "pid": 1234 + repetition,
+        "pid": 1234 + list(CASES).index(case) + repetition * len(CASES),
         "ros_domain_id": 40 + list(CASES).index(case),
         "backend": {
             "requested_rmw": case["rmw"],
             "loaded_rmw": case["rmw"],
             "verified": True,
+            "ros_packages": {
+                "rclcpp": {"version": "28.1.18"},
+                case["rmw"]: {"version": "1.0.0"},
+            },
         },
         "correctness": {
             "passed": True,
@@ -127,12 +131,16 @@ def _composition_sample(case, repetition=0):
         "dimension": case["dimension"],
         "variant": case["variant"],
         "repetition": repetition,
-        "pid": 1234 + repetition,
+        "pid": 1234 + list(CASES).index(case) + repetition * len(CASES),
         "ros_domain_id": 40 + list(CASES).index(case),
         "backend": {
             "requested_rmw": case["rmw"],
             "loaded_rmw": case["rmw"],
             "verified": True,
+            "ros_packages": {
+                "rclcpp": {"version": "28.1.18"},
+                case["rmw"]: {"version": "1.0.0"},
+            },
         },
         "correctness": {
             "passed": True,
