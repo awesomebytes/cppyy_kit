@@ -194,6 +194,7 @@ class NativeCapabilities:
     managed_native_clients: bool = True
     native_service_client_coexistence: str = "runtime_compiler_or_warm_cache"
     managed_native_action_clients: bool = True
+    managed_native_action_servers: bool = True
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
     intra_process: bool = True
@@ -583,6 +584,18 @@ class NativeSession:
         """Create an owned typed action client with C++-managed state."""
         from rclcpp_kit.native_action import create_native_action_client
         return create_native_action_client(
+            self, node, action_type, action_name, **options)
+
+    def create_native_action_server(
+        self,
+        node: Any,
+        action_type: Any,
+        action_name: str,
+        **options: Any,
+    ) -> Any:
+        """Create an owned typed action server with synchronous decisions."""
+        from rclcpp_kit.native_action_server import create_native_action_server
+        return create_native_action_server(
             self, node, action_type, action_name, **options)
 
     def create_native_component_manager(

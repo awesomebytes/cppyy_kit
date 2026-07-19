@@ -16,6 +16,7 @@ def test_capabilities_are_structured_and_conservative():
     assert report["native_service_client_coexistence"] == (
         "runtime_compiler_or_warm_cache")
     assert report["managed_native_action_clients"] is True
+    assert report["managed_native_action_servers"] is True
     assert report["managed_lifecycle_nodes"] is True
     assert report["managed_component_containers"] is True
     assert report["intra_process"] is True

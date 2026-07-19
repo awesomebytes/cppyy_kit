@@ -22,6 +22,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `borrowed_set_bool_service` | Explicit callback-scoped SetBool request/response views over rclcpp-owned generated C++ messages; no adapter message copies, in-place response field writes, fail-closed return contract, and managed teardown |
 | `native_client` | Cached typed C++ clients with C++-owned async futures, stock and AOT-server interoperability, cancellation/counters, raw-client access, and managed teardown |
 | `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, stock and AOT-server interoperability, bounded feedback, raw handles, counters, and managed teardown |
+| `native_action_server` | Cached typed C++ action servers with synchronous Python decisions, polled accepted goals, exact generated C++ payloads, contained native errors, counters, and managed teardown |
 | `native_component` | Real `rclcpp_components::ComponentManager` containers on the managed context, stock composition services, AOT component loading, raw-manager access, and ordered teardown |
 | `native_lifecycle` | Managed real `rclcpp_lifecycle::LifecycleNode` objects, executor attachment, stock and AOT-client lifecycle services, raw-node access, and ordered teardown |
 | `serialization` | CDR serialize/deserialize of C++ messages, byte-compatible with `rclpy.serialization`; bytes ⇄ `rclcpp::SerializedMessage` |
