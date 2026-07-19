@@ -362,6 +362,93 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
     assert direct.owning_cpp_copy_count == 1
 
 
+def test_subscription_message_info_keeps_cpp_copy_and_lowers_rmw_metadata(
+        monkeypatch):
+    copies = []
+    factory_calls = []
+
+    class CppType:
+        def __init__(self, value):
+            copies.append(value)
+            self.value = value.value
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == (
+                "void(std::shared_ptr<const std_msgs::msg::UInt64>, "
+                "const rclcpp::MessageInfo&)")
+            return lambda callback: callback
+
+    class Template:
+        def __getitem__(self, selected):
+            assert selected is CppType
+            return lambda *args: factory_calls.append(args) or "subscription"
+
+    rmw_info = type("RmwInfo", (), {
+        "source_timestamp": 11,
+        "received_timestamp": 17,
+        "publication_sequence_number": 2 ** 64 - 1,
+        "reception_sequence_number": 23,
+    })()
+    message_info = type("MessageInfo", (), {
+        "get_rmw_message_info": lambda self: rmw_info,
+    })()
+    node = type("Node", (), {})()
+    setattr(node, direct_entities._ORIG_CREATE_SUBSCRIPTION, Template())
+    monkeypatch.setattr(
+        direct_entities,
+        "resolve_supported_type",
+        lambda value: ("std_msgs::msg::UInt64", CppType, "header"),
+    )
+    monkeypatch.setattr(
+        direct_entities.cppyy.gbl.std,
+        "function",
+        FunctionTemplate(),
+    )
+    received = []
+    direct = direct_entities.create_subscription(
+        node,
+        CppType,
+        "topic",
+        lambda message, info: received.append((message, info)),
+        "qos",
+        with_message_info=True,
+    )
+    borrowed = type("Borrowed", (), {"value": 29})()
+    direct.dispatch_callback(borrowed, message_info)
+
+    assert factory_calls == [("topic", "qos", direct.cpp_callback)]
+    assert copies == [borrowed]
+    assert received[0][0].value == 29
+    assert received[0][0] is not borrowed
+    assert received[0][1] == {
+        "source_timestamp": 11,
+        "received_timestamp": 17,
+        "publication_sequence_number": None,
+        "reception_sequence_number": 23,
+    }
+    assert direct.owning_cpp_copy_count == 1
+    assert direct.creation_route == "rclcpp_template_with_message_info"
+    assert direct.close()
+    assert received[0][0].value == 29
+    assert received[0][1]["source_timestamp"] == 11
+
+
+def test_subscription_message_info_flag_requires_boolean_before_resolution(
+        monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        direct_entities,
+        "resolve_supported_type",
+        lambda value: calls.append(value),
+    )
+    with pytest.raises(TypeError, match="with_message_info must be boolean"):
+        direct_entities.create_subscription(
+            object(), object(), "topic", lambda message: None, object(),
+            with_message_info=1)
+    assert calls == []
+
+
 def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
     def callback():
         return None

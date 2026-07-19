@@ -23,6 +23,7 @@ from rclcpp_kit.direct_message_types import resolve_message_type
 
 _MANAGED_PUBLISHER_INSTALL_LOCK = threading.Lock()
 _MANAGED_PUBLISHER_NAMESPACE = "rclcpp_kit_direct_entities"
+_RMW_SEQUENCE_NUMBER_UNSUPPORTED = 2 ** 64 - 1
 _MANAGED_PUBLISHER_SOURCE = r"""
 #include <atomic>
 #include <memory>
@@ -94,8 +95,8 @@ class DirectSubscription:
     """A direct subscription plus the callback objects its owner must retain."""
 
     entity: Any | None
-    callback: Callable[[Any], None] | None
-    dispatch_callback: Callable[[Any], None] | None
+    callback: Callable[..., None] | None
+    dispatch_callback: Callable[..., None] | None
     cpp_callback: Any
     creation_route: str
     _owning_cpp_copy_count: list[int]
@@ -348,10 +349,21 @@ def create_subscription(
     topic: str,
     callback: Callable[[Any], None],
     qos: Any,
+    *,
+    with_message_info: bool = False,
 ) -> DirectSubscription:
-    """Create a typed subscription whose callback receives an owning C++ copy."""
+    """Create a typed subscription whose callback receives an owning C++ copy.
+
+    ``with_message_info=True`` adds a Jazzy-compatible metadata dictionary as
+    the second callback argument without changing the generated C++ message.
+    """
     if not callable(callback):
         raise TypeError("subscription callback must be callable")
+    if not isinstance(with_message_info, bool):
+        raise TypeError("with_message_info must be boolean")
+    if with_message_info:
+        return _create_subscription_with_message_info(
+            node, message_type, topic, callback, qos)
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
 
@@ -386,6 +398,61 @@ def create_subscription(
         dispatch_callback,
         cpp_callback,
         creation_route,
+        owning_cpp_copy_count,
+    )
+
+
+def _optional_sequence_number(value: Any) -> int | None:
+    value = int(value)
+    if value == _RMW_SEQUENCE_NUMBER_UNSUPPORTED:
+        return None
+    return value
+
+
+def _message_info_dict(message_info: Any) -> dict[str, int | None]:
+    rmw_info = message_info.get_rmw_message_info()
+    return {
+        "source_timestamp": int(rmw_info.source_timestamp),
+        "received_timestamp": int(rmw_info.received_timestamp),
+        "publication_sequence_number": _optional_sequence_number(
+            rmw_info.publication_sequence_number),
+        "reception_sequence_number": _optional_sequence_number(
+            rmw_info.reception_sequence_number),
+    }
+
+
+def _create_subscription_with_message_info(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    callback: Callable[[Any, dict[str, int | None]], None],
+    qos: Any,
+) -> DirectSubscription:
+    """Create the opt-in owning-copy callback with native RMW metadata."""
+    cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
+    owning_cpp_copy_count = [0]
+
+    def dispatch_callback(message, message_info):
+        # Keep the default subscription's ownership contract: Python receives a
+        # generated C++ copy that remains valid after the native callback exits.
+        owning_message = cpp_type(message)
+        owning_cpp_copy_count[0] += 1
+        callback(owning_message, _message_info_dict(message_info))
+
+    cpp_callback = cppyy.gbl.std.function[
+        "void(std::shared_ptr<const %s>, const rclcpp::MessageInfo&)" %
+        cpp_type_name
+    ](dispatch_callback)
+    original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
+    if original is None:
+        raise TypeError("node has no original typed rclcpp subscription factory")
+    entity = original[cpp_type](str(topic), qos, cpp_callback)
+    return DirectSubscription(
+        entity,
+        callback,
+        dispatch_callback,
+        cpp_callback,
+        "rclcpp_template_with_message_info",
         owning_cpp_copy_count,
     )
 

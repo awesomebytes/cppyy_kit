@@ -23,11 +23,12 @@ import cppyy_kit
 from cppyy_kit.cache import artifact_paths
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
-from rclcpp_kit.direct_entities import resolve_supported_type
+from rclcpp_kit.direct_entities import _message_info_dict, resolve_supported_type
 
 
 _INSTALL_LOCK = threading.Lock()
 _INSTALLED: dict[str, tuple[str, Any]] = {}
+_INSTALLED_WITH_MESSAGE_INFO: dict[str, tuple[str, Any]] = {}
 
 
 def _cache_dir() -> str:
@@ -173,6 +174,146 @@ private:
     return source_id, factory, code, declarations
 
 
+def _source_with_message_info(
+    cpp_type_name: str,
+    header: str,
+) -> tuple[str, str, str, str]:
+    source_id = hashlib.sha256(
+        (cpp_type_name + "\0" + header + "\0message-info").encode()
+    ).hexdigest()[:16]
+    interface = "DirectSubscriptionLeaseWithInfo_%s" % source_id
+    implementation = "DirectSubscriptionLeaseWithInfoImpl_%s" % source_id
+    factory = "make_direct_subscription_lease_with_info_%s" % source_id
+    prefix = """
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+#include <%(header)s>
+
+namespace rclcpp_kit_direct_subscription_lease {
+class %(interface)s {
+public:
+  virtual ~%(interface)s() = default;
+  virtual std::shared_ptr<rclcpp::SubscriptionBase> entity() const = 0;
+  virtual uint64_t leases() const = 0;
+  virtual uint64_t exceptions() const = 0;
+  virtual uint64_t python_boundary_crossings() const = 0;
+  virtual uint64_t shared_control_blocks() const = 0;
+  virtual uint64_t message_deep_copies() const = 0;
+  virtual uintptr_t last_message_address() const = 0;
+  virtual void close() = 0;
+};
+""" % {"header": header, "interface": interface}
+    signature = """std::shared_ptr<%(interface)s> %(factory)s(
+  std::shared_ptr<rclcpp::Node> node,
+  const std::string& topic,
+  const rclcpp::QoS& qos,
+  std::function<void(
+    std::shared_ptr<%(cpp_type)s>, const rclcpp::MessageInfo&)> callback)""" % {
+        "cpp_type": cpp_type_name,
+        "factory": factory,
+        "interface": interface,
+    }
+    declarations = prefix + signature + ";\n}\n"
+    code = prefix + """
+class %(implementation)s final : public %(interface)s {
+private:
+  using MessageT = %(cpp_type)s;
+  using SubscriptionT = rclcpp::Subscription<MessageT>;
+  using MessageUniquePtr = std::unique_ptr<
+    MessageT, typename SubscriptionT::SubscribedTypeDeleter>;
+
+  struct State {
+    explicit State(std::function<void(
+        std::shared_ptr<MessageT>, const rclcpp::MessageInfo&)> selected_callback)
+    : callback(std::move(selected_callback)) {}
+
+    std::function<void(
+      std::shared_ptr<MessageT>, const rclcpp::MessageInfo&)> callback;
+    std::atomic<uint64_t> leases{0};
+    std::atomic<uint64_t> exceptions{0};
+    std::atomic<uint64_t> python_boundary_crossings{0};
+    std::atomic<uint64_t> shared_control_blocks{0};
+    std::atomic<uintptr_t> last_message_address{0};
+  };
+
+public:
+  %(implementation)s(
+      std::shared_ptr<rclcpp::Node> node,
+      const std::string& topic,
+      const rclcpp::QoS& qos,
+      std::function<void(
+        std::shared_ptr<MessageT>, const rclcpp::MessageInfo&)> callback)
+  : state_(std::make_shared<State>(std::move(callback)))
+  {
+    std::function<void(MessageUniquePtr, const rclcpp::MessageInfo&)>
+      native_callback =
+      [state = state_](
+          MessageUniquePtr message, const rclcpp::MessageInfo& message_info) {
+        try {
+          std::shared_ptr<MessageT> lease(std::move(message));
+          state->last_message_address.store(
+            reinterpret_cast<uintptr_t>(lease.get()), std::memory_order_relaxed);
+          state->shared_control_blocks.fetch_add(1, std::memory_order_relaxed);
+          state->leases.fetch_add(1, std::memory_order_relaxed);
+          state->python_boundary_crossings.fetch_add(1, std::memory_order_relaxed);
+          state->callback(std::move(lease), message_info);
+        } catch (...) {
+          state->exceptions.fetch_add(1, std::memory_order_relaxed);
+          throw;
+        }
+      };
+    subscription_ = node->create_subscription<MessageT>(
+      topic, qos, std::move(native_callback));
+  }
+
+  ~%(implementation)s() override { close(); }
+
+  std::shared_ptr<rclcpp::SubscriptionBase> entity() const override
+  {
+    return subscription_;
+  }
+  uint64_t leases() const override { return state_->leases.load(); }
+  uint64_t exceptions() const override { return state_->exceptions.load(); }
+  uint64_t python_boundary_crossings() const override
+  {
+    return state_->python_boundary_crossings.load();
+  }
+  uint64_t shared_control_blocks() const override
+  {
+    return state_->shared_control_blocks.load();
+  }
+  uint64_t message_deep_copies() const override { return 0; }
+  uintptr_t last_message_address() const override
+  {
+    return state_->last_message_address.load();
+  }
+  void close() override { subscription_.reset(); }
+
+private:
+  std::shared_ptr<State> state_;
+  typename SubscriptionT::SharedPtr subscription_;
+};
+
+%(signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), topic, qos, std::move(callback));
+}
+}
+""" % {
+        "cpp_type": cpp_type_name,
+        "implementation": implementation,
+        "interface": interface,
+        "signature": signature,
+    }
+    return source_id, factory, code, declarations
+
+
 def _compile_glue(code: str, options: dict[str, Any]) -> None:
     so_path = artifact_paths(
         code,
@@ -218,6 +359,35 @@ def _install(cpp_type_name: str, header: str) -> tuple[str, Any]:
         return installed
 
 
+def _install_with_message_info(
+    cpp_type_name: str,
+    header: str,
+) -> tuple[str, Any]:
+    with _INSTALL_LOCK:
+        installed = _INSTALLED_WITH_MESSAGE_INFO.get(cpp_type_name)
+        if installed is not None:
+            return installed
+        source_id, factory_name, code, declarations = (
+            _source_with_message_info(cpp_type_name, header))
+        options = {
+            "decls": declarations,
+            "name": "rclcpp_direct_subscription_lease_info_%s" % source_id,
+            "include_paths": tuple(sorted(ros2_include_paths())),
+            "library_paths": (get_ros2_lib_path(),),
+            "libraries": (
+                "rclcpp",
+                "%s__rosidl_typesupport_cpp" % cpp_type_name.split("::", 1)[0],
+            ),
+            "directory": _cache_dir(),
+        }
+        _compile_glue(code, options)
+        factory = getattr(
+            cppyy.gbl.rclcpp_kit_direct_subscription_lease, factory_name)
+        installed = (source_id, factory)
+        _INSTALLED_WITH_MESSAGE_INFO[cpp_type_name] = installed
+        return installed
+
+
 @dataclass(frozen=True)
 class DirectSubscriptionLeaseStats:
     leases: int
@@ -240,8 +410,8 @@ class DirectSubscriptionLease:
         self,
         implementation: Any,
         entity: Any,
-        callback: Callable[[Any], None],
-        dispatch_callback: Callable[[Any], None],
+        callback: Callable[..., None],
+        dispatch_callback: Callable[..., None],
         cpp_callback: Any,
         cpp_type: Any,
         source_id: str,
@@ -309,10 +479,21 @@ def create_subscription_lease(
     topic: str,
     callback: Callable[[Any], None],
     qos: Any,
+    *,
+    with_message_info: bool = False,
 ) -> DirectSubscriptionLease:
-    """Create an opt-in subscription whose callback receives an owning C++ lease."""
+    """Create an opt-in subscription whose callback receives an owning C++ lease.
+
+    ``with_message_info=True`` adds a Jazzy-compatible metadata dictionary as
+    the second callback argument without copying or converting ``MessageT``.
+    """
     if not callable(callback):
         raise TypeError("subscription lease callback must be callable")
+    if not isinstance(with_message_info, bool):
+        raise TypeError("with_message_info must be boolean")
+    if with_message_info:
+        return _create_subscription_lease_with_message_info(
+            node, message_type, topic, callback, qos)
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     source_id, factory = _install(cpp_type_name, header)
     shared_owner_acquisitions = [0]
@@ -330,6 +511,43 @@ def create_subscription_lease(
     ](dispatch_callback)
     implementation = factory(
         node, str(topic), qos, cpp_callback)
+    entity = implementation.entity()
+    if entity is None:
+        implementation.close()
+        raise RuntimeError("direct subscription lease factory returned no entity")
+    return DirectSubscriptionLease(
+        implementation=implementation,
+        entity=entity,
+        callback=callback,
+        dispatch_callback=dispatch_callback,
+        cpp_callback=cpp_callback,
+        cpp_type=cpp_type,
+        source_id=source_id,
+        shared_owner_acquisitions=shared_owner_acquisitions,
+    )
+
+
+def _create_subscription_lease_with_message_info(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    callback: Callable[[Any, dict[str, int | None]], None],
+    qos: Any,
+) -> DirectSubscriptionLease:
+    cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
+    source_id, factory = _install_with_message_info(cpp_type_name, header)
+    shared_owner_acquisitions = [0]
+
+    def dispatch_callback(borrowed_message, message_info):
+        leased_message = cppyy.gbl.std.shared_ptr[cpp_type](
+            borrowed_message.__smartptr__())
+        shared_owner_acquisitions[0] += 1
+        callback(leased_message, _message_info_dict(message_info))
+
+    cpp_callback = cppyy.gbl.std.function[
+        "void(std::shared_ptr<%s>, const rclcpp::MessageInfo&)" % cpp_type_name
+    ](dispatch_callback)
+    implementation = factory(node, str(topic), qos, cpp_callback)
     entity = implementation.entity()
     if entity is None:
         implementation.close()
