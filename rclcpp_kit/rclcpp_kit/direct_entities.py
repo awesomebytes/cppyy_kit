@@ -161,6 +161,65 @@ int64_t time_since_last_call(
   }
   return result;
 }
+
+// Same callable type the wall timer already uses (matches VoidCallbackType).
+using ClockTimerCallback = std::function<void()>;
+using DirectClockTimer = rclcpp::GenericTimer<ClockTimerCallback>;
+
+std::shared_ptr<DirectClockTimer> create_clock_timer(
+  rclcpp::Node & node,
+  std::shared_ptr<rclcpp::Clock> clock,
+  int64_t period_ns,
+  ClockTimerCallback callback,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group,
+  bool autostart)
+{
+  return rclcpp::create_timer(
+    std::move(clock),
+    std::chrono::nanoseconds(period_ns),
+    std::move(callback),
+    std::move(callback_group),
+    node.get_node_base_interface().get(),
+    node.get_node_timers_interface().get(),
+    autostart);
+}
+
+// Overload (not a signature change to the wall-timer helper above): cppyy resolves
+// free-function overloads by the concrete shared_ptr element type of the entity
+// handed in, so the wall timer keeps routing to its DirectWallTimer-typed helper
+// and the clock timer routes here.
+int64_t time_since_last_call(const std::shared_ptr<DirectClockTimer> & timer)
+{
+  if (!timer) {
+    throw std::invalid_argument("direct timer is destroyed");
+  }
+  int64_t result = 0;
+  const rcl_ret_t ret = rcl_timer_get_time_since_last_call(
+    timer->get_timer_handle().get(), &result);
+  if (ret != RCL_RET_OK) {
+    const std::string reason = rcl_get_error_string().str;
+    rcl_reset_error();
+    throw std::runtime_error(
+      "failed to read native timer time since last call: " + reason);
+  }
+  return result;
+}
+
+// Identity helper for the live proof: the rcl clock the timer schedules against.
+uintptr_t clock_timer_clock_address(const std::shared_ptr<DirectClockTimer> & timer)
+{
+  if (!timer) {
+    throw std::invalid_argument("direct timer is destroyed");
+  }
+  rcl_clock_t * clock = nullptr;
+  const rcl_ret_t ret = rcl_timer_clock(timer->get_timer_handle().get(), &clock);
+  if (ret != RCL_RET_OK) {
+    const std::string reason = rcl_get_error_string().str;
+    rcl_reset_error();
+    throw std::runtime_error("failed to read native timer clock: " + reason);
+  }
+  return reinterpret_cast<uintptr_t>(clock);
+}
 }
 """
 
@@ -714,9 +773,74 @@ def create_wall_timer(
     )
 
 
+def _create_clock_timer_native(
+    node: Any,
+    clock: Any,
+    period_ns: int,
+    cpp_callback: Any,
+    callback_group: Any,
+    autostart: bool,
+) -> Any:
+    _install_wall_timer_factory()
+    factory = getattr(cppyy.gbl, _WALL_TIMER_NAMESPACE).create_clock_timer
+    # The C++ signature takes a single (possibly-null) shared_ptr<CallbackGroup>;
+    # cppyy does not convert a bare Python None into that smart-pointer parameter,
+    # so a group-less call passes a real null shared_ptr instead.
+    native_group = (
+        cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+        if callback_group is None else callback_group)
+    return factory(node, clock, period_ns, cpp_callback, native_group, autostart)
+
+
+def create_clock_timer(
+    node: Any,
+    period_ns: int,
+    callback: Callable[[], None],
+    *,
+    clock: Any = None,
+    callback_group: Any = None,
+    autostart: bool = True,
+) -> DirectTimer:
+    """Create one positive-period native timer that ticks on a node/ROS clock.
+
+    With ``clock=None`` the timer uses the node's own clock (``node.get_clock()``),
+    which is sim-time-aware: the node's TimeSource drives it from ``/clock`` when
+    ``use_sim_time`` is active. An explicit ``clock`` (a raw ``rclcpp::Clock``) is
+    honored for parameterization.
+    """
+    if isinstance(period_ns, bool) or not isinstance(period_ns, int) or period_ns <= 0:
+        raise TypeError("direct clock timer requires a positive integer period in nanoseconds")
+    if not callable(callback):
+        raise TypeError("timer callback must be callable")
+    if not isinstance(autostart, bool):
+        raise TypeError("timer autostart must be a bool")
+    resolved_clock = node.get_clock() if clock is None else clock
+    cpp_callback = cppyy.gbl.std.function["void()"](callback)
+    native_group = (
+        None if callback_group is None
+        else _callback_group_for_node(node, callback_group))
+    entity = _create_clock_timer_native(
+        node, resolved_clock, period_ns, cpp_callback, native_group, autostart)
+    native_type_name = str(
+        getattr(type(entity), "__cpp_name__", "")
+        or getattr(entity, "__cpp_name__", ""))
+    if not native_type_name:
+        raise TypeError("direct clock timer factory did not return a C++ entity")
+    return DirectTimer(
+        entity=entity,
+        callback=callback,
+        cpp_callback=cpp_callback,
+        period_ns=period_ns,
+        native_type_name=native_type_name,
+        callback_group=callback_group,
+        creation_route="rclcpp_clock_timer",
+    )
+
+
 __all__ = [
     "DirectSubscription",
     "DirectTimer",
+    "create_clock_timer",
     "create_managed_publisher",
     "create_publisher",
     "create_subscription",

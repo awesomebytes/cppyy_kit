@@ -203,6 +203,7 @@ class NativeCapabilities:
     managed_component_containers: bool = True
     intra_process: bool = True
     direct_cpp_message_entities: bool = True
+    managed_clock_timers: bool = True
     raw_node_options: bool = True
     raw_qos_profiles: bool = True
     actual_qos_introspection: str = "publisher_and_subscription_runtime_query"

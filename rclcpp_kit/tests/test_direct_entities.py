@@ -702,3 +702,212 @@ def test_wall_timer_forwards_native_autostart(monkeypatch):
     assert calls == [(node, 23, callback, group, False)]
     assert timer.callback_group is group
     assert timer.is_canceled()
+
+
+def test_clock_timer_is_native_control_on_the_node_clock(monkeypatch):
+    def callback():
+        return None
+
+    calls = []
+
+    class Entity:
+        __cpp_name__ = "rclcpp::GenericTimer<std::function<void ()> >"
+
+        def __init__(self):
+            self.canceled = False
+            self.resets = 0
+
+        def cancel(self):
+            self.canceled = True
+
+        def reset(self):
+            self.canceled = False
+            self.resets += 1
+
+        def is_canceled(self):
+            return self.canceled
+
+        def is_ready(self):
+            return not self.canceled
+
+        def time_until_trigger(self):
+            return type("Duration", (), {"count": lambda self: 13})()
+
+    entity = Entity()
+    resolved_clock = object()
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == "void()"
+            return lambda selected: calls.append(("callback", selected)) or selected
+
+    class Node:
+        def get_clock(self):
+            return resolved_clock
+
+    def native_factory(node, clock, period_ns, cpp_callback, callback_group, autostart):
+        calls.append(
+            ("factory", node, clock, period_ns, cpp_callback, callback_group, autostart))
+        return entity
+
+    monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
+    monkeypatch.setattr(
+        direct_entities, "_timer_time_since_last_call", lambda selected: 29)
+    node = Node()
+    timer = direct_entities.create_clock_timer(node, 17, callback)
+    assert calls == [
+        ("callback", callback),
+        ("factory", node, resolved_clock, 17, callback, None, True),
+    ]
+    assert timer.callback is callback
+    assert timer.cpp_callback is callback
+    assert timer.entity is entity
+    assert timer.timer_period_ns == 17
+    assert "GenericTimer" in timer.__cpp_name__
+    assert timer.creation_route == "rclcpp_clock_timer"
+
+    timer.cancel()
+    assert timer.is_canceled()
+    timer.reset()
+    assert not timer.is_canceled()
+    assert timer.is_ready()
+    assert timer.time_until_next_call() == 13
+    assert timer.time_since_last_call() == 29
+    assert entity.resets == 1
+    assert timer.destroy()
+    assert not timer.destroy()
+    assert timer.entity is None
+    assert timer.callback is None
+    assert timer.cpp_callback is None
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.reset()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.is_ready()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.time_until_next_call()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.time_since_last_call()
+    assert timer.timer_period_ns == 17
+
+
+def test_clock_timer_defaults_to_node_clock_when_clock_omitted(monkeypatch):
+    calls = []
+    get_clock_calls = []
+    resolved_clock = object()
+
+    class Entity:
+        __cpp_name__ = "rclcpp::GenericTimer<std::function<void ()> >"
+
+        def is_canceled(self):
+            return True
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == "void()"
+            return lambda selected: selected
+
+    class Node:
+        def get_clock(self):
+            get_clock_calls.append(True)
+            return resolved_clock
+
+    def native_factory(node, clock, period_ns, cpp_callback, callback_group, autostart):
+        calls.append(clock)
+        return Entity()
+
+    monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
+
+    node = Node()
+    direct_entities.create_clock_timer(node, 11, lambda: None)
+    assert get_clock_calls == [True]
+    assert calls == [resolved_clock]
+
+    get_clock_calls.clear()
+    calls.clear()
+    explicit_clock = object()
+    direct_entities.create_clock_timer(node, 11, lambda: None, clock=explicit_clock)
+    assert get_clock_calls == []
+    assert calls == [explicit_clock]
+
+
+def test_clock_timer_rejects_invalid_input_before_native_factory(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        direct_entities, "_create_clock_timer_native",
+        lambda *args: calls.append(args))
+    node = object()
+    for period in (0, -1, True, 1.5, "1"):
+        with pytest.raises(TypeError, match="positive integer"):
+            direct_entities.create_clock_timer(node, period, lambda: None)
+    with pytest.raises(TypeError, match="callable"):
+        direct_entities.create_clock_timer(node, 1, object())
+    with pytest.raises(TypeError, match="autostart"):
+        direct_entities.create_clock_timer(
+            node, 1, lambda: None, autostart=object())
+    assert calls == []
+
+
+def test_clock_timer_forwards_autostart_and_callback_group(monkeypatch):
+    calls = []
+    resolved_clock = object()
+
+    class Entity:
+        __cpp_name__ = "rclcpp::GenericTimer<std::function<void ()> >"
+
+        def is_canceled(self):
+            return True
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == "void()"
+            return lambda selected: selected
+
+    def callback():
+        pass
+
+    group = object()
+    native_group = object()
+
+    class Node:
+        def get_clock(self):
+            return resolved_clock
+
+    monkeypatch.setattr(
+        direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities,
+        "_callback_group_for_node",
+        lambda node, requested: calls.append(("group", node, requested)) or native_group,
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_create_clock_timer_native",
+        lambda node, clock, period, selected_callback, selected_group, autostart: (
+            calls.append(
+                ("factory", node, clock, period, selected_callback, selected_group, autostart))
+            or Entity()
+        ),
+    )
+    node = Node()
+
+    timer = direct_entities.create_clock_timer(
+        node, 23, callback, callback_group=group, autostart=False)
+
+    assert ("group", node, group) in calls
+    assert (
+        "factory", node, resolved_clock, 23, callback, native_group, False) in calls
+    assert timer.callback_group is group
+    assert timer.is_canceled()
+
+
+def test_clock_timer_live_sim_time_proof_ticks_on_the_node_clock():
+    process = run_helper("_direct_clock_timer_helper.py", timeout=180)
+    assert process.returncode == 0, format_output(process)
+    assert "DIRECT_CLOCK_TIMER_SIM_FROZEN_OK" in process.stdout
+    assert "DIRECT_CLOCK_TIMER_SIM_TICK_OK" in process.stdout
+    assert "DIRECT_CLOCK_TIMER_WALL_OK" in process.stdout
+    assert "DIRECT_CLOCK_TIMER_IDENTITY_OK" in process.stdout
+    assert "DIRECT_CLOCK_TIMER_LIFECYCLE_OK" in process.stdout
+    assert "DIRECT_CLOCK_TIMER_NO_CONVERSION_OK" in process.stdout

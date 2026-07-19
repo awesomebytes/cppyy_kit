@@ -25,6 +25,7 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_component_containers"] is True
     assert report["intra_process"] is True
     assert report["direct_cpp_message_entities"] is True
+    assert report["managed_clock_timers"] is True
     assert report["raw_node_options"] is True
     assert report["raw_qos_profiles"] is True
     assert report["actual_qos_introspection"] == (
