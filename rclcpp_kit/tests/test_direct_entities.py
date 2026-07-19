@@ -566,6 +566,12 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
         def is_canceled(self):
             return self.canceled
 
+        def is_ready(self):
+            return not self.canceled
+
+        def time_until_trigger(self):
+            return type("Duration", (), {"count": lambda self: 13})()
+
     entity = Entity()
 
     class FunctionTemplate:
@@ -580,6 +586,8 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
 
     monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
     monkeypatch.setattr(direct_entities, "_wall_duration", lambda value: ("ns", value))
+    monkeypatch.setattr(
+        direct_entities, "_timer_time_since_last_call", lambda selected: 29)
     timer = direct_entities.create_wall_timer(Node(), 17, callback)
     assert calls == [
         ("callback", callback),
@@ -596,6 +604,9 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
     assert timer.is_canceled()
     timer.reset()
     assert not timer.is_canceled()
+    assert timer.is_ready()
+    assert timer.time_until_next_call() == 13
+    assert timer.time_since_last_call() == 29
     assert entity.resets == 1
     assert timer.destroy()
     assert not timer.destroy()
@@ -604,6 +615,39 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
     assert timer.cpp_callback is None
     with pytest.raises(RuntimeError, match="destroyed"):
         timer.reset()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.is_ready()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.time_until_next_call()
+    with pytest.raises(RuntimeError, match="destroyed"):
+        timer.time_since_last_call()
+    assert timer.timer_period_ns == 17
+
+
+def test_wall_timer_maps_native_canceled_sentinel_to_none():
+    class Duration:
+        def count(self):
+            return 2 ** 63 - 1
+
+    timer = direct_entities.DirectTimer(
+        entity=type("Entity", (), {"time_until_trigger": lambda self: Duration()})(),
+        callback=lambda: None,
+        cpp_callback=object(),
+        period_ns=31,
+        native_type_name="rclcpp::WallTimer<std::function<void ()> >",
+    )
+    assert timer.time_until_next_call() is None
+
+
+def test_wall_timer_live_inspection_uses_exact_native_state():
+    process = run_helper("_direct_timer_inspection_helper.py", timeout=180)
+    assert process.returncode == 0, format_output(process)
+    assert "DIRECT_TIMER_INSPECTION_PREFIRE_OK" in process.stdout
+    assert "DIRECT_TIMER_INSPECTION_POSTFIRE_OK" in process.stdout
+    assert "DIRECT_TIMER_INSPECTION_CANCELED_OK" in process.stdout
+    assert "DIRECT_TIMER_INSPECTION_RESET_OK" in process.stdout
+    assert "DIRECT_TIMER_INSPECTION_DESTROY_OK" in process.stdout
+    assert "DIRECT_TIMER_INSPECTION_NO_CONVERSION_OK" in process.stdout
 
 
 def test_wall_timer_rejects_invalid_input_before_native_factory(monkeypatch):

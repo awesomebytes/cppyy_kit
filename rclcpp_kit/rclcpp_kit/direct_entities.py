@@ -108,9 +108,14 @@ std::shared_ptr<ManagedPublisher<MessageT>> manage_publisher(
 """
 _WALL_TIMER_SOURCE = r"""
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
+#include <rcl/error_handling.h>
+#include <rcl/timer.h>
 #include <rclcpp/rclcpp.hpp>
 
 namespace rclcpp_kit_direct_timers_v1 {
@@ -137,6 +142,24 @@ std::shared_ptr<DirectWallTimer> create_wall_timer(
   return node.create_wall_timer(
     std::chrono::nanoseconds(period_ns), std::move(callback),
     std::move(callback_group), autostart);
+}
+
+int64_t time_since_last_call(
+  const std::shared_ptr<DirectWallTimer> & timer)
+{
+  if (!timer) {
+    throw std::invalid_argument("direct timer is destroyed");
+  }
+  int64_t result = 0;
+  const rcl_ret_t ret = rcl_timer_get_time_since_last_call(
+    timer->get_timer_handle().get(), &result);
+  if (ret != RCL_RET_OK) {
+    const std::string reason = rcl_get_error_string().str;
+    rcl_reset_error();
+    throw std::runtime_error(
+      "failed to read native timer time since last call: " + reason);
+  }
+  return result;
 }
 }
 """
@@ -206,6 +229,18 @@ class DirectTimer:
 
     def is_canceled(self) -> bool:
         return bool(self._require_entity().is_canceled())
+
+    def is_ready(self) -> bool:
+        return bool(self._require_entity().is_ready())
+
+    def time_until_next_call(self) -> int | None:
+        nanoseconds = int(self._require_entity().time_until_trigger().count())
+        if nanoseconds == (2 ** 63 - 1):
+            return None
+        return nanoseconds
+
+    def time_since_last_call(self) -> int:
+        return _timer_time_since_last_call(self._require_entity())
 
     def destroy(self) -> bool:
         """Cancel and release the only strong native timer reference."""
@@ -628,6 +663,12 @@ def _create_wall_timer_with_autostart(
         _callback_group_for_node(node, callback_group),
         autostart,
     )
+
+
+def _timer_time_since_last_call(entity: Any) -> int:
+    _install_wall_timer_factory()
+    helper = getattr(cppyy.gbl, _WALL_TIMER_NAMESPACE).time_since_last_call
+    return int(helper(entity))
 
 
 def create_wall_timer(
