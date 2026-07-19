@@ -81,6 +81,10 @@ class NativeActionServerStats:
     cpp_goal_id_materializations: int
     cpp_feedback_value_submissions: int
     cpp_result_value_submissions: int
+    cpp_feedback_adapter_copies: int
+    cpp_result_adapter_copies: int
+    cpp_feedback_shared_handoffs: int
+    cpp_result_shared_handoffs: int
     python_message_conversions: int
     python_serialization_calls: int
     compile_cache_hits: int
@@ -201,11 +205,49 @@ class NativeActionServer:
         self._require_open()
         self._checked(self._implementation.execute(int(token)))
 
+    def make_feedback_shared(self) -> Any:
+        """Return an exact Feedback value backed by a new ``shared_ptr``.
+
+        The returned object has the generated C++ Feedback type. It may be
+        retained after submission, but must not be mutated concurrently with a
+        ``publish_feedback_shared`` call.
+        """
+        self._require_open()
+        return self._implementation.make_feedback_shared()
+
+    def make_result_shared(self) -> Any:
+        """Return an exact Result value backed by a new ``shared_ptr``.
+
+        The returned object may be retained after a terminal call. It must not
+        be mutated concurrently with that call.
+        """
+        self._require_open()
+        return self._implementation.make_result_shared()
+
+    @staticmethod
+    def _shared_pointer(value: Any, value_type: Any, label: str) -> Any:
+        if not isinstance(value, value_type):
+            raise TypeError(
+                "%s must be the exact generated C++ action %s" % (label, label))
+        pointer = value.__smartptr__()
+        if pointer is None or not bool(pointer):
+            raise TypeError(
+                "%s must come from the native action-server shared factory" % label)
+        return pointer
+
     def publish_feedback(self, token: int, feedback: Any) -> None:
         self._require_open()
         if not isinstance(feedback, self._cpp_types.feedback):
             raise TypeError("feedback must be the exact generated C++ action Feedback")
         self._checked(self._implementation.publish_feedback(int(token), feedback))
+
+    def publish_feedback_shared(self, token: int, feedback: Any) -> None:
+        """Submit factory-created feedback without an adapter deep copy."""
+        self._require_open()
+        pointer = self._shared_pointer(
+            feedback, self._cpp_types.feedback, "feedback")
+        self._checked(
+            self._implementation.publish_feedback_shared(int(token), pointer))
 
     def succeed(self, token: int, result: Any) -> None:
         self._terminal("succeed", token, result)
@@ -216,12 +258,27 @@ class NativeActionServer:
     def canceled(self, token: int, result: Any) -> None:
         self._terminal("canceled", token, result)
 
+    def succeed_shared(self, token: int, result: Any) -> None:
+        self._terminal_shared("succeed_shared", token, result)
+
+    def abort_shared(self, token: int, result: Any) -> None:
+        self._terminal_shared("abort_shared", token, result)
+
+    def canceled_shared(self, token: int, result: Any) -> None:
+        self._terminal_shared("canceled_shared", token, result)
+
     def _terminal(self, operation: str, token: int, result: Any) -> None:
         self._require_open()
         if not isinstance(result, self._cpp_types.result):
             raise TypeError("result must be the exact generated C++ action Result")
         method = getattr(self._implementation, operation)
         self._checked(method(int(token), result))
+
+    def _terminal_shared(self, operation: str, token: int, result: Any) -> None:
+        self._require_open()
+        pointer = self._shared_pointer(result, self._cpp_types.result, "result")
+        method = getattr(self._implementation, operation)
+        self._checked(method(int(token), pointer))
 
     def forget(self, token: int) -> bool:
         if self._closed:
@@ -270,6 +327,14 @@ class NativeActionServer:
                 impl.cpp_feedback_value_submissions()),
             cpp_result_value_submissions=int(
                 impl.cpp_result_value_submissions()),
+            cpp_feedback_adapter_copies=int(
+                impl.cpp_feedback_adapter_copies()),
+            cpp_result_adapter_copies=int(
+                impl.cpp_result_adapter_copies()),
+            cpp_feedback_shared_handoffs=int(
+                impl.cpp_feedback_shared_handoffs()),
+            cpp_result_shared_handoffs=int(
+                impl.cpp_result_shared_handoffs()),
             python_message_conversions=0,
             python_serialization_calls=0,
             compile_cache_hits=int(bool(self.compile_result.get("cached"))),
@@ -361,7 +426,7 @@ def create_native_action_server(
     payload = json.dumps({
         "type": cpp_name,
         "header": header,
-        "adapter_api": 1,
+        "adapter_api": 2,
     }, sort_keys=True, separators=(",", ":"))
     source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
     interface = "NativeActionServer_%s" % source_id
@@ -466,14 +531,24 @@ public:
   virtual %(accepted_snapshot)s take_accepted() = 0;
   virtual %(status_result)s status(uint64_t token) const = 0;
   virtual %(call_result)s execute(uint64_t token) = 0;
+  virtual std::shared_ptr<ActionT::Feedback> make_feedback_shared() const = 0;
+  virtual std::shared_ptr<ActionT::Result> make_result_shared() const = 0;
   virtual %(call_result)s publish_feedback(
     uint64_t token, const ActionT::Feedback& feedback) = 0;
+  virtual %(call_result)s publish_feedback_shared(
+    uint64_t token, std::shared_ptr<ActionT::Feedback> feedback) = 0;
   virtual %(call_result)s succeed(
     uint64_t token, const ActionT::Result& result) = 0;
   virtual %(call_result)s abort(
     uint64_t token, const ActionT::Result& result) = 0;
   virtual %(call_result)s canceled(
     uint64_t token, const ActionT::Result& result) = 0;
+  virtual %(call_result)s succeed_shared(
+    uint64_t token, std::shared_ptr<ActionT::Result> result) = 0;
+  virtual %(call_result)s abort_shared(
+    uint64_t token, std::shared_ptr<ActionT::Result> result) = 0;
+  virtual %(call_result)s canceled_shared(
+    uint64_t token, std::shared_ptr<ActionT::Result> result) = 0;
   virtual bool forget(uint64_t token) = 0;
   virtual uint64_t goals_requested() const = 0;
   virtual uint64_t goals_accepted() const = 0;
@@ -497,6 +572,10 @@ public:
   virtual uint64_t cpp_goal_id_materializations() const = 0;
   virtual uint64_t cpp_feedback_value_submissions() const = 0;
   virtual uint64_t cpp_result_value_submissions() const = 0;
+  virtual uint64_t cpp_feedback_adapter_copies() const = 0;
+  virtual uint64_t cpp_result_adapter_copies() const = 0;
+  virtual uint64_t cpp_feedback_shared_handoffs() const = 0;
+  virtual uint64_t cpp_result_shared_handoffs() const = 0;
   virtual void close() = 0;
 };
 
@@ -607,6 +686,10 @@ public:
     std::atomic<uint64_t> cpp_goal_id_materializations{0};
     std::atomic<uint64_t> cpp_feedback_value_submissions{0};
     std::atomic<uint64_t> cpp_result_value_submissions{0};
+    std::atomic<uint64_t> cpp_feedback_adapter_copies{0};
+    std::atomic<uint64_t> cpp_result_adapter_copies{0};
+    std::atomic<uint64_t> cpp_feedback_shared_handoffs{0};
+    std::atomic<uint64_t> cpp_result_shared_handoffs{0};
   };
 
   %(implementation)s(
@@ -802,14 +885,43 @@ public:
     });
   }
 
+  std::shared_ptr<ActionT::Feedback> make_feedback_shared() const override
+  {
+    return std::make_shared<ActionT::Feedback>();
+  }
+
+  std::shared_ptr<ActionT::Result> make_result_shared() const override
+  {
+    return std::make_shared<ActionT::Result>();
+  }
+
   CallResult publish_feedback(
       uint64_t token, const ActionT::Feedback& feedback) override
   {
     return mutate(token, [this, &feedback](const std::shared_ptr<Record>& record) {
-      record->handle->publish_feedback(
-        std::make_shared<ActionT::Feedback>(feedback));
+      auto owned_feedback = std::make_shared<ActionT::Feedback>(feedback);
+      state_->cpp_feedback_adapter_copies.fetch_add(
+        1, std::memory_order_relaxed);
+      record->handle->publish_feedback(std::move(owned_feedback));
       state_->feedback_published.fetch_add(1, std::memory_order_relaxed);
       state_->cpp_feedback_value_submissions.fetch_add(
+        1, std::memory_order_relaxed);
+    });
+  }
+
+  CallResult publish_feedback_shared(
+      uint64_t token, std::shared_ptr<ActionT::Feedback> feedback) override
+  {
+    if (!feedback) {
+      return CallResult(false, "shared feedback must not be null");
+    }
+    return mutate(token, [this, feedback = std::move(feedback)](
+        const std::shared_ptr<Record>& record) mutable {
+      record->handle->publish_feedback(std::move(feedback));
+      state_->feedback_published.fetch_add(1, std::memory_order_relaxed);
+      state_->cpp_feedback_value_submissions.fetch_add(
+        1, std::memory_order_relaxed);
+      state_->cpp_feedback_shared_handoffs.fetch_add(
         1, std::memory_order_relaxed);
     });
   }
@@ -831,6 +943,30 @@ public:
   CallResult canceled(uint64_t token, const ActionT::Result& result) override
   {
     return terminal(token, result,
+      action_msgs::msg::GoalStatus::STATUS_CANCELED,
+      &GoalHandleT::canceled, state_->results_canceled);
+  }
+
+  CallResult succeed_shared(
+      uint64_t token, std::shared_ptr<ActionT::Result> result) override
+  {
+    return terminal_shared(token, std::move(result),
+      action_msgs::msg::GoalStatus::STATUS_SUCCEEDED,
+      &GoalHandleT::succeed, state_->results_succeeded);
+  }
+
+  CallResult abort_shared(
+      uint64_t token, std::shared_ptr<ActionT::Result> result) override
+  {
+    return terminal_shared(token, std::move(result),
+      action_msgs::msg::GoalStatus::STATUS_ABORTED,
+      &GoalHandleT::abort, state_->results_aborted);
+  }
+
+  CallResult canceled_shared(
+      uint64_t token, std::shared_ptr<ActionT::Result> result) override
+  {
+    return terminal_shared(token, std::move(result),
       action_msgs::msg::GoalStatus::STATUS_CANCELED,
       &GoalHandleT::canceled, state_->results_canceled);
   }
@@ -878,6 +1014,10 @@ public:
   RCLCPP_KIT_COUNTER(cpp_goal_id_materializations)
   RCLCPP_KIT_COUNTER(cpp_feedback_value_submissions)
   RCLCPP_KIT_COUNTER(cpp_result_value_submissions)
+  RCLCPP_KIT_COUNTER(cpp_feedback_adapter_copies)
+  RCLCPP_KIT_COUNTER(cpp_result_adapter_copies)
+  RCLCPP_KIT_COUNTER(cpp_feedback_shared_handoffs)
+  RCLCPP_KIT_COUNTER(cpp_result_shared_handoffs)
 #undef RCLCPP_KIT_COUNTER
 
   uint64_t active_goals() const override
@@ -953,11 +1093,35 @@ private:
   {
     return mutate(token, [this, &result, status, method, &counter](
         const std::shared_ptr<Record>& record) {
-      (record->handle.get()->*method)(
-        std::make_shared<ActionT::Result>(result));
+      auto owned_result = std::make_shared<ActionT::Result>(result);
+      state_->cpp_result_adapter_copies.fetch_add(
+        1, std::memory_order_relaxed);
+      (record->handle.get()->*method)(std::move(owned_result));
       record->status = status;
       counter.fetch_add(1, std::memory_order_relaxed);
       state_->cpp_result_value_submissions.fetch_add(
+        1, std::memory_order_relaxed);
+    });
+  }
+
+  CallResult terminal_shared(
+      uint64_t token,
+      std::shared_ptr<ActionT::Result> result,
+      int8_t status,
+      TerminalMethod method,
+      std::atomic<uint64_t>& counter)
+  {
+    if (!result) {
+      return CallResult(false, "shared result must not be null");
+    }
+    return mutate(token, [this, result = std::move(result), status, method, &counter](
+        const std::shared_ptr<Record>& record) mutable {
+      (record->handle.get()->*method)(std::move(result));
+      record->status = status;
+      counter.fetch_add(1, std::memory_order_relaxed);
+      state_->cpp_result_value_submissions.fetch_add(
+        1, std::memory_order_relaxed);
+      state_->cpp_result_shared_handoffs.fetch_add(
         1, std::memory_order_relaxed);
     });
   }

@@ -57,10 +57,16 @@ def test_closed_action_server_rejects_work_without_touching_cpp():
         lambda: server.is_canceling(1),
         lambda: server.is_executing(1),
         lambda: server.execute(1),
+        server.make_feedback_shared,
+        server.make_result_shared,
         lambda: server.publish_feedback(1, _CppTypes.feedback()),
+        lambda: server.publish_feedback_shared(1, _CppTypes.feedback()),
         lambda: server.succeed(1, _CppTypes.result()),
+        lambda: server.succeed_shared(1, _CppTypes.result()),
         lambda: server.abort(1, _CppTypes.result()),
+        lambda: server.abort_shared(1, _CppTypes.result()),
         lambda: server.canceled(1, _CppTypes.result()),
+        lambda: server.canceled_shared(1, _CppTypes.result()),
     ):
         with pytest.raises(RuntimeError, match="closed"):
             operation()

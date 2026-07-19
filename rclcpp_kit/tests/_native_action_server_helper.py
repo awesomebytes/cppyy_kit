@@ -25,12 +25,19 @@ def main():
         raise AssertionError("a Python conversion or serialization boundary ran")
 
     native_action = importlib.import_module("rclcpp_kit.native_action")
+    kit = importlib.import_module("rclcpp_kit")
     bringup = importlib.import_module("rclcpp_kit.bringup_rclcpp")
     serialization = importlib.import_module("rclcpp_kit.serialization")
+    rclpy_serialization = importlib.import_module("rclpy.serialization")
+    kit.convert_python_msg_to_cpp = forbidden_boundary
     native_action.convert_python_msg_to_cpp = forbidden_boundary
     bringup.convert_python_msg_to_cpp = forbidden_boundary
     serialization.serialize_message = forbidden_boundary
     serialization.deserialize_message = forbidden_boundary
+    serialization.serialized_message_from_bytes = forbidden_boundary
+    serialization.serialized_message_to_bytes = forbidden_boundary
+    rclpy_serialization.serialize_message = forbidden_boundary
+    rclpy_serialization.deserialize_message = forbidden_boundary
 
     retained = []
     cancel_tokens = []
@@ -129,12 +136,32 @@ def main():
         server.execute(successful_server_goal.token)
         assert server.is_executing(successful_server_goal.token)
         time.sleep(0.1)
-        for _ in range(2):
-            feedback = cpp_types.feedback()
-            server.publish_feedback(successful_server_goal.token, feedback)
-        success_result = cpp_types.result()
-        success_result.transform.child_frame_id = "success-result"
-        server.succeed(successful_server_goal.token, success_result)
+        feedback = cpp_types.feedback()
+        server.publish_feedback(successful_server_goal.token, feedback)
+        shared_feedback = server.make_feedback_shared()
+        assert type(shared_feedback) is cpp_types.feedback
+        assert bool(shared_feedback.__smartptr__())
+        server.publish_feedback_shared(
+            successful_server_goal.token, shared_feedback)
+        try:
+            server.publish_feedback_shared(
+                successful_server_goal.token, cpp_types.feedback())
+        except TypeError as error:
+            assert "shared factory" in str(error)
+        else:
+            raise AssertionError("ordinary feedback used the shared handoff")
+        shared_result = server.make_result_shared()
+        assert type(shared_result) is cpp_types.result
+        assert bool(shared_result.__smartptr__())
+        shared_result.transform.child_frame_id = "success-result"
+        try:
+            server.succeed_shared(
+                successful_server_goal.token, cpp_types.result())
+        except TypeError as error:
+            assert "shared factory" in str(error)
+        else:
+            raise AssertionError("ordinary result used the shared handoff")
+        server.succeed_shared(successful_server_goal.token, shared_result)
         spin_until(
             lambda: client.result_ready(successful_client_token),
             "successful result",
@@ -153,7 +180,7 @@ def main():
         assert type(successful_response) is cpp_types.result_response
         assert as_int8(successful_response.status) == GoalStatus.STATUS_SUCCEEDED
         assert str(successful_response.result.transform.child_frame_id) == "success-result"
-        retained.extend(feedback_messages)
+        retained.extend((feedback, shared_feedback, shared_result, *feedback_messages))
         retained.append(successful_response)
 
         for target, expected_error in (
@@ -287,6 +314,10 @@ def main():
         assert stats.cpp_goal_id_materializations == 4
         assert stats.cpp_feedback_value_submissions == 2
         assert stats.cpp_result_value_submissions == 4
+        assert stats.cpp_feedback_adapter_copies == 1
+        assert stats.cpp_result_adapter_copies == 4
+        assert stats.cpp_feedback_shared_handoffs == 1
+        assert stats.cpp_result_shared_handoffs == 1
         assert stats.python_message_conversions == 0
         assert stats.python_serialization_calls == 0
         assert stats.compile_cache_hits + stats.compile_cache_misses == 1
@@ -357,6 +388,11 @@ def main():
         assert str(retained[0].target_frame) == "success"
         assert type(retained[1]) is cpp_types.goal
         assert type(retained[2]) is cpp_types.goal_id
+        assert type(retained[4]) is cpp_types.feedback
+        assert bool(retained[4].__smartptr__())
+        assert type(retained[5]) is cpp_types.result
+        assert bool(retained[5].__smartptr__())
+        assert str(retained[5].transform.child_frame_id) == "success-result"
         assert str(successful_response.result.transform.child_frame_id) == \
             "success-result"
         assert not server.forget(successful_server_goal.token)
@@ -373,6 +409,8 @@ def main():
     assert close_server.closed
     assert str(retained[0].target_frame) == "success"
     assert type(retained[2]) is cpp_types.goal_id
+    assert bool(retained[4].__smartptr__())
+    assert str(retained[5].transform.child_frame_id) == "success-result"
     assert str(successful_response.result.transform.child_frame_id) == \
         "success-result"
     print("NATIVE_ACTION_SERVER_TEARDOWN_OK")
