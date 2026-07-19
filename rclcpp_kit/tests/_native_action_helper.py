@@ -6,6 +6,7 @@ import time
 from action_msgs.msg import GoalStatus
 from action_msgs.srv import CancelGoal
 from rclcpp_kit.native import native
+from rclcpp_kit.native_action import resolve_cpp_action_type
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.context import Context
@@ -76,6 +77,7 @@ def main():
     server_thread.start()
 
     with native(["native-action-test"]) as ros:
+        cpp_types = resolve_cpp_action_type(LookupTransform)
         client_node = ros.create_node("native_action_client")
         client_group = ros.create_callback_group(client_node, "reentrant")
         client_executor = ros.create_executor("multi_threaded", threads=2)
@@ -93,19 +95,47 @@ def main():
         assert client.server_is_ready()
         assert client.raw_client.action_server_is_ready()
 
-        successful = client.send_goal(LookupTransform.Goal(
-            target_frame="map", source_frame="base"))
+        direct_goal = cpp_types.goal()
+        direct_goal.target_frame = "map"
+        direct_goal.source_frame = "base"
+        successful = client.send_cpp_value(direct_goal)
         wait_until(lambda: client.goal_response_ready(successful))
         assert client.goal_accepted(successful)
         assert client.raw_goal_handle(successful)
+        successful_goal_id = client.goal_id(successful)
+        successful_goal_response = client.goal_response(successful)
+        assert type(direct_goal) is cpp_types.goal
+        assert type(successful_goal_id) is cpp_types.goal_id
+        assert type(successful_goal_response) is cpp_types.goal_response
+        assert any(int(value) for value in successful_goal_id.uuid)
+        assert successful_goal_response.accepted is True
+        assert (
+            successful_goal_response.stamp.sec != 0
+            or successful_goal_response.stamp.nanosec != 0
+        )
         wait_until(lambda: client.result_ready(successful))
         wait_until(lambda: client.stats().feedback_received >= 4)
         assert client.feedback_ready(successful)
-        client.take_feedback(successful)
-        client.take_feedback(successful)
+        retained_feedback_payload = client.take_feedback(successful)
+        retained_feedback_message = client.take_feedback_message(successful)
+        assert type(retained_feedback_payload) is cpp_types.feedback
+        assert type(retained_feedback_message) is cpp_types.feedback_message
+        assert list(retained_feedback_message.goal_id.uuid) == \
+            list(successful_goal_id.uuid)
+        assert type(retained_feedback_message.feedback) is cpp_types.feedback
         assert not client.feedback_ready(successful)
-        successful_result = client.take_result(successful)
-        assert successful_result.code == GoalStatus.STATUS_SUCCEEDED
+        try:
+            client.take_feedback_message(successful)
+        except Exception as exc:
+            assert "feedback is not ready" in str(exc)
+        else:
+            raise AssertionError("an empty feedback queue produced an envelope")
+        successful_result = client.take_result_response(successful)
+        assert type(successful_result) is cpp_types.result_response
+        successful_status = successful_result.status
+        if isinstance(successful_status, str):
+            successful_status = ord(successful_status)
+        assert successful_status == GoalStatus.STATUS_SUCCEEDED
         assert successful_result.result.transform.child_frame_id == \
             "stock-python-result"
         try:
@@ -114,6 +144,12 @@ def main():
             assert "unknown or completed" in str(exc)
         else:
             raise AssertionError("completed goal token remained usable")
+        try:
+            client.take_result_response(successful)
+        except Exception as exc:
+            assert "unknown or completed" in str(exc)
+        else:
+            raise AssertionError("a result response was taken twice")
 
         rejected_goal = client.make_goal()
         rejected_goal.target_frame = "reject"
@@ -122,7 +158,21 @@ def main():
         wait_until(lambda: client.goal_response_ready(rejected))
         assert not client.goal_accepted(rejected)
         assert not client.raw_goal_handle(rejected)
+        rejected_goal_id = client.goal_id(rejected)
+        rejected_goal_response = client.goal_response(rejected)
+        assert type(rejected_goal_id) is cpp_types.goal_id
+        assert not any(int(value) for value in rejected_goal_id.uuid)
+        assert type(rejected_goal_response) is cpp_types.goal_response
+        assert rejected_goal_response.accepted is False
+        assert rejected_goal_response.stamp.sec == 0
+        assert rejected_goal_response.stamp.nanosec == 0
         assert not client.result_ready(rejected)
+        try:
+            client.take_result_response(rejected)
+        except Exception as exc:
+            assert "result is not ready" in str(exc)
+        else:
+            raise AssertionError("a rejected goal produced a result response")
         assert client.forget(rejected)
         assert not client.forget(rejected)
 
@@ -136,6 +186,7 @@ def main():
         assert not client.request_cancel(canceled)
         wait_until(lambda: client.cancel_response_ready(canceled))
         cancel_response = client.take_cancel_response(canceled)
+        assert type(cancel_response) is cpp_types.cancel_response
         return_code = cancel_response.return_code
         if isinstance(return_code, str):
             return_code = ord(return_code)
@@ -165,6 +216,11 @@ def main():
         assert stats.python_goal_crossings == 3
         assert stats.python_feedback_crossings == 2
         assert stats.python_result_crossings == 2
+        assert stats.cpp_goal_value_submissions == 1
+        assert stats.cpp_goal_id_materializations == 2
+        assert stats.cpp_goal_response_materializations == 2
+        assert stats.cpp_feedback_message_materializations == 1
+        assert stats.cpp_result_response_materializations == 1
         assert stats.compile_cache_hits + stats.compile_cache_misses == 1
         assert executor_thread.exceptions == 0
 
@@ -179,10 +235,16 @@ def main():
         assert client.stats().active_goals == 0
         assert client.stats().goals_sent == 4
         assert client.stats().goals_accepted == 3
+        assert type(retained_feedback_payload) is cpp_types.feedback
         print("NATIVE_ACTION_OK")
 
     assert client.closed
     assert client.stats().active_goals == 0
+    assert successful_result.result.transform.child_frame_id == \
+        "stock-python-result"
+    assert list(retained_feedback_message.goal_id.uuid) == \
+        list(successful_goal_id.uuid)
+    assert not any(int(value) for value in rejected_goal_id.uuid)
     action_server.destroy()
     server_executor.shutdown(timeout_sec=2.0)
     server_thread.join(timeout=2.0)

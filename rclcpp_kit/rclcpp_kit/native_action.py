@@ -14,6 +14,7 @@ from ament_index_python.packages import get_package_prefix
 from cppyy_kit.cache import artifact_paths
 
 from rclcpp_kit.bringup_rclcpp import (
+    bringup_rclcpp,
     convert_python_msg_to_cpp,
     get_ros2_lib_path,
     ros2_include_paths,
@@ -45,6 +46,44 @@ def _cache_dir() -> str:
 
 
 @dataclass(frozen=True)
+class CppActionTypes:
+    """Actual generated C++ types underlying one Python ROS action class."""
+
+    cpp_name: str
+    action: Any
+    goal: Any
+    feedback: Any
+    result: Any
+    goal_id: Any
+    goal_response: Any
+    feedback_message: Any
+    result_response: Any
+    cancel_response: Any
+
+
+def resolve_cpp_action_type(action_type: Any) -> CppActionTypes:
+    """Load and return the generated C++ action payload and envelope types."""
+    bringup_rclcpp()
+    cpp_name, _, _ = _action_spec(action_type)
+    action = cppyy.gbl
+    for component in cpp_name.split("::"):
+        action = getattr(action, component)
+    implementation = action.Impl
+    return CppActionTypes(
+        cpp_name=cpp_name,
+        action=action,
+        goal=action.Goal,
+        feedback=action.Feedback,
+        result=action.Result,
+        goal_id=cppyy.gbl.unique_identifier_msgs.msg.UUID,
+        goal_response=implementation.SendGoalService.Response,
+        feedback_message=implementation.FeedbackMessage,
+        result_response=implementation.GetResultService.Response,
+        cancel_response=implementation.CancelGoalService.Response,
+    )
+
+
+@dataclass(frozen=True)
 class NativeActionResult:
     """A terminal action result and its ``rclcpp_action::ResultCode`` value."""
 
@@ -69,6 +108,11 @@ class NativeActionClientStats:
     python_goal_crossings: int
     python_feedback_crossings: int
     python_result_crossings: int
+    cpp_goal_value_submissions: int
+    cpp_goal_id_materializations: int
+    cpp_goal_response_materializations: int
+    cpp_feedback_message_materializations: int
+    cpp_result_response_materializations: int
     compile_cache_hits: int
     compile_cache_misses: int
 
@@ -138,6 +182,14 @@ class NativeActionClient:
             cpp_goal = goal
         return int(self._implementation.send_goal(cpp_goal))
 
+    def send_cpp_value(self, goal: Any) -> int:
+        """Submit one actual C++ goal value without conversion or serialization."""
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        if hasattr(goal, "get_fields_and_field_types"):
+            raise TypeError("send_cpp_value requires an actual C++ goal value")
+        return int(self._implementation.send_cpp_value(goal))
+
     def goal_response_ready(self, token: int) -> bool:
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
@@ -155,6 +207,27 @@ class NativeActionClient:
             raise RuntimeError("NativeActionClient is closed")
         return self._implementation.raw_goal_handle(int(token))
 
+    def goal_id(self, token: int) -> Any:
+        """Return a retained generated C++ UUID for this goal.
+
+        Accepted goals contain the UUID transmitted by ``rclcpp_action``. Its
+        public API does not expose the generated UUID for rejected goals, so a
+        rejected record returns a zero-valued generated C++ UUID.
+        """
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        return self._implementation.goal_id(int(token))
+
+    def goal_response(self, token: int) -> Any:
+        """Return the generated C++ SendGoal response after it becomes ready.
+
+        Rejected responses have ``accepted == False`` and a zero stamp because
+        ``rclcpp_action`` does not expose their transport response envelope.
+        """
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        return self._implementation.goal_response(int(token))
+
     def feedback_ready(self, token: int) -> bool:
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
@@ -165,6 +238,12 @@ class NativeActionClient:
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
         return self._implementation.take_feedback(int(token))
+
+    def take_feedback_message(self, token: int) -> Any:
+        """Pop feedback as the generated C++ ``FeedbackMessage`` envelope."""
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        return self._implementation.take_feedback_message(int(token))
 
     def result_ready(self, token: int) -> bool:
         if self._closed:
@@ -179,6 +258,12 @@ class NativeActionClient:
         code = int(self._implementation.result_code(token))
         result = self._implementation.take_result(token)
         return NativeActionResult(code=code, result=result)
+
+    def take_result_response(self, token: int) -> Any:
+        """Take the generated C++ GetResult response and retire goal state."""
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        return self._implementation.take_result_response(int(token))
 
     def request_cancel(self, token: int) -> bool:
         """Start an asynchronous cancel request for an accepted goal."""
@@ -221,6 +306,14 @@ class NativeActionClient:
             python_goal_crossings=int(impl.python_goal_crossings()),
             python_feedback_crossings=int(impl.python_feedback_crossings()),
             python_result_crossings=int(impl.python_result_crossings()),
+            cpp_goal_value_submissions=int(impl.cpp_goal_value_submissions()),
+            cpp_goal_id_materializations=int(impl.cpp_goal_id_materializations()),
+            cpp_goal_response_materializations=int(
+                impl.cpp_goal_response_materializations()),
+            cpp_feedback_message_materializations=int(
+                impl.cpp_feedback_message_materializations()),
+            cpp_result_response_materializations=int(
+                impl.cpp_result_response_materializations()),
             compile_cache_hits=int(bool(self.compile_result.get("cached"))),
             compile_cache_misses=int(not bool(self.compile_result.get("cached"))),
         )
@@ -252,6 +345,7 @@ def create_native_action_client(
     payload = json.dumps({
         "type": cpp_type,
         "header": header,
+        "adapter_api": 2,
     }, sort_keys=True, separators=(",", ":"))
     source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
     interface = "NativeActionClient_%s" % source_id
@@ -280,6 +374,10 @@ public:
   using ActionT = %(cpp_type)s;
   using ClientT = rclcpp_action::Client<ActionT>;
   using GoalHandleT = rclcpp_action::ClientGoalHandle<ActionT>;
+  using GoalId = unique_identifier_msgs::msg::UUID;
+  using GoalResponse = typename ActionT::Impl::SendGoalService::Response;
+  using FeedbackMessage = typename ActionT::Impl::FeedbackMessage;
+  using ResultResponse = typename ActionT::Impl::GetResultService::Response;
   using CancelResponse = typename ClientT::CancelResponse;
   virtual ~%(interface)s() = default;
   virtual std::shared_ptr<ActionT::Goal> make_goal() const = 0;
@@ -288,13 +386,18 @@ public:
   virtual bool server_is_ready() const = 0;
   virtual bool wait_for_server(int64_t timeout_ns) const = 0;
   virtual uint64_t send_goal(std::shared_ptr<ActionT::Goal> goal) = 0;
+  virtual uint64_t send_cpp_value(const ActionT::Goal& goal) = 0;
   virtual bool goal_response_ready(uint64_t token) const = 0;
   virtual bool goal_accepted(uint64_t token) const = 0;
+  virtual std::shared_ptr<GoalId> goal_id(uint64_t token) const = 0;
+  virtual std::shared_ptr<GoalResponse> goal_response(uint64_t token) const = 0;
   virtual bool feedback_ready(uint64_t token) const = 0;
   virtual std::shared_ptr<const ActionT::Feedback> take_feedback(uint64_t token) = 0;
+  virtual std::shared_ptr<FeedbackMessage> take_feedback_message(uint64_t token) = 0;
   virtual bool result_ready(uint64_t token) const = 0;
   virtual int8_t result_code(uint64_t token) const = 0;
   virtual std::shared_ptr<ActionT::Result> take_result(uint64_t token) = 0;
+  virtual std::shared_ptr<ResultResponse> take_result_response(uint64_t token) = 0;
   virtual bool request_cancel(uint64_t token) = 0;
   virtual bool cancel_response_ready(uint64_t token) const = 0;
   virtual std::shared_ptr<CancelResponse> take_cancel_response(uint64_t token) = 0;
@@ -314,6 +417,11 @@ public:
   virtual uint64_t python_goal_crossings() const = 0;
   virtual uint64_t python_feedback_crossings() const = 0;
   virtual uint64_t python_result_crossings() const = 0;
+  virtual uint64_t cpp_goal_value_submissions() const = 0;
+  virtual uint64_t cpp_goal_id_materializations() const = 0;
+  virtual uint64_t cpp_goal_response_materializations() const = 0;
+  virtual uint64_t cpp_feedback_message_materializations() const = 0;
+  virtual uint64_t cpp_result_response_materializations() const = 0;
   virtual void close() = 0;
 };
 """ % {
@@ -343,6 +451,10 @@ public:
   using ActionT = %(cpp_type)s;
   using ClientT = rclcpp_action::Client<ActionT>;
   using GoalHandleT = rclcpp_action::ClientGoalHandle<ActionT>;
+  using GoalId = unique_identifier_msgs::msg::UUID;
+  using GoalResponse = typename ActionT::Impl::SendGoalService::Response;
+  using FeedbackMessage = typename ActionT::Impl::FeedbackMessage;
+  using ResultResponse = typename ActionT::Impl::GetResultService::Response;
   using ResultFuture = std::shared_future<typename GoalHandleT::WrappedResult>;
   using CancelResponse = typename ClientT::CancelResponse;
   using CancelFuture = std::shared_future<std::shared_ptr<CancelResponse>>;
@@ -355,6 +467,8 @@ public:
     CancelFuture cancel;
     bool cancel_requested{false};
     bool cancel_taken{false};
+    rclcpp_action::GoalUUID goal_id{};
+    builtin_interfaces::msg::Time stamp{};
     std::deque<std::shared_ptr<const ActionT::Feedback>> feedback;
   };
 
@@ -378,6 +492,11 @@ public:
     std::atomic<uint64_t> python_goal_crossings{0};
     std::atomic<uint64_t> python_feedback_crossings{0};
     std::atomic<uint64_t> python_result_crossings{0};
+    std::atomic<uint64_t> cpp_goal_value_submissions{0};
+    std::atomic<uint64_t> cpp_goal_id_materializations{0};
+    std::atomic<uint64_t> cpp_goal_response_materializations{0};
+    std::atomic<uint64_t> cpp_feedback_message_materializations{0};
+    std::atomic<uint64_t> cpp_result_response_materializations{0};
   };
 
   %(implementation)s(
@@ -433,6 +552,18 @@ public:
     if (!goal) {
       throw std::invalid_argument("goal must not be null");
     }
+    return send_goal_value(*goal);
+  }
+
+  uint64_t send_cpp_value(const ActionT::Goal& goal) override
+  {
+    state_->python_goal_crossings.fetch_add(1, std::memory_order_relaxed);
+    state_->cpp_goal_value_submissions.fetch_add(1, std::memory_order_relaxed);
+    return send_goal_value(goal);
+  }
+
+  uint64_t send_goal_value(const ActionT::Goal& goal)
+  {
     std::shared_ptr<ClientT> client;
     uint64_t token;
     {
@@ -502,6 +633,9 @@ public:
             found->second->response = Record::ResponseState::Accepted;
             found->second->handle = handle;
             found->second->result = std::move(result);
+            found->second->goal_id = handle->get_goal_id();
+            found->second->stamp = static_cast<builtin_interfaces::msg::Time>(
+              handle->get_goal_stamp());
             state->goals_accepted.fetch_add(1, std::memory_order_relaxed);
             retain = true;
           }
@@ -515,7 +649,7 @@ public:
         }
       };
     try {
-      client->async_send_goal(*goal, options);
+      client->async_send_goal(goal, options);
       state_->goals_sent.fetch_add(1, std::memory_order_relaxed);
       return token;
     } catch (...) {
@@ -542,6 +676,34 @@ public:
     return record->response == Record::ResponseState::Accepted;
   }
 
+  std::shared_ptr<GoalId> goal_id(uint64_t token) const override
+  {
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    const auto record = find_locked(token);
+    if (record->response == Record::ResponseState::Pending) {
+      throw std::logic_error("goal response is not ready");
+    }
+    auto result = std::make_shared<GoalId>();
+    result->uuid = record->goal_id;
+    state_->cpp_goal_id_materializations.fetch_add(1, std::memory_order_relaxed);
+    return result;
+  }
+
+  std::shared_ptr<GoalResponse> goal_response(uint64_t token) const override
+  {
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    const auto record = find_locked(token);
+    if (record->response == Record::ResponseState::Pending) {
+      throw std::logic_error("goal response is not ready");
+    }
+    auto result = std::make_shared<GoalResponse>();
+    result->accepted = record->response == Record::ResponseState::Accepted;
+    result->stamp = record->stamp;
+    state_->cpp_goal_response_materializations.fetch_add(
+      1, std::memory_order_relaxed);
+    return result;
+  }
+
   bool feedback_ready(uint64_t token) const override
   {
     std::lock_guard<std::mutex> lock(state_->mutex);
@@ -560,6 +722,31 @@ public:
     state_->feedback_taken.fetch_add(1, std::memory_order_relaxed);
     state_->python_feedback_crossings.fetch_add(1, std::memory_order_relaxed);
     return feedback;
+  }
+
+  std::shared_ptr<FeedbackMessage> take_feedback_message(
+      uint64_t token) override
+  {
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    auto record = find_locked(token);
+    if (record->feedback.empty()) {
+      throw std::logic_error("feedback is not ready");
+    }
+    std::shared_ptr<FeedbackMessage> message;
+    try {
+      message = std::make_shared<FeedbackMessage>();
+      message->goal_id.uuid = record->goal_id;
+      message->feedback = *record->feedback.front();
+    } catch (...) {
+      state_->exceptions.fetch_add(1, std::memory_order_relaxed);
+      throw;
+    }
+    record->feedback.pop_front();
+    state_->feedback_taken.fetch_add(1, std::memory_order_relaxed);
+    state_->python_feedback_crossings.fetch_add(1, std::memory_order_relaxed);
+    state_->cpp_feedback_message_materializations.fetch_add(
+      1, std::memory_order_relaxed);
+    return message;
   }
 
   bool result_ready(uint64_t token) const override
@@ -597,6 +784,36 @@ public:
     }
     stop_callbacks(client, handle);
     return result;
+  }
+
+  std::shared_ptr<ResultResponse> take_result_response(
+      uint64_t token) override
+  {
+    std::shared_ptr<GoalHandleT> handle;
+    std::shared_ptr<ResultResponse> response;
+    std::shared_ptr<ClientT> client;
+    {
+      std::lock_guard<std::mutex> lock(state_->mutex);
+      auto record = ready_result_locked(token);
+      const auto& wrapped = record->result.get();
+      try {
+        response = std::make_shared<ResultResponse>();
+        response->status = static_cast<int8_t>(wrapped.code);
+        response->result = *wrapped.result;
+      } catch (...) {
+        state_->exceptions.fetch_add(1, std::memory_order_relaxed);
+        throw;
+      }
+      handle = record->handle;
+      client = client_;
+      state_->records.erase(token);
+      state_->results_taken.fetch_add(1, std::memory_order_relaxed);
+      state_->python_result_crossings.fetch_add(1, std::memory_order_relaxed);
+      state_->cpp_result_response_materializations.fetch_add(
+        1, std::memory_order_relaxed);
+    }
+    stop_callbacks(client, handle);
+    return response;
   }
 
   bool request_cancel(uint64_t token) override
@@ -693,6 +910,26 @@ public:
   uint64_t python_result_crossings() const override
   {
     return state_->python_result_crossings.load();
+  }
+  uint64_t cpp_goal_value_submissions() const override
+  {
+    return state_->cpp_goal_value_submissions.load();
+  }
+  uint64_t cpp_goal_id_materializations() const override
+  {
+    return state_->cpp_goal_id_materializations.load();
+  }
+  uint64_t cpp_goal_response_materializations() const override
+  {
+    return state_->cpp_goal_response_materializations.load();
+  }
+  uint64_t cpp_feedback_message_materializations() const override
+  {
+    return state_->cpp_feedback_message_materializations.load();
+  }
+  uint64_t cpp_result_response_materializations() const override
+  {
+    return state_->cpp_result_response_materializations.load();
   }
 
   void close() override
@@ -822,8 +1059,10 @@ private:
 
 
 __all__ = [
+    "CppActionTypes",
     "NativeActionClient",
     "NativeActionClientStats",
     "NativeActionResult",
     "create_native_action_client",
+    "resolve_cpp_action_type",
 ]

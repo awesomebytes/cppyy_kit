@@ -22,13 +22,18 @@ def test_closed_action_client_rejects_new_work_without_touching_cpp():
         lambda: client.raw_client,
         client.make_goal,
         lambda: client.send_goal(object()),
+        lambda: client.send_cpp_value(object()),
         lambda: client.goal_response_ready(1),
         lambda: client.goal_accepted(1),
         lambda: client.raw_goal_handle(1),
+        lambda: client.goal_id(1),
+        lambda: client.goal_response(1),
         lambda: client.feedback_ready(1),
         lambda: client.take_feedback(1),
+        lambda: client.take_feedback_message(1),
         lambda: client.result_ready(1),
         lambda: client.take_result(1),
+        lambda: client.take_result_response(1),
         lambda: client.cancel_response_ready(1),
         lambda: client.take_cancel_response(1),
     ):
@@ -50,6 +55,18 @@ def test_negative_wait_timeout_is_rejected():
     client = NativeActionClient(object(), "source", {"cached": False}, 4)
     with pytest.raises(ValueError, match="non-negative"):
         client.wait_for_server(-0.1)
+
+
+def test_cpp_value_submission_rejects_python_action_messages_before_cpp():
+    client = NativeActionClient(object(), "source", {"cached": False}, 4)
+
+    class PythonActionMessage:
+        @staticmethod
+        def get_fields_and_field_types():
+            return {}
+
+    with pytest.raises(TypeError, match="actual C\\+\\+ goal value"):
+        client.send_cpp_value(PythonActionMessage())
 
 
 def test_native_action_client_interoperates_with_stock_python_server():

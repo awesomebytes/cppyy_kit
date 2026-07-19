@@ -91,10 +91,12 @@ from rclcpp_kit.native_lifecycle import (
     create_native_lifecycle_node,
 )
 from rclcpp_kit.native_action import (
+    CppActionTypes,
     NativeActionClient,
     NativeActionClientStats,
     NativeActionResult,
     create_native_action_client,
+    resolve_cpp_action_type,
 )
 from rclcpp_kit.native_component import (
     NativeComponentManager,
@@ -146,10 +148,12 @@ __all__ = [
     "create_native_client",
     "NativeLifecycleNode",
     "create_native_lifecycle_node",
+    "CppActionTypes",
     "NativeActionClient",
     "NativeActionClientStats",
     "NativeActionResult",
     "create_native_action_client",
+    "resolve_cpp_action_type",
     "NativeComponentManager",
     "create_native_component_manager",
 ]
