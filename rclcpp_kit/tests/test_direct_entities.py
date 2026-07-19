@@ -616,4 +616,45 @@ def test_wall_timer_rejects_invalid_input_before_native_factory(monkeypatch):
             direct_entities.create_wall_timer(node, period, lambda: None)
     with pytest.raises(TypeError, match="callable"):
         direct_entities.create_wall_timer(node, 1, object())
+    with pytest.raises(TypeError, match="autostart"):
+        direct_entities.create_wall_timer(
+            node, 1, lambda: None, autostart=object())
     assert calls == []
+
+
+def test_wall_timer_forwards_native_autostart(monkeypatch):
+    calls = []
+
+    class Entity:
+        __cpp_name__ = "rclcpp::WallTimer<std::function<void ()> >"
+
+        def is_canceled(self):
+            return True
+
+    class FunctionTemplate:
+        def __getitem__(self, signature):
+            assert signature == "void()"
+            return lambda selected: selected
+
+    def callback():
+        pass
+
+    group = object()
+    monkeypatch.setattr(
+        direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities,
+        "_create_wall_timer_with_autostart",
+        lambda node, period, selected, selected_group, autostart: (
+            calls.append((node, period, selected, selected_group, autostart))
+            or Entity()
+        ),
+    )
+    node = object()
+
+    timer = direct_entities.create_wall_timer(
+        node, 23, callback, callback_group=group, autostart=False)
+
+    assert calls == [(node, 23, callback, group, False)]
+    assert timer.callback_group is group
+    assert timer.is_canceled()

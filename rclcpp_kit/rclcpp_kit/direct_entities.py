@@ -23,6 +23,8 @@ from rclcpp_kit.direct_message_types import resolve_message_type
 
 _MANAGED_PUBLISHER_INSTALL_LOCK = threading.Lock()
 _MANAGED_PUBLISHER_NAMESPACE = "rclcpp_kit_direct_entities"
+_WALL_TIMER_INSTALL_LOCK = threading.Lock()
+_WALL_TIMER_NAMESPACE = "rclcpp_kit_direct_timers_v1"
 _RMW_SEQUENCE_NUMBER_UNSUPPORTED = 2 ** 64 - 1
 _MANAGED_PUBLISHER_SOURCE = r"""
 #include <atomic>
@@ -101,6 +103,40 @@ std::shared_ptr<ManagedPublisher<MessageT>> manage_publisher(
 {
   return std::make_shared<ManagedPublisher<MessageT>>(
     std::move(publisher), std::move(callback_group));
+}
+}
+"""
+_WALL_TIMER_SOURCE = r"""
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+
+namespace rclcpp_kit_direct_timers_v1 {
+using WallTimerCallback = std::function<void()>;
+using DirectWallTimer = rclcpp::WallTimer<WallTimerCallback>;
+
+std::shared_ptr<DirectWallTimer> create_wall_timer(
+  rclcpp::Node & node,
+  int64_t period_ns,
+  WallTimerCallback callback,
+  bool autostart)
+{
+  return node.create_wall_timer(
+    std::chrono::nanoseconds(period_ns), std::move(callback), nullptr, autostart);
+}
+
+std::shared_ptr<DirectWallTimer> create_wall_timer(
+  rclcpp::Node & node,
+  int64_t period_ns,
+  WallTimerCallback callback,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group,
+  bool autostart)
+{
+  return node.create_wall_timer(
+    std::chrono::nanoseconds(period_ns), std::move(callback),
+    std::move(callback_group), autostart);
 }
 }
 """
@@ -565,20 +601,55 @@ def _wall_duration(period_ns: int) -> Any:
     return cppyy.gbl.std.chrono.nanoseconds(period_ns)
 
 
+def _install_wall_timer_factory() -> None:
+    if hasattr(cppyy.gbl, _WALL_TIMER_NAMESPACE):
+        return
+    with _WALL_TIMER_INSTALL_LOCK:
+        if hasattr(cppyy.gbl, _WALL_TIMER_NAMESPACE):
+            return
+        cppyy.cppdef(_WALL_TIMER_SOURCE)
+
+
+def _create_wall_timer_with_autostart(
+    node: Any,
+    period_ns: int,
+    cpp_callback: Any,
+    callback_group: Any,
+    autostart: bool,
+) -> Any:
+    _install_wall_timer_factory()
+    factory = getattr(cppyy.gbl, _WALL_TIMER_NAMESPACE).create_wall_timer
+    if callback_group is None:
+        return factory(node, period_ns, cpp_callback, autostart)
+    return factory(
+        node,
+        period_ns,
+        cpp_callback,
+        _callback_group_for_node(node, callback_group),
+        autostart,
+    )
+
+
 def create_wall_timer(
     node: Any,
     period_ns: int,
     callback: Callable[[], None],
     *,
     callback_group: Any = None,
+    autostart: bool = True,
 ) -> DirectTimer:
     """Create one positive-period native wall timer with a direct callback."""
     if isinstance(period_ns, bool) or not isinstance(period_ns, int) or period_ns <= 0:
         raise TypeError("direct wall timer requires a positive integer period in nanoseconds")
     if not callable(callback):
         raise TypeError("timer callback must be callable")
+    if not isinstance(autostart, bool):
+        raise TypeError("timer autostart must be a bool")
     cpp_callback = cppyy.gbl.std.function["void()"](callback)
-    if callback_group is None:
+    if not autostart:
+        entity = _create_wall_timer_with_autostart(
+            node, period_ns, cpp_callback, callback_group, autostart)
+    elif callback_group is None:
         entity = node.create_wall_timer(_wall_duration(period_ns), cpp_callback)
     else:
         entity = node.create_wall_timer(
