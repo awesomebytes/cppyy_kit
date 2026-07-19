@@ -5,6 +5,7 @@ import time
 
 from action_msgs.msg import GoalStatus
 from action_msgs.srv import CancelGoal
+import rclcpp_kit.native_action as native_action_module
 from rclcpp_kit.native import native
 from rclcpp_kit.native_action import resolve_cpp_action_type
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -95,6 +96,20 @@ def main():
         assert client.server_is_ready()
         assert client.raw_client.action_server_is_ready()
 
+        def forbidden_conversion(*_args, **_kwargs):
+            raise AssertionError("Python goal conversion ran")
+
+        native_action_module.convert_python_msg_to_cpp = forbidden_conversion
+        rejected_python_goal = LookupTransform.Goal(
+            target_frame="python", source_frame="base")
+        try:
+            client.send_goal(rejected_python_goal)
+        except TypeError as exc:
+            assert "shared C++ goal" in str(exc)
+        else:
+            raise AssertionError("a generated Python goal was accepted")
+        assert client.stats().goals_sent == 0
+
         direct_goal = cpp_types.goal()
         direct_goal.target_frame = "map"
         direct_goal.source_frame = "base"
@@ -179,8 +194,9 @@ def main():
         assert client.forget(rejected)
         assert not client.forget(rejected)
 
-        cancel_goal = LookupTransform.Goal(
-            target_frame="cancel", source_frame="base")
+        cancel_goal = client.make_goal()
+        cancel_goal.target_frame = "cancel"
+        cancel_goal.source_frame = "base"
         canceled = client.send_goal(cancel_goal)
         wait_until(lambda: client.goal_response_ready(canceled))
         assert client.goal_accepted(canceled)
@@ -230,8 +246,10 @@ def main():
         assert stats.compile_cache_hits + stats.compile_cache_misses == 1
         assert executor_thread.exceptions == 0
 
-        pending = client.send_goal(LookupTransform.Goal(
-            target_frame="hold", source_frame="base"))
+        pending_goal = client.make_goal()
+        pending_goal.target_frame = "hold"
+        pending_goal.source_frame = "base"
+        pending = client.send_goal(pending_goal)
         wait_until(lambda: client.goal_response_ready(pending))
         assert client.goal_accepted(pending)
         wait_until(lambda: len(deferred_cancel_goals) == 2)

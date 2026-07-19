@@ -81,7 +81,9 @@ def main():
         assert stock_response.success is True
         assert stock_response.message == "native-service:true"
 
-        token = native_client.send(SetBool.Request(data=False))
+        request = native_client.make_request()
+        request.data = False
+        token = native_client.send(request)
         spin_until(peer_executor, lambda: native_client.ready(token),
                    "managed client response")
         native_response = native_client.take(token)

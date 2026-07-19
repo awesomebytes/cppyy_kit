@@ -117,7 +117,9 @@ with native(["client"]) as ros:
     client = ros.create_native_client(
         node, SetBool, "set_bool", callback_group=group)
     assert client.wait_for_service(1.0)
-    token = client.send(SetBool.Request(data=True))
+    request = client.make_request()
+    request.data = True
+    token = client.send(request)
     while not client.ready(token):
         time.sleep(0.001)
     response = client.take(token)  # real C++ Response
@@ -125,7 +127,10 @@ with native(["client"]) as ros:
 
 `client.raw_client` is the original typed `rclcpp::Client<ServiceT>`. Calls sent
 through the adapter must also be taken or canceled through it. The session cancels
-outstanding calls during ordered teardown. For raw publisher/subscription creation,
+outstanding calls during ordered teardown. `send()` accepts only the owning C++
+request returned by `make_request()`; use `send_cpp_value()` for an existing
+generated C++ request value. Generated Python requests are never converted. For
+raw publisher/subscription creation,
 use `ros.create_publisher_options(group)` and
 `ros.create_subscription_options(group)` because cppyy cannot assign the shared
 callback-group member directly.
@@ -163,8 +168,10 @@ from tf2_msgs.action import LookupTransform
 client = ros.create_native_action_client(
     node, LookupTransform, "lookup", feedback_capacity=16)
 assert client.wait_for_server(2.0)
-token = client.send_goal(LookupTransform.Goal(
-    target_frame="map", source_frame="base"))
+goal = client.make_goal()
+goal.target_frame = "map"
+goal.source_frame = "base"
+token = client.send_goal(goal)
 while not client.goal_response_ready(token):
     time.sleep(0.001)
 if client.goal_accepted(token):
@@ -176,6 +183,9 @@ if client.goal_accepted(token):
 Use `request_cancel(token)` for remote cancellation and `forget(token)` only to
 release local state. The feedback queue is bounded and drop-oldest; inspect
 `client.stats()` rather than assuming every feedback sample was retained.
+`send_goal()` accepts only the owning C++ goal returned by `make_goal()`; use
+`send_cpp_value()` for an existing generated C++ goal value. Generated Python
+goals are never converted.
 
 ## Pattern 8 — load registered AOT components
 *Use for:* standard ROS composition from Python while the container, loaded nodes,

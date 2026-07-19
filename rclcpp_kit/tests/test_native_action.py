@@ -90,6 +90,45 @@ def test_cpp_value_submission_rejects_python_action_messages_before_cpp():
         client.send_cpp_value(PythonActionMessage())
 
 
+def test_send_goal_rejects_python_goals_before_native_or_conversion(monkeypatch):
+    calls = []
+    assert not hasattr(native_action, "convert_python_msg_to_cpp")
+
+    class Implementation:
+        def make_goal(self):
+            calls.append("make_goal")
+            return object()
+
+        def send_goal(self, goal):
+            calls.append(("send_goal", goal))
+            return 11
+
+    class PythonGoal:
+        @staticmethod
+        def get_fields_and_field_types():
+            return {}
+
+    def forbidden_conversion(*_args, **_kwargs):
+        raise AssertionError("Python goal conversion ran")
+
+    monkeypatch.setattr(
+        native_action,
+        "convert_python_msg_to_cpp",
+        forbidden_conversion,
+        raising=False,
+    )
+    client = NativeActionClient(
+        Implementation(), "source", {"cached": False}, 4)
+
+    with pytest.raises(TypeError, match="shared C\\+\\+ goal.*make_goal"):
+        client.send_goal(PythonGoal())
+    assert calls == []
+
+    shared_goal = object()
+    assert client.send_goal(shared_goal) == 11
+    assert calls == [("send_goal", shared_goal)]
+
+
 def test_native_action_client_interoperates_with_stock_python_server():
     proc = run_helper("_native_action_helper.py", timeout=300)
     assert proc.returncode == 0, format_output(proc)

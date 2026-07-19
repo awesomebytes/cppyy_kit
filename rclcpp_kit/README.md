@@ -62,12 +62,14 @@ policies are rejected. The stock `qos_profile_sensor_data` and
 `qos_profile_system_default` presets are supported directly.
 
 Managed clients keep only the template and future-lifetime friction behind a
-small adapter. They accept ordinary generated Python requests or direct C++
-requests, return opaque call tokens, and leave the original typed client exposed:
+small adapter. They accept only owning generated C++ requests, return opaque call
+tokens, and leave the original typed client exposed:
 
 ```python
 client = ros.create_native_client(node, SetBool, "set_bool")
-token = client.send(SetBool.Request(data=True))
+request = client.make_request()
+request.data = True
+token = client.send(request)
 if client.ready(token):
     response = client.take(token)  # the C++ response object
 raw_client = client.raw_client
@@ -75,6 +77,9 @@ raw_client = client.raw_client
 
 Calls submitted through the adapter must be taken or canceled through it. Session
 teardown cancels any calls still pending before releasing the client.
+`send_cpp_value()` is the explicit alternative for an existing generated C++
+request value; it takes the one native ownership copy required by the async call.
+Generated Python requests are rejected rather than converted.
 
 Cold native service and client glue is compiled to a content-addressed DSO before
 its declarations are loaded into Cling. This permits both facilities to coexist in
@@ -112,6 +117,9 @@ accepted goal handles. Feedback is an explicit bounded drop-oldest queue, and
 `forget(token)` releases local state without canceling the remote goal. The first
 use of an action type synchronously builds content-addressed glue because this
 toolchain cannot safely instantiate its type support through Cling alone.
+Construct an owning C++ goal with `make_goal()` before calling `send_goal()`, or
+use `send_cpp_value()` for an existing generated C++ goal value. Generated Python
+goals are rejected rather than converted.
 
 Lifecycle nodes keep only ownership and executor attachment behind the adapter;
 transitions and lifecycle-specific facilities remain the real C++ API:

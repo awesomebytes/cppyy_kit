@@ -3,6 +3,7 @@
 import time
 
 import cppyy
+import rclcpp_kit.native_client as native_client_module
 
 from rclcpp_kit.native import native
 from rclpy.context import Context
@@ -47,7 +48,22 @@ def main():
         assert client.wait_for_service(0.2)
         assert client.raw_client.get_service_name() == "/native_set_bool"
 
-        token = client.send(SetBool.Request(data=True))
+        def forbidden_conversion(*_args, **_kwargs):
+            raise AssertionError("Python request conversion ran")
+
+        native_client_module.convert_python_msg_to_cpp = forbidden_conversion
+        rejected_python_request = SetBool.Request(data=True)
+        try:
+            client.send(rejected_python_request)
+        except TypeError as exc:
+            assert "shared C++ request" in str(exc)
+        else:
+            raise AssertionError("a generated Python request was accepted")
+        assert client.stats().requests_sent == 0
+
+        request = client.make_request()
+        request.data = True
+        token = client.send(request)
         while time.monotonic() < deadline and not client.ready(token):
             server_executor.spin_once(timeout_sec=0.02)
         assert client.ready(token)
@@ -76,7 +92,9 @@ def main():
         assert client.cancel(canceled_token) is True
         assert client.cancel(canceled_token) is False
 
-        pending_token = client.send(SetBool.Request(data=False))
+        pending_request = client.make_request()
+        pending_request.data = False
+        pending_token = client.send(pending_request)
         assert pending_token > canceled_token
         try:
             client.take(pending_token)

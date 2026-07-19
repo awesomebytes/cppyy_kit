@@ -10,11 +10,7 @@ from typing import Any
 
 import cppyy
 
-from rclcpp_kit.bringup_rclcpp import (
-    convert_python_msg_to_cpp,
-    get_ros2_lib_path,
-    ros2_include_paths,
-)
+from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 
 
@@ -89,15 +85,13 @@ class NativeClient:
         return bool(self._implementation.wait_for_service(timeout_ns))
 
     def send(self, request: Any) -> int:
-        """Submit a Python or C++ request and return an opaque call token."""
+        """Submit an owning shared C++ request and return an opaque call token."""
         if self._closed:
             raise RuntimeError("NativeClient is closed")
         if hasattr(request, "get_fields_and_field_types"):
-            cpp_request = self._implementation.make_request()
-            convert_python_msg_to_cpp(request, cpp_request)
-        else:
-            cpp_request = request
-        return int(self._implementation.send(cpp_request))
+            raise TypeError(
+                "send requires an owning shared C++ request from make_request()")
+        return int(self._implementation.send(request))
 
     def send_cpp_value(self, request: Any) -> int:
         """Copy and submit one actual C++ request value without conversion."""

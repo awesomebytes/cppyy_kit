@@ -15,7 +15,6 @@ from cppyy_kit.cache import artifact_paths
 
 from rclcpp_kit.bringup_rclcpp import (
     bringup_rclcpp,
-    convert_python_msg_to_cpp,
     get_ros2_lib_path,
     ros2_include_paths,
 )
@@ -180,15 +179,13 @@ class NativeActionClient:
         return bool(self._implementation.wait_for_server(timeout_ns))
 
     def send_goal(self, goal: Any) -> int:
-        """Submit a Python or C++ goal and return an opaque goal token."""
+        """Submit an owning shared C++ goal and return an opaque goal token."""
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
         if hasattr(goal, "get_fields_and_field_types"):
-            cpp_goal = self._implementation.make_goal()
-            convert_python_msg_to_cpp(goal, cpp_goal)
-        else:
-            cpp_goal = goal
-        return int(self._implementation.send_goal(cpp_goal))
+            raise TypeError(
+                "send_goal requires an owning shared C++ goal from make_goal()")
+        return int(self._implementation.send_goal(goal))
 
     def send_cpp_value(self, goal: Any) -> int:
         """Submit one actual C++ goal value without conversion or serialization."""

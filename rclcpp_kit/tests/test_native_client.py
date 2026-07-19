@@ -1,6 +1,7 @@
 import pytest
 
 from _run_helper import format_output, run_helper
+from rclcpp_kit import native_client
 from rclcpp_kit.native_client import NativeClient
 
 
@@ -32,6 +33,44 @@ def test_negative_wait_timeout_is_rejected():
     client = NativeClient(object(), "source", {"cached": False})
     with pytest.raises(ValueError, match="non-negative"):
         client.wait_for_service(-0.1)
+
+
+def test_send_rejects_python_requests_before_native_or_conversion(monkeypatch):
+    calls = []
+    assert not hasattr(native_client, "convert_python_msg_to_cpp")
+
+    class Implementation:
+        def make_request(self):
+            calls.append("make_request")
+            return object()
+
+        def send(self, request):
+            calls.append(("send", request))
+            return 7
+
+    class PythonRequest:
+        @staticmethod
+        def get_fields_and_field_types():
+            return {}
+
+    def forbidden_conversion(*_args, **_kwargs):
+        raise AssertionError("Python request conversion ran")
+
+    monkeypatch.setattr(
+        native_client,
+        "convert_python_msg_to_cpp",
+        forbidden_conversion,
+        raising=False,
+    )
+    client = NativeClient(Implementation(), "source", {"cached": False})
+
+    with pytest.raises(TypeError, match="shared C\\+\\+ request.*make_request"):
+        client.send(PythonRequest())
+    assert calls == []
+
+    shared_request = object()
+    assert client.send(shared_request) == 7
+    assert calls == [("send", shared_request)]
 
 
 def test_native_client_interoperates_with_stock_python_server():
