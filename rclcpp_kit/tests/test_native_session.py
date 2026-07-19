@@ -33,6 +33,19 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_entity_options_proof"] == "tested_axes_only"
     assert report["arbitrary_entity_option_combinations"] == "unknown"
     assert report["loaned_messages"] == "publisher_runtime_query"
+    assert report["managed_qos_events"] is True
+    assert report["tested_qos_event_axes"] == (
+        "subscription_incompatible_qos",
+        "publisher_incompatible_qos",
+        "publisher_matched",
+        "subscription_matched",
+        "subscription_deadline_missed",
+        "publisher_deadline_missed",
+        "subscription_liveliness_changed",
+        "publisher_liveliness_lost",
+        "subscription_message_lost",
+    )
+    assert report["qos_event_incompatible_type"] == "rmw_runtime_query"
     assert report["raw_rclcpp"] is True
 
 

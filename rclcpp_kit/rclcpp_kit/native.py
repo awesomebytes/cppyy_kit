@@ -20,6 +20,10 @@ from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 _HELPERS_LOCK = threading.Lock()
 _HELPERS_READY = False
 
+_QOS_EVENTS_NAMESPACE = "rclcpp_kit_qos_events"
+_QOS_EVENTS_LOCK = threading.Lock()
+_QOS_EVENTS_READY = False
+
 
 def _install_helpers() -> None:
     """Compile the shared-pointer constructors that cppyy cannot spell safely."""
@@ -178,6 +182,142 @@ def _install_helpers() -> None:
         _HELPERS_READY = True
 
 
+def _install_qos_events_helpers() -> None:
+    """Compile the event-bearing options builders cppyy cannot assign directly.
+
+    cppyy cannot assign the ``PublisherEventCallbacks`` / ``SubscriptionEventCallbacks``
+    struct fields or the callback-group smart pointer from Python, the same reason
+    ``make_publisher_options`` / ``make_subscription_options`` exist above. An unset
+    event is a default-constructed (falsy) ``std::function``, so ``if (cb)`` leaves it
+    unassigned rather than overwriting it with an empty callable.
+    """
+    global _QOS_EVENTS_READY
+    if _QOS_EVENTS_READY:
+        return
+    with _QOS_EVENTS_LOCK:
+        if _QOS_EVENTS_READY:
+            return
+        cppyy.cppdef(
+            r"""
+            #include <memory>
+            #include <utility>
+            #include <rclcpp/rclcpp.hpp>
+
+            namespace rclcpp_kit_qos_events {
+            std::shared_ptr<rclcpp::PublisherOptions> make_publisher_options_with_events(
+                std::shared_ptr<rclcpp::CallbackGroup> callback_group,
+                rclcpp::QOSDeadlineOfferedCallbackType deadline_cb,
+                rclcpp::QOSLivelinessLostCallbackType liveliness_cb,
+                rclcpp::QOSOfferedIncompatibleQoSCallbackType incompatible_qos_cb,
+                rclcpp::IncompatibleTypeCallbackType incompatible_type_cb,
+                rclcpp::PublisherMatchedCallbackType matched_cb)
+            {
+              auto options = std::make_shared<rclcpp::PublisherOptions>();
+              if (callback_group) {
+                options->callback_group = std::move(callback_group);
+              }
+              // Explicit control + clean capability accounting: never let rclcpp
+              // register default handlers we did not ask for.
+              options->use_default_callbacks = false;
+              if (deadline_cb) {
+                options->event_callbacks.deadline_callback = std::move(deadline_cb);
+              }
+              if (liveliness_cb) {
+                options->event_callbacks.liveliness_callback = std::move(liveliness_cb);
+              }
+              if (incompatible_qos_cb) {
+                options->event_callbacks.incompatible_qos_callback =
+                  std::move(incompatible_qos_cb);
+              }
+              if (incompatible_type_cb) {
+                options->event_callbacks.incompatible_type_callback =
+                  std::move(incompatible_type_cb);
+              }
+              if (matched_cb) {
+                options->event_callbacks.matched_callback = std::move(matched_cb);
+              }
+              return options;
+            }
+
+            std::shared_ptr<rclcpp::SubscriptionOptions> make_subscription_options_with_events(
+                std::shared_ptr<rclcpp::CallbackGroup> callback_group,
+                rclcpp::QOSDeadlineRequestedCallbackType deadline_cb,
+                rclcpp::QOSLivelinessChangedCallbackType liveliness_cb,
+                rclcpp::QOSRequestedIncompatibleQoSCallbackType incompatible_qos_cb,
+                rclcpp::QOSMessageLostCallbackType message_lost_cb,
+                rclcpp::IncompatibleTypeCallbackType incompatible_type_cb,
+                rclcpp::SubscriptionMatchedCallbackType matched_cb)
+            {
+              auto options = std::make_shared<rclcpp::SubscriptionOptions>();
+              if (callback_group) {
+                options->callback_group = std::move(callback_group);
+              }
+              options->use_default_callbacks = false;
+              if (deadline_cb) {
+                options->event_callbacks.deadline_callback = std::move(deadline_cb);
+              }
+              if (liveliness_cb) {
+                options->event_callbacks.liveliness_callback = std::move(liveliness_cb);
+              }
+              if (incompatible_qos_cb) {
+                options->event_callbacks.incompatible_qos_callback =
+                  std::move(incompatible_qos_cb);
+              }
+              if (message_lost_cb) {
+                options->event_callbacks.message_lost_callback = std::move(message_lost_cb);
+              }
+              if (incompatible_type_cb) {
+                options->event_callbacks.incompatible_type_callback =
+                  std::move(incompatible_type_cb);
+              }
+              if (matched_cb) {
+                options->event_callbacks.matched_callback = std::move(matched_cb);
+              }
+              return options;
+            }
+            }  // namespace rclcpp_kit_qos_events
+            """
+        )
+        _QOS_EVENTS_READY = True
+
+
+def qos_events_namespace() -> Any:
+    """The installed ``rclcpp_kit_qos_events`` cppyy namespace, compiling it first."""
+    _install_qos_events_helpers()
+    return getattr(cppyy.gbl, _QOS_EVENTS_NAMESPACE)
+
+
+def qos_event_capabilities(requested_events: Iterable[str]) -> dict[str, Any]:
+    """Report which requested QoS events bind successfully on the active RMW.
+
+    Most events either bind at entity construction or make rclcpp raise
+    ``UnsupportedEventTypeException`` synchronously (``event_handler.hpp``:
+    ``EventHandler``'s constructor throws on ``RCL_RET_UNSUPPORTED`` before the
+    entity is returned) -- so a live entity is proof they bound.
+
+    ``incompatible_type`` on ``rmw_cyclonedds_cpp`` is a verified exception to
+    that rule: the rmw carries no DDS listener for it at all (no
+    ``dds_lset_incompatible_type_arg`` symbol), yet ``rcl_*_event_init`` still
+    returns ``RCL_RET_OK``, so rclcpp's own exception never fires and
+    construction would otherwise silently succeed with a dead handler.
+    ``direct_entities.py``'s factories check for this known-unsupported
+    combination themselves and raise ``QoSEventUnsupported`` before rclcpp ever
+    gets the chance to (not)-reject it. There is no supported way to inspect
+    rclcpp's internal (protected) ``event_handlers_`` map from outside the
+    library.
+    """
+    names = tuple(requested_events)
+    return {
+        "registered": dict.fromkeys(names, True),
+        "reason": (
+            "event handlers bind synchronously at entity construction; most "
+            "events either bind or make rclcpp raise UnsupportedEventTypeException "
+            "before returning the entity -- incompatible_type on rmw_cyclonedds_cpp "
+            "is the verified exception and is rejected by the caller instead"
+        ),
+    }
+
+
 @dataclass(frozen=True)
 class NativeCapabilities:
     """Capabilities known before creating a concrete publisher or subscription."""
@@ -222,6 +362,19 @@ class NativeCapabilities:
     )
     arbitrary_entity_option_combinations: str = "unknown"
     loaned_messages: str = "publisher_runtime_query"
+    managed_qos_events: bool = True
+    tested_qos_event_axes: tuple[str, ...] = (
+        "subscription_incompatible_qos",
+        "publisher_incompatible_qos",
+        "publisher_matched",
+        "subscription_matched",
+        "subscription_deadline_missed",
+        "publisher_deadline_missed",
+        "subscription_liveliness_changed",
+        "publisher_liveliness_lost",
+        "subscription_message_lost",
+    )
+    qos_event_incompatible_type: str = "rmw_runtime_query"
     raw_rclcpp: bool = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -676,4 +829,6 @@ __all__ = [
     "NativeSession",
     "native",
     "publisher_capabilities",
+    "qos_event_capabilities",
+    "qos_events_namespace",
 ]
