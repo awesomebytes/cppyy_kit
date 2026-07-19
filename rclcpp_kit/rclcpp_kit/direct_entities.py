@@ -1,10 +1,8 @@
-"""Strict direct-C++ entities for the small source-compatible product lane.
+"""Strict direct-C++ entities for installed generated C++ message types.
 
-Only the explicitly reviewed ``std_msgs`` scalar/string types are accepted.  The
-factory never accepts a generated Python message class and never installs the
-conversion-aware publisher wrapper used by the general convenience adapter.
-The timer factory similarly retains one raw ``rclcpp`` wall timer and does not
-insert a Python dispatch function between that timer and the user's callback.
+The factory never accepts a generated Python message class and never installs a
+conversion-aware publisher wrapper. Installed rosidl metadata, the generated C++
+header, canonical cppyy alias, and C++ typesupport library must all be present.
 """
 
 from __future__ import annotations
@@ -18,15 +16,8 @@ from rclcpp_kit import subscription_cache
 from rclcpp_kit.bringup_rclcpp import (
     _ORIG_CREATE_PUBLISHER,
     _ORIG_CREATE_SUBSCRIPTION,
-    _is_msg_cpp,
-    _resolve_message_type,
 )
-
-
-_SUPPORTED = {
-    "std_msgs::msg::UInt64": "std_msgs/msg/u_int64.hpp",
-    "std_msgs::msg::String": "std_msgs/msg/string.hpp",
-}
+from rclcpp_kit.direct_message_types import resolve_message_type
 
 
 @dataclass(frozen=True)
@@ -91,17 +82,8 @@ class DirectTimer:
 
 
 def resolve_supported_type(message_type: Any) -> tuple[str, Any, str]:
-    """Return the reviewed C++ type, rejecting Python messages and facades."""
-    if not _is_msg_cpp(message_type):
-        raise TypeError("direct entities require an actual cppyy C++ message class")
-    cpp_type_name, cpp_type = _resolve_message_type(message_type)
-    try:
-        header = _SUPPORTED[cpp_type_name]
-    except KeyError as exc:
-        raise TypeError(
-            "direct entities do not support C++ message type %s" % cpp_type_name
-        ) from exc
-    return cpp_type_name, cpp_type, header
+    """Return an installed canonical C++ message and its generated header."""
+    return resolve_message_type(message_type).entity_factory_tuple()
 
 
 def qos_from_depth(rclcpp: Any, depth: int) -> Any:

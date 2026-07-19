@@ -1,4 +1,4 @@
-"""Opt-in direct subscription leases for the reviewed C++ message types.
+"""Opt-in direct subscription leases for installed generated C++ messages.
 
 The normal direct subscription makes an owning ``MessageT`` copy before calling
 Python.  This route instead asks rclcpp for a unique message, promotes that same

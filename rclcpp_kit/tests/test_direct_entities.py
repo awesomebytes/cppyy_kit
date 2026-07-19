@@ -5,11 +5,22 @@ import pytest
 from rclcpp_kit import direct_entities
 
 
-def test_first_slice_support_is_bounded():
-    assert direct_entities._SUPPORTED == {
-        "std_msgs::msg::UInt64": "std_msgs/msg/u_int64.hpp",
-        "std_msgs::msg::String": "std_msgs/msg/string.hpp",
-    }
+def test_message_resolution_delegates_to_fail_closed_generic_resolver(monkeypatch):
+    binding = type(
+        "Binding",
+        (),
+        {"entity_factory_tuple": lambda self: ("cpp", "type", "header")},
+    )()
+    calls = []
+    monkeypatch.setattr(
+        direct_entities,
+        "resolve_message_type",
+        lambda value: calls.append(value) or binding,
+    )
+    message_type = object()
+    assert direct_entities.resolve_supported_type(message_type) == (
+        "cpp", "type", "header")
+    assert calls == [message_type]
 
 
 def test_qos_depth_rejects_non_positive_and_boolean_values():
@@ -49,8 +60,7 @@ def test_publisher_factory_uses_original_template_without_callable_adapter(monke
     assert original_calls == [("topic", "qos")]
 
 
-def test_python_message_types_are_rejected_before_resolution(monkeypatch):
-    monkeypatch.setattr(direct_entities, "_is_msg_cpp", lambda value: False)
+def test_python_message_types_are_rejected_before_resolution():
     with pytest.raises(TypeError, match=r"actual cppyy C\+\+ message class"):
         direct_entities.resolve_supported_type(object())
 
@@ -102,7 +112,9 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
 
 
 def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
-    callback = lambda: None
+    def callback():
+        return None
+
     calls = []
 
     class Entity:
