@@ -249,6 +249,12 @@ class NativeActionClient:
         """Read only the feedback-overflow counter without materializing all stats."""
         return int(self._implementation.feedback_dropped())
 
+    def poll_state(self, token: int) -> Any:
+        """Read all readiness/control counters for one goal under one C++ lock."""
+        if self._closed:
+            raise RuntimeError("NativeActionClient is closed")
+        return self._implementation.poll_state(int(token))
+
     def result_ready(self, token: int) -> bool:
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
@@ -349,7 +355,7 @@ def create_native_action_client(
     payload = json.dumps({
         "type": cpp_type,
         "header": header,
-        "adapter_api": 2,
+        "adapter_api": 3,
     }, sort_keys=True, separators=(",", ":"))
     source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
     interface = "NativeActionClient_%s" % source_id
@@ -383,6 +389,14 @@ public:
   using FeedbackMessage = typename ActionT::Impl::FeedbackMessage;
   using ResultResponse = typename ActionT::Impl::GetResultService::Response;
   using CancelResponse = typename ClientT::CancelResponse;
+  struct ActionPollState {
+    bool goal_response_ready{false};
+    bool goal_accepted{false};
+    uint64_t feedback_ready_count{0};
+    bool result_ready{false};
+    bool cancel_response_ready{false};
+    uint64_t feedback_dropped{0};
+  };
   virtual ~%(interface)s() = default;
   virtual std::shared_ptr<ActionT::Goal> make_goal() const = 0;
   virtual std::shared_ptr<ClientT> raw_client() const = 0;
@@ -398,6 +412,7 @@ public:
   virtual bool feedback_ready(uint64_t token) const = 0;
   virtual std::shared_ptr<const ActionT::Feedback> take_feedback(uint64_t token) = 0;
   virtual std::shared_ptr<FeedbackMessage> take_feedback_message(uint64_t token) = 0;
+  virtual ActionPollState poll_state(uint64_t token) const = 0;
   virtual bool result_ready(uint64_t token) const = 0;
   virtual int8_t result_code(uint64_t token) const = 0;
   virtual std::shared_ptr<ActionT::Result> take_result(uint64_t token) = 0;
@@ -761,6 +776,27 @@ public:
       record->result.valid() &&
       record->result.wait_for(std::chrono::nanoseconds(0)) ==
         std::future_status::ready;
+  }
+
+  ActionPollState poll_state(uint64_t token) const override
+  {
+    std::lock_guard<std::mutex> lock(state_->mutex);
+    const auto record = find_locked(token);
+    ActionPollState result;
+    result.goal_response_ready =
+      record->response != Record::ResponseState::Pending;
+    result.goal_accepted =
+      record->response == Record::ResponseState::Accepted;
+    result.feedback_ready_count = record->feedback.size();
+    result.result_ready = result.goal_accepted && record->result.valid() &&
+      record->result.wait_for(std::chrono::nanoseconds(0)) ==
+        std::future_status::ready;
+    result.cancel_response_ready = record->cancel_requested &&
+      !record->cancel_taken && record->cancel.valid() &&
+      record->cancel.wait_for(std::chrono::nanoseconds(0)) ==
+        std::future_status::ready;
+    result.feedback_dropped = state_->feedback_dropped.load();
+    return result;
   }
 
   int8_t result_code(uint64_t token) const override

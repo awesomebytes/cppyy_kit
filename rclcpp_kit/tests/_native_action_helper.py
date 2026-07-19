@@ -100,6 +100,9 @@ def main():
         direct_goal.source_frame = "base"
         successful = client.send_cpp_value(direct_goal)
         wait_until(lambda: client.goal_response_ready(successful))
+        successful_state = client.poll_state(successful)
+        assert successful_state.goal_response_ready
+        assert successful_state.goal_accepted
         assert client.goal_accepted(successful)
         assert client.raw_goal_handle(successful)
         successful_goal_id = client.goal_id(successful)
@@ -185,6 +188,8 @@ def main():
         assert client.request_cancel(canceled)
         assert not client.request_cancel(canceled)
         wait_until(lambda: client.cancel_response_ready(canceled))
+        canceled_state = client.poll_state(canceled)
+        assert canceled_state.cancel_response_ready
         cancel_response = client.take_cancel_response(canceled)
         assert type(cancel_response) is cpp_types.cancel_response
         return_code = cancel_response.return_code
