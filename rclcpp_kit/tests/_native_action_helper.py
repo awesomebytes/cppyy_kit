@@ -201,6 +201,7 @@ def main():
         assert canceled_result.result.transform.child_frame_id == "canceled-result"
 
         stats = client.stats()
+        assert client.feedback_dropped_count() == stats.feedback_dropped
         assert stats.goals_sent == 3
         assert stats.goals_accepted == 2
         assert stats.goals_rejected == 1

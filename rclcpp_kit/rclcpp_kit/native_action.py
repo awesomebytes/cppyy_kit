@@ -245,6 +245,10 @@ class NativeActionClient:
             raise RuntimeError("NativeActionClient is closed")
         return self._implementation.take_feedback_message(int(token))
 
+    def feedback_dropped_count(self) -> int:
+        """Read only the feedback-overflow counter without materializing all stats."""
+        return int(self._implementation.feedback_dropped())
+
     def result_ready(self, token: int) -> bool:
         if self._closed:
             raise RuntimeError("NativeActionClient is closed")
