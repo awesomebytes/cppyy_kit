@@ -190,6 +190,7 @@ class NativeCapabilities:
     callback_group_entity_options: bool = True
     managed_native_services: bool = True
     managed_python_services: bool = True
+    managed_borrowed_set_bool_services: bool = True
     managed_native_clients: bool = True
     native_service_client_coexistence: str = "runtime_compiler_or_warm_cache"
     managed_native_action_clients: bool = True
@@ -514,6 +515,23 @@ class NativeSession:
             self,
             node,
             service_type,
+            service_name,
+            callback,
+        )
+
+    def create_borrowed_set_bool_service(
+        self,
+        node: Any,
+        service_name: str,
+        callback: Any,
+    ) -> Any:
+        """Create an opt-in SetBool service with callback-scoped C++ views."""
+        from rclcpp_kit.borrowed_set_bool_service import (
+            create_borrowed_set_bool_service,
+        )
+        return create_borrowed_set_bool_service(
+            self,
+            node,
             service_name,
             callback,
         )

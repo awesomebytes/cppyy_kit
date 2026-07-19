@@ -18,6 +18,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, explicit every/latest/bounded-batch delivery, and fresh/reused/loaned output memory |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
 | `native_service` | Content-addressed editable C++ service callbacks with stock and AOT-client interoperability, counters, zero Python request crossings, and managed teardown |
+| `borrowed_set_bool_service` | Explicit callback-scoped SetBool request/response views over rclcpp-owned generated C++ messages; no adapter message copies, in-place response field writes, fail-closed return contract, and managed teardown |
 | `native_client` | Cached typed C++ clients with C++-owned async futures, stock and AOT-server interoperability, cancellation/counters, raw-client access, and managed teardown |
 | `native_action` | Cached typed C++ action clients with C++-owned goal/result/cancel state, stock and AOT-server interoperability, bounded feedback, raw handles, counters, and managed teardown |
 | `native_component` | Real `rclcpp_components::ComponentManager` containers on the managed context, stock composition services, AOT component loading, raw-manager access, and ordered teardown |
@@ -71,6 +72,29 @@ one interpreter without conflicting `std::call_once` TLS state. If no runtime
 compiler is available, an individual adapter retains the original Cling fallback,
 but cold same-interpreter multi-glue coexistence is not guaranteed; query
 `ros.capabilities.native_service_client_coexistence`.
+
+The SetBool-only borrowed service is a separate opt-in API. It does not change
+the safe owning semantics of `create_python_service`:
+
+```python
+def handle(request, response):
+    response.success = request.data
+    response.message = "enabled" if request.data else "disabled"
+    # None is the only valid return; replacement responses fail closed.
+
+service = ros.create_borrowed_set_bool_service(node, "set_bool", handle)
+```
+
+Both callback arguments are guarded views of the actual request and response
+owned by the synchronous rclcpp callback. The response properties write its
+native generated C++ response in place. The adapter constructs no extra C++
+request or response message and performs no whole-response assignment. Views
+expire when the callback returns or raises; retaining one is unsupported, and
+any later field access raises `RuntimeError`. Coroutine callbacks, runtime
+awaitables, replacement return values, and unsupported field types fail closed.
+The specialized flat SetBool surface is intentional: it makes the lifetime
+guard complete instead of exposing nested C++ references that could outlive the
+callback.
 
 Managed action clients apply the same narrow rule to `rclcpp_action` template and
 future state. They expose opaque goal tokens plus the original typed client and

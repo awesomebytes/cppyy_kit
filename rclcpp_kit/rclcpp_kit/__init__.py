@@ -81,6 +81,13 @@ from rclcpp_kit.python_service import (
     PythonServiceStats,
     create_python_service,
 )
+from rclcpp_kit.borrowed_set_bool_service import (
+    BorrowedSetBoolRequestRef,
+    BorrowedSetBoolResponseRef,
+    BorrowedSetBoolService,
+    BorrowedSetBoolServiceStats,
+    create_borrowed_set_bool_service,
+)
 from rclcpp_kit.native_client import (
     NativeClient,
     NativeClientStats,
@@ -143,6 +150,11 @@ __all__ = [
     "PythonService",
     "PythonServiceStats",
     "create_python_service",
+    "BorrowedSetBoolRequestRef",
+    "BorrowedSetBoolResponseRef",
+    "BorrowedSetBoolService",
+    "BorrowedSetBoolServiceStats",
+    "create_borrowed_set_bool_service",
     "NativeClient",
     "NativeClientStats",
     "create_native_client",
