@@ -40,10 +40,11 @@ def test_direct_qos_profiles_are_lowered_before_native_entity_creation():
     assert report["best_available_lowered"]["reliability"] == 4
     assert [case["case_id"] for case in report["cases"]] == [
         "reliable_volatile_with_durations",
-        "sensor_data_best_effort_volatile",
+        "qos_profile_sensor_data",
+        "qos_profile_system_default",
     ]
 
-    reliable, sensor = report["cases"]
+    reliable, sensor, system_default = report["cases"]
     reliable_requested = {
         "history": 1,
         "depth": 7,
@@ -74,7 +75,7 @@ def test_direct_qos_profiles_are_lowered_before_native_entity_creation():
         "durability": 2,
         "deadline_ns": 0,
         "lifespan_ns": 0,
-        "liveliness": 1,
+        "liveliness": 0,
         "liveliness_lease_duration_ns": 0,
         "avoid_ros_namespace_conventions": False,
     }
@@ -85,12 +86,43 @@ def test_direct_qos_profiles_are_lowered_before_native_entity_creation():
         **sensor_requested,
         "deadline_ns": INFINITE_DURATION_NS,
         "lifespan_ns": INFINITE_DURATION_NS,
+        "liveliness": 1,
         "liveliness_lease_duration_ns": INFINITE_DURATION_NS,
     }
     assert sensor["actual_publisher"] == normalized_sensor
     assert sensor["actual_subscription"] == normalized_sensor
     assert sensor["graph_publisher"] == normalized_sensor
     assert sensor["graph_subscription"] == normalized_sensor
+
+    system_default_requested = {
+        "history": 0,
+        "depth": 0,
+        "reliability": 0,
+        "durability": 0,
+        "deadline_ns": 0,
+        "lifespan_ns": 0,
+        "liveliness": 0,
+        "liveliness_lease_duration_ns": 0,
+        "avoid_ros_namespace_conventions": False,
+    }
+    assert system_default["requested"] == system_default_requested
+    assert system_default["lowered_publisher"] == system_default_requested
+    assert system_default["lowered_subscription"] == system_default_requested
+    normalized_system_default = {
+        "history": 1,
+        "depth": 1,
+        "reliability": 1,
+        "durability": 2,
+        "deadline_ns": INFINITE_DURATION_NS,
+        "lifespan_ns": INFINITE_DURATION_NS,
+        "liveliness": 1,
+        "liveliness_lease_duration_ns": INFINITE_DURATION_NS,
+        "avoid_ros_namespace_conventions": False,
+    }
+    assert system_default["actual_publisher"] == normalized_system_default
+    assert system_default["actual_subscription"] == normalized_system_default
+    assert system_default["graph_publisher"] == normalized_system_default
+    assert system_default["graph_subscription"] == normalized_system_default
 
 
 def test_qos_slice_changes_configuration_lowering_only():

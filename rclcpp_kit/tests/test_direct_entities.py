@@ -8,6 +8,8 @@ from rclpy.qos import (
     LivelinessPolicy,
     QoSProfile,
     ReliabilityPolicy,
+    qos_profile_sensor_data,
+    qos_profile_system_default,
 )
 
 from _run_helper import format_output, run_helper
@@ -51,18 +53,22 @@ def test_qos_depth_accepts_zero_and_rejects_negative_or_non_integer_values():
 
 class _FakeRclcpp:
     class HistoryPolicy:
+        SystemDefault = "system_default"
         KeepLast = "keep_last"
         KeepAll = "keep_all"
 
     class LivelinessPolicy:
+        SystemDefault = "system_default"
         Automatic = "automatic"
         ManualByTopic = "manual_by_topic"
         BestAvailable = "best_available"
 
     class ReliabilityPolicy:
+        SystemDefault = "system_default"
         BestAvailable = "best_available"
 
     class DurabilityPolicy:
+        SystemDefault = "system_default"
         BestAvailable = "best_available"
 
     class Duration:
@@ -168,17 +174,36 @@ def test_qos_profile_lowers_jazzy_best_available_policies():
     assert ("liveliness", "best_available") in qos.calls
 
 
+@pytest.mark.parametrize("profile", [
+    qos_profile_sensor_data,
+    qos_profile_system_default,
+])
+def test_qos_profile_lowers_stock_jazzy_presets(profile):
+    qos = direct_entities.qos_from_profile(_FakeRclcpp, profile)
+    expected_history = (
+        "system_default"
+        if profile.history == HistoryPolicy.SYSTEM_DEFAULT else "keep_last")
+    assert qos.initialization == (expected_history, profile.depth)
+    expected_reliability = (
+        ("reliability", "system_default")
+        if profile.reliability == ReliabilityPolicy.SYSTEM_DEFAULT
+        else ("best_effort",))
+    expected_durability = (
+        ("durability", "system_default")
+        if profile.durability == DurabilityPolicy.SYSTEM_DEFAULT
+        else ("durability_volatile",))
+    assert qos.calls[:2] == [expected_reliability, expected_durability]
+    assert (
+        "liveliness", "system_default") in qos.calls
+
+
 @pytest.mark.parametrize(("field", "policy"), [
-    ("history", HistoryPolicy.SYSTEM_DEFAULT),
     ("history", HistoryPolicy.UNKNOWN),
-    ("reliability", ReliabilityPolicy.SYSTEM_DEFAULT),
     ("reliability", ReliabilityPolicy.UNKNOWN),
-    ("durability", DurabilityPolicy.SYSTEM_DEFAULT),
     ("durability", DurabilityPolicy.UNKNOWN),
-    ("liveliness", LivelinessPolicy.SYSTEM_DEFAULT),
     ("liveliness", LivelinessPolicy.UNKNOWN),
 ])
-def test_qos_profile_rejects_ambiguous_policies_before_native_construction(
+def test_qos_profile_rejects_unknown_policies_before_native_construction(
         field, policy):
     class RejectConstruction(_FakeRclcpp):
         class QoS:

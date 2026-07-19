@@ -191,9 +191,9 @@ def _duration_nanoseconds(value: Any, field: str, duration_type: type) -> int:
 def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
     """Lower one explicit Jazzy ``rclpy.qos.QoSProfile`` to ``rclcpp::QoS``.
 
-    System-default and unknown policies are intentionally not guessed;
-    best-available maps to Jazzy's exact native policy. The complete profile is
-    validated before native QoS construction.
+    System-default and best-available map to Jazzy's exact native policies;
+    unknown policies are rejected. The complete profile is validated before
+    native QoS construction.
     """
     from rclpy.duration import Duration
     from rclpy.qos import (
@@ -207,18 +207,25 @@ def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
     if not isinstance(profile, QoSProfile):
         raise TypeError("direct entities require an rclpy.qos.QoSProfile")
     supported = {
-        "history": (HistoryPolicy.KEEP_LAST, HistoryPolicy.KEEP_ALL),
+        "history": (
+            HistoryPolicy.SYSTEM_DEFAULT,
+            HistoryPolicy.KEEP_LAST,
+            HistoryPolicy.KEEP_ALL,
+        ),
         "reliability": (
+            ReliabilityPolicy.SYSTEM_DEFAULT,
             ReliabilityPolicy.RELIABLE,
             ReliabilityPolicy.BEST_EFFORT,
             ReliabilityPolicy.BEST_AVAILABLE,
         ),
         "durability": (
+            DurabilityPolicy.SYSTEM_DEFAULT,
             DurabilityPolicy.TRANSIENT_LOCAL,
             DurabilityPolicy.VOLATILE,
             DurabilityPolicy.BEST_AVAILABLE,
         ),
         "liveliness": (
+            LivelinessPolicy.SYSTEM_DEFAULT,
             LivelinessPolicy.AUTOMATIC,
             LivelinessPolicy.MANUAL_BY_TOPIC,
             LivelinessPolicy.BEST_AVAILABLE,
@@ -248,18 +255,23 @@ def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
     if not isinstance(avoid_conventions, bool):
         raise TypeError("QoS avoid_ros_namespace_conventions must be boolean")
 
-    history = (
-        rclcpp.HistoryPolicy.KeepLast
-        if profile.history == HistoryPolicy.KEEP_LAST
-        else rclcpp.HistoryPolicy.KeepAll)
+    history = {
+        HistoryPolicy.SYSTEM_DEFAULT: rclcpp.HistoryPolicy.SystemDefault,
+        HistoryPolicy.KEEP_LAST: rclcpp.HistoryPolicy.KeepLast,
+        HistoryPolicy.KEEP_ALL: rclcpp.HistoryPolicy.KeepAll,
+    }[profile.history]
     qos = rclcpp.QoS(rclcpp.QoSInitialization(history, depth))
-    if profile.reliability == ReliabilityPolicy.RELIABLE:
+    if profile.reliability == ReliabilityPolicy.SYSTEM_DEFAULT:
+        qos.reliability(rclcpp.ReliabilityPolicy.SystemDefault)
+    elif profile.reliability == ReliabilityPolicy.RELIABLE:
         qos.reliable()
     elif profile.reliability == ReliabilityPolicy.BEST_EFFORT:
         qos.best_effort()
     else:
         qos.reliability(rclcpp.ReliabilityPolicy.BestAvailable)
-    if profile.durability == DurabilityPolicy.TRANSIENT_LOCAL:
+    if profile.durability == DurabilityPolicy.SYSTEM_DEFAULT:
+        qos.durability(rclcpp.DurabilityPolicy.SystemDefault)
+    elif profile.durability == DurabilityPolicy.TRANSIENT_LOCAL:
         qos.transient_local()
     elif profile.durability == DurabilityPolicy.VOLATILE:
         qos.durability_volatile()
@@ -267,13 +279,14 @@ def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
         qos.durability(rclcpp.DurabilityPolicy.BestAvailable)
     qos.deadline(rclcpp.Duration.from_nanoseconds(durations["deadline"]))
     qos.lifespan(rclcpp.Duration.from_nanoseconds(durations["lifespan"]))
-    liveliness = (
-        rclcpp.LivelinessPolicy.Automatic
-        if profile.liveliness == LivelinessPolicy.AUTOMATIC
-        else (
-            rclcpp.LivelinessPolicy.ManualByTopic
-            if profile.liveliness == LivelinessPolicy.MANUAL_BY_TOPIC
-            else rclcpp.LivelinessPolicy.BestAvailable))
+    liveliness = {
+        LivelinessPolicy.SYSTEM_DEFAULT: rclcpp.LivelinessPolicy.SystemDefault,
+        LivelinessPolicy.AUTOMATIC: rclcpp.LivelinessPolicy.Automatic,
+        LivelinessPolicy.MANUAL_BY_TOPIC:
+            rclcpp.LivelinessPolicy.ManualByTopic,
+        LivelinessPolicy.BEST_AVAILABLE:
+            rclcpp.LivelinessPolicy.BestAvailable,
+    }[profile.liveliness]
     qos.liveliness(liveliness)
     qos.liveliness_lease_duration(rclcpp.Duration.from_nanoseconds(
         durations["liveliness_lease_duration"]))

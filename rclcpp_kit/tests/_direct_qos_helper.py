@@ -15,6 +15,8 @@ from rclpy.qos import (
     LivelinessPolicy,
     QoSProfile,
     ReliabilityPolicy,
+    qos_profile_sensor_data,
+    qos_profile_system_default,
 )
 from rclpy.utilities import get_rmw_implementation_identifier
 
@@ -154,11 +156,12 @@ def main():
                     ),
                 ),
                 (
-                    "sensor_data_best_effort_volatile",
-                    explicit_profile(
-                        depth=5,
-                        reliability=ReliabilityPolicy.BEST_EFFORT,
-                    ),
+                    "qos_profile_sensor_data",
+                    qos_profile_sensor_data,
+                ),
+                (
+                    "qos_profile_system_default",
+                    qos_profile_system_default,
                 ),
             )
             for case_id, requested in profiles:

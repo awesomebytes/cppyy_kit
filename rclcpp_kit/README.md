@@ -55,9 +55,10 @@ publisher allocator fallback. A loan is not by itself a zero-copy guarantee.
 Direct entity QoS lowering is control-plane only. `qos_from_depth()` implements
 the rclpy integer shorthand, while `qos_from_profile()` preserves explicit
 history/depth, reliability, durability, deadline, lifespan, liveliness, lease
-duration, and ROS namespace-convention selection. System-default and unknown
-policies are rejected rather than guessed; callers that need sensor-data
-semantics must provide its policies explicitly, including liveliness.
+duration, and ROS namespace-convention selection. System-default and
+best-available policies map to their exact Jazzy rclcpp counterparts; unknown
+policies are rejected. The stock `qos_profile_sensor_data` and
+`qos_profile_system_default` presets are supported directly.
 
 Managed clients keep only the template and future-lifetime friction behind a
 small adapter. They accept ordinary generated Python requests or direct C++
