@@ -503,9 +503,9 @@ def _uint8(value: Any) -> int:
 
 
 class NativeParameter:
-    """One independently owned ``rclcpp::Parameter`` value."""
+    """One independently owned C++ value with construction-time type metadata."""
 
-    __slots__ = ("_owner", "_parameter")
+    __slots__ = ("_owner", "_parameter", "_type_code")
 
     def __init__(self, parameter: Any):
         parameter_type = _parameter_class()
@@ -513,6 +513,7 @@ class NativeParameter:
             raise TypeError("NativeParameter requires an rclcpp::Parameter")
         self._parameter = parameter_type(parameter)
         self._owner = None
+        self._type_code = int(self._parameter.get_type())
 
     @classmethod
     def _from_cpp(
@@ -530,6 +531,7 @@ class NativeParameter:
         result = cls.__new__(cls)
         result._parameter = parameter_type(parameter) if copy else parameter
         result._owner = owner
+        result._type_code = int(result._parameter.get_type())
         return result
 
     @property
@@ -543,11 +545,11 @@ class NativeParameter:
 
     @property
     def type_code(self) -> int:
-        return int(self._parameter.get_type())
+        return self._type_code
 
     def value_snapshot(self) -> Any:
         """Materialize a Python control value only when explicitly requested."""
-        type_code = self.type_code
+        type_code = self._type_code
         if type_code == PARAMETER_NOT_SET:
             return None
         if type_code == PARAMETER_BOOL:

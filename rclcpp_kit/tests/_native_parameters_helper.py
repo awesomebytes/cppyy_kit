@@ -104,9 +104,12 @@ def main():
     for label, parameter, type_code, expected in cases:
         assert type(parameter.native) is cppyy.gbl.rclcpp.Parameter
         assert not hasattr(parameter, "__dict__")
+        assert parameter._type_code == int(parameter.native.get_type())
         assert parameter.type_code == type_code
         assert parameter.value_snapshot() == expected
         copied = parameter.copy()
+        assert copied._type_code == int(copied.native.get_type())
+        assert copied.type_code == parameter.type_code
         assert copied.value_snapshot() == expected
         assert cppyy.addressof(copied.native) != cppyy.addressof(parameter.native)
         factory_report.append({"case": label, "type": parameter.type_code})
@@ -114,6 +117,7 @@ def main():
     empty_array_types = []
     for type_code in range(5, 10):
         value = parameters.make_parameter("empty_%d" % type_code, type_code, [])
+        assert value._type_code == int(value.native.get_type())
         assert value.type_code == type_code
         assert value.value_snapshot() == []
         empty_array_types.append(value.type_code)

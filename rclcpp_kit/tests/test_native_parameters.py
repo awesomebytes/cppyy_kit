@@ -1,9 +1,23 @@
+import inspect
 import json
 
 from _run_helper import format_output, run_helper
+from rclcpp_kit import native_parameters
 
 
 REPORT_PREFIX = "NATIVE_PARAMETERS_REPORT="
+
+
+def test_native_parameter_type_metadata_is_off_the_value_hot_path():
+    type_source = inspect.getsource(
+        native_parameters.NativeParameter.type_code.fget)
+    value_source = inspect.getsource(
+        native_parameters.NativeParameter.value_snapshot)
+
+    assert "return self._type_code" in type_source
+    assert "get_type" not in type_source
+    assert "type_code = self._type_code" in value_source
+    assert "get_type" not in value_source
 
 
 def test_native_parameter_factories_node_operations_and_callbacks():
