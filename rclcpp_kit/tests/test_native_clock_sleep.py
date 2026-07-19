@@ -53,5 +53,6 @@ def test_native_clock_sleeper_wall_sim_and_interrupt():
     assert process.returncode == 0, format_output(process)
     assert "NATIVE_CLOCK_SLEEP_WALL_OK" in process.stdout
     assert "NATIVE_CLOCK_SLEEP_IDENTITY_OK" in process.stdout
+    assert "NATIVE_CLOCK_SLEEP_UNTIL_WRAPPER_OK" in process.stdout
     assert "NATIVE_CLOCK_SLEEP_SIM_OK" in process.stdout
     assert "NATIVE_CLOCK_SLEEP_INTERRUPT_OK" in process.stdout

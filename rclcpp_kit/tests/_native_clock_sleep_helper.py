@@ -85,6 +85,17 @@ with native(["native-clock-sleep-proof"]) as session:
     assert sleeper.clock_address == clock.address
     print("NATIVE_CLOCK_SLEEP_IDENTITY_OK")
 
+    # 2b. Wrapper-level sleep_until (wall time, no sim time active): exercises the
+    # wrapper -> C++ holder -> clock-type-matched rclcpp::Time target -> clock->sleep_until
+    # path directly, synchronously, on the main thread.
+    now_ns = clock.now_nanoseconds()
+    start = time.monotonic()
+    result = sleeper.sleep_until(now_ns + 50_000_000)
+    elapsed = time.monotonic() - start
+    assert result is True
+    assert elapsed >= 0.045, "sleep_until returned too early: %.4fs" % elapsed
+    print("NATIVE_CLOCK_SLEEP_UNTIL_WRAPPER_OK")
+
     # 3. Sim-time sleep_until, driven by a /clock publisher (like the node-clock proof).
     sim_node = session.create_node("native_clock_sleep_sim")
     sim_publisher_node = session.create_node("native_clock_sleep_publisher")
