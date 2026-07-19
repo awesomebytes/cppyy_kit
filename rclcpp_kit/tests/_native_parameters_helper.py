@@ -34,6 +34,21 @@ def main():
     assert os.environ.get("RMW_IMPLEMENTATION") == "rmw_cyclonedds_cpp"
     helper_namespace = parameters._ensure_helpers()
     assert parameters._ensure_helpers() is helper_namespace
+    parameter_class = parameters._parameter_class()
+    descriptor_class = parameters._descriptor_class()
+    result_class = parameters._result_class()
+
+    helper_bringup_calls = []
+
+    def forbidden_helper_bringup():
+        helper_bringup_calls.append(True)
+        raise AssertionError("cached parameter helpers repeated rclcpp bringup")
+
+    parameters.bringup_rclcpp = forbidden_helper_bringup
+    assert parameters._ensure_helpers() is helper_namespace
+    assert parameters._parameter_class() is parameter_class
+    assert parameters._descriptor_class() is descriptor_class
+    assert parameters._result_class() is result_class
 
     bringup = importlib.import_module("rclcpp_kit.bringup_rclcpp")
     bridge_calls = []
@@ -139,12 +154,45 @@ def main():
         pending_descriptor = parameters.describe_parameters(node, ["pending"])[0]
         assert uint8(pending_descriptor.type) == parameters.PARAMETER_INTEGER
 
+        dynamic_descriptor = descriptor_class()
+        dynamic_descriptor.dynamic_typing = True
+        parameters.declare_parameter(
+            node,
+            parameters.parameter_not_set("dynamic_pending"),
+            dynamic_descriptor,
+        )
+
         assert parameters.has_parameter(node, "count")
         assert parameters.get_parameter(node, "count").value_snapshot() == 1
         assert [value.name for value in parameters.get_parameters(
             node, ["count", "enabled"])] == ["count", "enabled"]
         assert parameters.get_parameter_types(
             node, ["count", "enabled", "flags", "payload"]) == (2, 1, 6, 5)
+
+        parameters.reset_checked_parameter_stats()
+        count_status, checked_count = parameters.get_parameter_checked(node, "count")
+        static_status, checked_static = parameters.get_parameter_checked(node, "pending")
+        dynamic_status, checked_dynamic = parameters.get_parameter_checked(
+            node, "dynamic_pending")
+        missing_status, checked_missing = parameters.get_parameter_checked(
+            node, "missing")
+        assert count_status == parameters.CHECKED_PARAMETER_VALUE
+        assert checked_count.value_snapshot() == 1
+        assert static_status == parameters.CHECKED_PARAMETER_STATIC_UNINITIALIZED
+        assert checked_static is None
+        assert dynamic_status == parameters.CHECKED_PARAMETER_DYNAMIC_NOT_SET
+        assert checked_dynamic.value_snapshot() is None
+        assert missing_status == parameters.CHECKED_PARAMETER_MISSING
+        assert checked_missing is None
+        assert cppyy.addressof(checked_count.native) == int(
+            checked_count._owner.parameter_address())
+        checked_stats = parameters.checked_parameter_stats()
+        assert checked_stats.to_dict() == {
+            "calls": 4,
+            "node_value_copies": 2,
+            "result_copies": 0,
+        }
+        retained.extend((checked_count, checked_dynamic))
 
         described = parameters.describe_parameters(node, ["count"])
         assert len(described) == 1
@@ -322,6 +370,7 @@ def main():
         gc.collect()
 
     assert [value.value_snapshot() for value in retained[-4:]] == [77, 66, 55, 55]
+    assert [value.value_snapshot() for value in retained[:2]] == [1, None]
 
     restart_session = native(["native-parameters-restart"])
     restart_session.open()
@@ -348,6 +397,7 @@ def main():
         gc.collect()
     assert restart_value.value_snapshot() == 2
     assert bridge_calls == []
+    assert helper_bringup_calls == []
 
     report = {
         "schema": "rclcpp_kit.native-parameters-proof/v1",
@@ -358,6 +408,8 @@ def main():
         "empty_array_types": empty_array_types,
         "callbacks": callback_report,
         "helper_idempotent": True,
+        "helper_resolution_cached": True,
+        "checked_get_stats": checked_stats.to_dict(),
         "session_cycles": 2,
         "retained_after_teardown": True,
         "application_message_conversions": len(bridge_calls),

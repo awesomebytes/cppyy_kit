@@ -45,7 +45,13 @@ def test_native_parameter_factories_node_operations_and_callbacks():
                 "empty_rejected": True,
             },
         },
+        "checked_get_stats": {
+            "calls": 4,
+            "node_value_copies": 2,
+            "result_copies": 0,
+        },
         "helper_idempotent": True,
+        "helper_resolution_cached": True,
         "session_cycles": 2,
         "retained_after_teardown": True,
         "application_message_conversions": 0,

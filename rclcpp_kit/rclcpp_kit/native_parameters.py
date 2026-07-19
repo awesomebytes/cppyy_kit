@@ -32,26 +32,153 @@ PARAMETER_STRING_ARRAY = 9
 _PARAMETER_TYPES = frozenset(range(10))
 _HELPERS_LOCK = threading.Lock()
 _HELPERS_READY = False
+_HELPERS_NAMESPACE = None
+_PARAMETER_CLASS = None
+_DESCRIPTOR_CLASS = None
+_RESULT_CLASS = None
+
+CHECKED_PARAMETER_VALUE = 0
+CHECKED_PARAMETER_MISSING = 1
+CHECKED_PARAMETER_STATIC_UNINITIALIZED = 2
+CHECKED_PARAMETER_DYNAMIC_NOT_SET = 3
 
 
 def _ensure_helpers() -> Any:
+    global _DESCRIPTOR_CLASS
+    global _HELPERS_NAMESPACE
     global _HELPERS_READY
-    bringup_rclcpp()
-    if not _HELPERS_READY:
-        with _HELPERS_LOCK:
-            if not _HELPERS_READY:
-                cppyy.cppdef(
-                    r"""
+    global _PARAMETER_CLASS
+    global _RESULT_CLASS
+    if _HELPERS_READY:
+        return _HELPERS_NAMESPACE
+    with _HELPERS_LOCK:
+        if not _HELPERS_READY:
+            bringup_rclcpp()
+            cppyy.cppdef(
+                r"""
                     #include <atomic>
                     #include <cstdint>
                     #include <functional>
                     #include <memory>
+                    #include <stdexcept>
                     #include <string>
                     #include <utility>
                     #include <vector>
                     #include <rclcpp/rclcpp.hpp>
 
                     namespace rclcpp_kit_native_parameters {
+                    constexpr uint8_t CHECKED_PARAMETER_VALUE = 0;
+                    constexpr uint8_t CHECKED_PARAMETER_MISSING = 1;
+                    constexpr uint8_t CHECKED_PARAMETER_STATIC_UNINITIALIZED = 2;
+                    constexpr uint8_t CHECKED_PARAMETER_DYNAMIC_NOT_SET = 3;
+
+                    std::atomic<uint64_t> checked_parameter_calls{0};
+                    std::atomic<uint64_t> checked_parameter_node_value_copies{0};
+                    std::atomic<uint64_t> checked_parameter_result_copies{0};
+
+                    class CheckedParameterResult final {
+                    public:
+                      explicit CheckedParameterResult(uint8_t status)
+                      : status_(status) {}
+
+                      CheckedParameterResult(
+                          uint8_t status, rclcpp::Parameter parameter)
+                      : status_(status),
+                        parameter_(std::move(parameter)),
+                        has_parameter_(true) {}
+
+                      CheckedParameterResult(const CheckedParameterResult& other)
+                      : status_(other.status_),
+                        parameter_(other.parameter_),
+                        has_parameter_(other.has_parameter_)
+                      {
+                        checked_parameter_result_copies.fetch_add(
+                          1, std::memory_order_relaxed);
+                      }
+
+                      CheckedParameterResult(CheckedParameterResult&&) = default;
+
+                      uint8_t status() const { return status_; }
+                      bool has_parameter() const { return has_parameter_; }
+
+                      const rclcpp::Parameter& parameter() const
+                      {
+                        if (!has_parameter_) {
+                          throw std::logic_error(
+                            "checked parameter result has no value");
+                        }
+                        return parameter_;
+                      }
+
+                      uintptr_t parameter_address() const
+                      {
+                        return has_parameter_
+                          ? reinterpret_cast<uintptr_t>(&parameter_)
+                          : 0;
+                      }
+
+                    private:
+                      uint8_t status_;
+                      rclcpp::Parameter parameter_;
+                      bool has_parameter_{false};
+                    };
+
+                    CheckedParameterResult get_parameter_checked(
+                        const std::shared_ptr<rclcpp::Node>& node,
+                        const std::string& name)
+                    {
+                      checked_parameter_calls.fetch_add(
+                        1, std::memory_order_relaxed);
+                      rclcpp::Parameter parameter;
+                      try {
+                        parameter = node->get_parameter(name);
+                      } catch (const rclcpp::exceptions::
+                          ParameterUninitializedException&) {
+                        return CheckedParameterResult(
+                          CHECKED_PARAMETER_STATIC_UNINITIALIZED);
+                      } catch (const rclcpp::exceptions::
+                          ParameterNotDeclaredException&) {
+                        return CheckedParameterResult(
+                          CHECKED_PARAMETER_MISSING);
+                      }
+                      checked_parameter_node_value_copies.fetch_add(
+                        1, std::memory_order_relaxed);
+                      if (parameter.get_type() ==
+                          rclcpp::ParameterType::PARAMETER_NOT_SET) {
+                        if (!node->has_parameter(name)) {
+                          return CheckedParameterResult(
+                            CHECKED_PARAMETER_MISSING);
+                        }
+                        return CheckedParameterResult(
+                          CHECKED_PARAMETER_DYNAMIC_NOT_SET,
+                          std::move(parameter));
+                      }
+                      return CheckedParameterResult(
+                        CHECKED_PARAMETER_VALUE, std::move(parameter));
+                    }
+
+                    void reset_checked_parameter_counters()
+                    {
+                      checked_parameter_calls.store(0);
+                      checked_parameter_node_value_copies.store(0);
+                      checked_parameter_result_copies.store(0);
+                    }
+
+                    uint64_t checked_parameter_call_count()
+                    {
+                      return checked_parameter_calls.load();
+                    }
+
+                    uint64_t checked_parameter_node_value_copy_count()
+                    {
+                      return checked_parameter_node_value_copies.load();
+                    }
+
+                    uint64_t checked_parameter_result_copy_count()
+                    {
+                      return checked_parameter_result_copies.load();
+                    }
+
                     class ParameterBatchInvocation {
                     public:
                       explicit ParameterBatchInvocation(
@@ -320,25 +447,32 @@ def _ensure_helpers() -> Any:
                         std::move(node), std::move(callback));
                     }
                     }  // namespace rclcpp_kit_native_parameters
-                    """
-                )
-                _HELPERS_READY = True
-    return cppyy.gbl.rclcpp_kit_native_parameters
+                """
+            )
+            _HELPERS_NAMESPACE = cppyy.gbl.rclcpp_kit_native_parameters
+            _PARAMETER_CLASS = cppyy.gbl.rclcpp.Parameter
+            _DESCRIPTOR_CLASS = cppyy.gbl.rcl_interfaces.msg.ParameterDescriptor
+            _RESULT_CLASS = cppyy.gbl.rcl_interfaces.msg.SetParametersResult
+            _HELPERS_READY = True
+    return _HELPERS_NAMESPACE
 
 
 def _parameter_class() -> Any:
-    _ensure_helpers()
-    return cppyy.gbl.rclcpp.Parameter
+    if _PARAMETER_CLASS is None:
+        _ensure_helpers()
+    return _PARAMETER_CLASS
 
 
 def _descriptor_class() -> Any:
-    _ensure_helpers()
-    return cppyy.gbl.rcl_interfaces.msg.ParameterDescriptor
+    if _DESCRIPTOR_CLASS is None:
+        _ensure_helpers()
+    return _DESCRIPTOR_CLASS
 
 
 def _result_class() -> Any:
-    _ensure_helpers()
-    return cppyy.gbl.rcl_interfaces.msg.SetParametersResult
+    if _RESULT_CLASS is None:
+        _ensure_helpers()
+    return _RESULT_CLASS
 
 
 def _require_name(name: Any) -> str:
@@ -371,21 +505,31 @@ def _uint8(value: Any) -> int:
 class NativeParameter:
     """One independently owned ``rclcpp::Parameter`` value."""
 
-    __slots__ = ("_parameter",)
+    __slots__ = ("_owner", "_parameter")
 
     def __init__(self, parameter: Any):
         parameter_type = _parameter_class()
         if not isinstance(parameter, parameter_type):
             raise TypeError("NativeParameter requires an rclcpp::Parameter")
         self._parameter = parameter_type(parameter)
+        self._owner = None
 
     @classmethod
-    def _from_cpp(cls, parameter: Any, *, copy: bool = True) -> "NativeParameter":
+    def _from_cpp(
+        cls,
+        parameter: Any,
+        *,
+        copy: bool = True,
+        owner: Any = None,
+    ) -> "NativeParameter":
         parameter_type = _parameter_class()
         if not isinstance(parameter, parameter_type):
             raise TypeError("expected an rclcpp::Parameter")
+        if copy and owner is not None:
+            raise ValueError("a copied NativeParameter cannot retain a source owner")
         result = cls.__new__(cls)
         result._parameter = parameter_type(parameter) if copy else parameter
+        result._owner = owner
         return result
 
     @property
@@ -429,6 +573,18 @@ class NativeParameter:
 
     def copy(self) -> "NativeParameter":
         return NativeParameter(self._parameter)
+
+
+@dataclass(frozen=True)
+class CheckedParameterStats:
+    """Instrumentation for the compiled checked-get boundary."""
+
+    calls: int
+    node_value_copies: int
+    result_copies: int
+
+    def to_dict(self) -> dict[str, int]:
+        return asdict(self)
 
 
 def parameter_not_set(name: str) -> NativeParameter:
@@ -619,7 +775,43 @@ def has_parameter(node: Any, name: str) -> bool:
 
 def get_parameter(node: Any, name: str) -> NativeParameter:
     return NativeParameter._from_cpp(
-        node.get_parameter(_require_name(name)), copy=True)
+        node.get_parameter(_require_name(name)), copy=False)
+
+
+def get_parameter_checked(
+    node: Any,
+    name: str,
+) -> tuple[int, NativeParameter | None]:
+    """Return one checked exact-C++ value and its declaration status."""
+    namespace = _HELPERS_NAMESPACE
+    if namespace is None:
+        namespace = _ensure_helpers()
+    result = namespace.get_parameter_checked(node, _require_name(name))
+    status = int(result.status())
+    if not bool(result.has_parameter()):
+        return status, None
+    parameter = NativeParameter._from_cpp(
+        result.parameter(), copy=False, owner=result)
+    return status, parameter
+
+
+def reset_checked_parameter_stats() -> None:
+    namespace = _HELPERS_NAMESPACE
+    if namespace is None:
+        namespace = _ensure_helpers()
+    namespace.reset_checked_parameter_counters()
+
+
+def checked_parameter_stats() -> CheckedParameterStats:
+    namespace = _HELPERS_NAMESPACE
+    if namespace is None:
+        namespace = _ensure_helpers()
+    return CheckedParameterStats(
+        calls=int(namespace.checked_parameter_call_count()),
+        node_value_copies=int(
+            namespace.checked_parameter_node_value_copy_count()),
+        result_copies=int(namespace.checked_parameter_result_copy_count()),
+    )
 
 
 def get_parameters(node: Any, names: Iterable[str]) -> tuple[NativeParameter, ...]:
@@ -834,6 +1026,7 @@ def add_post_set_parameters_callback(
 
 
 __all__ = [
+    "CheckedParameterStats",
     "NativeParameter",
     "NativeParameterCallback",
     "NativeParameterCallbackStats",
@@ -847,13 +1040,19 @@ __all__ = [
     "PARAMETER_INTEGER_ARRAY",
     "PARAMETER_DOUBLE_ARRAY",
     "PARAMETER_STRING_ARRAY",
+    "CHECKED_PARAMETER_DYNAMIC_NOT_SET",
+    "CHECKED_PARAMETER_MISSING",
+    "CHECKED_PARAMETER_STATIC_UNINITIALIZED",
+    "CHECKED_PARAMETER_VALUE",
     "add_on_set_parameters_callback",
     "add_post_set_parameters_callback",
     "add_pre_set_parameters_callback",
     "declare_parameter",
     "declare_parameter_type",
     "describe_parameters",
+    "checked_parameter_stats",
     "get_parameter",
+    "get_parameter_checked",
     "get_parameter_types",
     "get_parameters",
     "has_parameter",
@@ -871,6 +1070,7 @@ __all__ = [
     "parameter_string",
     "parameter_string_array",
     "parameter_vector",
+    "reset_checked_parameter_stats",
     "set_parameters",
     "set_parameters_atomically",
 ]
