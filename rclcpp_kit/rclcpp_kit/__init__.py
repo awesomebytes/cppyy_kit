@@ -76,6 +76,11 @@ from rclcpp_kit.native_service import (
     NativeServiceStats,
     create_native_service,
 )
+from rclcpp_kit.python_service import (
+    PythonService,
+    PythonServiceStats,
+    create_python_service,
+)
 from rclcpp_kit.native_client import (
     NativeClient,
     NativeClientStats,
@@ -133,6 +138,9 @@ __all__ = [
     "NativeService",
     "NativeServiceStats",
     "create_native_service",
+    "PythonService",
+    "PythonServiceStats",
+    "create_python_service",
     "NativeClient",
     "NativeClientStats",
     "create_native_client",

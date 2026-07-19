@@ -31,7 +31,7 @@ def test_managed_native_services_and_clients_interoperate_with_aot_peer(tmp_path
     env["ROS_DOMAIN_ID"] = str(100 + os.getpid() % 100)
     env["ROS_AUTOMATIC_DISCOVERY_RANGE"] = "LOCALHOST"
     results = {}
-    for scenario in ("service", "client"):
+    for scenario in ("service", "python-service", "client"):
         helper = subprocess.run(
             [
                 sys.executable,
@@ -49,4 +49,5 @@ def test_managed_native_services_and_clients_interoperate_with_aot_peer(tmp_path
         assert f"NATIVE_AOT_INTEROP_OK scenario={scenario}" in helper.stdout
         results[scenario] = helper.stdout
     assert "MANAGED_SERVICE_TO_AOT_CLIENT_OK" in results["service"]
+    assert "PYTHON_SERVICE_TO_AOT_CLIENT_OK" in results["python-service"]
     assert "MANAGED_CLIENT_TO_AOT_SERVICE_OK" in results["client"]

@@ -33,6 +33,7 @@ class NativeClientStats:
     pending_requests: int
     python_request_crossings: int
     python_response_crossings: int
+    cpp_request_copies: int
     compile_cache_hits: int
     compile_cache_misses: int
 
@@ -98,6 +99,14 @@ class NativeClient:
             cpp_request = request
         return int(self._implementation.send(cpp_request))
 
+    def send_cpp_value(self, request: Any) -> int:
+        """Copy and submit one actual C++ request value without conversion."""
+        if self._closed:
+            raise RuntimeError("NativeClient is closed")
+        if hasattr(request, "get_fields_and_field_types"):
+            raise TypeError("send_cpp_value requires an actual C++ request value")
+        return int(self._implementation.send_cpp_value(request))
+
     def ready(self, token: int) -> bool:
         if self._closed:
             raise RuntimeError("NativeClient is closed")
@@ -125,6 +134,7 @@ class NativeClient:
             pending_requests=int(impl.pending_requests()),
             python_request_crossings=int(impl.python_request_crossings()),
             python_response_crossings=int(impl.python_response_crossings()),
+            cpp_request_copies=int(impl.cpp_request_copies()),
             compile_cache_hits=int(bool(self.compile_result.get("cached"))),
             compile_cache_misses=int(not bool(self.compile_result.get("cached"))),
         )
@@ -154,6 +164,7 @@ def create_native_client(
     payload = json.dumps({
         "type": cpp_type,
         "header": header,
+        "adapter_api": 2,
     }, sort_keys=True, separators=(",", ":"))
     source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
     interface = "NativeClient_%s" % source_id
@@ -182,6 +193,7 @@ public:
   virtual bool service_is_ready() const = 0;
   virtual bool wait_for_service(int64_t timeout_ns) const = 0;
   virtual uint64_t send(std::shared_ptr<%(cpp_type)s::Request> request) = 0;
+  virtual uint64_t send_cpp_value(const %(cpp_type)s::Request& request) = 0;
   virtual bool ready(uint64_t token) const = 0;
   virtual std::shared_ptr<%(cpp_type)s::Response> take(uint64_t token) = 0;
   virtual bool cancel(uint64_t token) = 0;
@@ -192,6 +204,7 @@ public:
   virtual uint64_t pending_requests() const = 0;
   virtual uint64_t python_request_crossings() const = 0;
   virtual uint64_t python_response_crossings() const = 0;
+  virtual uint64_t cpp_request_copies() const = 0;
   virtual void close() = 0;
 };
 """ % {
@@ -258,6 +271,25 @@ public:
   uint64_t send(std::shared_ptr<%(cpp_type)s::Request> request) override
   {
     python_request_crossings_.fetch_add(1, std::memory_order_relaxed);
+    return send_owned(std::move(request));
+  }
+
+  uint64_t send_cpp_value(const %(cpp_type)s::Request& request) override
+  {
+    python_request_crossings_.fetch_add(1, std::memory_order_relaxed);
+    std::shared_ptr<%(cpp_type)s::Request> owned;
+    try {
+      owned = std::make_shared<%(cpp_type)s::Request>(request);
+      cpp_request_copies_.fetch_add(1, std::memory_order_relaxed);
+    } catch (...) {
+      exceptions_.fetch_add(1, std::memory_order_relaxed);
+      throw;
+    }
+    return send_owned(std::move(owned));
+  }
+
+  uint64_t send_owned(std::shared_ptr<%(cpp_type)s::Request> request)
+  {
     if (!request) {
       throw std::invalid_argument("request must not be null");
     }
@@ -338,6 +370,10 @@ public:
   {
     return python_response_crossings_.load();
   }
+  uint64_t cpp_request_copies() const override
+  {
+    return cpp_request_copies_.load();
+  }
 
   void close() override
   {
@@ -383,6 +419,7 @@ private:
   std::atomic<uint64_t> exceptions_{0};
   std::atomic<uint64_t> python_request_crossings_{0};
   std::atomic<uint64_t> python_response_crossings_{0};
+  std::atomic<uint64_t> cpp_request_copies_{0};
 };
 
 %(signature)s

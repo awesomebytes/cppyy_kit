@@ -2,6 +2,8 @@
 
 import time
 
+import cppyy
+
 from rclcpp_kit.native import native
 from rclpy.context import Context
 from rclpy.executors import SingleThreadedExecutor
@@ -59,6 +61,15 @@ def main():
         else:
             raise AssertionError("a completed call token remained usable")
 
+        cpp_value = cppyy.gbl.std_srvs.srv.SetBool.Request()
+        cpp_value.data = False
+        value_token = client.send_cpp_value(cpp_value)
+        while time.monotonic() < deadline and not client.ready(value_token):
+            server_executor.spin_once(timeout_sec=0.02)
+        value_response = client.take(value_token)
+        assert value_response.success is False
+        assert value_response.message == "stock-python-response"
+
         cpp_request = client.make_request()
         cpp_request.data = False
         canceled_token = client.send(cpp_request)
@@ -74,13 +85,14 @@ def main():
         else:
             raise AssertionError("an unprocessed request produced a response")
         stats = client.stats()
-        assert stats.requests_sent == 3
-        assert stats.responses_taken == 1
+        assert stats.requests_sent == 4
+        assert stats.responses_taken == 2
         assert stats.canceled == 1
         assert stats.exceptions == 0
         assert stats.pending_requests == 1
-        assert stats.python_request_crossings == 3
-        assert stats.python_response_crossings == 1
+        assert stats.python_request_crossings == 4
+        assert stats.python_response_crossings == 2
+        assert stats.cpp_request_copies == 1
         assert stats.compile_cache_hits + stats.compile_cache_misses == 1
         assert executor_thread.exceptions == 0
         print("NATIVE_CLIENT_OK")

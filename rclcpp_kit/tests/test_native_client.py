@@ -21,6 +21,8 @@ def test_closed_client_rejects_new_work_without_touching_cpp():
     with pytest.raises(RuntimeError, match="closed"):
         client.send(object())
     with pytest.raises(RuntimeError, match="closed"):
+        client.send_cpp_value(object())
+    with pytest.raises(RuntimeError, match="closed"):
         client.ready(1)
     with pytest.raises(RuntimeError, match="closed"):
         client.take(1)

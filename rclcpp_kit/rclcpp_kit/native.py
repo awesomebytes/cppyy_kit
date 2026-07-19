@@ -189,6 +189,7 @@ class NativeCapabilities:
     callback_groups: bool = True
     callback_group_entity_options: bool = True
     managed_native_services: bool = True
+    managed_python_services: bool = True
     managed_native_clients: bool = True
     native_service_client_coexistence: str = "runtime_compiler_or_warm_cache"
     managed_native_action_clients: bool = True
@@ -498,6 +499,23 @@ class NativeSession:
             service_name,
             callback_body,
             **options,
+        )
+
+    def create_python_service(
+        self,
+        node: Any,
+        service_type: Any,
+        service_name: str,
+        callback: Any,
+    ) -> Any:
+        """Create an owned typed service with a synchronous Python callback."""
+        from rclcpp_kit.python_service import create_python_service
+        return create_python_service(
+            self,
+            node,
+            service_type,
+            service_name,
+            callback,
         )
 
     def create_native_client(
