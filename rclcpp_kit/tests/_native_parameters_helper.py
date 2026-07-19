@@ -165,6 +165,11 @@ def main():
             parameters.parameter_not_set("dynamic_pending"),
             dynamic_descriptor,
         )
+        dynamic_owned = parameters.declare_parameter(
+            node,
+            parameters.parameter_integer("dynamic_owned", 6),
+            dynamic_descriptor,
+        )
 
         assert parameters.has_parameter(node, "count")
         assert parameters.get_parameter(node, "count").value_snapshot() == 1
@@ -197,6 +202,10 @@ def main():
             "result_copies": 0,
         }
         retained.extend((checked_count, checked_dynamic))
+
+        parameters.undeclare_parameter(node, "dynamic_owned")
+        assert not parameters.has_parameter(node, "dynamic_owned")
+        assert dynamic_owned.value_snapshot() == 6
 
         described = parameters.describe_parameters(node, ["count"])
         assert len(described) == 1
@@ -375,6 +384,7 @@ def main():
 
     assert [value.value_snapshot() for value in retained[-4:]] == [77, 66, 55, 55]
     assert [value.value_snapshot() for value in retained[:2]] == [1, None]
+    assert dynamic_owned.value_snapshot() == 6
 
     restart_session = native(["native-parameters-restart"])
     restart_session.open()

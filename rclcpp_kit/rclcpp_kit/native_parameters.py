@@ -771,6 +771,11 @@ def declare_parameter_type(
     return NativeParameter._from_cpp(value, copy=False)
 
 
+def undeclare_parameter(node: Any, name: str) -> None:
+    """Remove one parameter through the public ``rclcpp::Node`` API."""
+    node.undeclare_parameter(_require_name(name))
+
+
 def has_parameter(node: Any, name: str) -> bool:
     return bool(node.has_parameter(_require_name(name)))
 
@@ -1075,4 +1080,5 @@ __all__ = [
     "reset_checked_parameter_stats",
     "set_parameters",
     "set_parameters_atomically",
+    "undeclare_parameter",
 ]
