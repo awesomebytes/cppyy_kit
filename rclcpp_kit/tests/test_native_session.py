@@ -46,6 +46,8 @@ def test_capabilities_are_structured_and_conservative():
         "subscription_message_lost",
     )
     assert report["qos_event_incompatible_type"] == "rmw_runtime_query"
+    assert report["managed_content_filter"] == "rmw_runtime_query"
+    assert report["managed_qos_overriding_options"] is True
     assert report["raw_rclcpp"] is True
 
 

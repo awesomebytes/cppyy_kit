@@ -318,6 +318,39 @@ def qos_event_capabilities(requested_events: Iterable[str]) -> dict[str, Any]:
     }
 
 
+def content_filter_capabilities(
+        subscription: Any, requested: bool) -> dict[str, Any]:
+    """Report whether content filtering is actually honored for one subscription.
+
+    Wraps ``subscription.is_cft_enabled()`` -- the only reliable, per-RMW-honest
+    signal (verified: ``rmw_cyclonedds_cpp``'s ``rmw_subscription_set_content_filter``
+    / ``rmw_subscription_get_content_filter`` are literal "unimplemented" stubs, so
+    creating a subscription with a non-empty filter does not error on Cyclone; the
+    rmw silently creates an ordinary, unfiltered subscription instead).
+    """
+    try:
+        enabled = bool(subscription.is_cft_enabled())
+    except Exception as exc:
+        return {
+            "supported": False,
+            "reason": "is_cft_enabled() query failed: %s" % exc,
+        }
+    if not requested:
+        return {
+            "supported": enabled,
+            "reason": "content filter was not requested for this subscription",
+        }
+    if enabled:
+        return {
+            "supported": True,
+            "reason": "requested filter is enabled on the active RMW",
+        }
+    return {
+        "supported": False,
+        "reason": "requested filter was not enabled by the active RMW",
+    }
+
+
 @dataclass(frozen=True)
 class NativeCapabilities:
     """Capabilities known before creating a concrete publisher or subscription."""
@@ -375,6 +408,8 @@ class NativeCapabilities:
         "subscription_message_lost",
     )
     qos_event_incompatible_type: str = "rmw_runtime_query"
+    managed_content_filter: str = "rmw_runtime_query"
+    managed_qos_overriding_options: bool = True
     raw_rclcpp: bool = True
 
     def to_dict(self) -> dict[str, Any]:
@@ -827,6 +862,7 @@ __all__ = [
     "NativeCapabilities",
     "NativeExecutorThread",
     "NativeSession",
+    "content_filter_capabilities",
     "native",
     "publisher_capabilities",
     "qos_event_capabilities",

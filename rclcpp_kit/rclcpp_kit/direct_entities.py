@@ -291,6 +291,73 @@ def _validate_event_callbacks(event_callbacks: Any, allowed_names: tuple) -> dic
     return validated
 
 
+class ContentFilterUnsupported(RuntimeError):
+    """Content filtering was requested but the active RMW does not honor it.
+
+    Verified: ``rmw_cyclonedds_cpp``'s ``rmw_subscription_set_content_filter`` /
+    ``rmw_subscription_get_content_filter`` are literal "unimplemented" stubs (the
+    binary carries those exact strings). Creating a subscription with a
+    non-empty ``content_filter_options`` does not error at ``rcl_subscription_init``
+    on Cyclone -- the rmw silently creates an ordinary (unfiltered) subscription.
+    That silent no-op is exactly the fail-closed hazard this exception exists to
+    prevent: the foundation probes ``is_cft_enabled()`` immediately after
+    creation and raises here instead of ever returning an unfiltered
+    subscription under the guise of filtering.
+    """
+
+
+_CONTENT_FILTER_MAX_PARAMETERS = 100
+
+
+def _validate_content_filter(
+        content_filter: Any) -> tuple[str, tuple[str, ...]] | None:
+    """Fence a ``content_filter=(expression, parameters)`` argument.
+
+    ``None`` means no filter requested. Otherwise a 2-item sequence of a
+    non-empty ``str`` filter expression and a sequence of ``str`` expression
+    parameters (``%0``..``%n`` placeholders), at most 100 entries -- matching
+    ``rclcpp::ContentFilterOptions``.
+    """
+    if content_filter is None:
+        return None
+    if isinstance(content_filter, str) or not isinstance(
+            content_filter, (tuple, list)) or len(content_filter) != 2:
+        raise TypeError(
+            "content_filter must be a (expression, parameters) pair or None")
+    expression, parameters = content_filter
+    if not isinstance(expression, str) or not expression:
+        raise ValueError("content_filter expression must be a non-empty str")
+    if isinstance(parameters, str) or not isinstance(parameters, (tuple, list)):
+        raise TypeError("content_filter parameters must be a sequence of str")
+    parameters = tuple(parameters)
+    if len(parameters) > _CONTENT_FILTER_MAX_PARAMETERS:
+        raise ValueError(
+            "content_filter parameters must have at most %d entries" %
+            _CONTENT_FILTER_MAX_PARAMETERS)
+    for parameter in parameters:
+        if not isinstance(parameter, str):
+            raise TypeError("content_filter parameters must all be str")
+    return expression, parameters
+
+
+def _validate_qos_overriding(qos_overriding: Any) -> bool:
+    """Fence a ``qos_overriding=`` argument.
+
+    Only a plain ``bool`` is supported this wave: ``True`` attaches
+    ``QosOverridingOptions::with_default_policies()`` (history, depth,
+    reliability -- the exact set the DoD proves declares and honors overrides);
+    ``None``/``False`` attaches nothing. A custom policy-kind subset and a
+    user-supplied validation callback are deferred (see the plan's OUT-of-scope
+    list) -- accepting a narrower request and silently applying the full default
+    set would over-claim, so that surface simply isn't exposed yet.
+    """
+    if qos_overriding is None:
+        return False
+    if not isinstance(qos_overriding, bool):
+        raise TypeError("qos_overriding must be a bool")
+    return qos_overriding
+
+
 # Verified against the installed librmw_cyclonedds_cpp.so: it carries no
 # dds_lset_incompatible_type_arg symbol at all (no DDS listener exists for this
 # event on Cyclone) -- yet rcl_subscription_event_init / rcl_publisher_event_init
@@ -780,17 +847,27 @@ def create_managed_publisher(
     return managed
 
 
-def _create_subscription_with_events(
+def _create_subscription_with_options(
     node: Any,
     message_type: Any,
     topic: str,
     callback: Callable[[Any], None],
     qos: Any,
     validated_events: dict,
+    validated_filter: tuple[str, tuple[str, ...]] | None,
+    with_default_qos_overriding: bool,
     *,
     callback_group: Any = None,
 ) -> DirectSubscription:
-    """Create a subscription with ``SubscriptionEventCallbacks`` bound at construction."""
+    """Create a subscription with events, a content filter, and/or QoS-override
+    options bound at construction.
+
+    Content filter and QoS-override options are set directly on the built
+    ``SubscriptionOptions`` (unlike callback groups and event callbacks, cppyy
+    assigns these plain-value fields -- ``std::string``, ``std::vector<std::string>``,
+    and the copy-assignable ``QosOverridingOptions`` -- without needing a
+    dedicated C++ marshaling helper; verified empirically before relying on it).
+    """
     _reject_incompatible_type_if_unsupported(validated_events)
     cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
@@ -805,6 +882,13 @@ def _create_subscription_with_events(
     ](dispatch_callback)
     options, cpp_event_callbacks = _subscription_options_with_events(
         node, callback_group, validated_events)
+    if validated_filter is not None:
+        expression, parameters = validated_filter
+        options.content_filter_options.filter_expression = expression
+        options.content_filter_options.expression_parameters = list(parameters)
+    if with_default_qos_overriding:
+        options.qos_overriding_options = (
+            cppyy.gbl.rclcpp.QosOverridingOptions.with_default_policies())
     original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
     if original is None:
         raise TypeError("node has no original typed rclcpp subscription factory")
@@ -816,12 +900,19 @@ def _create_subscription_with_events(
                 "incompatible_type not supported by the active RMW: %s" % exc
             ) from exc
         raise
+    if validated_filter is not None and not bool(entity.is_cft_enabled()):
+        # The just-created entity is released before raising -- no unfiltered
+        # subscription is ever returned under the guise of filtering.
+        entity = None
+        raise ContentFilterUnsupported(
+            "content filtering not supported by %s; refusing to return an "
+            "unfiltered subscription" % _active_rmw_implementation())
     return DirectSubscription(
         entity,
         callback,
         dispatch_callback,
         cpp_callback,
-        "rclcpp_template_with_events",
+        "rclcpp_template_with_options",
         owning_cpp_copy_count,
         callback_group,
         event_callbacks=validated_events,
@@ -839,16 +930,24 @@ def create_subscription(
     with_message_info: bool = False,
     callback_group: Any = None,
     event_callbacks: Any = None,
+    content_filter: Any = None,
+    qos_overriding: Any = None,
 ) -> DirectSubscription:
     """Create a typed subscription whose callback receives an owning C++ copy.
 
     ``with_message_info=True`` adds a Jazzy-compatible metadata dictionary as
     the second callback argument without changing the generated C++ message.
     ``event_callbacks`` binds ``SubscriptionEventCallbacks`` at construction (a
-    mapping of ``{event_name: python_callable}``; see ``_SUBSCRIPTION_EVENT_NAMES``)
-    and cannot be combined with ``with_message_info``. Requesting
-    ``incompatible_type`` on an RMW that does not support it (the production
-    default, Cyclone) raises :class:`QoSEventUnsupported`.
+    mapping of ``{event_name: python_callable}``; see ``_SUBSCRIPTION_EVENT_NAMES``).
+    ``content_filter`` is an optional ``(expression, parameters)`` pair
+    (``ContentFilterOptions``); requesting one on an RMW that silently drops it
+    (the production default, Cyclone) raises :class:`ContentFilterUnsupported`
+    rather than ever returning an unfiltered subscription. ``qos_overriding=True``
+    attaches ``QosOverridingOptions::with_default_policies()`` (declares
+    ``qos_overrides.<topic>.subscription.{history,depth,reliability}`` node
+    parameters). None of these three can be combined with ``with_message_info``.
+    Requesting ``incompatible_type`` on an RMW that does not support it (the
+    production default, Cyclone) raises :class:`QoSEventUnsupported`.
     """
     if not callable(callback):
         raise TypeError("subscription callback must be callable")
@@ -856,10 +955,13 @@ def create_subscription(
         raise TypeError("with_message_info must be boolean")
     validated_events = _validate_event_callbacks(
         event_callbacks, _SUBSCRIPTION_EVENT_NAMES)
+    validated_filter = _validate_content_filter(content_filter)
+    validated_qos_overriding = _validate_qos_overriding(qos_overriding)
     if with_message_info:
-        if validated_events:
+        if validated_events or validated_filter is not None or validated_qos_overriding:
             raise ValueError(
-                "event_callbacks cannot be combined with with_message_info")
+                "event_callbacks/content_filter/qos_overriding cannot be "
+                "combined with with_message_info")
         return _create_subscription_with_message_info(
             node,
             message_type,
@@ -868,14 +970,16 @@ def create_subscription(
             qos,
             callback_group=callback_group,
         )
-    if validated_events:
-        return _create_subscription_with_events(
+    if validated_events or validated_filter is not None or validated_qos_overriding:
+        return _create_subscription_with_options(
             node,
             message_type,
             topic,
             callback,
             qos,
             validated_events,
+            validated_filter,
+            validated_qos_overriding,
             callback_group=callback_group,
         )
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
@@ -1138,6 +1242,7 @@ def create_clock_timer(
 
 
 __all__ = [
+    "ContentFilterUnsupported",
     "DirectSubscription",
     "DirectTimer",
     "QoSEventUnsupported",
