@@ -67,6 +67,10 @@ from rclcpp_kit.native_waitset import (
     create_native_guard_condition,
     create_native_wait_set,
 )
+from rclcpp_kit.native_clock_sleep import (
+    NativeClockSleeper,
+    create_native_clock_sleeper,
+)
 from rclcpp_kit.native_pipeline import (
     FusedPipeline,
     NativeCallback,
@@ -156,6 +160,8 @@ __all__ = [
     "NativeWaitSet",
     "create_native_guard_condition",
     "create_native_wait_set",
+    "NativeClockSleeper",
+    "create_native_clock_sleeper",
     "FusedPipeline",
     "NativeCallback",
     "NativeStats",

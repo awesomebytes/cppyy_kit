@@ -198,6 +198,7 @@ class NativeCapabilities:
     managed_node_clock: bool = True
     managed_guard_conditions: bool = True
     managed_wait_sets: bool = True
+    managed_clock_sleep: bool = True
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
     intra_process: bool = True
@@ -444,6 +445,11 @@ class NativeSession:
         """Create a session-owned wait set on this session's context."""
         from rclcpp_kit.native_waitset import create_native_wait_set
         return create_native_wait_set(self)
+
+    def create_native_clock_sleeper(self, node: Any) -> Any:
+        """Retain a ROS-time-aware, context-interruptible sleeper for a node."""
+        from rclcpp_kit.native_clock_sleep import create_native_clock_sleeper
+        return create_native_clock_sleeper(self, node)
 
     def create_publisher_options(self, callback_group: Any) -> Any:
         """Create options with a callback group cppyy cannot assign directly."""
