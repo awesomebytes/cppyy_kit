@@ -45,6 +45,14 @@ def _cache_dir() -> str:
     return os.path.join(base, "cppyy_kit", "native-actions")
 
 
+def _action_library_paths(package: str) -> tuple[str, ...]:
+    """Return base ROS and package-local link paths without duplicates."""
+    return tuple(dict.fromkeys((
+        get_ros2_lib_path(),
+        os.path.join(get_package_prefix(package), "lib"),
+    )))
+
+
 @dataclass(frozen=True)
 class CppActionTypes:
     """Actual generated C++ types underlying one Python ROS action class."""
@@ -1060,7 +1068,7 @@ private:
         "decls": declarations,
         "name": "rclcpp_native_action_%s" % source_id,
         "include_paths": tuple(sorted(ros2_include_paths())),
-        "library_paths": (get_ros2_lib_path(),),
+        "library_paths": _action_library_paths(package),
         "libraries": (
             "rclcpp_action",
             "rclcpp",

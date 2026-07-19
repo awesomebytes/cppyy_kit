@@ -1,12 +1,33 @@
 import pytest
 
 from _run_helper import format_output, run_helper
+from rclcpp_kit import native_action
 from rclcpp_kit.native_action import NativeActionClient, create_native_action_client
 
 
 class _ClosedImplementation:
     def close(self):
         pass
+
+
+def test_action_link_paths_include_custom_package_prefix(monkeypatch):
+    monkeypatch.setattr(native_action, "get_ros2_lib_path", lambda: "/opt/ros/lib")
+    monkeypatch.setattr(
+        native_action,
+        "get_package_prefix",
+        lambda package: "/workspace/install/%s" % package,
+    )
+    assert native_action._action_library_paths("custom_actions") == (
+        "/opt/ros/lib",
+        "/workspace/install/custom_actions/lib",
+    )
+
+
+def test_action_link_paths_deduplicate_base_package_prefix(monkeypatch):
+    monkeypatch.setattr(native_action, "get_ros2_lib_path", lambda: "/env/lib")
+    monkeypatch.setattr(
+        native_action, "get_package_prefix", lambda _package: "/env")
+    assert native_action._action_library_paths("tf2_msgs") == ("/env/lib",)
 
 
 def test_closed_action_client_rejects_new_work_without_touching_cpp():
