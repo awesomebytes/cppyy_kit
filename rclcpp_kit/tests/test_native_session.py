@@ -18,6 +18,8 @@ def test_capabilities_are_structured_and_conservative():
     assert report["managed_native_action_clients"] is True
     assert report["managed_native_action_servers"] is True
     assert report["managed_node_clock"] is True
+    assert report["managed_guard_conditions"] is True
+    assert report["managed_wait_sets"] is True
     assert report["managed_lifecycle_nodes"] is True
     assert report["managed_component_containers"] is True
     assert report["intra_process"] is True

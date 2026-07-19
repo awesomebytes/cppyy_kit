@@ -196,6 +196,8 @@ class NativeCapabilities:
     managed_native_action_clients: bool = True
     managed_native_action_servers: bool = True
     managed_node_clock: bool = True
+    managed_guard_conditions: bool = True
+    managed_wait_sets: bool = True
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
     intra_process: bool = True
@@ -432,6 +434,16 @@ class NativeSession:
         """Retain a session-owned node's exact ``rclcpp::Clock``."""
         from rclcpp_kit.native_clock import create_native_node_clock
         return create_native_node_clock(self, node)
+
+    def create_native_guard_condition(self) -> Any:
+        """Create a session-owned guard condition on this session's context."""
+        from rclcpp_kit.native_waitset import create_native_guard_condition
+        return create_native_guard_condition(self)
+
+    def create_native_wait_set(self) -> Any:
+        """Create a session-owned wait set on this session's context."""
+        from rclcpp_kit.native_waitset import create_native_wait_set
+        return create_native_wait_set(self)
 
     def create_publisher_options(self, callback_group: Any) -> Any:
         """Create options with a callback group cppyy cannot assign directly."""
