@@ -2,6 +2,7 @@
 
 import pytest
 
+from _run_helper import format_output, run_helper
 from rclcpp_kit import direct_entities
 
 
@@ -60,6 +61,65 @@ def test_publisher_factory_uses_original_template_without_callable_adapter(monke
     assert original_calls == [("topic", "qos")]
 
 
+def test_managed_publisher_factory_keeps_publish_in_cppyy(monkeypatch):
+    cpp_type = type("CppType", (), {})
+    publisher = type(
+        "Publisher",
+        (),
+        {"__smartptr__": lambda self: "smart-publisher"},
+    )()
+    calls = []
+    monkeypatch.setattr(
+        direct_entities,
+        "resolve_supported_type",
+        lambda value: ("std_msgs::msg::UInt64", cpp_type, "header"),
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_managed_publisher_factory",
+        lambda selected: (
+            calls.append(("type", selected))
+            or (lambda smart: calls.append(("publisher", smart)) or "managed")
+        ),
+    )
+
+    assert direct_entities.manage_publisher(publisher, cpp_type) == "managed"
+    assert calls == [
+        ("type", cpp_type),
+        ("publisher", "smart-publisher"),
+    ]
+
+
+def test_create_managed_publisher_wraps_raw_factory(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        direct_entities,
+        "create_publisher",
+        lambda *args: calls.append(("create", args)) or "raw",
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "manage_publisher",
+        lambda *args: calls.append(("manage", args)) or "managed",
+    )
+    node = object()
+    message_type = object()
+
+    assert direct_entities.create_managed_publisher(
+        node, message_type, "topic", "qos") == "managed"
+    assert calls == [
+        ("create", (node, message_type, "topic", "qos")),
+        ("manage", ("raw", message_type)),
+    ]
+
+
+def test_managed_publisher_is_typed_cpp_and_closes_cached_publish_calls():
+    process = run_helper("_managed_direct_publisher_helper.py", timeout=240)
+    assert process.returncode == 0, format_output(process)
+    assert "MANAGED_DIRECT_PUBLISHER_AB" in process.stdout
+    assert "MANAGED_DIRECT_PUBLISHER_LIFETIME_OK" in process.stdout
+
+
 def test_python_message_types_are_rejected_before_resolution():
     with pytest.raises(TypeError, match=r"actual cppyy C\+\+ message class"):
         direct_entities.resolve_supported_type(object())
@@ -109,6 +169,14 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
     assert received[0] is not borrowed
     assert direct.owning_cpp_copy_count == 1
     assert direct.creation_route == "prebuilt_subscription_trampoline"
+    assert direct.close()
+    assert not direct.close()
+    assert direct.closed
+    assert direct.entity is None
+    assert direct.callback is None
+    assert direct.dispatch_callback is None
+    assert direct.cpp_callback is None
+    assert direct.owning_cpp_copy_count == 1
 
 
 def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):

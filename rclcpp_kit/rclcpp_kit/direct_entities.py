@@ -8,6 +8,7 @@ header, canonical cppyy alias, and C++ typesupport library must all be present.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import threading
 from typing import Any, Callable
 
 import cppyy
@@ -20,21 +21,101 @@ from rclcpp_kit.bringup_rclcpp import (
 from rclcpp_kit.direct_message_types import resolve_message_type
 
 
-@dataclass(frozen=True)
+_MANAGED_PUBLISHER_INSTALL_LOCK = threading.Lock()
+_MANAGED_PUBLISHER_NAMESPACE = "rclcpp_kit_direct_entities"
+_MANAGED_PUBLISHER_SOURCE = r"""
+#include <atomic>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+
+namespace rclcpp_kit_direct_entities {
+template<typename MessageT>
+class ManagedPublisher {
+public:
+  using PublisherT = rclcpp::Publisher<MessageT>;
+
+  explicit ManagedPublisher(std::shared_ptr<PublisherT> publisher)
+  : publisher_(std::move(publisher))
+  {
+    if (!publisher_) {
+      throw std::invalid_argument("direct publisher requires a native publisher");
+    }
+  }
+
+  void publish(const MessageT & message) const
+  {
+    require_publisher()->publish(message);
+  }
+
+  std::shared_ptr<PublisherT> entity() const
+  {
+    return require_publisher();
+  }
+
+  bool close()
+  {
+    return static_cast<bool>(std::atomic_exchange_explicit(
+      &publisher_, std::shared_ptr<PublisherT>{}, std::memory_order_acq_rel));
+  }
+
+  bool closed() const
+  {
+    return !std::atomic_load_explicit(&publisher_, std::memory_order_acquire);
+  }
+
+private:
+  std::shared_ptr<PublisherT> require_publisher() const
+  {
+    auto publisher = std::atomic_load_explicit(
+      &publisher_, std::memory_order_acquire);
+    if (!publisher) {
+      throw std::runtime_error("direct publisher is destroyed");
+    }
+    return publisher;
+  }
+
+  mutable std::shared_ptr<PublisherT> publisher_;
+};
+
+template<typename MessageT>
+std::shared_ptr<ManagedPublisher<MessageT>> manage_publisher(
+  std::shared_ptr<rclcpp::Publisher<MessageT>> publisher)
+{
+  return std::make_shared<ManagedPublisher<MessageT>>(std::move(publisher));
+}
+}
+"""
+
+
+@dataclass(eq=False)
 class DirectSubscription:
     """A direct subscription plus the callback objects its owner must retain."""
 
-    entity: Any
-    callback: Callable[[Any], None]
-    dispatch_callback: Callable[[Any], None]
+    entity: Any | None
+    callback: Callable[[Any], None] | None
+    dispatch_callback: Callable[[Any], None] | None
     cpp_callback: Any
     creation_route: str
     _owning_cpp_copy_count: list[int]
+    closed: bool = False
 
     @property
     def owning_cpp_copy_count(self) -> int:
         """Number of owning native copies constructed for Python callbacks."""
         return self._owning_cpp_copy_count[0]
+
+    def close(self) -> bool:
+        """Release the native subscription and retained callback objects once."""
+        if self.closed:
+            return False
+        self.entity = None
+        self.callback = None
+        self.dispatch_callback = None
+        self.cpp_callback = None
+        self.closed = True
+        return True
 
 
 @dataclass(eq=False)
@@ -100,6 +181,40 @@ def create_publisher(node: Any, message_type: Any, topic: str, qos: Any) -> Any:
     if original is None:
         raise TypeError("node has no original typed rclcpp publisher factory")
     return original[cpp_type](str(topic), qos)
+
+
+def _install_managed_publisher() -> None:
+    if hasattr(cppyy.gbl, _MANAGED_PUBLISHER_NAMESPACE):
+        return
+    with _MANAGED_PUBLISHER_INSTALL_LOCK:
+        if hasattr(cppyy.gbl, _MANAGED_PUBLISHER_NAMESPACE):
+            return
+        cppyy.cppdef(_MANAGED_PUBLISHER_SOURCE)
+
+
+def _managed_publisher_factory(cpp_type: Any) -> Any:
+    _install_managed_publisher()
+    namespace = getattr(cppyy.gbl, _MANAGED_PUBLISHER_NAMESPACE)
+    return namespace.manage_publisher[cpp_type]
+
+
+def manage_publisher(publisher: Any, message_type: Any) -> Any:
+    """Give a raw typed publisher closeable C++ state without a Python hot path."""
+    _, cpp_type, _ = resolve_supported_type(message_type)
+    smart_publisher = getattr(
+        publisher, "__smartptr__", lambda: publisher)()
+    return _managed_publisher_factory(cpp_type)(smart_publisher)
+
+
+def create_managed_publisher(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    qos: Any,
+) -> Any:
+    """Create a typed publisher whose publish and lifetime checks stay in C++."""
+    publisher = create_publisher(node, message_type, topic, qos)
+    return manage_publisher(publisher, message_type)
 
 
 def create_subscription(
@@ -184,9 +299,11 @@ def create_wall_timer(
 __all__ = [
     "DirectSubscription",
     "DirectTimer",
+    "create_managed_publisher",
     "create_publisher",
     "create_subscription",
     "create_wall_timer",
+    "manage_publisher",
     "qos_from_depth",
     "resolve_supported_type",
 ]
