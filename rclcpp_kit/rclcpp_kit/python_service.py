@@ -12,6 +12,7 @@ from typing import Any, Callable
 import cppyy
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
+from rclcpp_kit.direct_entities import _callback_group_for_node
 from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 
 
@@ -53,6 +54,7 @@ class PythonService:
         cpp_callback: Any,
         source_id: str,
         compile_result: dict[str, Any],
+        callback_group: Any = None,
     ):
         self._implementation = implementation
         self._callback = callback
@@ -60,6 +62,7 @@ class PythonService:
         self._cpp_callback = cpp_callback
         self.source_id = source_id
         self.compile_result = dict(compile_result)
+        self.callback_group = callback_group
         self._closed = False
 
     @property
@@ -92,6 +95,7 @@ class PythonService:
         self._cpp_callback = None
         self._dispatch_callback = None
         self._callback = None
+        self.callback_group = None
         self._closed = True
 
 
@@ -101,6 +105,8 @@ def create_python_service(
     service_type: Any,
     service_name: str,
     callback: Callable[[Any, Any], Any],
+    *,
+    callback_group: Any = None,
 ) -> PythonService:
     """Create an actual ``rclcpp`` service with a typed Python callback.
 
@@ -119,12 +125,13 @@ def create_python_service(
     payload = json.dumps({
         "type": cpp_type,
         "header": header,
-        "adapter_api": 1,
+        "adapter_api": 2,
     }, sort_keys=True, separators=(",", ":"))
     source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
     interface = "PythonService_%s" % source_id
     implementation = "PythonServiceImpl_%s" % source_id
     factory = "make_python_service_%s" % source_id
+    group_factory = factory + "_with_group"
     invocation = "PythonServiceInvocation_%s" % source_id
     callback_alias = "PythonServiceCallback_%s" % source_id
     callback_type = "std::function<void(%s*)>" % invocation
@@ -183,7 +190,16 @@ public:
         "factory": factory,
         "callback_alias": callback_alias,
     }
-    declarations = prefix + signature + ";\n}\n"
+    group_signature = """std::shared_ptr<%(interface)s> %(group_factory)s(
+  std::shared_ptr<rclcpp::Node> node,
+  const std::string& service_name,
+  %(callback_alias)s callback,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)""" % {
+        "interface": interface,
+        "group_factory": group_factory,
+        "callback_alias": callback_alias,
+    }
+    declarations = prefix + signature + ";\n" + group_signature + ";\n}\n"
     code = prefix + """
 class %(implementation)s final : public %(interface)s {
 public:
@@ -193,11 +209,11 @@ public:
   %(implementation)s(
       std::shared_ptr<rclcpp::Node> node,
       const std::string& service_name,
-      CallbackT callback)
+      CallbackT callback,
+      std::shared_ptr<rclcpp::CallbackGroup> callback_group = nullptr)
   : callback_(std::move(callback))
   {
-    service_ = node->create_service<ServiceT>(
-      service_name,
+    auto service_callback =
       [this](
           std::shared_ptr<ServiceT::Request> request,
           std::shared_ptr<ServiceT::Response> response) {
@@ -212,7 +228,15 @@ public:
           exceptions_.fetch_add(1, std::memory_order_relaxed);
           throw;
         }
-      });
+      };
+    if (callback_group) {
+      service_ = node->create_service<ServiceT>(
+        service_name, std::move(service_callback), rclcpp::ServicesQoS(),
+        std::move(callback_group));
+    } else {
+      service_ = node->create_service<ServiceT>(
+        service_name, std::move(service_callback));
+    }
   }
 
   ~%(implementation)s() override { close(); }
@@ -257,6 +281,13 @@ private:
     std::move(node), service_name, std::move(callback));
 }
 
+%(group_signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), service_name, std::move(callback),
+    std::move(callback_group));
+}
+
 }
 """ % {
         "implementation": implementation,
@@ -265,6 +296,7 @@ private:
         "callback_type": callback_type,
         "invocation": invocation,
         "signature": signature,
+        "group_signature": group_signature,
     }
     compile_options = {
         "decls": declarations,
@@ -291,8 +323,16 @@ private:
     cpp_callback = cppyy.gbl.std.function[
         "void(rclcpp_kit_python_service::%s*)" % invocation
     ](dispatch_callback)
-    implementation_object = getattr(namespace, factory)(
-        node, str(service_name), cpp_callback)
+    if callback_group is None:
+        implementation_object = getattr(namespace, factory)(
+            node, str(service_name), cpp_callback)
+    else:
+        implementation_object = getattr(namespace, group_factory)(
+            node,
+            str(service_name),
+            cpp_callback,
+            _callback_group_for_node(node, callback_group),
+        )
     result = PythonService(
         implementation_object,
         callback,
@@ -300,6 +340,7 @@ private:
         cpp_callback,
         source_id,
         compile_result,
+        callback_group,
     )
     return owner.register_resource(result)
 

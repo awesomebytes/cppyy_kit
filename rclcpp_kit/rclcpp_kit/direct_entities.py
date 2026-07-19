@@ -37,8 +37,10 @@ class ManagedPublisher {
 public:
   using PublisherT = rclcpp::Publisher<MessageT>;
 
-  explicit ManagedPublisher(std::shared_ptr<PublisherT> publisher)
-  : publisher_(std::move(publisher))
+  explicit ManagedPublisher(
+    std::shared_ptr<PublisherT> publisher,
+    std::shared_ptr<rclcpp::CallbackGroup> callback_group = nullptr)
+  : publisher_(std::move(publisher)), callback_group_(std::move(callback_group))
   {
     if (!publisher_) {
       throw std::invalid_argument("direct publisher requires a native publisher");
@@ -57,8 +59,12 @@ public:
 
   bool close()
   {
-    return static_cast<bool>(std::atomic_exchange_explicit(
+    const bool released = static_cast<bool>(std::atomic_exchange_explicit(
       &publisher_, std::shared_ptr<PublisherT>{}, std::memory_order_acq_rel));
+    std::atomic_exchange_explicit(
+      &callback_group_, std::shared_ptr<rclcpp::CallbackGroup>{},
+      std::memory_order_acq_rel);
+    return released;
   }
 
   bool closed() const
@@ -78,6 +84,7 @@ private:
   }
 
   mutable std::shared_ptr<PublisherT> publisher_;
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group_;
 };
 
 template<typename MessageT>
@@ -85,6 +92,15 @@ std::shared_ptr<ManagedPublisher<MessageT>> manage_publisher(
   std::shared_ptr<rclcpp::Publisher<MessageT>> publisher)
 {
   return std::make_shared<ManagedPublisher<MessageT>>(std::move(publisher));
+}
+
+template<typename MessageT>
+std::shared_ptr<ManagedPublisher<MessageT>> manage_publisher(
+  std::shared_ptr<rclcpp::Publisher<MessageT>> publisher,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)
+{
+  return std::make_shared<ManagedPublisher<MessageT>>(
+    std::move(publisher), std::move(callback_group));
 }
 }
 """
@@ -100,6 +116,7 @@ class DirectSubscription:
     cpp_callback: Any
     creation_route: str
     _owning_cpp_copy_count: list[int]
+    callback_group: Any = None
     closed: bool = False
 
     @property
@@ -115,6 +132,7 @@ class DirectSubscription:
         self.callback = None
         self.dispatch_callback = None
         self.cpp_callback = None
+        self.callback_group = None
         self.closed = True
         return True
 
@@ -128,6 +146,7 @@ class DirectTimer:
     cpp_callback: Any
     period_ns: int
     native_type_name: str
+    callback_group: Any = None
     creation_route: str = "rclcpp_wall_timer"
 
     @property
@@ -160,6 +179,7 @@ class DirectTimer:
         self.entity = None
         self.cpp_callback = None
         self.callback = None
+        self.callback_group = None
         return True
 
 
@@ -300,13 +320,43 @@ def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
     return qos
 
 
-def create_publisher(node: Any, message_type: Any, topic: str, qos: Any) -> Any:
+def _callback_group_for_node(node: Any, callback_group: Any) -> Any:
+    """Return a native group smart pointer after proving node ownership."""
+    smart_group = getattr(
+        callback_group, "__smartptr__", lambda: callback_group)()
+    node_base = node.get_node_base_interface()
+    if not bool(node_base.callback_group_in_node(smart_group)):
+        raise ValueError("callback group is not owned by the target node")
+    return smart_group
+
+
+def _publisher_options(node: Any, callback_group: Any) -> Any:
+    smart_group = _callback_group_for_node(node, callback_group)
+    return cppyy.gbl.rclcpp_kit_native.make_publisher_options(smart_group)
+
+
+def _subscription_options(node: Any, callback_group: Any) -> Any:
+    smart_group = _callback_group_for_node(node, callback_group)
+    return cppyy.gbl.rclcpp_kit_native.make_subscription_options(smart_group)
+
+
+def create_publisher(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    qos: Any,
+    *,
+    callback_group: Any = None,
+) -> Any:
     """Create a raw typed publisher without a Python publish wrapper."""
     _, cpp_type, _ = resolve_supported_type(message_type)
     original = getattr(node, _ORIG_CREATE_PUBLISHER, None)
     if original is None:
         raise TypeError("node has no original typed rclcpp publisher factory")
-    return original[cpp_type](str(topic), qos)
+    factory = original[cpp_type]
+    if callback_group is None:
+        return factory(str(topic), qos)
+    return factory(str(topic), qos, _publisher_options(node, callback_group))
 
 
 def _install_managed_publisher() -> None:
@@ -324,12 +374,22 @@ def _managed_publisher_factory(cpp_type: Any) -> Any:
     return namespace.manage_publisher[cpp_type]
 
 
-def manage_publisher(publisher: Any, message_type: Any) -> Any:
+def manage_publisher(
+    publisher: Any,
+    message_type: Any,
+    *,
+    callback_group: Any = None,
+) -> Any:
     """Give a raw typed publisher closeable C++ state without a Python hot path."""
     _, cpp_type, _ = resolve_supported_type(message_type)
     smart_publisher = getattr(
         publisher, "__smartptr__", lambda: publisher)()
-    return _managed_publisher_factory(cpp_type)(smart_publisher)
+    factory = _managed_publisher_factory(cpp_type)
+    if callback_group is None:
+        return factory(smart_publisher)
+    smart_group = getattr(
+        callback_group, "__smartptr__", lambda: callback_group)()
+    return factory(smart_publisher, smart_group)
 
 
 def create_managed_publisher(
@@ -337,10 +397,27 @@ def create_managed_publisher(
     message_type: Any,
     topic: str,
     qos: Any,
+    *,
+    callback_group: Any = None,
 ) -> Any:
     """Create a typed publisher whose publish and lifetime checks stay in C++."""
-    publisher = create_publisher(node, message_type, topic, qos)
-    return manage_publisher(publisher, message_type)
+    if callback_group is None:
+        publisher = create_publisher(node, message_type, topic, qos)
+    else:
+        publisher = create_publisher(
+            node,
+            message_type,
+            topic,
+            qos,
+            callback_group=callback_group,
+        )
+    if callback_group is None:
+        return manage_publisher(publisher, message_type)
+    return manage_publisher(
+        publisher,
+        message_type,
+        callback_group=callback_group,
+    )
 
 
 def create_subscription(
@@ -351,6 +428,7 @@ def create_subscription(
     qos: Any,
     *,
     with_message_info: bool = False,
+    callback_group: Any = None,
 ) -> DirectSubscription:
     """Create a typed subscription whose callback receives an owning C++ copy.
 
@@ -363,7 +441,13 @@ def create_subscription(
         raise TypeError("with_message_info must be boolean")
     if with_message_info:
         return _create_subscription_with_message_info(
-            node, message_type, topic, callback, qos)
+            node,
+            message_type,
+            topic,
+            callback,
+            qos,
+            callback_group=callback_group,
+        )
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
 
@@ -377,21 +461,30 @@ def create_subscription(
     cpp_callback = cppyy.gbl.std.function[
         "void(std::shared_ptr<const %s>)" % cpp_type_name
     ](dispatch_callback)
-    entity = subscription_cache.make_subscription(
-        node,
-        cpp_type_name,
-        header,
-        str(topic),
-        qos,
-        cpp_callback,
-    )
-    creation_route = "prebuilt_subscription_trampoline"
-    if entity is None:
+    if callback_group is None:
+        entity = subscription_cache.make_subscription(
+            node,
+            cpp_type_name,
+            header,
+            str(topic),
+            qos,
+            cpp_callback,
+        )
+        creation_route = "prebuilt_subscription_trampoline"
+        if entity is None:
+            original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
+            if original is None:
+                raise TypeError("node has no original typed rclcpp subscription factory")
+            entity = original[cpp_type](str(topic), qos, cpp_callback)
+            creation_route = "rclcpp_template"
+    else:
         original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
         if original is None:
             raise TypeError("node has no original typed rclcpp subscription factory")
-        entity = original[cpp_type](str(topic), qos, cpp_callback)
-        creation_route = "rclcpp_template"
+        entity = original[cpp_type](
+            str(topic), qos, cpp_callback,
+            _subscription_options(node, callback_group))
+        creation_route = "rclcpp_template_with_callback_group"
     return DirectSubscription(
         entity,
         callback,
@@ -399,6 +492,7 @@ def create_subscription(
         cpp_callback,
         creation_route,
         owning_cpp_copy_count,
+        callback_group,
     )
 
 
@@ -427,6 +521,8 @@ def _create_subscription_with_message_info(
     topic: str,
     callback: Callable[[Any, dict[str, int | None]], None],
     qos: Any,
+    *,
+    callback_group: Any = None,
 ) -> DirectSubscription:
     """Create the opt-in owning-copy callback with native RMW metadata."""
     cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
@@ -446,14 +542,22 @@ def _create_subscription_with_message_info(
     original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
     if original is None:
         raise TypeError("node has no original typed rclcpp subscription factory")
-    entity = original[cpp_type](str(topic), qos, cpp_callback)
+    if callback_group is None:
+        entity = original[cpp_type](str(topic), qos, cpp_callback)
+        creation_route = "rclcpp_template_with_message_info"
+    else:
+        entity = original[cpp_type](
+            str(topic), qos, cpp_callback,
+            _subscription_options(node, callback_group))
+        creation_route = "rclcpp_template_with_message_info_and_callback_group"
     return DirectSubscription(
         entity,
         callback,
         dispatch_callback,
         cpp_callback,
-        "rclcpp_template_with_message_info",
+        creation_route,
         owning_cpp_copy_count,
+        callback_group,
     )
 
 
@@ -465,6 +569,8 @@ def create_wall_timer(
     node: Any,
     period_ns: int,
     callback: Callable[[], None],
+    *,
+    callback_group: Any = None,
 ) -> DirectTimer:
     """Create one positive-period native wall timer with a direct callback."""
     if isinstance(period_ns, bool) or not isinstance(period_ns, int) or period_ns <= 0:
@@ -472,7 +578,14 @@ def create_wall_timer(
     if not callable(callback):
         raise TypeError("timer callback must be callable")
     cpp_callback = cppyy.gbl.std.function["void()"](callback)
-    entity = node.create_wall_timer(_wall_duration(period_ns), cpp_callback)
+    if callback_group is None:
+        entity = node.create_wall_timer(_wall_duration(period_ns), cpp_callback)
+    else:
+        entity = node.create_wall_timer(
+            _wall_duration(period_ns),
+            cpp_callback,
+            _callback_group_for_node(node, callback_group),
+        )
     native_type_name = str(
         getattr(type(entity), "__cpp_name__", "")
         or getattr(entity, "__cpp_name__", "")
@@ -485,6 +598,7 @@ def create_wall_timer(
         cpp_callback=cpp_callback,
         period_ns=period_ns,
         native_type_name=native_type_name,
+        callback_group=callback_group,
     )
 
 

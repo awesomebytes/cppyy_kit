@@ -23,12 +23,16 @@ import cppyy_kit
 from cppyy_kit.cache import artifact_paths
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
-from rclcpp_kit.direct_entities import _message_info_dict, resolve_supported_type
+from rclcpp_kit.direct_entities import (
+    _callback_group_for_node,
+    _message_info_dict,
+    resolve_supported_type,
+)
 
 
 _INSTALL_LOCK = threading.Lock()
-_INSTALLED: dict[str, tuple[str, Any]] = {}
-_INSTALLED_WITH_MESSAGE_INFO: dict[str, tuple[str, Any]] = {}
+_INSTALLED: dict[str, tuple[str, Any, Any]] = {}
+_INSTALLED_WITH_MESSAGE_INFO: dict[str, tuple[str, Any, Any]] = {}
 
 
 def _cache_dir() -> str:
@@ -46,6 +50,7 @@ def _source(
     interface = "DirectSubscriptionLease_%s" % source_id
     implementation = "DirectSubscriptionLeaseImpl_%s" % source_id
     factory = "make_direct_subscription_lease_%s" % source_id
+    group_factory = factory + "_with_group"
     prefix = """
 #include <atomic>
 #include <cstdint>
@@ -79,7 +84,17 @@ public:
         "factory": factory,
         "interface": interface,
     }
-    declarations = prefix + signature + ";\n}\n"
+    group_signature = """std::shared_ptr<%(interface)s> %(group_factory)s(
+  std::shared_ptr<rclcpp::Node> node,
+  const std::string& topic,
+  const rclcpp::QoS& qos,
+  std::function<void(std::shared_ptr<%(cpp_type)s>)> callback,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)""" % {
+        "cpp_type": cpp_type_name,
+        "group_factory": group_factory,
+        "interface": interface,
+    }
+    declarations = prefix + signature + ";\n" + group_signature + ";\n}\n"
     code = prefix + """
 class %(implementation)s final : public %(interface)s {
 private:
@@ -106,7 +121,8 @@ public:
       std::shared_ptr<rclcpp::Node> node,
       const std::string& topic,
       const rclcpp::QoS& qos,
-      std::function<void(std::shared_ptr<MessageT>)> callback)
+      std::function<void(std::shared_ptr<MessageT>)> callback,
+      std::shared_ptr<rclcpp::CallbackGroup> callback_group = nullptr)
   : state_(std::make_shared<State>(std::move(callback)))
   {
     std::function<void(MessageUniquePtr)> native_callback =
@@ -126,8 +142,15 @@ public:
           throw;
         }
       };
-    subscription_ = node->create_subscription<MessageT>(
-      topic, qos, std::move(native_callback));
+    if (callback_group) {
+      rclcpp::SubscriptionOptions options;
+      options.callback_group = std::move(callback_group);
+      subscription_ = node->create_subscription<MessageT>(
+        topic, qos, std::move(native_callback), options);
+    } else {
+      subscription_ = node->create_subscription<MessageT>(
+        topic, qos, std::move(native_callback));
+    }
   }
 
   ~%(implementation)s() override { close(); }
@@ -164,12 +187,20 @@ private:
   return std::make_shared<%(implementation)s>(
     std::move(node), topic, qos, std::move(callback));
 }
+
+%(group_signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), topic, qos, std::move(callback),
+    std::move(callback_group));
+}
 }
 """ % {
         "cpp_type": cpp_type_name,
         "implementation": implementation,
         "interface": interface,
         "signature": signature,
+        "group_signature": group_signature,
     }
     return source_id, factory, code, declarations
 
@@ -184,6 +215,7 @@ def _source_with_message_info(
     interface = "DirectSubscriptionLeaseWithInfo_%s" % source_id
     implementation = "DirectSubscriptionLeaseWithInfoImpl_%s" % source_id
     factory = "make_direct_subscription_lease_with_info_%s" % source_id
+    group_factory = factory + "_with_group"
     prefix = """
 #include <atomic>
 #include <cstdint>
@@ -218,7 +250,18 @@ public:
         "factory": factory,
         "interface": interface,
     }
-    declarations = prefix + signature + ";\n}\n"
+    group_signature = """std::shared_ptr<%(interface)s> %(group_factory)s(
+  std::shared_ptr<rclcpp::Node> node,
+  const std::string& topic,
+  const rclcpp::QoS& qos,
+  std::function<void(
+    std::shared_ptr<%(cpp_type)s>, const rclcpp::MessageInfo&)> callback,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)""" % {
+        "cpp_type": cpp_type_name,
+        "group_factory": group_factory,
+        "interface": interface,
+    }
+    declarations = prefix + signature + ";\n" + group_signature + ";\n}\n"
     code = prefix + """
 class %(implementation)s final : public %(interface)s {
 private:
@@ -247,7 +290,8 @@ public:
       const std::string& topic,
       const rclcpp::QoS& qos,
       std::function<void(
-        std::shared_ptr<MessageT>, const rclcpp::MessageInfo&)> callback)
+        std::shared_ptr<MessageT>, const rclcpp::MessageInfo&)> callback,
+      std::shared_ptr<rclcpp::CallbackGroup> callback_group = nullptr)
   : state_(std::make_shared<State>(std::move(callback)))
   {
     std::function<void(MessageUniquePtr, const rclcpp::MessageInfo&)>
@@ -267,8 +311,15 @@ public:
           throw;
         }
       };
-    subscription_ = node->create_subscription<MessageT>(
-      topic, qos, std::move(native_callback));
+    if (callback_group) {
+      rclcpp::SubscriptionOptions options;
+      options.callback_group = std::move(callback_group);
+      subscription_ = node->create_subscription<MessageT>(
+        topic, qos, std::move(native_callback), options);
+    } else {
+      subscription_ = node->create_subscription<MessageT>(
+        topic, qos, std::move(native_callback));
+    }
   }
 
   ~%(implementation)s() override { close(); }
@@ -304,12 +355,20 @@ private:
   return std::make_shared<%(implementation)s>(
     std::move(node), topic, qos, std::move(callback));
 }
+
+%(group_signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), topic, qos, std::move(callback),
+    std::move(callback_group));
+}
 }
 """ % {
         "cpp_type": cpp_type_name,
         "implementation": implementation,
         "interface": interface,
         "signature": signature,
+        "group_signature": group_signature,
     }
     return source_id, factory, code, declarations
 
@@ -333,7 +392,7 @@ def _compile_glue(code: str, options: dict[str, Any]) -> None:
         raise RuntimeError("direct subscription lease artifact was not built")
 
 
-def _install(cpp_type_name: str, header: str) -> tuple[str, Any]:
+def _install(cpp_type_name: str, header: str) -> tuple[str, Any, Any]:
     with _INSTALL_LOCK:
         installed = _INSTALLED.get(cpp_type_name)
         if installed is not None:
@@ -354,7 +413,11 @@ def _install(cpp_type_name: str, header: str) -> tuple[str, Any]:
         _compile_glue(code, options)
         factory = getattr(
             cppyy.gbl.rclcpp_kit_direct_subscription_lease, factory_name)
-        installed = (source_id, factory)
+        group_factory = getattr(
+            cppyy.gbl.rclcpp_kit_direct_subscription_lease,
+            factory_name + "_with_group",
+        )
+        installed = (source_id, factory, group_factory)
         _INSTALLED[cpp_type_name] = installed
         return installed
 
@@ -362,7 +425,7 @@ def _install(cpp_type_name: str, header: str) -> tuple[str, Any]:
 def _install_with_message_info(
     cpp_type_name: str,
     header: str,
-) -> tuple[str, Any]:
+) -> tuple[str, Any, Any]:
     with _INSTALL_LOCK:
         installed = _INSTALLED_WITH_MESSAGE_INFO.get(cpp_type_name)
         if installed is not None:
@@ -383,7 +446,11 @@ def _install_with_message_info(
         _compile_glue(code, options)
         factory = getattr(
             cppyy.gbl.rclcpp_kit_direct_subscription_lease, factory_name)
-        installed = (source_id, factory)
+        group_factory = getattr(
+            cppyy.gbl.rclcpp_kit_direct_subscription_lease,
+            factory_name + "_with_group",
+        )
+        installed = (source_id, factory, group_factory)
         _INSTALLED_WITH_MESSAGE_INFO[cpp_type_name] = installed
         return installed
 
@@ -416,6 +483,7 @@ class DirectSubscriptionLease:
         cpp_type: Any,
         source_id: str,
         shared_owner_acquisitions: list[int],
+        callback_group: Any = None,
     ):
         self._implementation = implementation
         self.entity = entity
@@ -425,6 +493,7 @@ class DirectSubscriptionLease:
         self.cpp_type = cpp_type
         self.source_id = source_id
         self._shared_owner_acquisitions = shared_owner_acquisitions
+        self.callback_group = callback_group
         self._closed_stats: DirectSubscriptionLeaseStats | None = None
         self._closed_message_address = 0
         self.closed = False
@@ -469,6 +538,7 @@ class DirectSubscriptionLease:
         self.callback = None
         self.dispatch_callback = None
         self.cpp_callback = None
+        self.callback_group = None
         self.closed = True
         return True
 
@@ -481,6 +551,7 @@ def create_subscription_lease(
     qos: Any,
     *,
     with_message_info: bool = False,
+    callback_group: Any = None,
 ) -> DirectSubscriptionLease:
     """Create an opt-in subscription whose callback receives an owning C++ lease.
 
@@ -493,9 +564,15 @@ def create_subscription_lease(
         raise TypeError("with_message_info must be boolean")
     if with_message_info:
         return _create_subscription_lease_with_message_info(
-            node, message_type, topic, callback, qos)
+            node,
+            message_type,
+            topic,
+            callback,
+            qos,
+            callback_group=callback_group,
+        )
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
-    source_id, factory = _install(cpp_type_name, header)
+    source_id, factory, group_factory = _install(cpp_type_name, header)
     shared_owner_acquisitions = [0]
 
     def dispatch_callback(borrowed_message):
@@ -509,8 +586,16 @@ def create_subscription_lease(
     cpp_callback = cppyy.gbl.std.function[
         "void(std::shared_ptr<%s>)" % cpp_type_name
     ](dispatch_callback)
-    implementation = factory(
-        node, str(topic), qos, cpp_callback)
+    if callback_group is None:
+        implementation = factory(node, str(topic), qos, cpp_callback)
+    else:
+        implementation = group_factory(
+            node,
+            str(topic),
+            qos,
+            cpp_callback,
+            _callback_group_for_node(node, callback_group),
+        )
     entity = implementation.entity()
     if entity is None:
         implementation.close()
@@ -524,6 +609,7 @@ def create_subscription_lease(
         cpp_type=cpp_type,
         source_id=source_id,
         shared_owner_acquisitions=shared_owner_acquisitions,
+        callback_group=callback_group,
     )
 
 
@@ -533,9 +619,12 @@ def _create_subscription_lease_with_message_info(
     topic: str,
     callback: Callable[[Any, dict[str, int | None]], None],
     qos: Any,
+    *,
+    callback_group: Any = None,
 ) -> DirectSubscriptionLease:
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
-    source_id, factory = _install_with_message_info(cpp_type_name, header)
+    source_id, factory, group_factory = _install_with_message_info(
+        cpp_type_name, header)
     shared_owner_acquisitions = [0]
 
     def dispatch_callback(borrowed_message, message_info):
@@ -547,7 +636,16 @@ def _create_subscription_lease_with_message_info(
     cpp_callback = cppyy.gbl.std.function[
         "void(std::shared_ptr<%s>, const rclcpp::MessageInfo&)" % cpp_type_name
     ](dispatch_callback)
-    implementation = factory(node, str(topic), qos, cpp_callback)
+    if callback_group is None:
+        implementation = factory(node, str(topic), qos, cpp_callback)
+    else:
+        implementation = group_factory(
+            node,
+            str(topic),
+            qos,
+            cpp_callback,
+            _callback_group_for_node(node, callback_group),
+        )
     entity = implementation.entity()
     if entity is None:
         implementation.close()
@@ -561,6 +659,7 @@ def _create_subscription_lease_with_message_info(
         cpp_type=cpp_type,
         source_id=source_id,
         shared_owner_acquisitions=shared_owner_acquisitions,
+        callback_group=callback_group,
     )
 
 

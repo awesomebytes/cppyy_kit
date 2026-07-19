@@ -18,6 +18,9 @@ def test_trampoline_transfers_unique_ownership_without_message_copy():
     assert "convert_python" not in code
     assert "serialize" not in code.lower()
     assert "std_msgs/msg/u_int64.hpp" in declarations
+    assert "rclcpp::SubscriptionOptions options" in code
+    assert "options.callback_group = std::move(callback_group)" in code
+    assert "_with_group" in declarations
 
 
 def test_message_info_trampoline_preserves_lease_and_native_metadata():
@@ -33,6 +36,9 @@ def test_message_info_trampoline_preserves_lease_and_native_metadata():
     assert "convert_python" not in code
     assert "serialize" not in code.lower()
     assert "const rclcpp::MessageInfo&" in declarations
+    assert "rclcpp::SubscriptionOptions options" in code
+    assert "options.callback_group = std::move(callback_group)" in code
+    assert "_with_group" in declarations
 
 
 def test_invalid_callback_is_rejected_before_type_or_native_work(monkeypatch):

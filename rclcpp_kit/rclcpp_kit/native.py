@@ -508,15 +508,26 @@ class NativeSession:
         service_type: Any,
         service_name: str,
         callback: Any,
+        *,
+        callback_group: Any = None,
     ) -> Any:
         """Create an owned typed service with a synchronous Python callback."""
         from rclcpp_kit.python_service import create_python_service
+        if callback_group is None:
+            return create_python_service(
+                self,
+                node,
+                service_type,
+                service_name,
+                callback,
+            )
         return create_python_service(
             self,
             node,
             service_type,
             service_name,
             callback,
+            callback_group=callback_group,
         )
 
     def create_borrowed_set_bool_service(

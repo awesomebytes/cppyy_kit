@@ -244,6 +244,62 @@ def test_publisher_factory_uses_original_template_without_callable_adapter(monke
     assert original_calls == [("topic", "qos")]
 
 
+def test_callback_group_is_validated_and_forwarded_as_publisher_options(
+        monkeypatch):
+    cpp_type = type("CppType", (), {})
+    smart_group = object()
+    group = type(
+        "Group", (), {"__smartptr__": lambda self: smart_group})()
+    calls = []
+
+    class Template:
+        def __getitem__(self, selected):
+            assert selected is cpp_type
+            return lambda *args: calls.append(args) or "publisher"
+
+    class NodeBase:
+        def __init__(self, accepted):
+            self.accepted = accepted
+
+        def callback_group_in_node(self, selected):
+            calls.append(("ownership", selected))
+            return self.accepted
+
+    class Node:
+        def __init__(self, accepted):
+            self.node_base = NodeBase(accepted)
+            setattr(self, direct_entities._ORIG_CREATE_PUBLISHER, Template())
+
+        def get_node_base_interface(self):
+            return self.node_base
+
+    monkeypatch.setattr(
+        direct_entities,
+        "resolve_supported_type",
+        lambda value: ("std_msgs::msg::UInt64", cpp_type, "header"),
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_publisher_options",
+        lambda node, selected: (
+            direct_entities._callback_group_for_node(node, selected),
+            "options",
+        )[1],
+    )
+
+    assert direct_entities.create_publisher(
+        Node(True), cpp_type, "topic", "qos", callback_group=group,
+    ) == "publisher"
+    assert calls == [
+        ("ownership", smart_group),
+        ("topic", "qos", "options"),
+    ]
+    with pytest.raises(ValueError, match="not owned"):
+        direct_entities.create_publisher(
+            Node(False), cpp_type, "bad", "qos", callback_group=group)
+    assert calls[-1] == ("ownership", smart_group)
+
+
 def test_managed_publisher_factory_keeps_publish_in_cppyy(monkeypatch):
     cpp_type = type("CppType", (), {})
     publisher = type(
@@ -293,6 +349,44 @@ def test_create_managed_publisher_wraps_raw_factory(monkeypatch):
     assert calls == [
         ("create", (node, message_type, "topic", "qos")),
         ("manage", ("raw", message_type)),
+    ]
+
+
+def test_managed_publisher_forwards_and_retains_callback_group(monkeypatch):
+    calls = []
+
+    def create(*args, **kwargs):
+        calls.append(("create", args, kwargs))
+        return "raw"
+
+    def manage(*args, **kwargs):
+        calls.append(("manage", args, kwargs))
+        return "managed"
+
+    monkeypatch.setattr(direct_entities, "create_publisher", create)
+    monkeypatch.setattr(direct_entities, "manage_publisher", manage)
+    node = object()
+    message_type = object()
+    group = object()
+
+    assert direct_entities.create_managed_publisher(
+        node,
+        message_type,
+        "topic",
+        "qos",
+        callback_group=group,
+    ) == "managed"
+    assert calls == [
+        (
+            "create",
+            (node, message_type, "topic", "qos"),
+            {"callback_group": group},
+        ),
+        (
+            "manage",
+            ("raw", message_type),
+            {"callback_group": group},
+        ),
     ]
 
 
