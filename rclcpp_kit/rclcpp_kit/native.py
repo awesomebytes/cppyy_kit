@@ -195,6 +195,7 @@ class NativeCapabilities:
     native_service_client_coexistence: str = "runtime_compiler_or_warm_cache"
     managed_native_action_clients: bool = True
     managed_native_action_servers: bool = True
+    managed_node_clock: bool = True
     managed_lifecycle_nodes: bool = True
     managed_component_containers: bool = True
     intra_process: bool = True
@@ -426,6 +427,11 @@ class NativeSession:
         else:
             raise ValueError("callback-group kind must be 'mutually_exclusive' or 'reentrant'")
         return node.create_callback_group(group_type, bool(automatically_add_to_executor))
+
+    def create_native_node_clock(self, node: Any) -> Any:
+        """Retain a session-owned node's exact ``rclcpp::Clock``."""
+        from rclcpp_kit.native_clock import create_native_node_clock
+        return create_native_node_clock(self, node)
 
     def create_publisher_options(self, callback_group: Any) -> Any:
         """Create options with a callback group cppyy cannot assign directly."""

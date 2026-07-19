@@ -57,6 +57,10 @@ from rclcpp_kit.native import (
     native,
     publisher_capabilities,
 )
+from rclcpp_kit.native_clock import (
+    NativeNodeClock,
+    create_native_node_clock,
+)
 from rclcpp_kit.native_pipeline import (
     FusedPipeline,
     NativeCallback,
@@ -140,6 +144,8 @@ __all__ = [
     "NativeSession",
     "native",
     "publisher_capabilities",
+    "NativeNodeClock",
+    "create_native_node_clock",
     "FusedPipeline",
     "NativeCallback",
     "NativeStats",
