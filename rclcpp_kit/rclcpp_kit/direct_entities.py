@@ -167,11 +167,123 @@ def resolve_supported_type(message_type: Any) -> tuple[str, Any, str]:
     return resolve_message_type(message_type).entity_factory_tuple()
 
 
+def _qos_depth(depth: Any) -> int:
+    if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
+        raise TypeError("direct entities require a non-negative integer QoS depth")
+    return depth
+
+
 def qos_from_depth(rclcpp: Any, depth: int) -> Any:
-    """Build the only QoS form accepted by the first direct correctness slice."""
-    if isinstance(depth, bool) or not isinstance(depth, int) or depth <= 0:
-        raise TypeError("direct entities currently require a positive integer QoS depth")
-    return rclcpp.QoS(rclcpp.KeepLast(depth))
+    """Lower the rclpy integer shorthand to native KeepLast QoS."""
+    return rclcpp.QoS(rclcpp.KeepLast(_qos_depth(depth)))
+
+
+def _duration_nanoseconds(value: Any, field: str, duration_type: type) -> int:
+    if not isinstance(value, duration_type):
+        raise TypeError("QoS %s must be an rclpy.duration.Duration" % field)
+    nanoseconds = value.nanoseconds
+    if isinstance(nanoseconds, bool) or not isinstance(nanoseconds, int) or not (
+            0 <= nanoseconds <= (2 ** 63 - 1)):
+        raise ValueError("QoS %s must be a non-negative int64 duration" % field)
+    return nanoseconds
+
+
+def qos_from_profile(rclcpp: Any, profile: Any) -> Any:
+    """Lower one explicit Jazzy ``rclpy.qos.QoSProfile`` to ``rclcpp::QoS``.
+
+    System-default and unknown policies are intentionally not guessed;
+    best-available maps to Jazzy's exact native policy. The complete profile is
+    validated before native QoS construction.
+    """
+    from rclpy.duration import Duration
+    from rclpy.qos import (
+        DurabilityPolicy,
+        HistoryPolicy,
+        LivelinessPolicy,
+        QoSProfile,
+        ReliabilityPolicy,
+    )
+
+    if not isinstance(profile, QoSProfile):
+        raise TypeError("direct entities require an rclpy.qos.QoSProfile")
+    supported = {
+        "history": (HistoryPolicy.KEEP_LAST, HistoryPolicy.KEEP_ALL),
+        "reliability": (
+            ReliabilityPolicy.RELIABLE,
+            ReliabilityPolicy.BEST_EFFORT,
+            ReliabilityPolicy.BEST_AVAILABLE,
+        ),
+        "durability": (
+            DurabilityPolicy.TRANSIENT_LOCAL,
+            DurabilityPolicy.VOLATILE,
+            DurabilityPolicy.BEST_AVAILABLE,
+        ),
+        "liveliness": (
+            LivelinessPolicy.AUTOMATIC,
+            LivelinessPolicy.MANUAL_BY_TOPIC,
+            LivelinessPolicy.BEST_AVAILABLE,
+        ),
+    }
+    policies = {
+        "history": profile.history,
+        "reliability": profile.reliability,
+        "durability": profile.durability,
+        "liveliness": profile.liveliness,
+    }
+    for field, value in policies.items():
+        if value not in supported[field]:
+            raise ValueError(
+                "unsupported QoS %s policy: %s" % (field, getattr(value, "name", value)))
+    depth = _qos_depth(profile.depth)
+    durations = {
+        "deadline": _duration_nanoseconds(profile.deadline, "deadline", Duration),
+        "lifespan": _duration_nanoseconds(profile.lifespan, "lifespan", Duration),
+        "liveliness_lease_duration": _duration_nanoseconds(
+            profile.liveliness_lease_duration,
+            "liveliness lease duration",
+            Duration,
+        ),
+    }
+    avoid_conventions = profile.avoid_ros_namespace_conventions
+    if not isinstance(avoid_conventions, bool):
+        raise TypeError("QoS avoid_ros_namespace_conventions must be boolean")
+
+    history = (
+        rclcpp.HistoryPolicy.KeepLast
+        if profile.history == HistoryPolicy.KEEP_LAST
+        else rclcpp.HistoryPolicy.KeepAll)
+    qos = rclcpp.QoS(rclcpp.QoSInitialization(history, depth))
+    if profile.reliability == ReliabilityPolicy.RELIABLE:
+        qos.reliable()
+    elif profile.reliability == ReliabilityPolicy.BEST_EFFORT:
+        qos.best_effort()
+    else:
+        qos.reliability(rclcpp.ReliabilityPolicy.BestAvailable)
+    if profile.durability == DurabilityPolicy.TRANSIENT_LOCAL:
+        qos.transient_local()
+    elif profile.durability == DurabilityPolicy.VOLATILE:
+        qos.durability_volatile()
+    else:
+        qos.durability(rclcpp.DurabilityPolicy.BestAvailable)
+    qos.deadline(rclcpp.Duration.from_nanoseconds(durations["deadline"]))
+    qos.lifespan(rclcpp.Duration.from_nanoseconds(durations["lifespan"]))
+    liveliness = (
+        rclcpp.LivelinessPolicy.Automatic
+        if profile.liveliness == LivelinessPolicy.AUTOMATIC
+        else (
+            rclcpp.LivelinessPolicy.ManualByTopic
+            if profile.liveliness == LivelinessPolicy.MANUAL_BY_TOPIC
+            else rclcpp.LivelinessPolicy.BestAvailable))
+    qos.liveliness(liveliness)
+    qos.liveliness_lease_duration(rclcpp.Duration.from_nanoseconds(
+        durations["liveliness_lease_duration"]))
+    avoid_ros_conventions = getattr(
+        qos, "avoid_ros_namespace_conventions", None)
+    if avoid_ros_conventions is None:
+        raise ValueError(
+            "rclcpp::QoS cannot lower avoid_ros_namespace_conventions")
+    avoid_ros_conventions(avoid_conventions)
+    return qos
 
 
 def create_publisher(node: Any, message_type: Any, topic: str, qos: Any) -> Any:
@@ -305,5 +417,6 @@ __all__ = [
     "create_wall_timer",
     "manage_publisher",
     "qos_from_depth",
+    "qos_from_profile",
     "resolve_supported_type",
 ]

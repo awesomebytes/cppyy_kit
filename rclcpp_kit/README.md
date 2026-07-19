@@ -14,6 +14,7 @@ keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
 | Module | Surface |
 |---|---|
 | `bringup_rclcpp` | `bringup_rclcpp()` (JIT `rclcpp/rclcpp.hpp` + load core libs), `add_ros2_include_paths()`, `shutdown_rclcpp()`, the rclpy-style `rclcpp.Node` adapters (create_publisher / create_subscription / create_timer / destroy_node), C++ message resolution + the shared recursive `convert_python_msg_to_cpp` |
+| `direct_entities` | Strict typed C++ publishers/subscriptions/timers plus creation-time lowering of non-negative integer depth or explicit Jazzy `rclpy.qos.QoSProfile` values to `rclcpp::QoS`; no message conversion |
 | `native` | Managed custom Context, real Node/NodeOptions, single- and multi-threaded executors, callback groups and callback-group entity options, intra-process selection, per-publisher loaning capability queries, deterministic shutdown, and the raw `rclcpp` namespace |
 | `native_pipeline` | Content-addressed editable C++ subscription callbacks and fused subscription-transform-publisher objects; zero Python callback crossings, structured counters, explicit every/latest/bounded-batch delivery, and fresh/reused/loaned output memory |
 | `type_adapter` | Value-only extension contract for domain-kit ROS/native conversions, including copy semantics, owner retention, alias mutability, and limitations |
@@ -50,6 +51,13 @@ default. `"reuse"` keeps one output behind a mutex, so the transform must fully
 overwrite it and concurrent transforms are serialized. `"loaned"` uses
 `rclcpp::LoanedMessage` RAII; the counters distinguish middleware loans from the
 publisher allocator fallback. A loan is not by itself a zero-copy guarantee.
+
+Direct entity QoS lowering is control-plane only. `qos_from_depth()` implements
+the rclpy integer shorthand, while `qos_from_profile()` preserves explicit
+history/depth, reliability, durability, deadline, lifespan, liveliness, lease
+duration, and ROS namespace-convention selection. System-default and unknown
+policies are rejected rather than guessed; callers that need sensor-data
+semantics must provide its policies explicitly, including liveliness.
 
 Managed clients keep only the template and future-lifetime friction behind a
 small adapter. They accept ordinary generated Python requests or direct C++
