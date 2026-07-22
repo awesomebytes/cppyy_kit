@@ -10,6 +10,7 @@ import os
 from typing import Any, Callable
 
 import cppyy
+import cppyy_kit
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 from rclcpp_kit.direct_entities import _callback_group_for_node
@@ -89,12 +90,18 @@ class PythonService:
         )
 
     def close(self) -> None:
+        """Release the native service; keep the callables referenced.
+
+        ``_implementation.close()`` now only drops the service entity
+        reference (Slice 2.5a); ``_cpp_callback``/``_dispatch_callback``/
+        ``_callback`` are deliberately NOT nulled here -- they are pinned to
+        ``_implementation``'s own lifetime via ``cppyy_kit.keep_alive`` at
+        construction, and severing them eagerly here (as this method used
+        to) is exactly the UAF class this slice fixes.
+        """
         if self._closed:
             return
         self._implementation.close()
-        self._cpp_callback = None
-        self._dispatch_callback = None
-        self._callback = None
         self.callback_group = None
         self._closed = True
 
@@ -261,8 +268,16 @@ public:
   }
   void close() override
   {
+    // Drop only the entity reference (Slice 2.5a, PLAN-mte-unlock.md
+    // Addendum v2-completion): rclcpp reclaims the service via its own
+    // weak_ptr collection on the executor's next collect (proven safe on
+    // its own -- the finalize-only experiment). Nulling callback_ here
+    // used to sever it while a native worker could still be mid-dispatch,
+    // invoking service_callback's captured callback_ -- the same UAF class
+    // fixed for subscriptions/timers. The Python side now keeps the
+    // callable referenced via cppyy_kit.keep_alive instead of relying on
+    // this member surviving only until close().
     service_.reset();
-    callback_ = nullptr;
   }
 
 private:
@@ -333,6 +348,10 @@ private:
             cpp_callback,
             _callback_group_for_node(node, callback_group),
         )
+    # Pin the callables to the implementation's lifetime (Slice 2.5a): its
+    # own close() now only drops the entity reference, never severs a
+    # callable while the entity may still be referenced by a native worker.
+    cppyy_kit.keep_alive(implementation_object, callback, dispatch_callback, cpp_callback)
     result = PythonService(
         implementation_object,
         callback,

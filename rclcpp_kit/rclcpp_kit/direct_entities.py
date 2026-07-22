@@ -27,7 +27,169 @@ _MANAGED_PUBLISHER_INSTALL_LOCK = threading.Lock()
 _MANAGED_PUBLISHER_NAMESPACE = "rclcpp_kit_direct_entities"
 _WALL_TIMER_INSTALL_LOCK = threading.Lock()
 _WALL_TIMER_NAMESPACE = "rclcpp_kit_direct_timers_v1"
+_MANAGED_CALLBACK_ENTITY_INSTALL_LOCK = threading.Lock()
+_MANAGED_CALLBACK_ENTITY_NAMESPACE = "rclcpp_kit_managed_callback_entity_v1"
 _RMW_SEQUENCE_NUMBER_UNSUPPORTED = 2 ** 64 - 1
+_MANAGED_CALLBACK_ENTITY_SOURCE = r"""
+#include <atomic>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+
+namespace rclcpp_kit_managed_callback_entity_v1 {
+// C++-owned lifetime for one native-dispatched entity (subscription, timer,
+// ...) and the cppyy std::function callback it was constructed with. Entity
+// teardown from Python becomes a plain strong-ref drop instead of an eager,
+// external sever of the callable: close() releases the entity reference
+// FIRST -- rclcpp reclaims the entity through its own weak_ptr collection on
+// the executor's next collect, which the finalize-only experiment proved
+// safe on its own -- and only once that reference is gone do we drop the
+// callable reference too. This never severs the callable while the entity
+// may still be referenced by a native worker, closing the UAF class
+// documented in PLAN-mte-unlock.md's Addendum v2/v2-completion.
+//
+// EntityT/CallbackT are fixed per template below (not passed in as raw type
+// strings): rclcpp entity templates (Subscription, ...) carry defaulted
+// template parameters that only resolve identically to what the rest of the
+// suite already constructs when substituted through genuine C++ template
+// instantiation -- writing "rclcpp::Subscription<%s>" as a bracket-syntax
+// argument string produces a DIFFERENT (if nominally similar) type and
+// cppyy cannot convert between them. Mirroring ManagedPublisher (below),
+// each concrete wrapper is templated only on MessageT and spells the full
+// entity/callback type in real C++ source, so the compiler resolves it the
+// same way every other call site does.
+template<typename EntityT, typename CallbackT>
+class ManagedCallbackEntityImpl {
+public:
+  explicit ManagedCallbackEntityImpl(
+    std::shared_ptr<EntityT> entity,
+    CallbackT callback)
+  : entity_(std::move(entity)), callback_(std::move(callback))
+  {
+    if (!entity_) {
+      throw std::invalid_argument(
+        "direct callback entity requires a native entity");
+    }
+  }
+
+  ~ManagedCallbackEntityImpl()
+  {
+    close();
+  }
+
+  std::shared_ptr<EntityT> entity() const
+  {
+    return std::atomic_load_explicit(&entity_, std::memory_order_acquire);
+  }
+
+  bool close()
+  {
+    const bool released = static_cast<bool>(std::atomic_exchange_explicit(
+      &entity_, std::shared_ptr<EntityT>{}, std::memory_order_acq_rel));
+    callback_ = CallbackT{};
+    return released;
+  }
+
+  bool closed() const
+  {
+    return !std::atomic_load_explicit(&entity_, std::memory_order_acquire);
+  }
+
+private:
+  mutable std::shared_ptr<EntityT> entity_;
+  CallbackT callback_;
+};
+
+template<typename MessageT>
+class ManagedSubscription
+: public ManagedCallbackEntityImpl<
+    rclcpp::Subscription<MessageT>,
+    std::function<void(std::shared_ptr<const MessageT>)>>
+{
+public:
+  using Base = ManagedCallbackEntityImpl<
+    rclcpp::Subscription<MessageT>,
+    std::function<void(std::shared_ptr<const MessageT>)>>;
+  using Base::Base;
+};
+
+template<typename MessageT>
+std::shared_ptr<ManagedSubscription<MessageT>> manage_subscription(
+  std::shared_ptr<rclcpp::Subscription<MessageT>> entity,
+  std::function<void(std::shared_ptr<const MessageT>)> callback)
+{
+  return std::make_shared<ManagedSubscription<MessageT>>(
+    std::move(entity), std::move(callback));
+}
+
+template<typename MessageT>
+class ManagedSubscriptionWithInfo
+: public ManagedCallbackEntityImpl<
+    rclcpp::Subscription<MessageT>,
+    std::function<void(std::shared_ptr<const MessageT>, const rclcpp::MessageInfo&)>>
+{
+public:
+  using Base = ManagedCallbackEntityImpl<
+    rclcpp::Subscription<MessageT>,
+    std::function<void(std::shared_ptr<const MessageT>, const rclcpp::MessageInfo&)>>;
+  using Base::Base;
+};
+
+template<typename MessageT>
+std::shared_ptr<ManagedSubscriptionWithInfo<MessageT>> manage_subscription_with_info(
+  std::shared_ptr<rclcpp::Subscription<MessageT>> entity,
+  std::function<void(std::shared_ptr<const MessageT>, const rclcpp::MessageInfo&)> callback)
+{
+  return std::make_shared<ManagedSubscriptionWithInfo<MessageT>>(
+    std::move(entity), std::move(callback));
+}
+
+// Timers: the callback shape (std::function<void()>) is uniform, but the
+// entity type (wall vs clock timer) differs. rclcpp::GenericTimer/WallTimer
+// carry a second, defaulted non-type template parameter that -- like
+// rclcpp::Subscription's defaulted parameters above -- does not round-trip
+// through a fresh bracket-syntax instantiation (naming the type via
+// type(entity) and re-instantiating on it hits the same "could not convert
+// argument" mismatch). Concrete, non-templated wrappers naming the already-
+// compiled rclcpp_kit_direct_timers_v1::DirectWallTimer/DirectClockTimer
+// aliases directly in C++ source sidestep this entirely -- the compiler
+// resolves them once, normally, exactly as _WALL_TIMER_SOURCE itself does.
+class ManagedWallTimer
+: public ManagedCallbackEntityImpl<
+    rclcpp_kit_direct_timers_v1::DirectWallTimer, std::function<void()>>
+{
+public:
+  using Base = ManagedCallbackEntityImpl<
+    rclcpp_kit_direct_timers_v1::DirectWallTimer, std::function<void()>>;
+  using Base::Base;
+};
+
+std::shared_ptr<ManagedWallTimer> manage_wall_timer(
+  std::shared_ptr<rclcpp_kit_direct_timers_v1::DirectWallTimer> entity,
+  std::function<void()> callback)
+{
+  return std::make_shared<ManagedWallTimer>(std::move(entity), std::move(callback));
+}
+
+class ManagedClockTimer
+: public ManagedCallbackEntityImpl<
+    rclcpp_kit_direct_timers_v1::DirectClockTimer, std::function<void()>>
+{
+public:
+  using Base = ManagedCallbackEntityImpl<
+    rclcpp_kit_direct_timers_v1::DirectClockTimer, std::function<void()>>;
+  using Base::Base;
+};
+
+std::shared_ptr<ManagedClockTimer> manage_clock_timer(
+  std::shared_ptr<rclcpp_kit_direct_timers_v1::DirectClockTimer> entity,
+  std::function<void()> callback)
+{
+  return std::make_shared<ManagedClockTimer>(std::move(entity), std::move(callback));
+}
+}
+"""
 _MANAGED_PUBLISHER_SOURCE = r"""
 #include <atomic>
 #include <memory>
@@ -465,6 +627,11 @@ class DirectSubscription:
     closed: bool = False
     event_callbacks: dict | None = None
     cpp_event_callbacks: dict | None = None
+    # C++-owned entity+callback lifetime (PLAN-mte-unlock.md Addendum
+    # v2-completion Slice 2.5a); None only for a DirectSubscription built
+    # without one (defensive backward compatibility, should not occur via
+    # the factories below).
+    managed: Any = None
 
     @property
     def owning_cpp_copy_count(self) -> int:
@@ -474,13 +641,18 @@ class DirectSubscription:
     def close(self) -> bool:
         """Release the native subscription and retained callback objects once.
 
-        The entity is released first, dropping the ``EventHandler`` objects
-        rclcpp holds on it *before* the Python callables and cppyy
-        ``std::function`` wrappers backing them are dropped -- the ordering
-        contract a stale event handler use-after-free would otherwise violate.
+        ``managed.close()`` runs first: it drops the C++-owned entity
+        reference (rclcpp reclaims it via its own weak_ptr collection on
+        the executor's next collect) and only then drops the keep-alive
+        callable reference -- never severing the callable while the entity
+        may still be referenced by a native worker (the UAF class this
+        slice fixes). The fields below are dropped afterward for bookkeeping/
+        introspection only; by this point ``managed`` already owns (and has
+        already safely released) the real C++-side lifetime.
         """
         if self.closed:
             return False
+        released = bool(self.managed.close()) if self.managed is not None else True
         self.entity = None
         self.callback = None
         self.dispatch_callback = None
@@ -489,7 +661,7 @@ class DirectSubscription:
         self.event_callbacks = None
         self.cpp_event_callbacks = None
         self.closed = True
-        return True
+        return released
 
 
 @dataclass(eq=False)
@@ -503,6 +675,9 @@ class DirectTimer:
     native_type_name: str
     callback_group: Any = None
     creation_route: str = "rclcpp_wall_timer"
+    # C++-owned entity+callback lifetime (Slice 2.5a, same rationale as
+    # DirectSubscription.managed).
+    managed: Any = None
 
     @property
     def __cpp_name__(self) -> str:
@@ -539,15 +714,22 @@ class DirectTimer:
         return _timer_time_since_last_call(self._require_entity())
 
     def destroy(self) -> bool:
-        """Cancel and release the only strong native timer reference."""
+        """Cancel and release the only strong native timer reference.
+
+        ``managed.close()`` runs first (drops the C++-owned entity
+        reference, then the keep-alive callback reference, in that safe
+        order -- Slice 2.5a); the fields below are dropped afterward for
+        bookkeeping/introspection only.
+        """
         if self.entity is None:
             return False
         self.entity.cancel()
+        released = bool(self.managed.close()) if self.managed is not None else True
         self.entity = None
         self.cpp_callback = None
         self.callback = None
         self.callback_group = None
-        return True
+        return released
 
 
 def resolve_supported_type(message_type: Any) -> tuple[str, Any, str]:
@@ -759,6 +941,95 @@ def manage_publisher(
     return factory(smart_publisher, smart_group)
 
 
+def _install_managed_callback_entity() -> None:
+    if hasattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE):
+        return
+    with _MANAGED_CALLBACK_ENTITY_INSTALL_LOCK:
+        if hasattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE):
+            return
+        # ManagedWallTimer/ManagedClockTimer below reference the
+        # rclcpp_kit_direct_timers_v1::DirectWallTimer/DirectClockTimer
+        # aliases directly, so that namespace must already exist.
+        _install_wall_timer_factory()
+        cppyy.cppdef(_MANAGED_CALLBACK_ENTITY_SOURCE)
+
+
+def _managed_subscription_factory(cpp_type: Any) -> Any:
+    _install_managed_callback_entity()
+    namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
+    return namespace.manage_subscription[cpp_type]
+
+
+def _managed_subscription_with_info_factory(cpp_type: Any) -> Any:
+    _install_managed_callback_entity()
+    namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
+    return namespace.manage_subscription_with_info[cpp_type]
+
+
+def _managed_wall_timer_factory() -> Any:
+    _install_managed_callback_entity()
+    namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
+    return namespace.manage_wall_timer
+
+
+def _managed_clock_timer_factory() -> Any:
+    _install_managed_callback_entity()
+    namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
+    return namespace.manage_clock_timer
+
+
+def _manage_subscription_callback_entity(
+    entity: Any,
+    cpp_callback: Any,
+    cpp_type: Any,
+    callback: Any,
+    dispatch_callback: Any,
+    *,
+    with_message_info: bool = False,
+) -> Any:
+    """Wrap a just-created subscription entity + its cppyy dispatch callback
+    in the C++-owned lifetime wrapper (Slice 2.5a) and pin the Python
+    closures to it, so they are kept alive for exactly as long as the
+    wrapper (and hence the native entity) might still need them -- never
+    severed eagerly by ``close()`` while the entity may still be
+    referenced by a native worker. ``cpp_type`` is the resolved cppyy type
+    object (not a string) -- bracket-syntax instantiation on the type object
+    itself resolves identically to how the rest of the module already
+    constructs ``rclcpp::Subscription<MessageT>``; a hand-built type-name
+    string does not (a defaulted-template-parameter mismatch cppyy cannot
+    convert across).
+    """
+    factory = (
+        _managed_subscription_with_info_factory(cpp_type)
+        if with_message_info
+        else _managed_subscription_factory(cpp_type)
+    )
+    smart_entity = getattr(entity, "__smartptr__", lambda: entity)()
+    managed = factory(smart_entity, cpp_callback)
+    cppyy_kit.keep_alive(managed, callback, dispatch_callback)
+    return managed
+
+
+def _manage_timer_callback_entity(
+    entity: Any, cpp_callback: Any, callback: Any, *, clock: bool = False
+) -> Any:
+    """Wrap a just-created timer entity + its cppyy callback in the
+    C++-owned lifetime wrapper (Slice 2.5a) and pin the Python callback to
+    it. Uses the concrete, non-templated manage_wall_timer/manage_clock_timer
+    factory matching which kind was created -- rclcpp::WallTimer/GenericTimer
+    carry a second, defaulted template parameter that does not round-trip
+    through a fresh bracket-syntax instantiation from ``type(entity)``
+    (the same class of mismatch as rclcpp::Subscription's defaults); the
+    concrete C++ functions sidestep it entirely (see
+    _MANAGED_CALLBACK_ENTITY_SOURCE).
+    """
+    factory = _managed_clock_timer_factory() if clock else _managed_wall_timer_factory()
+    smart_entity = getattr(entity, "__smartptr__", lambda: entity)()
+    managed = factory(smart_entity, cpp_callback)
+    cppyy_kit.keep_alive(managed, callback)
+    return managed
+
+
 def _create_publisher_with_events(
     node: Any,
     message_type: Any,
@@ -907,6 +1178,8 @@ def _create_subscription_with_options(
         raise ContentFilterUnsupported(
             "content filtering not supported by %s; refusing to return an "
             "unfiltered subscription" % _active_rmw_implementation())
+    managed = _manage_subscription_callback_entity(
+        entity, cpp_callback, cpp_type, callback, dispatch_callback)
     return DirectSubscription(
         entity,
         callback,
@@ -917,6 +1190,7 @@ def _create_subscription_with_options(
         callback_group,
         event_callbacks=validated_events,
         cpp_event_callbacks=cpp_event_callbacks,
+        managed=managed,
     )
 
 
@@ -1019,6 +1293,8 @@ def create_subscription(
             str(topic), qos, cpp_callback,
             _subscription_options(node, callback_group))
         creation_route = "rclcpp_template_with_callback_group"
+    managed = _manage_subscription_callback_entity(
+        entity, cpp_callback, cpp_type, callback, dispatch_callback)
     return DirectSubscription(
         entity,
         callback,
@@ -1027,6 +1303,7 @@ def create_subscription(
         creation_route,
         owning_cpp_copy_count,
         callback_group,
+        managed=managed,
     )
 
 
@@ -1084,6 +1361,9 @@ def _create_subscription_with_message_info(
             str(topic), qos, cpp_callback,
             _subscription_options(node, callback_group))
         creation_route = "rclcpp_template_with_message_info_and_callback_group"
+    managed = _manage_subscription_callback_entity(
+        entity, cpp_callback, cpp_type, callback, dispatch_callback,
+        with_message_info=True)
     return DirectSubscription(
         entity,
         callback,
@@ -1092,6 +1372,7 @@ def _create_subscription_with_message_info(
         creation_route,
         owning_cpp_copy_count,
         callback_group,
+        managed=managed,
     )
 
 
@@ -1167,6 +1448,7 @@ def create_wall_timer(
     )
     if not native_type_name:
         raise TypeError("direct wall timer factory did not return a C++ entity")
+    managed = _manage_timer_callback_entity(entity, cpp_callback, callback)
     return DirectTimer(
         entity=entity,
         callback=callback,
@@ -1174,6 +1456,7 @@ def create_wall_timer(
         period_ns=period_ns,
         native_type_name=native_type_name,
         callback_group=callback_group,
+        managed=managed,
     )
 
 
@@ -1230,6 +1513,7 @@ def create_clock_timer(
         or getattr(entity, "__cpp_name__", ""))
     if not native_type_name:
         raise TypeError("direct clock timer factory did not return a C++ entity")
+    managed = _manage_timer_callback_entity(entity, cpp_callback, callback, clock=True)
     return DirectTimer(
         entity=entity,
         callback=callback,
@@ -1238,6 +1522,7 @@ def create_clock_timer(
         native_type_name=native_type_name,
         callback_group=callback_group,
         creation_route="rclcpp_clock_timer",
+        managed=managed,
     )
 
 

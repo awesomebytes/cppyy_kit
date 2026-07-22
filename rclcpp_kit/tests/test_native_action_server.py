@@ -120,6 +120,21 @@ def test_native_action_server_live_exact_cpp_interop():
     assert "NATIVE_ACTION_SERVER_TEARDOWN_OK" in proc.stdout
 
 
+def test_native_action_server_destroy_under_live_mte_does_not_crash():
+    """Slice 2.5a confirm test (PLAN-mte-unlock.md Addendum v2-completion):
+    action servers are proven safe under a live MultiThreadedExecutor by
+    dispatch model alone (creator-thread-only decision dispatch, plus an
+    existing depth-tracked deferred close) and need no ManagedCallbackEntity
+    lifetime fix. Destroying one while its goal_callback is genuinely in
+    flight must defer, never crash."""
+    proc = run_helper(
+        "_native_action_server_destroy_under_mte_helper.py", timeout=90)
+    assert proc.returncode == 0, format_output(proc)
+    assert "NATIVE_ACTION_SERVER_DESTROY_UNDER_MTE_OK" in proc.stdout, (
+        format_output(proc)
+    )
+
+
 def test_native_action_server_cold_and_warm_cache(tmp_path):
     helper = Path(__file__).with_name("_native_action_server_cache_helper.py")
     env = os.environ.copy()

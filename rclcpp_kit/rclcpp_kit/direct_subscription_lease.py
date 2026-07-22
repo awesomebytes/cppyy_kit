@@ -527,17 +527,27 @@ class DirectSubscriptionLease:
         )
 
     def close(self) -> bool:
+        """Release the native subscription; keep the callables referenced.
+
+        ``_implementation.close()`` only ever drops the subscription entity
+        reference (``subscription_.reset()``) -- a plain finalize, proven
+        safe on its own (Slice 2.5a). ``_implementation``/``dispatch_
+        callback``/``cpp_callback`` are deliberately NOT nulled here: they
+        are pinned to ``_implementation``'s own lifetime via
+        ``cppyy_kit.keep_alive`` at construction, and severing them eagerly
+        here (as this method used to) is exactly the UAF class this slice
+        fixes -- they are released together, naturally, once nothing
+        references this ``DirectSubscriptionLease`` (or ``_implementation``)
+        any longer.
+        """
         if self.closed:
             return False
         self._implementation.close()
         self._closed_stats = self.stats()
         self._closed_message_address = int(
             self._implementation.last_message_address())
-        self._implementation = None
         self.entity = None
         self.callback = None
-        self.dispatch_callback = None
-        self.cpp_callback = None
         self.callback_group = None
         self.closed = True
         return True
@@ -600,6 +610,12 @@ def create_subscription_lease(
     if entity is None:
         implementation.close()
         raise RuntimeError("direct subscription lease factory returned no entity")
+    # Pin the callback objects to the implementation's lifetime (Slice
+    # 2.5a): the generated implementation's own close() only ever drops the
+    # subscription entity reference (subscription_.reset()), never severs a
+    # callable while the entity may still be referenced -- DirectSubscription
+    # Lease.close() below must not undo that by nulling these eagerly either.
+    cppyy_kit.keep_alive(implementation, dispatch_callback, cpp_callback)
     return DirectSubscriptionLease(
         implementation=implementation,
         entity=entity,
@@ -650,6 +666,7 @@ def _create_subscription_lease_with_message_info(
     if entity is None:
         implementation.close()
         raise RuntimeError("direct subscription lease factory returned no entity")
+    cppyy_kit.keep_alive(implementation, dispatch_callback, cpp_callback)
     return DirectSubscriptionLease(
         implementation=implementation,
         entity=entity,

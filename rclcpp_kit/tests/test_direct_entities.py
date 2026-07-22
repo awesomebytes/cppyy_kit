@@ -402,6 +402,26 @@ def test_python_message_types_are_rejected_before_resolution():
         direct_entities.resolve_supported_type(object())
 
 
+class _FakeManagedCallbackEntity:
+    """Stand-in for the real C++-owned ManagedSubscription (Slice 2.5a) in
+    pure-Python unit tests that mock out cppyy entirely -- these tests
+    exercise dispatch/owning-copy semantics, not the real C++ template
+    instantiation, so the managed wrapper is mocked too rather than given a
+    fake cppyy type it cannot actually bracket-instantiate against."""
+
+    def __init__(self):
+        self._closed = False
+
+    def close(self) -> bool:
+        if self._closed:
+            return False
+        self._closed = True
+        return True
+
+    def closed(self) -> bool:
+        return self._closed
+
+
 def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
     copies = []
 
@@ -435,6 +455,11 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
         direct_entities.subscription_cache,
         "make_subscription",
         lambda *args: "sub",
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_subscription_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
     )
     received = []
     direct = direct_entities.create_subscription(
@@ -498,6 +523,11 @@ def test_subscription_message_info_keeps_cpp_copy_and_lowers_rmw_metadata(
         direct_entities.cppyy.gbl.std,
         "function",
         FunctionTemplate(),
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_subscription_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
     )
     received = []
     direct = direct_entities.create_subscription(
@@ -588,6 +618,11 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
     monkeypatch.setattr(direct_entities, "_wall_duration", lambda value: ("ns", value))
     monkeypatch.setattr(
         direct_entities, "_timer_time_since_last_call", lambda selected: 29)
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_timer_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
+    )
     timer = direct_entities.create_wall_timer(Node(), 17, callback)
     assert calls == [
         ("callback", callback),
@@ -694,6 +729,11 @@ def test_wall_timer_forwards_native_autostart(monkeypatch):
             or Entity()
         ),
     )
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_timer_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
+    )
     node = object()
 
     timer = direct_entities.create_wall_timer(
@@ -754,6 +794,11 @@ def test_clock_timer_is_native_control_on_the_node_clock(monkeypatch):
     monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
     monkeypatch.setattr(
         direct_entities, "_timer_time_since_last_call", lambda selected: 29)
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_timer_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
+    )
     node = Node()
     timer = direct_entities.create_clock_timer(node, 17, callback)
     assert calls == [
@@ -818,6 +863,11 @@ def test_clock_timer_defaults_to_node_clock_when_clock_omitted(monkeypatch):
 
     monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
     monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_timer_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
+    )
 
     node = Node()
     direct_entities.create_clock_timer(node, 11, lambda: None)
@@ -889,6 +939,11 @@ def test_clock_timer_forwards_autostart_and_callback_group(monkeypatch):
                 ("factory", node, clock, period, selected_callback, selected_group, autostart))
             or Entity()
         ),
+    )
+    monkeypatch.setattr(
+        direct_entities,
+        "_manage_timer_callback_entity",
+        lambda *args, **kwargs: _FakeManagedCallbackEntity(),
     )
     node = Node()
 
