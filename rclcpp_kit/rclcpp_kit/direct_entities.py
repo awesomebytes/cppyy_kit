@@ -190,6 +190,163 @@ std::shared_ptr<ManagedClockTimer> manage_clock_timer(
 }
 }
 """
+_CALLABLE_REAPER_INSTALL_LOCK = threading.Lock()
+_CALLABLE_REAPER_NAMESPACE = "rclcpp_kit_callable_reaper_v1"
+_CALLABLE_REAPER_SOURCE = r"""
+#include <Python.h>
+#include <cstddef>
+#include <functional>
+#include <mutex>
+#include <utility>
+#include <vector>
+
+namespace rclcpp_kit_callable_reaper_v1 {
+// Native-entity-bound Python callable lifetime (PLAN-mte-unlock.md
+// Addendum v3): ManagedCallbackEntityImpl (above) ties the *entity*'s
+// lifetime to C++, but the Python *callable* it dispatches to was still
+// pinned only via cppyy_kit.keep_alive on a Python wrapper object -- whose
+// GC timing is not bound to the native entity at all. A worker holding a
+// wait-set-local strong copy of the entity (or mid-dispatch through
+// rclcpp's own stored std::function member -- confirmed constructed once,
+// at entity construction on a GIL thread, never per-dispatch) can still
+// invoke a callable whose Python wrapper was already collected. This ties
+// ownership to the std::function VALUE itself instead: every copy holds
+// its own Py_INCREF'd reference, so the callable dies only once every
+// copy of the std::function (wherever it lives -- rclcpp's own dispatch
+// member, this suite's ManagedCallbackEntityImpl, ...) has been destroyed.
+//
+// The releasing side is the hard part. A destructor cannot Py_DECREF
+// directly: it can run on a native worker thread with no GIL held (the
+// entity's last shared_ptr reference dropping during a wait-set rebuild),
+// and PyGILState_Ensure() there risks a concrete deadlock -- a worker
+// holding the executor's mutex_ while the GIL-holding pump thread blocks
+// acquiring that same mutex_ in remove_node(). So the destructor never
+// touches the Python C API: it pushes the raw pointer onto a thread-safe
+// queue (a plain mutex, no GIL needed to enqueue), and a reaper running on
+// a GIL-holding Python thread -- the pump each cycle, plus a guaranteed
+// final drain at session/context close -- performs the actual Py_DECREF.
+// Anything left undrained at process exit leaks by design: leak-safe
+// beats crash-safe.
+class PyObjectReaper {
+public:
+  static PyObjectReaper& instance() {
+    static PyObjectReaper reaper;
+    return reaper;
+  }
+
+  // Any thread, GIL held or not.
+  void enqueue_release(PyObject* obj) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    pending_.push_back(obj);
+  }
+
+  // Caller must hold the GIL.
+  std::size_t drain() {
+    std::vector<PyObject*> batch;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      batch.swap(pending_);
+    }
+    for (PyObject* obj : batch) {
+      Py_DECREF(obj);
+    }
+    return batch.size();
+  }
+
+  std::size_t pending_count() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pending_.size();
+  }
+
+private:
+  std::mutex mutex_;
+  std::vector<PyObject*> pending_;
+};
+
+// Wraps an already-built std::function<Signature> (typically cppyy's own
+// Python-callable conversion, which does the actual invocation and GIL
+// handling -- this class reuses it verbatim via `inner_`) together with a
+// raw PyObject* pin whose lifetime is now tracked by ordinary C++
+// copy/move/destroy semantics on THIS functor -- unconditionally, whether
+// or not any Python object still references whatever constructed it.
+template<typename Signature>
+class PinnedCallable {
+public:
+  PinnedCallable(std::function<Signature> inner, PyObject* pin)
+  : inner_(std::move(inner)), pin_(pin)
+  {
+    Py_INCREF(pin_);
+  }
+
+  PinnedCallable(const PinnedCallable& other)
+  : inner_(other.inner_), pin_(other.pin_)
+  {
+    Py_INCREF(pin_);
+  }
+
+  PinnedCallable& operator=(const PinnedCallable& other) {
+    if (this != &other) {
+      PyObject* previous = pin_;
+      inner_ = other.inner_;
+      pin_ = other.pin_;
+      Py_INCREF(pin_);
+      PyObjectReaper::instance().enqueue_release(previous);
+    }
+    return *this;
+  }
+
+  PinnedCallable(PinnedCallable&& other) noexcept
+  : inner_(std::move(other.inner_)), pin_(other.pin_)
+  {
+    other.pin_ = nullptr;
+  }
+
+  PinnedCallable& operator=(PinnedCallable&& other) noexcept {
+    if (this != &other) {
+      PyObject* previous = pin_;
+      inner_ = std::move(other.inner_);
+      pin_ = other.pin_;
+      other.pin_ = nullptr;
+      if (previous) {
+        PyObjectReaper::instance().enqueue_release(previous);
+      }
+    }
+    return *this;
+  }
+
+  ~PinnedCallable() {
+    if (pin_) {
+      PyObjectReaper::instance().enqueue_release(pin_);
+    }
+  }
+
+  template<typename... Args>
+  auto operator()(Args&&... args) const {
+    return inner_(std::forward<Args>(args)...);
+  }
+
+private:
+  std::function<Signature> inner_;
+  PyObject* pin_;
+};
+
+template<typename Signature>
+std::function<Signature> make_pinned_function(
+    std::function<Signature> inner, PyObject* pin)
+{
+  return std::function<Signature>(PinnedCallable<Signature>(std::move(inner), pin));
+}
+
+std::size_t drain() {
+  return PyObjectReaper::instance().drain();
+}
+
+std::size_t pending_count() {
+  return PyObjectReaper::instance().pending_count();
+}
+
+}
+"""
 _MANAGED_PUBLISHER_SOURCE = r"""
 #include <atomic>
 #include <memory>
@@ -584,8 +741,8 @@ def _publisher_options_with_events(
                  "matched"):
         signature = _PUBLISHER_EVENT_SIGNATURES[name]
         if name in validated_events:
-            wrapped = cppyy.gbl.std.function["void(%s)" % signature](
-                validated_events[name])
+            wrapped = _pinned_std_function(
+                "void(%s)" % signature, validated_events[name])
             cpp_event_callbacks[name] = wrapped
             args.append(wrapped)
         else:
@@ -603,8 +760,8 @@ def _subscription_options_with_events(
                  "incompatible_type", "matched"):
         signature = _SUBSCRIPTION_EVENT_SIGNATURES[name]
         if name in validated_events:
-            wrapped = cppyy.gbl.std.function["void(%s)" % signature](
-                validated_events[name])
+            wrapped = _pinned_std_function(
+                "void(%s)" % signature, validated_events[name])
             cpp_event_callbacks[name] = wrapped
             args.append(wrapped)
         else:
@@ -1030,6 +1187,50 @@ def _manage_timer_callback_entity(
     return managed
 
 
+def _install_callable_reaper() -> None:
+    if hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+        return
+    with _CALLABLE_REAPER_INSTALL_LOCK:
+        if hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+            return
+        cppyy.cppdef(_CALLABLE_REAPER_SOURCE)
+
+
+def _pinned_std_function(signature: str, pyfunc: Callable[..., Any]) -> Any:
+    """Build ``std::function<signature>`` from ``pyfunc`` whose Python
+    callable lifetime is bound to the std::function VALUE itself (Slice
+    2.5a2, PLAN-mte-unlock.md Addendum v3), not to a Python wrapper's GC
+    timing. Every copy this value is ever copied into (rclcpp's own stored
+    dispatch member, this suite's ManagedCallbackEntityImpl, ...)
+    independently keeps ``pyfunc`` alive until that specific copy is
+    destroyed -- unconditionally, regardless of any Python-side keep_alive
+    bookkeeping (kept as defense-in-depth, not relied on alone anymore).
+    """
+    _install_callable_reaper()
+    inner = cppyy.gbl.std.function[signature](pyfunc)
+    namespace = getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE)
+    return namespace.make_pinned_function[signature](inner, pyfunc)
+
+
+def drain_callable_reaper() -> int:
+    """Perform the deferred ``Py_DECREF`` for every callable release a
+    ``PinnedCallable`` copy has queued (via destruction on any thread,
+    including a native worker with no GIL held) since the last drain.
+    Must be called on a GIL-holding Python thread. A no-op returning 0 if
+    the reaper was never installed (nothing has been pinned yet)."""
+    if not hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+        return 0
+    return int(getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).drain())
+
+
+def pending_callable_reaper_count() -> int:
+    """Introspection/test hook: how many callable releases are currently
+    queued, undrained."""
+    if not hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+        return 0
+    return int(getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).pending_count())
+
+
 def _create_publisher_with_events(
     node: Any,
     message_type: Any,
@@ -1148,9 +1349,8 @@ def _create_subscription_with_options(
         owning_cpp_copy_count[0] += 1
         callback(owning_message)
 
-    cpp_callback = cppyy.gbl.std.function[
-        "void(std::shared_ptr<const %s>)" % cpp_type_name
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<const %s>)" % cpp_type_name, dispatch_callback)
     options, cpp_event_callbacks = _subscription_options_with_events(
         node, callback_group, validated_events)
     if validated_filter is not None:
@@ -1266,9 +1466,8 @@ def create_subscription(
         owning_cpp_copy_count[0] += 1
         callback(owning_message)
 
-    cpp_callback = cppyy.gbl.std.function[
-        "void(std::shared_ptr<const %s>)" % cpp_type_name
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<const %s>)" % cpp_type_name, dispatch_callback)
     if callback_group is None:
         entity = subscription_cache.make_subscription(
             node,
@@ -1346,10 +1545,9 @@ def _create_subscription_with_message_info(
         owning_cpp_copy_count[0] += 1
         callback(owning_message, _message_info_dict(message_info))
 
-    cpp_callback = cppyy.gbl.std.function[
+    cpp_callback = _pinned_std_function(
         "void(std::shared_ptr<const %s>, const rclcpp::MessageInfo&)" %
-        cpp_type_name
-    ](dispatch_callback)
+        cpp_type_name, dispatch_callback)
     original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
     if original is None:
         raise TypeError("node has no original typed rclcpp subscription factory")
@@ -1430,7 +1628,7 @@ def create_wall_timer(
         raise TypeError("timer callback must be callable")
     if not isinstance(autostart, bool):
         raise TypeError("timer autostart must be a bool")
-    cpp_callback = cppyy.gbl.std.function["void()"](callback)
+    cpp_callback = _pinned_std_function("void()", callback)
     if not autostart:
         entity = _create_wall_timer_with_autostart(
             node, period_ns, cpp_callback, callback_group, autostart)
@@ -1502,7 +1700,7 @@ def create_clock_timer(
     if not isinstance(autostart, bool):
         raise TypeError("timer autostart must be a bool")
     resolved_clock = node.get_clock() if clock is None else clock
-    cpp_callback = cppyy.gbl.std.function["void()"](callback)
+    cpp_callback = _pinned_std_function("void()", callback)
     native_group = (
         None if callback_group is None
         else _callback_group_for_node(node, callback_group))

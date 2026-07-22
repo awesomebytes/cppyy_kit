@@ -557,6 +557,14 @@ class _BoundCreateSubscription:
         cpp_type_str, cppyy_type = _resolve_message_type(msg_type)
         # cppyy delivers the C++ message proxy straight to the Python callback and
         # manages the GIL, so no manual pointer rebinding is needed.
+        # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
+        # 2.5a2): this rclpy-style raw-rclcpp.Node adapter has NOT received
+        # the native-owned-callable-lifetime treatment (_pinned_std_function)
+        # applied to direct_entities.py's subscriptions/timers/services --
+        # the callable is pinned only via _keep_alive(self._node, ...), a
+        # node-level (not per-entity) Python-side list whose GC timing is
+        # not bound to the native entity. Not yet audited for the same
+        # premature-release risk; flagged for a future slice.
         cpp_callback = cppyy.gbl.std.function[
             f"void(std::shared_ptr<const {cpp_type_str}>)"
         ](callback)
@@ -631,6 +639,8 @@ def adapt_node_timer_to_python(rclcpp: Any):
 
     def create_timer_wrapper(self, timer_period_sec, callback, *args, **kwargs):
         period_ns = int(timer_period_sec * 1e9)
+        # CONDITIONAL-SAFETY NOTE: see the create_subscription adapter above
+        # -- same node-level _keep_alive pinning, same not-yet-audited status.
         cpp_callback = cppyy.gbl.std.function["void()"](callback)
         timer = self.create_wall_timer(
             cppyy.gbl.std.chrono.nanoseconds(period_ns), cpp_callback)

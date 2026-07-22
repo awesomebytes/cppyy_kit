@@ -13,7 +13,7 @@ import cppyy
 import cppyy_kit
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
-from rclcpp_kit.direct_entities import _callback_group_for_node
+from rclcpp_kit.direct_entities import _callback_group_for_node, _pinned_std_function
 from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 
 
@@ -335,9 +335,8 @@ private:
             )
         call.commit_response(returned)
 
-    cpp_callback = cppyy.gbl.std.function[
-        "void(rclcpp_kit_python_service::%s*)" % invocation
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_python_service::%s*)" % invocation, dispatch_callback)
     if callback_group is None:
         implementation_object = getattr(namespace, factory)(
             node, str(service_name), cpp_callback)

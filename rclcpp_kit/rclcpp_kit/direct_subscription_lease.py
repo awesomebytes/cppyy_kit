@@ -26,6 +26,7 @@ from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 from rclcpp_kit.direct_entities import (
     _callback_group_for_node,
     _message_info_dict,
+    _pinned_std_function,
     resolve_supported_type,
 )
 
@@ -593,9 +594,8 @@ def create_subscription_lease(
         shared_owner_acquisitions[0] += 1
         callback(leased_message)
 
-    cpp_callback = cppyy.gbl.std.function[
-        "void(std::shared_ptr<%s>)" % cpp_type_name
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<%s>)" % cpp_type_name, dispatch_callback)
     if callback_group is None:
         implementation = factory(node, str(topic), qos, cpp_callback)
     else:
@@ -649,9 +649,9 @@ def _create_subscription_lease_with_message_info(
         shared_owner_acquisitions[0] += 1
         callback(leased_message, _message_info_dict(message_info))
 
-    cpp_callback = cppyy.gbl.std.function[
-        "void(std::shared_ptr<%s>, const rclcpp::MessageInfo&)" % cpp_type_name
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<%s>, const rclcpp::MessageInfo&)" % cpp_type_name,
+        dispatch_callback)
     if callback_group is None:
         implementation = factory(node, str(topic), qos, cpp_callback)
     else:

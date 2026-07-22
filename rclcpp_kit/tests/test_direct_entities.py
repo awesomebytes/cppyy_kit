@@ -615,6 +615,12 @@ def test_wall_timer_is_native_control_without_a_dispatch_callback(monkeypatch):
             return entity
 
     monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
     monkeypatch.setattr(direct_entities, "_wall_duration", lambda value: ("ns", value))
     monkeypatch.setattr(
         direct_entities, "_timer_time_since_last_call", lambda selected: 29)
@@ -722,6 +728,12 @@ def test_wall_timer_forwards_native_autostart(monkeypatch):
     monkeypatch.setattr(
         direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
     monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
+    monkeypatch.setattr(
         direct_entities,
         "_create_wall_timer_with_autostart",
         lambda node, period, selected, selected_group, autostart: (
@@ -791,6 +803,12 @@ def test_clock_timer_is_native_control_on_the_node_clock(monkeypatch):
         return entity
 
     monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
     monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
     monkeypatch.setattr(
         direct_entities, "_timer_time_since_last_call", lambda selected: 29)
@@ -862,6 +880,12 @@ def test_clock_timer_defaults_to_node_clock_when_clock_omitted(monkeypatch):
         return Entity()
 
     monkeypatch.setattr(direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
     monkeypatch.setattr(direct_entities, "_create_clock_timer_native", native_factory)
     monkeypatch.setattr(
         direct_entities,
@@ -926,6 +950,12 @@ def test_clock_timer_forwards_autostart_and_callback_group(monkeypatch):
 
     monkeypatch.setattr(
         direct_entities.cppyy.gbl.std, "function", FunctionTemplate())
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
     monkeypatch.setattr(
         direct_entities,
         "_callback_group_for_node",

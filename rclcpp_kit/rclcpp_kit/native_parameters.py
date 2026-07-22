@@ -968,6 +968,13 @@ def add_pre_set_parameters_callback(
             invocation.mark_exception()
             invocation.replace(parameter_vector(()))
 
+    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
+    # 2.5a2): this callback has NOT received the native-owned-callable-
+    # lifetime treatment (_pinned_std_function) applied to subscriptions/
+    # timers/services -- it is pinned only via the implementation object's
+    # own Python-side retention (below), whose GC timing is not bound to
+    # the native entity. Not yet audited for the same premature-release
+    # risk; flagged for a future slice, not converted this cycle.
     cpp_callback = cppyy.gbl.std.function[
         "void(rclcpp_kit_native_parameters::PreSetParametersInvocation*)"
     ](dispatch)
@@ -1000,6 +1007,13 @@ def add_on_set_parameters_callback(
             invocation.set_result(make_set_parameters_result(
                 False, "parameter callback raised"))
 
+    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
+    # 2.5a2): this callback has NOT received the native-owned-callable-
+    # lifetime treatment (_pinned_std_function) applied to subscriptions/
+    # timers/services -- it is pinned only via the implementation object's
+    # own Python-side retention (below), whose GC timing is not bound to
+    # the native entity. Not yet audited for the same premature-release
+    # risk; flagged for a future slice, not converted this cycle.
     cpp_callback = cppyy.gbl.std.function[
         "void(rclcpp_kit_native_parameters::OnSetParametersInvocation*)"
     ](dispatch)
@@ -1024,6 +1038,13 @@ def add_post_set_parameters_callback(
             failures.add(exception)
             invocation.mark_exception()
 
+    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
+    # 2.5a2): this callback has NOT received the native-owned-callable-
+    # lifetime treatment (_pinned_std_function) applied to subscriptions/
+    # timers/services -- it is pinned only via the implementation object's
+    # own Python-side retention (below), whose GC timing is not bound to
+    # the native entity. Not yet audited for the same premature-release
+    # risk; flagged for a future slice, not converted this cycle.
     cpp_callback = cppyy.gbl.std.function[
         "void(rclcpp_kit_native_parameters::ParameterBatchInvocation*)"
     ](dispatch)

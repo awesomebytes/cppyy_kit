@@ -12,6 +12,7 @@ from typing import Any, Callable
 import cppyy
 
 from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
+from rclcpp_kit.direct_entities import _pinned_std_function
 from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 
 
@@ -453,9 +454,9 @@ private:
     expired_accesses = [0]
     dispatch_callback = _make_dispatch(
         callback, rejected_returns, expired_accesses)
-    cpp_callback = cppyy.gbl.std.function[
-        "void(rclcpp_kit_borrowed_set_bool_service::%s*)" % invocation
-    ](dispatch_callback)
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_borrowed_set_bool_service::%s*)" % invocation,
+        dispatch_callback)
     implementation_object = getattr(
         cppyy.gbl.rclcpp_kit_borrowed_set_bool_service, factory)(
             node, str(service_name), cpp_callback)

@@ -834,6 +834,18 @@ class NativeSession:
                 thread.close()
             except Exception:
                 pass
+        # Guaranteed final drain of the callable-lifetime reaper (Slice
+        # 2.5a2, PLAN-mte-unlock.md Addendum v3): every native executor
+        # thread this session owned has just been joined above (thread.close()
+        # blocks until it stops), so it is safe -- and necessary, since
+        # nothing else guarantees a drain ever runs -- to perform the
+        # deferred Py_DECREF for any queued releases here, on this
+        # GIL-holding thread, before the session is considered closed.
+        try:
+            from rclcpp_kit import direct_entities
+            direct_entities.drain_callable_reaper()
+        except Exception:
+            pass
         for resource in reversed(self._resources):
             try:
                 resource.close()
