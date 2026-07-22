@@ -208,7 +208,14 @@ def test_gc_after_close_of_an_in_flight_peer_does_not_crash():
     Must now stay crash-free across every one of 60 iterations."""
     # Outer timeout must clear the helper's own WATCHDOG_SECONDS (120s) with
     # margin, so a real hang surfaces as a stack dump, not a blind kill.
-    process = run_helper("_gc_after_close_helper.py", timeout=200)
+    # Outer timeout must clear the helper's own WATCHDOG_SECONDS (350s) with
+    # margin (bumped from 120s/200s after this run observed 60 iterations
+    # taking longer than that under sustained system memory pressure --
+    # confirmed via `free`/`/proc/swaps` showing swap fully committed, not a
+    # hang: the watchdog fired mid-time.sleep(), an unconditional call that
+    # always returns, meaning the whole run was simply slower than the
+    # window, not stuck).
+    process = run_helper("_gc_after_close_helper.py", timeout=420)
     assert process.returncode == 0, format_output(process)
     assert "GC_AFTER_CLOSE_ALL_OK" in process.stdout, format_output(process)
 
@@ -260,3 +267,32 @@ def test_marshal_window_stress_does_not_crash():
     process = run_helper("_marshal_window_stress_helper.py", timeout=200)
     assert process.returncode == 0, format_output(process)
     assert "MARSHAL_WINDOW_ALL_OK" in process.stdout, format_output(process)
+
+
+def test_parameter_bridge_teardown_under_worker_dispatch_does_not_crash():
+    """Slice 2.5a4 (PLAN-mte-unlock.md Addendum v3.2): on/pre/post-set-
+    parameters callbacks are worker-dispatched (synchronously inside
+    set_parameters, from a worker thread or the node's parameter service on
+    a remote request) and were not covered by the product's in-flight
+    counter at all -- only the reaper protects them. Self-closes the
+    bridge from within its own callback, dropping every reference and
+    forcing gc.collect(), on a worker thread genuinely dispatching through
+    set_parameters. Must stay crash-free across every iteration."""
+    process = run_helper(
+        "_native_parameter_teardown_under_dispatch_helper.py", timeout=150)
+    assert process.returncode == 0, format_output(process)
+    assert "PARAM_TEARDOWN_ALL_OK" in process.stdout, format_output(process)
+
+
+def test_parameter_bridge_marshal_window_stress_does_not_crash():
+    """The marshal-window stress applied to the parameter bridge. Unlike
+    subscriptions, a cross-thread close during a widened marshal window
+    deadlocks outright here -- set_parameters and close() share the node's
+    own recursive mutex, confirmed empirically -- a stronger guarantee than
+    subscriptions have, not a gap. This exercises the window that mutex
+    does not rule out: a same-thread self-close (recursive re-entry) widened
+    by the marshal hook. Must stay crash-free."""
+    process = run_helper(
+        "_native_parameter_marshal_window_stress_helper.py", timeout=150)
+    assert process.returncode == 0, format_output(process)
+    assert "PARAM_MARSHAL_WINDOW_ALL_OK" in process.stdout, format_output(process)

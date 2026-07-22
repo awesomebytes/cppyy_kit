@@ -16,6 +16,7 @@ from typing import Any, Callable, Iterable
 import cppyy
 
 from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
+from rclcpp_kit.direct_entities import _pinned_std_function
 
 
 PARAMETER_NOT_SET = 0
@@ -919,11 +920,18 @@ class NativeParameterCallback:
         )
 
     def close(self) -> None:
+        """Release the native parameter-callback bridge.
+
+        ``_cpp_callback``/``_dispatch``/``_callback`` are deliberately NOT
+        nulled here (Slice 2.5a4, PLAN-mte-unlock.md Addendum v3.2): the
+        callable's lifetime is now pinned to the ``std::function`` value
+        itself (see ``add_{pre,on,post}_set_parameters_callback``), not to
+        these Python-side references surviving -- severing them eagerly
+        here is exactly the pattern that slice fixed for
+        subscriptions/timers/services.
+        """
         if not self.closed:
             self._implementation.close()
-        self._cpp_callback = None
-        self._dispatch = None
-        self._callback = None
 
     def take_exception(self) -> BaseException | None:
         """Return and clear the oldest contained Python callback exception."""
@@ -968,16 +976,17 @@ def add_pre_set_parameters_callback(
             invocation.mark_exception()
             invocation.replace(parameter_vector(()))
 
-    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
-    # 2.5a2): this callback has NOT received the native-owned-callable-
-    # lifetime treatment (_pinned_std_function) applied to subscriptions/
-    # timers/services -- it is pinned only via the implementation object's
-    # own Python-side retention (below), whose GC timing is not bound to
-    # the native entity. Not yet audited for the same premature-release
-    # risk; flagged for a future slice, not converted this cycle.
-    cpp_callback = cppyy.gbl.std.function[
-        "void(rclcpp_kit_native_parameters::PreSetParametersInvocation*)"
-    ](dispatch)
+    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
+    # Addendum v3.2): pin the Python callable to the std::function VALUE
+    # itself, not to this implementation object's own Python-side GC
+    # timing. This bridge's C++ implementation move-constructs its own
+    # callback_ member from this exact value (PreSetParametersBridge(node,
+    # callback) : callback_(std::move(callback))), so callback_ inherits
+    # the same reaper-backed protection regardless of anything on the
+    # Python side.
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_native_parameters::PreSetParametersInvocation*)",
+        dispatch)
     implementation = namespace.make_pre_set_parameters_bridge(node, cpp_callback)
     return NativeParameterCallback(
         "pre", implementation, callback, dispatch, cpp_callback, failures)
@@ -1007,16 +1016,13 @@ def add_on_set_parameters_callback(
             invocation.set_result(make_set_parameters_result(
                 False, "parameter callback raised"))
 
-    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
-    # 2.5a2): this callback has NOT received the native-owned-callable-
-    # lifetime treatment (_pinned_std_function) applied to subscriptions/
-    # timers/services -- it is pinned only via the implementation object's
-    # own Python-side retention (below), whose GC timing is not bound to
-    # the native entity. Not yet audited for the same premature-release
-    # risk; flagged for a future slice, not converted this cycle.
-    cpp_callback = cppyy.gbl.std.function[
-        "void(rclcpp_kit_native_parameters::OnSetParametersInvocation*)"
-    ](dispatch)
+    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
+    # Addendum v3.2): see add_pre_set_parameters_callback above for the
+    # rationale -- identical here (OnSetParametersBridge's own callback_
+    # member is move-constructed from this exact pinned value).
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_native_parameters::OnSetParametersInvocation*)",
+        dispatch)
     implementation = namespace.make_on_set_parameters_bridge(node, cpp_callback)
     return NativeParameterCallback(
         "on", implementation, callback, dispatch, cpp_callback, failures)
@@ -1038,16 +1044,13 @@ def add_post_set_parameters_callback(
             failures.add(exception)
             invocation.mark_exception()
 
-    # CONDITIONAL-SAFETY NOTE (PLAN-mte-unlock.md Addendum v3, Slice
-    # 2.5a2): this callback has NOT received the native-owned-callable-
-    # lifetime treatment (_pinned_std_function) applied to subscriptions/
-    # timers/services -- it is pinned only via the implementation object's
-    # own Python-side retention (below), whose GC timing is not bound to
-    # the native entity. Not yet audited for the same premature-release
-    # risk; flagged for a future slice, not converted this cycle.
-    cpp_callback = cppyy.gbl.std.function[
-        "void(rclcpp_kit_native_parameters::ParameterBatchInvocation*)"
-    ](dispatch)
+    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
+    # Addendum v3.2): see add_pre_set_parameters_callback above for the
+    # rationale -- identical here (PostSetParametersBridge's own callback_
+    # member is move-constructed from this exact pinned value).
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_native_parameters::ParameterBatchInvocation*)",
+        dispatch)
     implementation = namespace.make_post_set_parameters_bridge(node, cpp_callback)
     return NativeParameterCallback(
         "post", implementation, callback, dispatch, cpp_callback, failures)

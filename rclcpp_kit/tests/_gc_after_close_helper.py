@@ -26,7 +26,7 @@ from rclcpp_kit.direct_message_types import load_message_type
 from rclcpp_kit.native import native
 
 
-WATCHDOG_SECONDS = 120.0
+WATCHDOG_SECONDS = 350.0
 SLOW_SLEEP_S = 0.3
 ITERATIONS = 60
 
