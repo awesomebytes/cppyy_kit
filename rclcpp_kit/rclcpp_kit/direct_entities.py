@@ -194,6 +194,7 @@ _CALLABLE_REAPER_INSTALL_LOCK = threading.Lock()
 _CALLABLE_REAPER_NAMESPACE = "rclcpp_kit_callable_reaper_v1"
 _CALLABLE_REAPER_SOURCE = r"""
 #include <Python.h>
+#include <atomic>
 #include <cstddef>
 #include <functional>
 #include <mutex>
@@ -263,6 +264,64 @@ private:
   std::vector<PyObject*> pending_;
 };
 
+// TEST-ONLY, default-off instrumentation (PLAN-mte-unlock.md Addendum
+// v3.1): widens the pre-shim "marshal window" on demand -- the gap between
+// a worker obtaining the executable/committing to dispatch and the
+// callback actually reaching the product's containment shim (where its
+// in-flight counter increments). That window is invisible to any
+// callback-quiescence counter by construction and is not stress-testable
+// from Python on its own (Python has no vantage on cppyy's own marshaling
+// step); this hook lets a suite-side test reliably land inside it instead.
+// Disabled (the common case) costs one relaxed-ish atomic-bool load and a
+// branch on every dispatch -- no lock, no std::function copy, no measurable
+// hot-path cost. NEVER enable this outside a test.
+class MarshalWindowHook {
+public:
+  static MarshalWindowHook& instance() {
+    static MarshalWindowHook hook;
+    return hook;
+  }
+
+  void set(std::function<void()> fn) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    fn_ = std::move(fn);
+    enabled_.store(true, std::memory_order_release);
+  }
+
+  void clear() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    fn_ = nullptr;
+    enabled_.store(false, std::memory_order_release);
+  }
+
+  void maybe_invoke() const {
+    if (!enabled_.load(std::memory_order_acquire)) {
+      return;
+    }
+    std::function<void()> local;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      local = fn_;
+    }
+    if (local) {
+      local();
+    }
+  }
+
+private:
+  mutable std::mutex mutex_;
+  std::atomic<bool> enabled_{false};
+  std::function<void()> fn_;
+};
+
+void set_marshal_window_hook(std::function<void()> fn) {
+  MarshalWindowHook::instance().set(std::move(fn));
+}
+
+void clear_marshal_window_hook() {
+  MarshalWindowHook::instance().clear();
+}
+
 // Wraps an already-built std::function<Signature> (typically cppyy's own
 // Python-callable conversion, which does the actual invocation and GIL
 // handling -- this class reuses it verbatim via `inner_`) together with a
@@ -322,6 +381,11 @@ public:
 
   template<typename... Args>
   auto operator()(Args&&... args) const {
+    // Test-only hook point (see MarshalWindowHook above): fires here, right
+    // before cppyy's own marshaling/invocation of the underlying Python
+    // callable begins -- i.e. squarely inside the pre-shim marshal window.
+    // A no-op in normal operation.
+    MarshalWindowHook::instance().maybe_invoke();
     return inner_(std::forward<Args>(args)...);
   }
 
@@ -1229,6 +1293,35 @@ def pending_callable_reaper_count() -> int:
     if not hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
         return 0
     return int(getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).pending_count())
+
+
+def set_marshal_window_hook(fn: Callable[[], None]) -> None:
+    """TEST-ONLY (PLAN-mte-unlock.md Addendum v3.1): install a hook that
+    fires on whatever native thread is dispatching, immediately before a
+    ``PinnedCallable`` forwards to the wrapped Python callable -- i.e.
+    squarely inside the pre-shim "marshal window" every native-dispatched
+    entity now goes through. Widening this window (e.g. with a sleep) lets
+    a concurrent destroy test reliably land inside it -- the window a
+    callback-quiescence counter cannot observe by construction, since it
+    increments only once a callback has already entered the shim.
+
+    NEVER enable this outside a test: while set, it runs on EVERY dispatch
+    of EVERY entity using the callable-lifetime reaper, on whatever thread
+    happens to be dispatching. Always pair with ``clear_marshal_window_hook``
+    (a ``try/finally`` in the caller), and treat that as a hard requirement,
+    not a convenience.
+    """
+    _install_callable_reaper()
+    namespace = getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE)
+    namespace.set_marshal_window_hook(cppyy.gbl.std.function["void()"](fn))
+
+
+def clear_marshal_window_hook() -> None:
+    """TEST-ONLY: remove the hook installed by ``set_marshal_window_hook``,
+    restoring the default (no-op, zero-overhead) dispatch path."""
+    if not hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+        return
+    getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).clear_marshal_window_hook()
 
 
 def _create_publisher_with_events(

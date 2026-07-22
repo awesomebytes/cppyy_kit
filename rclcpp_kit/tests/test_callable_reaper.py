@@ -223,12 +223,40 @@ def test_gc_after_quiescent_close_stays_clean():
 
 
 def test_gc_during_rcl_wait_does_not_crash():
-    """The discriminating proof (PLAN-mte-unlock.md Addendum v3): dropping
-    an idle subscription's only Python reference and forcing gc.collect()
-    while a live MultiThreadedExecutor worker may be parked in rcl_wait,
-    holding a wait-set-local strong copy of the entity -- no callback ever
-    dispatched, so callback-quiescence alone could not have gated this.
-    Must stay crash-free across every one of 60 iterations."""
+    """Extra coverage (superseded as the primary discriminator by the
+    marshal-window stress below, per PLAN-mte-unlock.md Addendum v3.1 --
+    Python cannot reliably hit the true marshal window on its own, but this
+    parked-rcl_wait/idle-subscription scenario is still worth keeping):
+    dropping an idle subscription's only Python reference and forcing
+    gc.collect() while a live MultiThreadedExecutor worker may be parked in
+    rcl_wait, holding a wait-set-local strong copy of the entity -- no
+    callback ever dispatched. Must stay crash-free across every iteration."""
     process = run_helper("_gc_during_rclwait_helper.py", timeout=200)
     assert process.returncode == 0, format_output(process)
     assert "GC_DURING_RCLWAIT_ALL_OK" in process.stdout, format_output(process)
+
+
+def test_marshal_window_stress_does_not_crash():
+    """The discriminating proof for the reaper (PLAN-mte-unlock.md Addendum
+    v3.1): a worker that has obtained the executable and committed to
+    dispatch, mid-marshal (cppyy converting the message into Python args,
+    the shim not yet entered), is invisible to any callback-quiescence
+    counter by construction -- it increments only once the shim is
+    entered. Using set_marshal_window_hook to widen that window on demand
+    (not reliably reachable from pure Python otherwise), this closes the
+    subscription -- dropping every Python reference and forcing
+    gc.collect() -- while a worker is parked exactly inside that window,
+    then lets it proceed to actually invoke the callable.
+
+    Confirmed genuinely discriminating: an isolated experiment with a
+    naive (unprotected, no-reaper) callable wrapper reproduced the crash
+    immediately on iteration 0 with the classic 'terminate called without
+    an active exception' signature. With the reaper (this suite's
+    production code), this must stay crash-free across every iteration --
+    the entity's own stored callback member (which a mid-marshal worker's
+    AnyExecutable keeps alive regardless of any Python wrapper's fate) now
+    itself owns the Python callable's reference, unconditionally.
+    """
+    process = run_helper("_marshal_window_stress_helper.py", timeout=200)
+    assert process.returncode == 0, format_output(process)
+    assert "MARSHAL_WINDOW_ALL_OK" in process.stdout, format_output(process)
