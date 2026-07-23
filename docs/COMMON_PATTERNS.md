@@ -249,13 +249,25 @@ kit exception (`cppyy_kit.pretty_cpp_error`, `CppyyKitError`).
 C++ enums behave like their int values across the boundary
 (`BT.NodeStatus.SUCCESS == 2`). Expose plain-int constants for convenience while
 keeping the real enum available (`bt_kit.SUCCESS` and `bt.NodeStatus.SUCCESS`).
-But three neighbours are silent traps:
+But five neighbours are silent traps:
 - **`unsigned char` (and `uint8_t`-backed `enum class`) crosses as a length-1
   Python `str`, not an int** (nav2, control). `Costmap2D::getCost()` and its
   `static constexpr unsigned char` cost constants come back as `'\xfe'`, and
   `'\xfe' == 254` is `False`. Read with `ord(...)`, and expose **plain-int**
   constants from the kit. (The enum *member* is still an int-able proxy; it's a
   *returned value / struct-member read* of the uint8 type that becomes a `str`.)
+- **The same 8-bit types cross as a length-1 `str` a SECOND, independent way:
+  as a `std::function` callback ARGUMENT when C++ calls into Python**
+  (rclcpp_kit: the lifecycle transition-callback bridge). This is a different
+  code path from the bullet above — it hit even though this exact typedef's
+  plain return values and struct-member reads elsewhere in the same file
+  already converted to correct ints. Symptom: a state id of `1` arrives as
+  `'\x01'`, so `int(state_id)` raises `ValueError: invalid literal for int()
+  with base 10: '\x01'`. Fix: widen the *crossing* signature from `uint8_t`/
+  `int8_t` to `int` (e.g. `std::function<int(int, std::string)>`), and cast
+  back to the real 8-bit type or enum only on the C++ side of the shim. Rule
+  of thumb: never spell an 8-bit integer type in a `std::function` signature
+  that C++ uses to call a Python callable — always `int` at that boundary.
 - **A `using`-alias of an enum resolves to plain Python `int`** (control) — losing
   the enum-ness. Reference the **real nested enum type** (`Outer::Inner::Enum`), not
   the alias.
