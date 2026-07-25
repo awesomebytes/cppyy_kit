@@ -57,3 +57,10 @@ def test_native_lifecycle_managed_publisher_gates_natively():
     assert proc.returncode == 0, format_output(proc)
     assert "NATIVE_LIFECYCLE_PUBLISHER_OK" in proc.stdout
     assert "NATIVE_LIFECYCLE_PUBLISHER_TEARDOWN_OK" in proc.stdout
+
+
+def test_native_lifecycle_subscription_and_timer_on_active_node():
+    proc = run_helper("_native_lifecycle_data_plane_helper.py", timeout=180)
+    assert proc.returncode == 0, format_output(proc)
+    assert "NATIVE_LIFECYCLE_DATA_PLANE_OK" in proc.stdout
+    assert "NATIVE_LIFECYCLE_DATA_PLANE_TEARDOWN_OK" in proc.stdout

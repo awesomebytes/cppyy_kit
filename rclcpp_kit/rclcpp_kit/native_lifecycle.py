@@ -13,8 +13,16 @@ from rclcpp_kit.bringup_rclcpp import (
     get_ros2_lib_path,
 )
 from rclcpp_kit.direct_entities import (
+    DirectSubscription,
+    DirectTimer,
+    _callback_group_for_node,
+    _manage_subscription_callback_entity,
+    _manage_timer_callback_entity,
+    _message_info_dict,
     _pinned_std_function,
     _publisher_options,
+    _subscription_options,
+    _wall_duration,
     resolve_supported_type,
 )
 
@@ -826,6 +834,131 @@ def create_lifecycle_publisher(
     return factory(node, str(topic), qos, options)
 
 
+def create_lifecycle_subscription(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    callback: Callable[[Any], None],
+    qos: Any,
+    *,
+    with_message_info: bool = False,
+    callback_group: Any = None,
+) -> Any:
+    """Create a typed subscription on a raw ``rclcpp_lifecycle::LifecycleNode``.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode`` (e.g.
+    :attr:`NativeLifecycleNode.raw_node`), matching every other suite
+    factory that takes a raw native node directly.
+
+    ``LifecycleNode::create_subscription<MessageT>()`` (lifecycle_node.hpp)
+    resolves, through genuine C++ template instantiation, to the identical
+    ``rclcpp::Subscription<MessageT>`` type ``rclcpp::Node::create_subscription``
+    already produces (both default the same ``AllocatorT``/``SubscriptionT``),
+    so this reuses ``direct_entities``'s existing managed-entity wrapper and
+    ``DirectSubscription`` facade unchanged (PLAN-lifecycle.md S3) -- only the
+    native creation call differs. Unlike ``rclcpp::Node``, nothing adapts
+    ``LifecycleNode.create_subscription`` to the rclpy calling convention
+    (:func:`rclcpp_kit.bringup_rclcpp.adapt_node_pub_sub_to_python` patches only
+    ``rclcpp::Node``, which ``LifecycleNode`` does not inherit), so the
+    pristine template method is called directly with explicit ``MessageT``
+    bracket syntax, exactly like ``direct_entities``'s saved-original path.
+    """
+    if not callable(callback):
+        raise TypeError("subscription callback must be callable")
+    if not isinstance(with_message_info, bool):
+        raise TypeError("with_message_info must be boolean")
+    cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
+    owning_cpp_copy_count = [0]
+    if with_message_info:
+        def dispatch_callback(message, message_info):
+            owning_message = cpp_type(message)
+            owning_cpp_copy_count[0] += 1
+            callback(owning_message, _message_info_dict(message_info))
+
+        cpp_callback = _pinned_std_function(
+            "void(std::shared_ptr<const %s>, const rclcpp::MessageInfo&)" %
+            cpp_type_name, dispatch_callback)
+    else:
+        def dispatch_callback(message):
+            owning_message = cpp_type(message)
+            owning_cpp_copy_count[0] += 1
+            callback(owning_message)
+
+        cpp_callback = _pinned_std_function(
+            "void(std::shared_ptr<const %s>)" % cpp_type_name, dispatch_callback)
+    if callback_group is None:
+        entity = node.create_subscription[cpp_type](str(topic), qos, cpp_callback)
+    else:
+        entity = node.create_subscription[cpp_type](
+            str(topic), qos, cpp_callback,
+            _subscription_options(node, callback_group))
+    managed = _manage_subscription_callback_entity(
+        entity, cpp_callback, cpp_type, callback, dispatch_callback,
+        with_message_info=with_message_info)
+    return DirectSubscription(
+        entity,
+        callback,
+        dispatch_callback,
+        cpp_callback,
+        "rclcpp_lifecycle_template",
+        owning_cpp_copy_count,
+        callback_group,
+        managed=managed,
+    )
+
+
+def create_lifecycle_wall_timer(
+    node: Any,
+    period_ns: int,
+    callback: Callable[[], None],
+    *,
+    callback_group: Any = None,
+) -> Any:
+    """Create one positive-period native wall timer on a lifecycle node.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode``. Mirrors
+    ``direct_entities.create_wall_timer`` (PLAN-lifecycle.md S3):
+    ``LifecycleNode::create_wall_timer<CallbackT>()`` deduces ``CallbackT``
+    from the ``std::function<void()>`` argument exactly like the plain-Node
+    factory, resolving through genuine C++ template instantiation to the
+    identical ``rclcpp::WallTimer<std::function<void()>>`` alias the suite
+    already manages -- so the existing managed-timer wrapper and
+    ``DirectTimer`` facade are reused unchanged; only the native creation
+    call differs.
+    """
+    if isinstance(period_ns, bool) or not isinstance(period_ns, int) or period_ns <= 0:
+        raise TypeError(
+            "direct wall timer requires a positive integer period in nanoseconds")
+    if not callable(callback):
+        raise TypeError("timer callback must be callable")
+    cpp_callback = _pinned_std_function("void()", callback)
+    if callback_group is None:
+        entity = node.create_wall_timer(_wall_duration(period_ns), cpp_callback)
+    else:
+        entity = node.create_wall_timer(
+            _wall_duration(period_ns),
+            cpp_callback,
+            _callback_group_for_node(node, callback_group),
+        )
+    native_type_name = str(
+        getattr(type(entity), "__cpp_name__", "")
+        or getattr(entity, "__cpp_name__", "")
+    )
+    if not native_type_name:
+        raise TypeError("lifecycle wall timer factory did not return a C++ entity")
+    managed = _manage_timer_callback_entity(entity, cpp_callback, callback)
+    return DirectTimer(
+        entity=entity,
+        callback=callback,
+        cpp_callback=cpp_callback,
+        period_ns=period_ns,
+        native_type_name=native_type_name,
+        callback_group=callback_group,
+        creation_route="rclcpp_lifecycle_wall_timer",
+        managed=managed,
+    )
+
+
 __all__ = [
     "CALLBACK_RETURN_ERROR",
     "CALLBACK_RETURN_FAILURE",
@@ -833,5 +966,7 @@ __all__ = [
     "NativeLifecycleNode",
     "NativeTransitionCallback",
     "create_lifecycle_publisher",
+    "create_lifecycle_subscription",
+    "create_lifecycle_wall_timer",
     "create_native_lifecycle_node",
 ]
