@@ -64,3 +64,9 @@ def test_native_lifecycle_subscription_and_timer_on_active_node():
     assert proc.returncode == 0, format_output(proc)
     assert "NATIVE_LIFECYCLE_DATA_PLANE_OK" in proc.stdout
     assert "NATIVE_LIFECYCLE_DATA_PLANE_TEARDOWN_OK" in proc.stdout
+
+
+def test_native_lifecycle_service_and_client_round_trip():
+    proc = run_helper("_native_lifecycle_service_client_helper.py", timeout=180)
+    assert proc.returncode == 0, format_output(proc)
+    assert "NATIVE_LIFECYCLE_SERVICE_CLIENT_OK" in proc.stdout

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import inspect
+import json
+import os
 import threading
 from typing import Any, Callable
 
@@ -11,6 +15,7 @@ import cppyy_kit
 from rclcpp_kit.bringup_rclcpp import (
     bringup_rclcpp,
     get_ros2_lib_path,
+    ros2_include_paths,
 )
 from rclcpp_kit.direct_entities import (
     DirectSubscription,
@@ -25,6 +30,9 @@ from rclcpp_kit.direct_entities import (
     _wall_duration,
     resolve_supported_type,
 )
+from rclcpp_kit.native_client import NativeClient
+from rclcpp_kit.native_service import _compile_native_glue, _service_spec
+from rclcpp_kit.python_service import PythonService, _resolve_cpp_name
 
 
 _HELPERS_LOCK = threading.Lock()
@@ -959,13 +967,598 @@ def create_lifecycle_wall_timer(
     )
 
 
+def _lifecycle_service_cache_dir() -> str:
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.join(
+        os.path.expanduser("~"), ".cache")
+    return os.path.join(base, "cppyy_kit", "lifecycle-services")
+
+
+def _lifecycle_client_cache_dir() -> str:
+    base = os.environ.get("XDG_CACHE_HOME") or os.path.join(
+        os.path.expanduser("~"), ".cache")
+    return os.path.join(base, "cppyy_kit", "lifecycle-clients")
+
+
+def _default_services_qos() -> Any:
+    return cppyy.gbl.rclcpp.ServicesQoS()
+
+
+def _optional_callback_group(callback_group: Any) -> Any:
+    if callback_group is None:
+        return cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+    return getattr(callback_group, "__smartptr__", lambda: callback_group)()
+
+
+def create_lifecycle_service(
+    node: Any,
+    service_type: Any,
+    service_name: str,
+    callback: Callable[[Any, Any], Any],
+    *,
+    qos: Any = None,
+    callback_group: Any = None,
+) -> PythonService:
+    """Create a real ``rclcpp::Service`` on a raw lifecycle node.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode`` (e.g.
+    :attr:`NativeLifecycleNode.raw_node`). Mirrors
+    ``python_service.create_python_service`` exactly (PLAN-lifecycle.md S4):
+    the same Invocation-pointer callback shape (the callback receives owning
+    C++ request/response values and must return an actual C++ response) and
+    the same :class:`PythonService` facade -- only the constructor's node
+    parameter type and the ``create_service`` call target
+    ``rclcpp_lifecycle::LifecycleNode::create_service<>()`` instead of
+    ``rclcpp::Node::create_service<>()``.
+
+    A plain ``cppyy.cppdef`` JIT of a full ``rclcpp_lifecycle`` +
+    service/client template body hits a known Cling
+    ``__emutls_v...std::call_once`` failure -- unrelated to lifecycle
+    specifically; ``native_service.py``/``native_client.py`` hit the
+    identical failure for a plain ``rclcpp::Node`` and already route around
+    it -- so this goes through the suite's AOT compile-cache path
+    (``_compile_native_glue``: ``cppyy_kit.prebuild()``/``cppdef_cached()``)
+    rather than a bare ``cppdef``, exactly how the base service/client
+    helpers already build theirs.
+
+    ``qos`` defaults to ``rclcpp::ServicesQoS()`` (matching
+    ``LifecycleNode::create_service``'s own default) when omitted.
+    """
+    if not callable(callback):
+        raise TypeError("service callback must be callable")
+    if inspect.iscoroutinefunction(callback):
+        raise TypeError("service callback must be synchronous")
+    cpp_type, header, package = _service_spec(service_type)
+    service_cpp_type = _resolve_cpp_name(cpp_type)
+    request_type = service_cpp_type.Request
+    response_type = service_cpp_type.Response
+    payload = json.dumps({
+        "type": cpp_type,
+        "header": header,
+        "adapter_api": 2,
+        "node_kind": "lifecycle",
+    }, sort_keys=True, separators=(",", ":"))
+    source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    interface = "LifecyclePythonService_%s" % source_id
+    implementation = "LifecyclePythonServiceImpl_%s" % source_id
+    factory = "make_lifecycle_python_service_%s" % source_id
+    invocation = "LifecyclePythonServiceInvocation_%s" % source_id
+    callback_alias = "LifecyclePythonServiceCallback_%s" % source_id
+    callback_type = "std::function<void(%s*)>" % invocation
+    prefix = """
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <%(header)s>
+namespace rclcpp_kit_lifecycle_python_service {
+class %(invocation)s {
+public:
+  %(invocation)s(
+      std::shared_ptr<const %(cpp_type)s::Request> request,
+      std::shared_ptr<%(cpp_type)s::Response> response)
+  : request_(std::move(request)), response_(std::move(response)) {}
+
+  const %(cpp_type)s::Request& request() const { return *request_; }
+  void commit_response(const %(cpp_type)s::Response& source)
+  {
+    *response_ = source;
+  }
+
+private:
+  std::shared_ptr<const %(cpp_type)s::Request> request_;
+  std::shared_ptr<%(cpp_type)s::Response> response_;
+};
+using %(callback_alias)s = %(callback_type)s;
+class %(interface)s {
+public:
+  virtual ~%(interface)s() = default;
+  virtual std::shared_ptr<rclcpp::Service<%(cpp_type)s>> raw_service() const = 0;
+  virtual uint64_t requests() const = 0;
+  virtual uint64_t exceptions() const = 0;
+  virtual uint64_t python_callback_crossings() const = 0;
+  virtual uint64_t request_cpp_copies() const = 0;
+  virtual uint64_t response_cpp_copies() const = 0;
+  virtual void close() = 0;
+};
+""" % {
+        "header": header,
+        "interface": interface,
+        "cpp_type": cpp_type,
+        "invocation": invocation,
+        "callback_alias": callback_alias,
+        "callback_type": callback_type,
+    }
+    signature = """std::shared_ptr<%(interface)s> %(factory)s(
+  std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+  const std::string& service_name,
+  %(callback_alias)s callback,
+  const rclcpp::QoS& qos,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)""" % {
+        "interface": interface,
+        "factory": factory,
+        "callback_alias": callback_alias,
+    }
+    declarations = prefix + signature + ";\n}\n"
+    code = prefix + """
+class %(implementation)s final : public %(interface)s {
+public:
+  using ServiceT = %(cpp_type)s;
+  using CallbackT = %(callback_type)s;
+
+  %(implementation)s(
+      std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+      const std::string& service_name,
+      CallbackT callback,
+      const rclcpp::QoS& qos,
+      std::shared_ptr<rclcpp::CallbackGroup> callback_group)
+  : callback_(std::move(callback))
+  {
+    auto service_callback =
+      [this](
+          std::shared_ptr<ServiceT::Request> request,
+          std::shared_ptr<ServiceT::Response> response) {
+        python_callback_crossings_.fetch_add(1, std::memory_order_relaxed);
+        request_cpp_copies_.fetch_add(1, std::memory_order_relaxed);
+        try {
+          %(invocation)s invocation(request, response);
+          callback_(&invocation);
+          response_cpp_copies_.fetch_add(1, std::memory_order_relaxed);
+          requests_.fetch_add(1, std::memory_order_relaxed);
+        } catch (...) {
+          exceptions_.fetch_add(1, std::memory_order_relaxed);
+          throw;
+        }
+      };
+    service_ = node->create_service<ServiceT>(
+      service_name, std::move(service_callback), qos, std::move(callback_group));
+  }
+
+  ~%(implementation)s() override { close(); }
+
+  std::shared_ptr<rclcpp::Service<ServiceT>> raw_service() const override
+  {
+    return service_;
+  }
+  uint64_t requests() const override { return requests_.load(); }
+  uint64_t exceptions() const override { return exceptions_.load(); }
+  uint64_t python_callback_crossings() const override
+  {
+    return python_callback_crossings_.load();
+  }
+  uint64_t request_cpp_copies() const override
+  {
+    return request_cpp_copies_.load();
+  }
+  uint64_t response_cpp_copies() const override
+  {
+    return response_cpp_copies_.load();
+  }
+  void close() override
+  {
+    // Same UAF-avoiding contract as python_service.py's close(): drop only
+    // the entity reference; the Python side keeps callback_/cpp_callback
+    // alive via cppyy_kit.keep_alive on this implementation object.
+    service_.reset();
+  }
+
+private:
+  std::shared_ptr<rclcpp::Service<ServiceT>> service_;
+  CallbackT callback_;
+  std::atomic<uint64_t> requests_{0};
+  std::atomic<uint64_t> exceptions_{0};
+  std::atomic<uint64_t> python_callback_crossings_{0};
+  std::atomic<uint64_t> request_cpp_copies_{0};
+  std::atomic<uint64_t> response_cpp_copies_{0};
+};
+
+%(signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), service_name, std::move(callback), qos,
+    std::move(callback_group));
+}
+
+}
+""" % {
+        "implementation": implementation,
+        "interface": interface,
+        "cpp_type": cpp_type,
+        "callback_type": callback_type,
+        "invocation": invocation,
+        "signature": signature,
+    }
+    compile_options = {
+        "decls": declarations,
+        "name": "rclcpp_lifecycle_python_service_%s" % source_id,
+        "include_paths": tuple(sorted(ros2_include_paths())),
+        "library_paths": (get_ros2_lib_path(),),
+        "libraries": (
+            "rclcpp", "rclcpp_lifecycle", "%s__rosidl_typesupport_cpp" % package),
+        "directory": _lifecycle_service_cache_dir(),
+    }
+    compile_result = _compile_native_glue(code, compile_options)
+    namespace = getattr(cppyy.gbl, "rclcpp_kit_lifecycle_python_service")
+
+    def dispatch_callback(call: Any) -> None:
+        owning_request = request_type(call.request())
+        owning_response = response_type()
+        returned = callback(owning_request, owning_response)
+        if not isinstance(returned, response_type):
+            raise TypeError(
+                "service callback must return an actual C++ %s::Response" %
+                cpp_type
+            )
+        call.commit_response(returned)
+
+    cpp_callback = _pinned_std_function(
+        "void(rclcpp_kit_lifecycle_python_service::%s*)" % invocation,
+        dispatch_callback)
+    qos_value = qos if qos is not None else _default_services_qos()
+    group_value = (
+        _callback_group_for_node(node, callback_group)
+        if callback_group is not None
+        else _optional_callback_group(None)
+    )
+    implementation_object = getattr(namespace, factory)(
+        node, str(service_name), cpp_callback, qos_value, group_value)
+    # Pin the callables to the implementation's lifetime, same rationale as
+    # python_service.py's create_python_service.
+    cppyy_kit.keep_alive(
+        implementation_object, callback, dispatch_callback, cpp_callback)
+    return PythonService(
+        implementation_object,
+        callback,
+        dispatch_callback,
+        cpp_callback,
+        source_id,
+        compile_result,
+        callback_group,
+    )
+
+
+def create_lifecycle_client(
+    node: Any,
+    service_type: Any,
+    service_name: str,
+    *,
+    qos: Any = None,
+    callback_group: Any = None,
+) -> NativeClient:
+    """Create a cached typed client on a raw lifecycle node.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode``. Mirrors
+    ``native_client.create_native_client`` exactly (PLAN-lifecycle.md S4):
+    the same C++-owned asynchronous-future ownership and the same
+    :class:`NativeClient` facade -- only the constructor's node parameter
+    type and the ``create_client`` call target
+    ``rclcpp_lifecycle::LifecycleNode::create_client<>()``. Goes through the
+    suite's AOT compile-cache path for the same Cling ``std::call_once``
+    reason documented on :func:`create_lifecycle_service`.
+
+    ``qos`` defaults to ``rclcpp::ServicesQoS()`` (matching
+    ``LifecycleNode::create_client``'s own default) when omitted.
+    """
+    cpp_type, header, package = _service_spec(service_type)
+    payload = json.dumps({
+        "type": cpp_type,
+        "header": header,
+        "adapter_api": 2,
+        "node_kind": "lifecycle",
+    }, sort_keys=True, separators=(",", ":"))
+    source_id = hashlib.sha256(payload.encode()).hexdigest()[:16]
+    interface = "LifecycleNativeClient_%s" % source_id
+    implementation = "LifecycleNativeClientImpl_%s" % source_id
+    factory = "make_lifecycle_native_client_%s" % source_id
+    prefix = """
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <future>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <rclcpp/rclcpp.hpp>
+#include <rclcpp_lifecycle/lifecycle_node.hpp>
+#include <%(header)s>
+namespace rclcpp_kit_lifecycle_native_client {
+class %(interface)s {
+public:
+  virtual ~%(interface)s() = default;
+  virtual std::shared_ptr<%(cpp_type)s::Request> make_request() const = 0;
+  virtual std::shared_ptr<rclcpp::Client<%(cpp_type)s>> raw_client() const = 0;
+  virtual bool service_is_ready() const = 0;
+  virtual bool wait_for_service(int64_t timeout_ns) const = 0;
+  virtual uint64_t send(std::shared_ptr<%(cpp_type)s::Request> request) = 0;
+  virtual uint64_t send_cpp_value(const %(cpp_type)s::Request& request) = 0;
+  virtual bool ready(uint64_t token) const = 0;
+  virtual std::shared_ptr<%(cpp_type)s::Response> take(uint64_t token) = 0;
+  virtual bool cancel(uint64_t token) = 0;
+  virtual uint64_t requests_sent() const = 0;
+  virtual uint64_t responses_taken() const = 0;
+  virtual uint64_t canceled() const = 0;
+  virtual uint64_t exceptions() const = 0;
+  virtual uint64_t pending_requests() const = 0;
+  virtual uint64_t python_request_crossings() const = 0;
+  virtual uint64_t python_response_crossings() const = 0;
+  virtual uint64_t cpp_request_copies() const = 0;
+  virtual void close() = 0;
+};
+""" % {
+        "header": header,
+        "interface": interface,
+        "cpp_type": cpp_type,
+    }
+    signature = """std::shared_ptr<%(interface)s> %(factory)s(
+  std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+  const std::string& service_name,
+  const rclcpp::QoS& qos,
+  std::shared_ptr<rclcpp::CallbackGroup> callback_group)""" % {
+        "interface": interface,
+        "factory": factory,
+    }
+    declarations = prefix + signature + ";\n}\n"
+    code = prefix + """
+class %(implementation)s final : public %(interface)s {
+public:
+  using ClientT = rclcpp::Client<%(cpp_type)s>;
+  using Record = typename ClientT::FutureAndRequestId;
+
+  %(implementation)s(
+      std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+      const std::string& service_name,
+      const rclcpp::QoS& qos,
+      std::shared_ptr<rclcpp::CallbackGroup> callback_group)
+  {
+    client_ = node->create_client<%(cpp_type)s>(
+      service_name, qos, std::move(callback_group));
+  }
+
+  ~%(implementation)s() override { close(); }
+
+  std::shared_ptr<%(cpp_type)s::Request> make_request() const override
+  {
+    return std::make_shared<%(cpp_type)s::Request>();
+  }
+
+  std::shared_ptr<ClientT> raw_client() const override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return client_;
+  }
+
+  bool service_is_ready() const override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return client_ && client_->service_is_ready();
+  }
+
+  bool wait_for_service(int64_t timeout_ns) const override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return client_ && client_->wait_for_service(
+      std::chrono::nanoseconds(timeout_ns));
+  }
+
+  uint64_t send(std::shared_ptr<%(cpp_type)s::Request> request) override
+  {
+    python_request_crossings_.fetch_add(1, std::memory_order_relaxed);
+    return send_owned(std::move(request));
+  }
+
+  uint64_t send_cpp_value(const %(cpp_type)s::Request& request) override
+  {
+    python_request_crossings_.fetch_add(1, std::memory_order_relaxed);
+    std::shared_ptr<%(cpp_type)s::Request> owned;
+    try {
+      owned = std::make_shared<%(cpp_type)s::Request>(request);
+      cpp_request_copies_.fetch_add(1, std::memory_order_relaxed);
+    } catch (...) {
+      exceptions_.fetch_add(1, std::memory_order_relaxed);
+      throw;
+    }
+    return send_owned(std::move(owned));
+  }
+
+  uint64_t send_owned(std::shared_ptr<%(cpp_type)s::Request> request)
+  {
+    if (!request) {
+      throw std::invalid_argument("request must not be null");
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!client_) {
+      throw std::runtime_error("NativeClient is closed");
+    }
+    const uint64_t token = next_token_.fetch_add(1, std::memory_order_relaxed);
+    try {
+      auto call = client_->async_send_request(std::move(request));
+      pending_.emplace(token, std::move(call));
+      requests_sent_.fetch_add(1, std::memory_order_relaxed);
+      return token;
+    } catch (...) {
+      exceptions_.fetch_add(1, std::memory_order_relaxed);
+      throw;
+    }
+  }
+
+  bool ready(uint64_t token) const override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto it = find(token);
+    return it->second.wait_for(std::chrono::nanoseconds(0)) ==
+      std::future_status::ready;
+  }
+
+  std::shared_ptr<%(cpp_type)s::Response> take(uint64_t token) override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = find(token);
+    if (it->second.wait_for(std::chrono::nanoseconds(0)) !=
+        std::future_status::ready) {
+      throw std::logic_error("response is not ready");
+    }
+    Record call = std::move(it->second);
+    pending_.erase(it);
+    try {
+      auto response = call.get();
+      responses_taken_.fetch_add(1, std::memory_order_relaxed);
+      python_response_crossings_.fetch_add(1, std::memory_order_relaxed);
+      return response;
+    } catch (...) {
+      exceptions_.fetch_add(1, std::memory_order_relaxed);
+      throw;
+    }
+  }
+
+  bool cancel(uint64_t token) override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = pending_.find(token);
+    if (it == pending_.end()) {
+      return false;
+    }
+    if (client_) {
+      client_->remove_pending_request(it->second.request_id);
+    }
+    pending_.erase(it);
+    canceled_.fetch_add(1, std::memory_order_relaxed);
+    return true;
+  }
+
+  uint64_t requests_sent() const override { return requests_sent_.load(); }
+  uint64_t responses_taken() const override { return responses_taken_.load(); }
+  uint64_t canceled() const override { return canceled_.load(); }
+  uint64_t exceptions() const override { return exceptions_.load(); }
+  uint64_t pending_requests() const override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return pending_.size();
+  }
+  uint64_t python_request_crossings() const override
+  {
+    return python_request_crossings_.load();
+  }
+  uint64_t python_response_crossings() const override
+  {
+    return python_response_crossings_.load();
+  }
+  uint64_t cpp_request_copies() const override
+  {
+    return cpp_request_copies_.load();
+  }
+
+  void close() override
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!client_) {
+      return;
+    }
+    for (auto& item : pending_) {
+      client_->remove_pending_request(item.second.request_id);
+    }
+    canceled_.fetch_add(pending_.size(), std::memory_order_relaxed);
+    pending_.clear();
+    client_.reset();
+  }
+
+private:
+  typename std::unordered_map<uint64_t, Record>::iterator find(uint64_t token)
+  {
+    auto it = pending_.find(token);
+    if (it == pending_.end()) {
+      throw std::out_of_range("unknown or completed call token");
+    }
+    return it;
+  }
+
+  typename std::unordered_map<uint64_t, Record>::const_iterator find(
+      uint64_t token) const
+  {
+    auto it = pending_.find(token);
+    if (it == pending_.end()) {
+      throw std::out_of_range("unknown or completed call token");
+    }
+    return it;
+  }
+
+  mutable std::mutex mutex_;
+  std::shared_ptr<ClientT> client_;
+  std::unordered_map<uint64_t, Record> pending_;
+  std::atomic<uint64_t> next_token_{1};
+  std::atomic<uint64_t> requests_sent_{0};
+  std::atomic<uint64_t> responses_taken_{0};
+  std::atomic<uint64_t> canceled_{0};
+  std::atomic<uint64_t> exceptions_{0};
+  std::atomic<uint64_t> python_request_crossings_{0};
+  std::atomic<uint64_t> python_response_crossings_{0};
+  std::atomic<uint64_t> cpp_request_copies_{0};
+};
+
+%(signature)s
+{
+  return std::make_shared<%(implementation)s>(
+    std::move(node), service_name, qos, std::move(callback_group));
+}
+}
+""" % {
+        "implementation": implementation,
+        "interface": interface,
+        "cpp_type": cpp_type,
+        "signature": signature,
+    }
+    compile_options = {
+        "decls": declarations,
+        "name": "rclcpp_lifecycle_native_client_%s" % source_id,
+        "include_paths": tuple(sorted(ros2_include_paths())),
+        "library_paths": (get_ros2_lib_path(),),
+        "libraries": (
+            "rclcpp", "rclcpp_lifecycle", "%s__rosidl_typesupport_cpp" % package),
+        "directory": _lifecycle_client_cache_dir(),
+    }
+    compile_result = _compile_native_glue(code, compile_options)
+    namespace = getattr(cppyy.gbl, "rclcpp_kit_lifecycle_native_client")
+    qos_value = qos if qos is not None else _default_services_qos()
+    group_value = _optional_callback_group(callback_group)
+    implementation_object = getattr(namespace, factory)(
+        node, str(service_name), qos_value, group_value)
+    return NativeClient(implementation_object, source_id, compile_result)
+
+
 __all__ = [
     "CALLBACK_RETURN_ERROR",
     "CALLBACK_RETURN_FAILURE",
     "CALLBACK_RETURN_SUCCESS",
     "NativeLifecycleNode",
     "NativeTransitionCallback",
+    "create_lifecycle_client",
     "create_lifecycle_publisher",
+    "create_lifecycle_service",
     "create_lifecycle_subscription",
     "create_lifecycle_wall_timer",
     "create_native_lifecycle_node",
