@@ -411,6 +411,7 @@ class NativeCapabilities:
     managed_content_filter: str = "rmw_runtime_query"
     managed_qos_overriding_options: bool = True
     raw_rclcpp: bool = True
+    managed_raw_subscriptions: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

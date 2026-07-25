@@ -31,6 +31,7 @@ _MANAGED_CALLBACK_ENTITY_INSTALL_LOCK = threading.Lock()
 _MANAGED_CALLBACK_ENTITY_NAMESPACE = "rclcpp_kit_managed_callback_entity_v1"
 _RMW_SEQUENCE_NUMBER_UNSUPPORTED = 2 ** 64 - 1
 _MANAGED_CALLBACK_ENTITY_SOURCE = r"""
+#include <Python.h>
 #include <atomic>
 #include <memory>
 #include <stdexcept>
@@ -143,6 +144,47 @@ std::shared_ptr<ManagedSubscriptionWithInfo<MessageT>> manage_subscription_with_
 {
   return std::make_shared<ManagedSubscriptionWithInfo<MessageT>>(
     std::move(entity), std::move(callback));
+}
+
+// GenericSubscription is already a concrete (non-template-on-MessageT) rclcpp
+// class -- unlike Subscription<MessageT>, it carries no defaulted template
+// parameter mismatch to sidestep, so the wrapper below is concrete too.
+class ManagedGenericSubscription
+: public ManagedCallbackEntityImpl<
+    rclcpp::GenericSubscription,
+    std::function<void(std::shared_ptr<rclcpp::SerializedMessage>)>>
+{
+public:
+  using Base = ManagedCallbackEntityImpl<
+    rclcpp::GenericSubscription,
+    std::function<void(std::shared_ptr<rclcpp::SerializedMessage>)>>;
+  using Base::Base;
+};
+
+std::shared_ptr<ManagedGenericSubscription> manage_generic_subscription(
+  std::shared_ptr<rclcpp::GenericSubscription> entity,
+  std::function<void(std::shared_ptr<rclcpp::SerializedMessage>)> callback)
+{
+  return std::make_shared<ManagedGenericSubscription>(
+    std::move(entity), std::move(callback));
+}
+
+// Raw/generic subscription payload conversion: the callback dispatch path
+// (create_raw_subscription below) converts to Python bytes on this same
+// thread, before ever calling the user's Python callback -- mirroring how
+// the typed path converts to an owning cpp_type copy in dispatch_callback.
+// A dedicated helper (rather than rclcpp_kit.serialization's
+// serialized_message_to_bytes) avoids pulling in librosbag2_storage.so,
+// which that helper's _ensure_serialization_helpers() loads unconditionally
+// for its rosbag-specific functions -- unnecessary weight for a base ROS
+// feature that has nothing to do with bag recording/playback.
+PyObject* serialized_message_to_pybytes(
+    const std::shared_ptr<rclcpp::SerializedMessage>& message)
+{
+  const auto& r = message->get_rcl_serialized_message();
+  return PyBytes_FromStringAndSize(
+    reinterpret_cast<const char *>(r.buffer),
+    static_cast<Py_ssize_t>(r.buffer_length));
 }
 
 // Timers: the callback shape (std::function<void()>) is uniform, but the
@@ -1214,6 +1256,17 @@ def _managed_subscription_with_info_factory(cpp_type: Any) -> Any:
     return namespace.manage_subscription_with_info[cpp_type]
 
 
+def _managed_generic_subscription_factory() -> Any:
+    _install_managed_callback_entity()
+    return getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE).manage_generic_subscription
+
+
+def _serialized_message_to_bytes(serialized_message: Any) -> bytes:
+    _install_managed_callback_entity()
+    namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
+    return bytes(namespace.serialized_message_to_pybytes(serialized_message))
+
+
 def _managed_wall_timer_factory() -> Any:
     _install_managed_callback_entity()
     namespace = getattr(cppyy.gbl, _MANAGED_CALLBACK_ENTITY_NAMESPACE)
@@ -1252,6 +1305,19 @@ def _manage_subscription_callback_entity(
         if with_message_info
         else _managed_subscription_factory(cpp_type)
     )
+    smart_entity = getattr(entity, "__smartptr__", lambda: entity)()
+    managed = factory(smart_entity, cpp_callback)
+    cppyy_kit.keep_alive(managed, callback, dispatch_callback)
+    return managed
+
+
+def _manage_generic_subscription_callback_entity(
+    entity: Any, cpp_callback: Any, callback: Any, dispatch_callback: Any
+) -> Any:
+    """Same as ``_manage_subscription_callback_entity`` above, for the one
+    concrete (non-template-on-MessageT) entity type: ``GenericSubscription``
+    needs no ``cpp_type`` to pick a factory instantiation."""
+    factory = _managed_generic_subscription_factory()
     smart_entity = getattr(entity, "__smartptr__", lambda: entity)()
     managed = factory(smart_entity, cpp_callback)
     cppyy_kit.keep_alive(managed, callback, dispatch_callback)
@@ -1626,6 +1692,103 @@ def create_subscription(
     )
 
 
+def create_raw_subscription(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    callback: Callable[[bytes], None],
+    qos: Any,
+    *,
+    callback_group: Any = None,
+    event_callbacks: Any = None,
+    content_filter: Any = None,
+) -> DirectSubscription:
+    """Create a raw/generic subscription: the callback receives each message's
+    wire bytes (via ``rclcpp::GenericSubscription``/``create_generic_subscription``)
+    instead of a typed C++ copy -- rclpy's ``raw=True``. ``message_type`` is
+    still required, exactly as for a typed subscription, purely to resolve the
+    installed C++ message's ``package/msg/Name`` topic type and typesupport
+    library (this also guarantees the typesupport is cppyy-loaded before
+    ``create_generic_subscription`` touches it -- loading it only via
+    ``rclcpp::get_typesupport_library`` first, and only afterward via cppyy,
+    leaves Cling unable to resolve ``get_message_type_support_handle<T>`` for
+    any *typed* pub/sub of the same message created later in the same
+    process; empirically verified against the installed Jazzy headers).
+
+    ``event_callbacks`` is fully supported: ``GenericSubscription``'s
+    constructor forwards ``options.event_callbacks``/``use_default_callbacks``
+    to the same ``SubscriptionBase`` constructor a typed subscription uses
+    (verified against the installed Jazzy rclcpp headers), so every event name
+    a typed subscription supports works identically here.
+
+    ``content_filter`` is likewise supported: ``to_rcl_subscription_options``
+    copies ``content_filter_options`` onto the rcl-level options regardless of
+    MessageT, so the same fail-closed ``is_cft_enabled()`` probe as the typed
+    path (``_create_subscription_with_options``) applies verbatim.
+
+    There is deliberately no ``qos_overriding`` parameter here:
+    ``rclcpp::create_generic_subscription`` calls ``GenericSubscription``'s
+    constructor directly and never routes through the parameter-declaration
+    wrapper in ``rclcpp/create_subscription.hpp`` that consumes
+    ``QosOverridingOptions`` -- setting it on a generic subscription's options
+    is a silent no-op (no parameter declared, no override ever applied), so
+    it is not exposed here rather than accepted and quietly ignored.
+    """
+    if not callable(callback):
+        raise TypeError("subscription callback must be callable")
+    validated_events = _validate_event_callbacks(
+        event_callbacks, _SUBSCRIPTION_EVENT_NAMES)
+    validated_filter = _validate_content_filter(content_filter)
+    _reject_incompatible_type_if_unsupported(validated_events)
+    cpp_type_name, _, _ = resolve_supported_type(message_type)
+    topic_type = cpp_type_name.replace("::", "/")
+    owning_cpp_copy_count = [0]
+
+    def dispatch_callback(serialized_message):
+        owning_cpp_copy_count[0] += 1
+        callback(_serialized_message_to_bytes(serialized_message))
+
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<rclcpp::SerializedMessage>)", dispatch_callback)
+    options, cpp_event_callbacks = _subscription_options_with_events(
+        node, callback_group, validated_events)
+    if validated_filter is not None:
+        expression, parameters = validated_filter
+        options.content_filter_options.filter_expression = expression
+        options.content_filter_options.expression_parameters = list(parameters)
+    try:
+        entity = node.create_generic_subscription(
+            str(topic), topic_type, qos, cpp_callback, options)
+    except Exception as exc:
+        if "incompatible_type" in validated_events:
+            raise QoSEventUnsupported(
+                "incompatible_type not supported by the active RMW: %s" % exc
+            ) from exc
+        raise
+    if validated_filter is not None and not bool(entity.is_cft_enabled()):
+        # As with the typed path: the just-created entity is released before
+        # raising -- no unfiltered subscription is ever returned under the
+        # guise of filtering.
+        entity = None
+        raise ContentFilterUnsupported(
+            "content filtering not supported by %s; refusing to return an "
+            "unfiltered subscription" % _active_rmw_implementation())
+    managed = _manage_generic_subscription_callback_entity(
+        entity, cpp_callback, callback, dispatch_callback)
+    return DirectSubscription(
+        entity,
+        callback,
+        dispatch_callback,
+        cpp_callback,
+        "rclcpp_generic_subscription",
+        owning_cpp_copy_count,
+        callback_group,
+        event_callbacks=validated_events,
+        cpp_event_callbacks=cpp_event_callbacks,
+        managed=managed,
+    )
+
+
 def _optional_sequence_number(value: Any) -> int | None:
     value = int(value)
     if value == _RMW_SEQUENCE_NUMBER_UNSUPPORTED:
@@ -1852,6 +2015,7 @@ __all__ = [
     "create_clock_timer",
     "create_managed_publisher",
     "create_publisher",
+    "create_raw_subscription",
     "create_subscription",
     "create_wall_timer",
     "manage_publisher",
