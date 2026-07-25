@@ -146,6 +146,18 @@ def _cpp_type(annotation, is_return=False, fn=None):
     # A string annotation is used verbatim as the C++ type -- the exact-form
     # escape hatch (e.g. `s: "const ompl::base::State*"`); a bare Python scalar
     # name maps like the type.
+    #
+    # No guardrail here (or in callback()'s signature= kwarg, which reaches this
+    # same verbatim path) against spelling an 8-bit integer type --
+    # `int8_t`/`uint8_t`/`char`/`unsigned char`/`signed char` -- for a parameter
+    # C++ will use to CALL a Python callable through the resulting
+    # std::function. cppyy marshals that crossing as a one-character Python
+    # str, not an int (verified live: rclcpp_kit's lifecycle transition-
+    # callback bridge hit this with a bare uint8_t state id --
+    # int(state_id) raised ValueError on '\x01'). If you need an 8-bit C++
+    # value here, spell the exact form as `int`/`uint32_t`/etc. instead and
+    # cast down to the real 8-bit type on the C++ side that consumes it. See
+    # docs/COMMON_PATTERNS.md §11 for the fuller writeup.
     if isinstance(annotation, str):
         return _SCALAR_NAME_CPP.get(annotation.strip(), annotation.strip())
     if annotation in _SCALAR_CPP:

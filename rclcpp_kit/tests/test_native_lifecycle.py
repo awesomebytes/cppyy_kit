@@ -50,3 +50,10 @@ def test_native_lifecycle_destroy_under_transition_dispatch():
         "_native_lifecycle_destroy_under_dispatch_helper.py", timeout=200)
     assert proc.returncode == 0, format_output(proc)
     assert "LIFECYCLE_DESTROY_ALL_OK" in proc.stdout
+
+
+def test_native_lifecycle_managed_publisher_gates_natively():
+    proc = run_helper("_native_lifecycle_publisher_helper.py", timeout=180)
+    assert proc.returncode == 0, format_output(proc)
+    assert "NATIVE_LIFECYCLE_PUBLISHER_OK" in proc.stdout
+    assert "NATIVE_LIFECYCLE_PUBLISHER_TEARDOWN_OK" in proc.stdout

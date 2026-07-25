@@ -634,6 +634,21 @@ _SUBSCRIPTION_EVENT_NAMES = (
 )
 # event name -> the rmw status POD type each event callback receives by mutable
 # reference (rclcpp/event_handler.hpp aliases).
+#
+# Safety note (COMMON_PATTERNS.md §11): every one of these QOS*Info/
+# MatchedInfo/IncompatibleTypeInfo aliases resolves to an rmw events_statuses
+# struct (rmw/events_statuses/*.h) hand-verified to hold only int32_t/size_t
+# counter fields -- no 8-bit member (uint8_t/int8_t/char/unsigned char). That
+# matters here specifically because each struct crosses C++->Python as a
+# std::function CALLBACK ARGUMENT (via _pinned_std_function below), the exact
+# boundary where an 8-bit member would marshal as a one-character Python str
+# instead of an int (verified live elsewhere in this suite: rclcpp_kit's
+# lifecycle transition-callback bridge hit this with a bare uint8_t state
+# id). Struct-member reads and plain return values are unaffected by this
+# quirk; it is specific to this call-into-Python argument-crossing path.
+# Before adding a new event name/signature here, re-check its struct for an
+# 8-bit member the same way -- if present, that field will not read as a
+# plain Python int from inside the callback.
 _PUBLISHER_EVENT_SIGNATURES = {
     "deadline": "rclcpp::QOSDeadlineOfferedInfo&",
     "liveliness": "rclcpp::QOSLivelinessLostInfo&",
@@ -798,7 +813,13 @@ def _smart_callback_group_or_null(node: Any, callback_group: Any) -> Any:
 
 def _publisher_options_with_events(
         node: Any, callback_group: Any, validated_events: dict) -> tuple[Any, dict]:
-    """Build event-bearing ``PublisherOptions`` and the cppyy callbacks to retain."""
+    """Build event-bearing ``PublisherOptions`` and the cppyy callbacks to retain.
+
+    See the safety note above ``_PUBLISHER_EVENT_SIGNATURES`` before adding a
+    new event here -- each signature crosses into Python as a std::function
+    callback argument, the boundary where an 8-bit struct member would not
+    read as a plain int (COMMON_PATTERNS.md §11).
+    """
     cpp_event_callbacks = {}
     args = [_smart_callback_group_or_null(node, callback_group)]
     for name in ("deadline", "liveliness", "incompatible_qos", "incompatible_type",
@@ -817,7 +838,13 @@ def _publisher_options_with_events(
 
 def _subscription_options_with_events(
         node: Any, callback_group: Any, validated_events: dict) -> tuple[Any, dict]:
-    """Build event-bearing ``SubscriptionOptions`` and the cppyy callbacks to retain."""
+    """Build event-bearing ``SubscriptionOptions`` and the cppyy callbacks to retain.
+
+    See the safety note above ``_PUBLISHER_EVENT_SIGNATURES`` before adding a
+    new event here -- each signature crosses into Python as a std::function
+    callback argument, the boundary where an 8-bit struct member would not
+    read as a plain int (COMMON_PATTERNS.md §11).
+    """
     cpp_event_callbacks = {}
     args = [_smart_callback_group_or_null(node, callback_group)]
     for name in ("deadline", "liveliness", "incompatible_qos", "message_lost",

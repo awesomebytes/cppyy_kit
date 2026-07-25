@@ -12,7 +12,11 @@ from rclcpp_kit.bringup_rclcpp import (
     bringup_rclcpp,
     get_ros2_lib_path,
 )
-from rclcpp_kit.direct_entities import _pinned_std_function
+from rclcpp_kit.direct_entities import (
+    _pinned_std_function,
+    _publisher_options,
+    resolve_supported_type,
+)
 
 
 _HELPERS_LOCK = threading.Lock()
@@ -634,11 +638,200 @@ def create_native_lifecycle_node(
     return owner.register_resource(NativeLifecycleNode(implementation))
 
 
+_LIFECYCLE_PUBLISHER_LOCK = threading.Lock()
+_LIFECYCLE_PUBLISHER_NAMESPACE = "rclcpp_kit_native_lifecycle_publisher"
+
+
+def _install_lifecycle_publisher_helpers() -> None:
+    """Compile the managed lifecycle-publisher wrapper (PLAN-lifecycle.md S2).
+
+    Mirrors ``direct_entities.ManagedPublisher`` (direct_entities.py:52-62,
+    per the wave plan): a concrete wrapper templated only on ``MessageT``,
+    spelling ``rclcpp_lifecycle::LifecyclePublisher<MessageT>`` directly in
+    real C++ source. A hand-built type-name string (e.g.
+    ``"rclcpp_lifecycle::LifecyclePublisher<%s>"``) would NOT match the type
+    ``LifecycleNode::create_publisher<MessageT>()`` actually returns --
+    ``LifecyclePublisher``'s defaulted ``Alloc`` template parameter is the
+    same class of cppyy mismatch already documented for
+    ``rclcpp::Subscription`` and the wall/clock timers (direct_entities.py):
+    genuine C++ template instantiation, substituting the identical default,
+    is what makes the two resolve to the same type.
+    """
+    if hasattr(cppyy.gbl, _LIFECYCLE_PUBLISHER_NAMESPACE):
+        return
+    with _LIFECYCLE_PUBLISHER_LOCK:
+        if hasattr(cppyy.gbl, _LIFECYCLE_PUBLISHER_NAMESPACE):
+            return
+        _install_helpers()
+        cppyy.cppdef(
+            r"""
+            #include <atomic>
+            #include <memory>
+            #include <stdexcept>
+            #include <string>
+            #include <utility>
+            #include <rclcpp/rclcpp.hpp>
+            #include <rclcpp_lifecycle/lifecycle_node.hpp>
+
+            namespace rclcpp_kit_native_lifecycle_publisher {
+            template<typename MessageT>
+            class ManagedLifecyclePublisher {
+            public:
+              using PublisherT = rclcpp_lifecycle::LifecyclePublisher<MessageT>;
+
+              explicit ManagedLifecyclePublisher(std::shared_ptr<PublisherT> publisher)
+              : publisher_(std::move(publisher))
+              {
+                if (!publisher_) {
+                  throw std::invalid_argument(
+                    "lifecycle publisher requires a native publisher");
+                }
+              }
+
+              // Publish gating is native: LifecyclePublisher::publish() itself
+              // checks is_activated() and drops the message (logging once)
+              // when the node is not active -- nothing here re-implements
+              // that check.
+              void publish(const MessageT & message) const
+              {
+                require_publisher()->publish(message);
+              }
+
+              std::shared_ptr<PublisherT> entity() const
+              {
+                return require_publisher();
+              }
+
+              bool is_activated() const
+              {
+                return require_publisher()->is_activated();
+              }
+
+              // Direct passthroughs: LifecycleNode::create_publisher<>()
+              // auto-registers this publisher as a managed entity
+              // (lifecycle_node_impl.hpp), so the node's own on_activate/
+              // on_deactivate already call these across normal transitions.
+              // Exposed anyway so a caller can drive one publisher directly,
+              // matching stock rclpy's LifecyclePublisher surface.
+              void on_activate() const
+              {
+                require_publisher()->on_activate();
+              }
+
+              void on_deactivate() const
+              {
+                require_publisher()->on_deactivate();
+              }
+
+              bool close()
+              {
+                return static_cast<bool>(std::atomic_exchange_explicit(
+                  &publisher_, std::shared_ptr<PublisherT>{},
+                  std::memory_order_acq_rel));
+              }
+
+              bool closed() const
+              {
+                return !std::atomic_load_explicit(
+                  &publisher_, std::memory_order_acquire);
+              }
+
+            private:
+              std::shared_ptr<PublisherT> require_publisher() const
+              {
+                auto publisher = std::atomic_load_explicit(
+                  &publisher_, std::memory_order_acquire);
+                if (!publisher) {
+                  throw std::runtime_error("lifecycle publisher is destroyed");
+                }
+                return publisher;
+              }
+
+              mutable std::shared_ptr<PublisherT> publisher_;
+            };
+
+            template<typename MessageT>
+            std::shared_ptr<ManagedLifecyclePublisher<MessageT>>
+            make_lifecycle_publisher(
+                std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+                const std::string& topic,
+                const rclcpp::QoS& qos)
+            {
+              auto publisher = node->create_publisher<MessageT>(topic, qos);
+              return std::make_shared<ManagedLifecyclePublisher<MessageT>>(
+                std::move(publisher));
+            }
+
+            template<typename MessageT>
+            std::shared_ptr<ManagedLifecyclePublisher<MessageT>>
+            make_lifecycle_publisher(
+                std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node,
+                const std::string& topic,
+                const rclcpp::QoS& qos,
+                const rclcpp::PublisherOptions& options)
+            {
+              auto publisher = node->create_publisher<MessageT>(
+                topic, qos, options);
+              return std::make_shared<ManagedLifecyclePublisher<MessageT>>(
+                std::move(publisher));
+            }
+            }  // namespace rclcpp_kit_native_lifecycle_publisher
+            """
+        )
+
+
+def create_lifecycle_publisher(
+    node: Any,
+    message_type: Any,
+    topic: str,
+    qos: Any,
+    *,
+    callback_group: Any = None,
+) -> Any:
+    """Create a managed ``rclcpp_lifecycle::LifecyclePublisher`` on ``node``.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode`` (e.g.
+    :attr:`NativeLifecycleNode.raw_node`) -- matching every other suite
+    factory that takes a raw native node directly
+    (``native_parameters.declare_parameter``,
+    ``direct_entities.create_publisher``).
+
+    Publish gating is entirely native: ``LifecyclePublisher::publish()``
+    drops the message (logging once) while the node is unconfigured or
+    inactive. ``LifecycleNode::create_publisher<>()`` auto-registers the
+    returned publisher with the node as a managed entity
+    (``lifecycle_node_impl.hpp``), so the node's own transition machinery
+    already calls the publisher's ``on_activate``/``on_deactivate`` across
+    ordinary configure/activate/deactivate transitions -- no extra wiring is
+    needed for that to happen. The returned wrapper's own ``on_activate()``/
+    ``on_deactivate()``/``is_activated()`` are direct passthroughs for
+    driving or inspecting one publisher without a full transition.
+
+    The returned wrapper owns its own close/fence lifetime
+    (``.close()``/``.closed()``, mirroring ``NativeLifecycleNode``): using it
+    after ``close()`` raises, exactly like every other closeable native
+    entity in this suite. It does not depend on the node outliving it, but
+    the caller is responsible for closing entities before the node they were
+    created on -- the same ordering discipline every other suite entity
+    already follows (this suite's ``NativeSession``/``NativeLifecycleNode``
+    do not cascade-close data-plane entities either).
+    """
+    _, cpp_type, _ = resolve_supported_type(message_type)
+    _install_lifecycle_publisher_helpers()
+    namespace = getattr(cppyy.gbl, _LIFECYCLE_PUBLISHER_NAMESPACE)
+    factory = namespace.make_lifecycle_publisher[cpp_type]
+    if callback_group is None:
+        return factory(node, str(topic), qos)
+    options = _publisher_options(node, callback_group)
+    return factory(node, str(topic), qos, options)
+
+
 __all__ = [
     "CALLBACK_RETURN_ERROR",
     "CALLBACK_RETURN_FAILURE",
     "CALLBACK_RETURN_SUCCESS",
     "NativeLifecycleNode",
     "NativeTransitionCallback",
+    "create_lifecycle_publisher",
     "create_native_lifecycle_node",
 ]
