@@ -31,6 +31,7 @@ from rclcpp_kit.direct_entities import (
     resolve_supported_type,
 )
 from rclcpp_kit.native_client import NativeClient
+from rclcpp_kit.native_clock import NativeNodeClock
 from rclcpp_kit.native_service import _compile_native_glue, _service_spec
 from rclcpp_kit.python_service import PythonService, _resolve_cpp_name
 
@@ -1550,6 +1551,142 @@ private:
     return NativeClient(implementation_object, source_id, compile_result)
 
 
+_LIFECYCLE_CLOCK_LOCK = threading.Lock()
+_LIFECYCLE_CLOCK_NAMESPACE = "rclcpp_kit_native_lifecycle_clock"
+
+
+def _install_lifecycle_clock_helpers() -> None:
+    """Compile a lifecycle-node-typed twin of native_clock.NativeNodeClock.
+
+    ``rclcpp_lifecycle::LifecycleNode`` does not inherit ``rclcpp::Node``, so
+    the base suite's ``NativeNodeClock`` C++ implementation (constructed over
+    ``std::shared_ptr<rclcpp::Node>``) cannot bind a lifecycle node directly.
+    ``LifecycleNode::get_clock()`` works exactly like ``Node::get_clock()``
+    (PLAN-lifecycle.md S5), so this mirrors native_clock.py's implementation
+    verbatim, retargeted to the lifecycle node type, and hands the result to
+    the same Python-side :class:`NativeNodeClock` facade -- its methods only
+    call through to whatever implementation object they were constructed
+    with, independent of node type.
+    """
+    if hasattr(cppyy.gbl, _LIFECYCLE_CLOCK_NAMESPACE):
+        return
+    with _LIFECYCLE_CLOCK_LOCK:
+        if hasattr(cppyy.gbl, _LIFECYCLE_CLOCK_NAMESPACE):
+            return
+        cppyy.cppdef(
+            r"""
+            #include <atomic>
+            #include <cstdint>
+            #include <memory>
+            #include <stdexcept>
+            #include <utility>
+            #include <rclcpp/rclcpp.hpp>
+            #include <rclcpp_lifecycle/lifecycle_node.hpp>
+
+            namespace rclcpp_kit_native_lifecycle_clock {
+            class LifecycleNodeClock final {
+            public:
+              explicit LifecycleNodeClock(
+                  std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
+              : clock_(require_node(std::move(node))->get_clock())
+              {
+                if (!clock_) {
+                  throw std::runtime_error("rclcpp_lifecycle node has no clock");
+                }
+              }
+
+              std::shared_ptr<rclcpp::Clock> raw_clock() const
+              {
+                return require_clock();
+              }
+
+              rclcpp::Time now() const
+              {
+                return require_clock()->now();
+              }
+
+              int64_t now_nanoseconds() const
+              {
+                return require_clock()->now().nanoseconds();
+              }
+
+              rcl_clock_type_t clock_type() const
+              {
+                return require_clock()->get_clock_type();
+              }
+
+              bool ros_time_is_active() const
+              {
+                return require_clock()->ros_time_is_active();
+              }
+
+              uintptr_t address() const
+              {
+                return reinterpret_cast<uintptr_t>(require_clock().get());
+              }
+
+              bool close()
+              {
+                return static_cast<bool>(std::atomic_exchange_explicit(
+                  &clock_, std::shared_ptr<rclcpp::Clock>{},
+                  std::memory_order_acq_rel));
+              }
+
+              bool closed() const
+              {
+                return !std::atomic_load_explicit(
+                  &clock_, std::memory_order_acquire);
+              }
+
+            private:
+              static std::shared_ptr<rclcpp_lifecycle::LifecycleNode> require_node(
+                  std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
+              {
+                if (!node) {
+                  throw std::invalid_argument(
+                    "native lifecycle node clock requires a lifecycle node");
+                }
+                return node;
+              }
+
+              std::shared_ptr<rclcpp::Clock> require_clock() const
+              {
+                auto clock = std::atomic_load_explicit(
+                  &clock_, std::memory_order_acquire);
+                if (!clock) {
+                  throw std::runtime_error("NativeNodeClock is closed");
+                }
+                return clock;
+              }
+
+              mutable std::shared_ptr<rclcpp::Clock> clock_;
+            };
+
+            std::shared_ptr<LifecycleNodeClock> make(
+                std::shared_ptr<rclcpp_lifecycle::LifecycleNode> node)
+            {
+              return std::make_shared<LifecycleNodeClock>(std::move(node));
+            }
+            }  // namespace rclcpp_kit_native_lifecycle_clock
+            """
+        )
+
+
+def create_lifecycle_node_clock(node: Any) -> NativeNodeClock:
+    """Retain the exact clock of a raw ``rclcpp_lifecycle::LifecycleNode``.
+
+    ``node`` is the raw ``rclcpp_lifecycle::LifecycleNode`` (e.g.
+    :attr:`NativeLifecycleNode.raw_node`). Returns the same
+    ``native_clock.NativeNodeClock`` facade
+    ``native_clock.create_native_node_clock`` returns for a plain node --
+    its methods only call through to the implementation object they were
+    constructed with, independent of node type.
+    """
+    _install_lifecycle_clock_helpers()
+    namespace = getattr(cppyy.gbl, _LIFECYCLE_CLOCK_NAMESPACE)
+    return NativeNodeClock(namespace.make(node))
+
+
 __all__ = [
     "CALLBACK_RETURN_ERROR",
     "CALLBACK_RETURN_FAILURE",
@@ -1557,6 +1694,7 @@ __all__ = [
     "NativeLifecycleNode",
     "NativeTransitionCallback",
     "create_lifecycle_client",
+    "create_lifecycle_node_clock",
     "create_lifecycle_publisher",
     "create_lifecycle_service",
     "create_lifecycle_subscription",
