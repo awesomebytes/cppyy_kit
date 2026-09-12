@@ -30,6 +30,7 @@ Usage::
     rclcpp = rclcpp_kit.bringup_rclcpp()          # rclcpp up under cppyy
     from rclcpp_kit import tf, serialization, rosbag2_cpp
 """
+from rclcpp_kit.array_view import VectorArrayView, as_array
 from rclcpp_kit.bringup_rclcpp import (
     bringup_rclcpp,
     shutdown_rclcpp,
@@ -135,6 +136,8 @@ from rclcpp_kit.native_component import (
 )
 
 __all__ = [
+    "VectorArrayView",
+    "as_array",
     "bringup_rclcpp",
     "shutdown_rclcpp",
     "add_ros2_include_paths",

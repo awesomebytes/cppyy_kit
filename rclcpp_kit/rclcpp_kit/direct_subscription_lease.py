@@ -27,6 +27,7 @@ from rclcpp_kit.direct_entities import (
     _callback_group_for_node,
     _message_info_dict,
     _pinned_std_function,
+    _submessage_precache,
     resolve_supported_type,
 )
 
@@ -585,6 +586,7 @@ def create_subscription_lease(
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     source_id, factory, group_factory = _install(cpp_type_name, header)
     shared_owner_acquisitions = [0]
+    precache = _submessage_precache(cpp_type)
 
     def dispatch_callback(borrowed_message):
         # cppyy's callback argument proxy is borrowed from the std::function call.
@@ -592,6 +594,8 @@ def create_subscription_lease(
         leased_message = cppyy.gbl.std.shared_ptr[cpp_type](
             borrowed_message.__smartptr__())
         shared_owner_acquisitions[0] += 1
+        if precache is not None:
+            precache(leased_message)
         callback(leased_message)
 
     cpp_callback = _pinned_std_function(
@@ -642,11 +646,14 @@ def _create_subscription_lease_with_message_info(
     source_id, factory, group_factory = _install_with_message_info(
         cpp_type_name, header)
     shared_owner_acquisitions = [0]
+    precache = _submessage_precache(cpp_type)
 
     def dispatch_callback(borrowed_message, message_info):
         leased_message = cppyy.gbl.std.shared_ptr[cpp_type](
             borrowed_message.__smartptr__())
         shared_owner_acquisitions[0] += 1
+        if precache is not None:
+            precache(leased_message)
         callback(leased_message, _message_info_dict(message_info))
 
     cpp_callback = _pinned_std_function(

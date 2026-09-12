@@ -1027,6 +1027,90 @@ def resolve_supported_type(message_type: Any) -> tuple[str, Any, str]:
     return resolve_message_type(message_type).entity_factory_tuple()
 
 
+_COMPOSITE_FIELD_NAMES: dict[Any, tuple[str, ...]] = {}
+_COMPOSITE_FIELD_NAMES_LOCK = threading.Lock()
+
+
+def _composite_field_names(cpp_type: Any) -> tuple[str, ...]:
+    """The names of ``cpp_type``'s fields that are themselves generated C++
+    ROS sub-messages, as opposed to scalars, strings, or std::vector/array
+    fields (field-access-investigation.md): cppyy resolves a sub-message
+    field through a ~87ns proxy-creation path on every access, while a
+    scalar field is a ~29ns value conversion and a std::string/std::vector
+    field is its own distinct (non ``.msg``) cppyy type. A field is
+    classified by instantiating one default ``cpp_type()`` sample and
+    checking each candidate attribute's runtime module -- generated message
+    types live under ``cppyy.gbl.<package>.msg`` (the same convention
+    ``direct_message_types._CPP_MODULE`` matches), while std/builtin types
+    do not. ``dir(cpp_type)`` reliably yields exactly the field getters
+    plus one ``set__<field>`` setter per field (verified against generated
+    messages with plain, string, sub-message, and array fields alike), so
+    filtering out ``set__*`` and dunder names needs no rosidl lookup.
+
+    Computed once per type -- a generated message's field layout never
+    changes at runtime -- and cached forever under a lock so two
+    subscriptions racing to create the first one for a given type still
+    resolve to a single sample instance. Classification is purely an
+    optimization, never load-bearing for correctness: a ``cpp_type`` this
+    cannot default-construct or introspect (e.g. a test double standing in
+    for a real generated message) is conservatively treated as having no
+    composite fields rather than raising out of a subscription factory.
+    """
+    cached = _COMPOSITE_FIELD_NAMES.get(cpp_type)
+    if cached is not None:
+        return cached
+    with _COMPOSITE_FIELD_NAMES_LOCK:
+        cached = _COMPOSITE_FIELD_NAMES.get(cpp_type)
+        if cached is not None:
+            return cached
+        try:
+            sample = cpp_type()
+            names = []
+            for name in dir(cpp_type):
+                if name[:1] == "_" or name.startswith("set__"):
+                    continue
+                try:
+                    value = getattr(sample, name)
+                except Exception:
+                    continue
+                module = type(value).__module__
+                if module.startswith("cppyy.gbl.") and module.endswith(".msg"):
+                    names.append(name)
+            result = tuple(names)
+        except Exception:
+            result = ()
+        _COMPOSITE_FIELD_NAMES[cpp_type] = result
+        return result
+
+
+def _submessage_precache(cpp_type: Any):
+    """Return a callable that pre-populates a ``cpp_type`` message's
+    ``__dict__`` with cppyy's own proxy for each composite (sub-message)
+    field before the subscriber callback runs, or ``None`` when
+    ``cpp_type`` has no composite fields (e.g. ``std_msgs/UInt64``) so a
+    dispatch trampoline can skip the call entirely -- there would be
+    nothing to cache and no reason to pay any per-message overhead.
+
+    cppyy's ``__getattribute__`` checks instance ``__dict__`` before
+    re-resolving a C++ member, so a field seeded here drops from ~87ns
+    (fresh proxy resolution) to ~44ns (``__dict__`` hit) on every access
+    the callback makes afterward. The cached proxy is a non-owning view
+    into the same C++ memory as the original field, so mutations through
+    it are visible on ``message`` -- this is a cache of the *reference*,
+    not a snapshot of its value.
+    """
+    fields = _composite_field_names(cpp_type)
+    if not fields:
+        return None
+
+    def _apply(message: Any) -> None:
+        message_dict = message.__dict__
+        for name in fields:
+            message_dict[name] = getattr(message, name)
+
+    return _apply
+
+
 def _qos_depth(depth: Any) -> int:
     if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
         raise TypeError("direct entities require a non-negative integer QoS depth")
@@ -1529,10 +1613,13 @@ def _create_subscription_with_options(
     _reject_incompatible_type_if_unsupported(validated_events)
     cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
+    precache = _submessage_precache(cpp_type)
 
     def dispatch_callback(message):
         owning_message = cpp_type(message)
         owning_cpp_copy_count[0] += 1
+        if precache is not None:
+            precache(owning_message)
         callback(owning_message)
 
     cpp_callback = _pinned_std_function(
@@ -1644,12 +1731,15 @@ def create_subscription(
         )
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
+    precache = _submessage_precache(cpp_type)
 
     def dispatch_callback(message):
         # cppyy's borrowed callback proxy expires with the shared_ptr argument.
         # Give Python an owning C++ object so retaining a callback message is safe.
         owning_message = cpp_type(message)
         owning_cpp_copy_count[0] += 1
+        if precache is not None:
+            precache(owning_message)
         callback(owning_message)
 
     cpp_callback = _pinned_std_function(
@@ -1820,12 +1910,15 @@ def _create_subscription_with_message_info(
     """Create the opt-in owning-copy callback with native RMW metadata."""
     cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
+    precache = _submessage_precache(cpp_type)
 
     def dispatch_callback(message, message_info):
         # Keep the default subscription's ownership contract: Python receives a
         # generated C++ copy that remains valid after the native callback exits.
         owning_message = cpp_type(message)
         owning_cpp_copy_count[0] += 1
+        if precache is not None:
+            precache(owning_message)
         callback(owning_message, _message_info_dict(message_info))
 
     cpp_callback = _pinned_std_function(
