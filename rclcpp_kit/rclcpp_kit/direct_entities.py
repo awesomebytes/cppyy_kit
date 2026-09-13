@@ -481,6 +481,24 @@ public:
     require_publisher()->publish(message);
   }
 
+  // Fused borrow->fill->publish path (rclcpp::Publisher::borrow_loaned_message /
+  // publish(LoanedMessage&&)): avoids the extra publish()-internal copy for
+  // RMWs that actually loan (e.g. Fast DDS's shared-memory allocator). Fails
+  // closed with a clear error rather than silently degrading to a copying
+  // publish when the active RMW/publisher combination cannot loan at all.
+  void publish_loaned(const MessageT & message) const
+  {
+    auto publisher = require_publisher();
+    if (!publisher->can_loan_messages()) {
+      throw std::runtime_error(
+        "direct publisher cannot loan messages: the active RMW/publisher "
+        "does not support it (publisher->can_loan_messages() is false)");
+    }
+    auto loaned = publisher->borrow_loaned_message();
+    loaned.get() = message;
+    publisher->publish(std::move(loaned));
+  }
+
   std::shared_ptr<PublisherT> entity() const
   {
     return require_publisher();
