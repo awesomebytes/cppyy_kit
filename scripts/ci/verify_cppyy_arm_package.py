@@ -19,6 +19,7 @@ SCHEMA = "cppyy-kit.cppyy-package-proof/v1"
 SOURCE_SCHEMA = "cppyy-kit.upstream-package-source/v1"
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
 RUNTIME_DEPENDENCIES = {"libgcc": "15.2.0", "libstdcxx": "15.2.0"}
+RUNTIME_CONSTRAINTS = {"gcc": "14.3.0", "gxx": "14.3.0"}
 
 
 def _sha256(path: Path) -> str:
@@ -165,6 +166,13 @@ def verify(
                  f"runtime dependency pin missing from recipe: {matchspec}")
         _require(matchspec in dependencies,
                  f"artifact runtime dependency pin mismatch: {matchspec}")
+    constraints = set(index.get("constrains", []))
+    for name, version in RUNTIME_CONSTRAINTS.items():
+        matchspec = f"{name} =={version}"
+        _require(matchspec in recipe_text,
+                 f"runtime compiler constraint missing from recipe: {matchspec}")
+        _require(matchspec in constraints,
+                 f"artifact runtime compiler constraint mismatch: {matchspec}")
 
     machine = platform.machine()
     native = machine in ("aarch64", "arm64")
@@ -195,6 +203,7 @@ def verify(
         "source": source,
         "locked_component_artifacts": component_evidence,
         "runtime_dependencies": RUNTIME_DEPENDENCIES,
+        "runtime_constraints": RUNTIME_CONSTRAINTS,
         "source_snapshot": {
             "commit": commit,
             "dirty": dirty,

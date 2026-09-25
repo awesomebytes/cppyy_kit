@@ -72,6 +72,8 @@ def _fixture(tmp_path):
             source["source"]["sha256"],
             "libgcc ==15.2.0",
             "libstdcxx ==15.2.0",
+            "gcc ==14.3.0",
+            "gxx ==14.3.0",
             *(
                 MODULE._component_matchspec(name, component)
                 for name, component in source["component_artifacts"].items()
@@ -95,6 +97,7 @@ def _fixture(tmp_path):
                 "libgcc ==15.2.0",
                 "libstdcxx ==15.2.0",
             ],
+            "constrains": ["gcc ==14.3.0", "gxx ==14.3.0"],
         },
     }
     return artifact, recipe, source_lock, inspection, payloads
@@ -146,6 +149,8 @@ def test_verify_binds_artifact_to_source_and_native_runtime(monkeypatch, tmp_pat
     assert proof["artifact"]["sha256"] == MODULE._sha256(artifact)
     assert proof["runtime_dependencies"] == {
         "libgcc": "15.2.0", "libstdcxx": "15.2.0"}
+    assert proof["runtime_constraints"] == {
+        "gcc": "14.3.0", "gxx": "14.3.0"}
     assert proof["source_snapshot"] == {
         "commit": "abc123", "dirty": False, "method": "git-checkout"}
     assert proof["runtime_proof"]["native_import_version_and_cppdef"] is True
@@ -210,6 +215,25 @@ def test_verify_rejects_runtime_dependency_drift(monkeypatch, tmp_path):
         MODULE, "_download_component", _download_fixture(source_lock, payloads))
 
     with pytest.raises(ValueError, match="artifact runtime dependency pin mismatch"):
+        MODULE.verify(
+            artifact=artifact,
+            recipe=recipe,
+            source_lock=source_lock,
+            repo=tmp_path,
+            require_native=False,
+            require_clean=False,
+            runtime_evidence=None,
+        )
+
+
+def test_verify_rejects_runtime_compiler_constraint_drift(monkeypatch, tmp_path):
+    artifact, recipe, source_lock, inspection, payloads = _fixture(tmp_path)
+    inspection["index"]["constrains"].remove("gxx ==14.3.0")
+    monkeypatch.setattr(MODULE, "_inspection", lambda _artifact: inspection)
+    monkeypatch.setattr(
+        MODULE, "_download_component", _download_fixture(source_lock, payloads))
+
+    with pytest.raises(ValueError, match="artifact runtime compiler constraint"):
         MODULE.verify(
             artifact=artifact,
             recipe=recipe,

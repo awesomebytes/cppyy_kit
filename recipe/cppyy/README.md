@@ -16,11 +16,16 @@ locked component URL, so a version-equivalent rebuild is not accepted. The
 patch is the feedstock change that prevents the already-packaged compiled
 dictionary from being rebuilt.
 
-The bridge also pins `libgcc` and `libstdcxx` to 15.2.0 in host and runtime
+The bridge pins `libgcc` and `libstdcxx` to 15.2.0 in host and runtime
 requirements. The locked ARM64 Cling artifact only declares lower bounds for
-these runtimes, so an unconstrained fresh conda-forge solve can select 16.2.0,
-which was observed to segfault during interpreter initialization. The package
-proof checks that both pins are present in the built artifact metadata.
+these runtimes, so an unconstrained build solve can select 16.2.0. Fresh-install
+A/B tests also found that the `cxx-compiler` runtime dependency selects GCC/G++
+15.2 by default and segfaults in Cling initialization; GCC/G++ 14.3 passes with
+both stock and patched Cling. The build variant is therefore narrowed to 14.3,
+and runtime constraints keep the transitive compiler packages on that tested
+version without adding them as direct bridge runtime dependencies. Recipe test
+requirements pin GCC/G++ 14.3 explicitly. The package proof checks runtime
+library dependencies and compiler constraints in the built artifact metadata.
 
 The package build number is the bridge recipe revision. Increment it whenever
 the recipe, patch, or dependency construction changes; do not replace an

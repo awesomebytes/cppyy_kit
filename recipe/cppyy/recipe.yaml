@@ -14,7 +14,7 @@ source:
     - 0001-do-not-rebuild-allDict.patch
 
 build:
-  number: 1
+  number: 2
   skip:
     - not aarch64
   script: ${{ PYTHON }} -m pip install . --no-deps -vv
@@ -49,10 +49,21 @@ requirements:
     - cppyy-backend ==1.15.3 py312hf18b547_0
     - cppyy-cling ==6.32.8 py312hca09ef0_0
 
+  # cppyy-cling has an unbounded runtime dependency on cxx-compiler. A fresh
+  # solve otherwise selects GCC/G++ 15.2, which segfaulted in Cling init on
+  # ARM64. Keep the compiler installed by that dependency on the tested ABI.
+  run_constraints:
+    - gcc ==14.3.0
+    - gxx ==14.3.0
+
 tests:
   - script:
       - python -c "import cppyy, platform; assert cppyy.__version__ == '3.5.0'; assert platform.machine() == 'aarch64'; print('CPPYY_ARM_IMPORT_OK', cppyy.__version__)"
       - python -c "import cppyy; cppyy.cppdef('int cppyy_arm_add(int a, int b) { return a + b; }'); assert cppyy.gbl.cppyy_arm_add(20, 22) == 42; print('CPPYY_ARM_CPPDEF_OK')"
+    requirements:
+      run:
+        - gcc ==14.3.0
+        - gxx ==14.3.0
 
 about:
   license: BSD-3-Clause
