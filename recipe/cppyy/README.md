@@ -16,6 +16,12 @@ locked component URL, so a version-equivalent rebuild is not accepted. The
 patch is the feedstock change that prevents the already-packaged compiled
 dictionary from being rebuilt.
 
+The bridge also pins `libgcc` and `libstdcxx` to 15.2.0 in host and runtime
+requirements. The locked ARM64 Cling artifact only declares lower bounds for
+these runtimes, so an unconstrained fresh conda-forge solve can select 16.2.0,
+which was observed to segfault during interpreter initialization. The package
+proof checks that both pins are present in the built artifact metadata.
+
 The package build number is the bridge recipe revision. Increment it whenever
 the recipe, patch, or dependency construction changes; do not replace an
 existing package identity with different content.

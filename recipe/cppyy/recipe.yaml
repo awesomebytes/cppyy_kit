@@ -14,7 +14,7 @@ source:
     - 0001-do-not-rebuild-allDict.patch
 
 build:
-  number: 0
+  number: 1
   skip:
     - not aarch64
   script: ${{ PYTHON }} -m pip install . --no-deps -vv
@@ -33,11 +33,18 @@ requirements:
     - python
     - pip
     - setuptools
+    # cppyy-cling 6.32.8 was built against this libstdc++ runtime generation.
+    # Newer conda-forge defaults satisfy its broad >=14 constraints but segfault
+    # during Cling initialization on ARM64.
+    - libgcc ==15.2.0
+    - libstdcxx ==15.2.0
     - cpycppyy ==1.13.0 py312hf18b547_0
     - cppyy-backend ==1.15.3 py312hf18b547_0
     - cppyy-cling ==6.32.8 py312hca09ef0_0
   run:
     - python
+    - libgcc ==15.2.0
+    - libstdcxx ==15.2.0
     - cpycppyy ==1.13.0 py312hf18b547_0
     - cppyy-backend ==1.15.3 py312hf18b547_0
     - cppyy-cling ==6.32.8 py312hca09ef0_0
