@@ -138,7 +138,7 @@ class _CallbackEntity:
         if self._closed:
             return
         self._stats_snapshot = self.stats()
-        self._implementation.close()
+        self._namespace.close(self._implementation)
         drain_python_callback_releases()
         self._closed = True
 
@@ -244,11 +244,12 @@ uint64_t python_callback_crossings(std::shared_ptr<%s>);
 uint64_t message_cpp_copies(std::shared_ptr<%s>);
 uint64_t request_cpp_copies(std::shared_ptr<%s>);
 uint64_t response_cpp_copies(std::shared_ptr<%s>);
+void close(std::shared_ptr<%s>);
 uint64_t drain_releases();
 }
 """ % (header, namespace, message_cpp_type, implementation, implementation,
        factory, implementation, implementation, implementation, implementation,
-       implementation, implementation, implementation)
+       implementation, implementation, implementation, implementation)
     code = r"""
 #include <atomic>
 #include <cstdint>
@@ -403,6 +404,7 @@ uint64_t request_cpp_copies(std::shared_ptr<%s> value) {
 uint64_t response_cpp_copies(std::shared_ptr<%s> value) {
   return value->response_cpp_copies();
 }
+void close(std::shared_ptr<%s> value) { value->close(); }
 uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
   const std::string& topic, const rclcpp::QoS& qos,
@@ -418,7 +420,7 @@ std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
         dispatch_parameters, dispatch_args, implementation,
         implementation, implementation, implementation, implementation,
         implementation, implementation, implementation, implementation,
-        factory, implementation,
+        implementation, factory, implementation,
     )
     return namespace, decls, code
 
@@ -505,11 +507,12 @@ uint64_t python_callback_crossings(std::shared_ptr<%s>);
 uint64_t message_cpp_copies(std::shared_ptr<%s>);
 uint64_t request_cpp_copies(std::shared_ptr<%s>);
 uint64_t response_cpp_copies(std::shared_ptr<%s>);
+void close(std::shared_ptr<%s>);
 uint64_t drain_releases();
 }
 """ % (header, namespace, service_cpp_type, implementation, implementation,
        factory, implementation, implementation, implementation, implementation,
-       implementation, implementation, implementation)
+       implementation, implementation, implementation, implementation)
     code = r"""
 #include <atomic>
 #include <cstdint>
@@ -700,6 +703,7 @@ uint64_t request_cpp_copies(std::shared_ptr<%s> value) {
 uint64_t response_cpp_copies(std::shared_ptr<%s> value) {
   return value->response_cpp_copies();
 }
+void close(std::shared_ptr<%s> value) { value->close(); }
 uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
   const std::string& service_name, std::shared_ptr<rclcpp::CallbackGroup> group,
@@ -714,7 +718,7 @@ std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
         implementation, implementation, implementation,
         implementation, implementation, implementation, implementation,
         implementation, implementation, implementation, implementation,
-        factory, implementation,
+        implementation, factory, implementation,
     )
     return namespace, decls, code
 
