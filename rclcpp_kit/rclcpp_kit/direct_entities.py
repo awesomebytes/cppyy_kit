@@ -1477,9 +1477,20 @@ def drain_callable_reaper() -> int:
     including a native worker with no GIL held) since the last drain.
     Must be called on a GIL-holding Python thread. A no-op returning 0 if
     the reaper was never installed (nothing has been pinned yet)."""
-    if not hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
-        return 0
-    return int(getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).drain())
+    drained = 0
+    if hasattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE):
+        drained += int(getattr(cppyy.gbl, _CALLABLE_REAPER_NAMESPACE).drain())
+    # Compiled Python callback entities own a separate DSO-local reaper so
+    # worker-thread destruction never has to acquire the GIL. Drain all loaded
+    # bridge queues at the same safe Python pump boundary.
+    try:
+        from rclcpp_kit.python_callback_entities import (
+            drain_python_callback_releases,
+        )
+        drained += drain_python_callback_releases()
+    except ImportError:
+        pass
+    return drained
 
 
 def pending_callable_reaper_count() -> int:

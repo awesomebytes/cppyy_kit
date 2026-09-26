@@ -856,6 +856,15 @@ class NativeSession:
         self._executor_threads.clear()
         self._executors.clear()
         self._nodes.clear()
+        # Clearing the final retained native node references can destroy
+        # callback functors that had also been retained by a wait set. Their
+        # shared dispatch state queues Python references without acquiring the
+        # GIL; drain after those native owners are gone.
+        try:
+            from rclcpp_kit import direct_entities
+            direct_entities.drain_callable_reaper()
+        except Exception:
+            pass
         if self._context is not None:
             try:
                 if self._context.is_valid():
