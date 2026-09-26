@@ -68,6 +68,13 @@ def _proxy_class_name(value: Any, field: str) -> str:
     return name
 
 
+def _cpp_type_name(value: str, field: str) -> str:
+    name = str(value).strip()
+    if not name or any(char in name for char in (";", "{", "}")):
+        raise ValueError("%s must be a C++ type name" % field)
+    return name
+
+
 def _source_id(kind: str, payload: dict[str, Any]) -> str:
     encoded = json.dumps(
         {"kind": kind, "abi": _BRIDGE_ABI, **payload}, sort_keys=True,
@@ -402,7 +409,7 @@ def create_python_subscription(
         raise TypeError("subscription callback must be callable")
     if not isinstance(with_message_info, bool):
         raise TypeError("with_message_info must be bool")
-    cpp_type = _proxy_name(message_cpp_type_name, "message_cpp_type_name")
+    cpp_type = _cpp_type_name(message_cpp_type_name, "message_cpp_type_name")
     proxy_type = _proxy_class_name(message_proxy_type, "message_proxy_type")
     header = str(header).strip()
     if not header or any(char in header for char in (";", "<", ">")):
@@ -656,7 +663,7 @@ def create_python_service(
     """Create a typed service with generated owning request/response proxies."""
     if not callable(callback):
         raise TypeError("service callback must be callable")
-    cpp_type = _proxy_name(service_cpp_type_name, "service_cpp_type_name")
+    cpp_type = _cpp_type_name(service_cpp_type_name, "service_cpp_type_name")
     request_type = _proxy_class_name(request_proxy_type, "request_proxy_type")
     response_type = _proxy_class_name(response_proxy_type, "response_proxy_type")
     header = str(header).strip()
