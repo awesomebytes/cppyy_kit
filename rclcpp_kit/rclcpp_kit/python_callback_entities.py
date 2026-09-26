@@ -830,7 +830,6 @@ public:
       return;
     }
     python_callback_crossings.fetch_add(1, std::memory_order_relaxed);
-    message_cpp_copies.fetch_add(1, std::memory_order_relaxed);
     const auto& serialized = message->get_rcl_serialized_message();
     PyObject* payload = PyBytes_FromStringAndSize(
       reinterpret_cast<const char*>(serialized.buffer),
