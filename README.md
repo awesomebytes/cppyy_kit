@@ -88,8 +88,10 @@ library's own API 1:1.
 **Published.** The suite ships as 11 conda packages on the prefix.dev
 `awesomebytes` channel (browse: <https://repo.prefix.dev/awesomebytes>). Each package
 contains a pure-Python (`noarch`) wrapper; its C++ dependency is a run dependency the
-solver pulls in. The package recipes currently target Python 3.12. Linux ARM64 also
-needs the separately built, architecture-specific `cppyy` bridge described in
+solver pulls in. The package recipes currently target Python 3.12 on Linux x86_64
+and ARM64. `cppyy-kit` constrains Cling's compiler/runtime ABI to versions verified
+by fresh import and C++ compilation. Linux ARM64 also needs the separately built,
+architecture-specific `cppyy` bridge described in
 [`recipe/cppyy/README.md`](recipe/cppyy/README.md); this is an additional runtime
 package beyond the eleven kits. `cppyy-kit` and `wbc-kit` are distro-free; the
 ROS-touching kits are published as `ros-jazzy-*`.

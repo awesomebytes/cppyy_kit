@@ -79,6 +79,22 @@ PY
 }
 
 CPPDEF='import cppyy
+import json
+from pathlib import Path
+import sys
+
+def package_record(name):
+    matches = list((Path(sys.prefix) / "conda-meta").glob(name + "-*.json"))
+    assert len(matches) == 1, (name, matches)
+    return json.loads(matches[0].read_text())
+
+assert package_record("cppyy-kit")["build_number"] == 2
+for package, version in (("gcc", "14.3.0"), ("gxx", "14.3.0"),
+                         ("libgcc", "15.2.0"), ("libstdcxx", "15.2.0")):
+    record = package_record(package)
+    assert record["version"] == version, (package, record)
+print("  pinned Cling runtime OK (GCC/G++ 14.3, libgcc/libstdcxx 15.2)")
+
 cppyy.cppdef("namespace pk { inline int add(int a, int b) { return a + b; } }")
 assert cppyy.gbl.pk.add(2, 3) == 5, "cppdef roundtrip failed"
 print("  cppdef roundtrip OK (pk::add(2,3)==5)")'

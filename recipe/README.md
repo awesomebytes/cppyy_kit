@@ -1,9 +1,12 @@
 # Packaging — rattler-build recipes + release matrix
 
 Eleven `noarch: python` conda packages for the cppyy_kit suite, one recipe dir each.
-Every kit is pure Python (it JITs C++ at *runtime* via cppyy — nothing is
-compiled at build time), so `noarch: python` is correct and verified: one
-artifact per package works on any platform/python, and the build is seconds.
+Every kit wrapper is pure Python and JITs C++ at *runtime* via cppyy, so no C++ is
+compiled during package build. The package set is currently supported on Linux
+x86_64 and ARM64 with Python 3.12; the noarch wrapper artifact does not imply that
+all of cppyy's native runtime dependencies support every OS or Python version.
+`cppyy-kit` constrains the Cling compiler/runtime ABI to the combination verified
+by fresh import and `cppdef` on both Linux architectures.
 
 Linux ARM64 additionally needs the architecture-scoped `cppyy` 3.5.0 bridge in
 [`cppyy/`](cppyy/README.md). Its compiled components already come from

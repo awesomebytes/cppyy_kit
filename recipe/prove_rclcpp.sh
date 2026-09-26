@@ -47,7 +47,10 @@ EOF
 
 cat >"$workdir/smoke.py" <<'PY'
 import importlib
+import json
 import os
+from pathlib import Path
+import sys
 import time
 
 import rclpy
@@ -58,6 +61,17 @@ from rclpy.node import Node
 from rclpy.publisher import Publisher
 
 from rclcpp_kit import borrowed_publish
+
+def package_record(name):
+    matches = list((Path(sys.prefix) / "conda-meta").glob(name + "-*.json"))
+    assert len(matches) == 1, (name, matches)
+    return json.loads(matches[0].read_text())
+
+assert package_record("cppyy-kit")["build_number"] == 2
+for package, version in (("gcc", "14.3.0"), ("gxx", "14.3.0"),
+                         ("libgcc", "15.2.0"), ("libstdcxx", "15.2.0")):
+    record = package_record(package)
+    assert record["version"] == version, (package, record)
 
 
 native_module = importlib.import_module("rclcpp_kit.native")
