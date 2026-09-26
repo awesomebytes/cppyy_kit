@@ -172,6 +172,10 @@ def _subscription_source(
     callback_shape = (
         "std::shared_ptr<const MessageT>, const rclcpp::MessageInfo&"
         if with_message_info else "std::shared_ptr<const MessageT>")
+    dispatch_parameters = (
+        "std::shared_ptr<const MessageT> value, "
+        "const rclcpp::MessageInfo& info"
+        if with_message_info else "std::shared_ptr<const MessageT> value")
     dispatch_args = "value, info" if with_message_info else "value"
     callback_signature = (
         "void dispatch(std::shared_ptr<const MessageT> message, "
@@ -340,7 +344,7 @@ public:
     rclcpp::SubscriptionOptions options;
     options.callback_group = std::move(group);
     auto state = state_;
-    CallbackT dispatch = [state](%s value) {
+    CallbackT dispatch = [state](%s) {
       state->dispatch(%s);
     };
     subscription_ = node->create_subscription<MessageT>(
@@ -380,7 +384,7 @@ std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
 """ % (
         header, namespace, message_cpp_type, callback_shape, callback_signature,
         info_code, implementation, implementation,
-        callback_shape, dispatch_args, implementation, implementation, factory,
+        dispatch_parameters, dispatch_args, implementation, implementation, factory,
         implementation,
     )
     return namespace, decls, code
