@@ -1748,8 +1748,21 @@ def _create_subscription_with_options(
         bridge = create_python_subscription(
             callback_owner, node, cpp_type_name, cpp_type,
             resolve_supported_type(message_type)[2], str(topic), qos, callback,
-            callback_group=callback_group, subscription_options=options)
+            callback_group=callback_group, subscription_options=options,
+            register_resource=validated_filter is None)
         entity = bridge.entity
+        if validated_filter is not None:
+            try:
+                if not bool(entity.is_cft_enabled()):
+                    raise ContentFilterUnsupported(
+                        "content filtering not supported by %s; refusing to "
+                        "return an unfiltered subscription" %
+                        _active_rmw_implementation())
+                callback_owner.register_resource(bridge)
+            except BaseException:
+                bridge.close()
+                entity = None
+                raise
         return DirectSubscription(
             entity, callback, None, bridge, "compiled_python_callback_with_options",
             owning_cpp_copy_count, callback_group,

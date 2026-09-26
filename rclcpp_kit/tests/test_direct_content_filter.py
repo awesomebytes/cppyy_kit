@@ -26,6 +26,10 @@ def test_content_filter_fail_closed_on_cyclone():
     assert report["ros_distribution"] == "jazzy"
     assert report["filter_raised_content_filter_unsupported"] is True
     assert report["raised_message_mentions_rmw"] is True
+    assert report["filter_only_resource_count_unchanged"] is True
+    assert report["combined_filter_qos_override_raised"] is True
+    assert report["combined_filter_qos_override_resource_count_unchanged"] is True
+    assert report["combined_filter_qos_override_message_mentions_rmw"] is True
     assert report["control_subscription_ok"] is True
     assert report["control_is_cft_enabled"] is False
     assert report["capability_report"] == {

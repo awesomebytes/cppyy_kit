@@ -708,6 +708,7 @@ def create_python_subscription(
     callback_group: Any = None,
     with_message_info: bool = False,
     subscription_options: Any = None,
+    register_resource: bool = True,
 ) -> PythonCallbackSubscription:
     """Create a typed subscription whose Python callback uses compiled glue.
 
@@ -719,6 +720,8 @@ def create_python_subscription(
         raise TypeError("subscription callback must be callable")
     if not isinstance(with_message_info, bool):
         raise TypeError("with_message_info must be bool")
+    if not isinstance(register_resource, bool):
+        raise TypeError("register_resource must be bool")
     cpp_type = _cpp_type_name(message_cpp_type_name, "message_cpp_type_name")
     proxy_type = _proxy_class_name(message_proxy_type, "message_proxy_type")
     header = str(header).strip()
@@ -748,7 +751,7 @@ def create_python_subscription(
             callback, cppyy.bind_object, message_proxy_type)
         resource = PythonCallbackSubscription(
             native, source_id, compile_result, implementation)
-    return owner.register_resource(resource)
+    return owner.register_resource(resource) if register_resource else resource
 
 
 def _generic_subscription_source(source_id: str) -> tuple[str, str, str]:
