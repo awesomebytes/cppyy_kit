@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import threading
 from typing import Any, Callable
 
 import cppyy
@@ -24,6 +25,7 @@ from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 
 
 _REAPER_DRAINERS: dict[str, Any] = {}
+_BRIDGE_LOCK = threading.RLock()
 _BRIDGE_ABI = 1
 
 
@@ -105,8 +107,9 @@ class PythonCallbackEntityStats:
 
 class _CallbackEntity:
     def __init__(self, implementation: Any, source_id: str,
-                 compile_result: dict[str, Any]):
+                 compile_result: dict[str, Any], namespace: Any):
         self._implementation = implementation
+        self._namespace = namespace
         self.source_id = source_id
         self.compile_result = dict(compile_result)
         self.callback_handoff = "compiled_python_callback"
@@ -121,13 +124,14 @@ class _CallbackEntity:
         if self._stats_snapshot is not None:
             return self._stats_snapshot
         impl = self._implementation
+        ns = self._namespace
         return PythonCallbackEntityStats(
-            callbacks=int(impl.callbacks()),
-            bridge_errors=int(impl.bridge_errors()),
-            python_callback_crossings=int(impl.python_callback_crossings()),
-            message_cpp_copies=int(impl.message_cpp_copies()),
-            request_cpp_copies=int(impl.request_cpp_copies()),
-            response_cpp_copies=int(impl.response_cpp_copies()),
+            callbacks=int(ns.callbacks(impl)),
+            bridge_errors=int(ns.bridge_errors(impl)),
+            python_callback_crossings=int(ns.python_callback_crossings(impl)),
+            message_cpp_copies=int(ns.message_cpp_copies(impl)),
+            request_cpp_copies=int(ns.request_cpp_copies(impl)),
+            response_cpp_copies=int(ns.response_cpp_copies(impl)),
         )
 
     def close(self) -> None:
@@ -146,7 +150,7 @@ class PythonCallbackSubscription(_CallbackEntity):
     def entity(self) -> Any:
         if self._closed:
             raise RuntimeError("PythonCallbackSubscription is closed")
-        return self._implementation.entity()
+        return self._namespace.entity(self._implementation)
 
 
 class PythonCallbackService(_CallbackEntity):
@@ -156,7 +160,7 @@ class PythonCallbackService(_CallbackEntity):
     def raw_service(self) -> Any:
         if self._closed:
             raise RuntimeError("PythonCallbackService is closed")
-        return self._implementation.raw_service()
+        return self._namespace.raw_service(self._implementation)
 
 
 def _subscription_source(
@@ -228,13 +232,23 @@ def _subscription_source(
 #include <rclcpp/rclcpp.hpp>
 #include <%s>
 namespace %s {
+using MessageT = %s;
 class %s;
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node>, const std::string&,
   const rclcpp::QoS&, std::shared_ptr<rclcpp::CallbackGroup>, PyObject*,
   PyObject*, PyObject*);
+std::shared_ptr<rclcpp::Subscription<MessageT>> entity(std::shared_ptr<%s>);
+uint64_t callbacks(std::shared_ptr<%s>);
+uint64_t bridge_errors(std::shared_ptr<%s>);
+uint64_t python_callback_crossings(std::shared_ptr<%s>);
+uint64_t message_cpp_copies(std::shared_ptr<%s>);
+uint64_t request_cpp_copies(std::shared_ptr<%s>);
+uint64_t response_cpp_copies(std::shared_ptr<%s>);
 uint64_t drain_releases();
 }
-""" % (header, namespace, implementation, implementation, factory)
+""" % (header, namespace, message_cpp_type, implementation, implementation,
+       factory, implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation)
     code = r"""
 #include <atomic>
 #include <cstdint>
@@ -372,6 +386,23 @@ private:
   std::shared_ptr<DispatchState> state_;
   std::shared_ptr<rclcpp::Subscription<MessageT>> subscription_;
 };
+std::shared_ptr<rclcpp::Subscription<MessageT>> entity(std::shared_ptr<%s> value) {
+  return value->entity();
+}
+uint64_t callbacks(std::shared_ptr<%s> value) { return value->callbacks(); }
+uint64_t bridge_errors(std::shared_ptr<%s> value) { return value->bridge_errors(); }
+uint64_t python_callback_crossings(std::shared_ptr<%s> value) {
+  return value->python_callback_crossings();
+}
+uint64_t message_cpp_copies(std::shared_ptr<%s> value) {
+  return value->message_cpp_copies();
+}
+uint64_t request_cpp_copies(std::shared_ptr<%s> value) {
+  return value->request_cpp_copies();
+}
+uint64_t response_cpp_copies(std::shared_ptr<%s> value) {
+  return value->response_cpp_copies();
+}
 uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
   const std::string& topic, const rclcpp::QoS& qos,
@@ -384,8 +415,10 @@ std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
 """ % (
         header, namespace, message_cpp_type, callback_shape, callback_signature,
         info_code, implementation, implementation,
-        dispatch_parameters, dispatch_args, implementation, implementation, factory,
-        implementation,
+        dispatch_parameters, dispatch_args, implementation,
+        implementation, implementation, implementation, implementation,
+        implementation, implementation, implementation, implementation,
+        factory, implementation,
     )
     return namespace, decls, code
 
@@ -427,14 +460,18 @@ def create_python_subscription(
     namespace, declarations, code = _subscription_source(
         source_id, cpp_type, proxy_type, header, with_message_info)
     name = "rclcpp_python_callback_%s" % source_id
-    compile_result = _compile(code, declarations, name, (package,))
-    smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
-    implementation = getattr(cppyy.gbl, namespace)
-    _REAPER_DRAINERS[source_id] = implementation.drain_releases
-    native = implementation["make_subscription_%s" % source_id](
-        node, str(topic), qos, smart_group, callback,
-        cppyy.bind_object, message_proxy_type)
-    resource = PythonCallbackSubscription(native, source_id, compile_result)
+    with _BRIDGE_LOCK:
+        compile_result = _compile(code, declarations, name, (package,))
+        smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
+        if smart_group is None:
+            smart_group = cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+        implementation = getattr(cppyy.gbl, namespace)
+        _REAPER_DRAINERS[source_id] = implementation.drain_releases
+        native = getattr(implementation, "make_subscription_%s" % source_id)(
+            node, str(topic), qos, smart_group, callback,
+            cppyy.bind_object, message_proxy_type)
+        resource = PythonCallbackSubscription(
+            native, source_id, compile_result, implementation)
     return owner.register_resource(resource)
 
 
@@ -457,12 +494,22 @@ def _service_source(
 #include <rclcpp/rclcpp.hpp>
 #include <%s>
 namespace %s {
+using ServiceT = %s;
 class %s;
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node>, const std::string&,
   std::shared_ptr<rclcpp::CallbackGroup>, PyObject*, PyObject*, PyObject*, PyObject*);
+std::shared_ptr<rclcpp::Service<ServiceT>> raw_service(std::shared_ptr<%s>);
+uint64_t callbacks(std::shared_ptr<%s>);
+uint64_t bridge_errors(std::shared_ptr<%s>);
+uint64_t python_callback_crossings(std::shared_ptr<%s>);
+uint64_t message_cpp_copies(std::shared_ptr<%s>);
+uint64_t request_cpp_copies(std::shared_ptr<%s>);
+uint64_t response_cpp_copies(std::shared_ptr<%s>);
 uint64_t drain_releases();
 }
-""" % (header, namespace, implementation, implementation, factory)
+""" % (header, namespace, service_cpp_type, implementation, implementation,
+       factory, implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation)
     code = r"""
 #include <atomic>
 #include <cstdint>
@@ -530,7 +577,7 @@ public:
     python_callback_crossings.fetch_add(1, std::memory_order_relaxed);
     request_cpp_copies.fetch_add(1, std::memory_order_relaxed);
     auto* owned_request = new RequestT(*request);
-    auto* owned_response = new ResponseT(*response);
+    auto* owned_response = new ResponseT();
     PyObject* request_address = PyLong_FromVoidPtr(owned_request);
     PyObject* py_request = request_address ? PyObject_CallFunctionObjArgs(
       bind_object, request_address, request_type, nullptr) : nullptr;
@@ -636,6 +683,23 @@ private:
   std::shared_ptr<DispatchState> state_;
   std::shared_ptr<rclcpp::Service<ServiceT>> service_;
 };
+std::shared_ptr<rclcpp::Service<ServiceT>> raw_service(std::shared_ptr<%s> value) {
+  return value->raw_service();
+}
+uint64_t callbacks(std::shared_ptr<%s> value) { return value->callbacks(); }
+uint64_t bridge_errors(std::shared_ptr<%s> value) { return value->bridge_errors(); }
+uint64_t python_callback_crossings(std::shared_ptr<%s> value) {
+  return value->python_callback_crossings();
+}
+uint64_t message_cpp_copies(std::shared_ptr<%s> value) {
+  return value->message_cpp_copies();
+}
+uint64_t request_cpp_copies(std::shared_ptr<%s> value) {
+  return value->request_cpp_copies();
+}
+uint64_t response_cpp_copies(std::shared_ptr<%s> value) {
+  return value->response_cpp_copies();
+}
 uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
   const std::string& service_name, std::shared_ptr<rclcpp::CallbackGroup> group,
@@ -646,8 +710,11 @@ std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
 }
 }
 """ % (
-        header, namespace, service_cpp_type, implementation, implementation,
-        implementation, implementation, factory, implementation,
+        header, namespace, service_cpp_type,
+        implementation, implementation, implementation,
+        implementation, implementation, implementation, implementation,
+        implementation, implementation, implementation, implementation,
+        factory, implementation,
     )
     return namespace, decls, code
 
@@ -682,14 +749,18 @@ def create_python_service(
     namespace, declarations, code = _service_source(
         source_id, cpp_type, request_type, response_type, header)
     name = "rclcpp_python_callback_%s" % source_id
-    compile_result = _compile(code, declarations, name, (package,))
-    smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
-    implementation = getattr(cppyy.gbl, namespace)
-    _REAPER_DRAINERS[source_id] = implementation.drain_releases
-    native = implementation["make_service_%s" % source_id](
-        node, str(service_name), smart_group, callback, cppyy.bind_object,
-        request_proxy_type, response_proxy_type)
-    resource = PythonCallbackService(native, source_id, compile_result)
+    with _BRIDGE_LOCK:
+        compile_result = _compile(code, declarations, name, (package,))
+        smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
+        if smart_group is None:
+            smart_group = cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+        implementation = getattr(cppyy.gbl, namespace)
+        _REAPER_DRAINERS[source_id] = implementation.drain_releases
+        native = getattr(implementation, "make_service_%s" % source_id)(
+            node, str(service_name), smart_group, callback, cppyy.bind_object,
+            request_proxy_type, response_proxy_type)
+        resource = PythonCallbackService(
+            native, source_id, compile_result, implementation)
     return owner.register_resource(resource)
 
 
