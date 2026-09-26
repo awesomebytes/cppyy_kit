@@ -19,7 +19,7 @@ build:
   # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
   # -> noarch python: one artifact for every platform/python.
   noarch: python
-  number: 0
+  number: 1
 
 requirements:
   host:
