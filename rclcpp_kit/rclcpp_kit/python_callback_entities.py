@@ -26,7 +26,7 @@ from rclcpp_kit.bringup_rclcpp import get_ros2_lib_path, ros2_include_paths
 
 _REAPER_DRAINERS: dict[str, Any] = {}
 _BRIDGE_LOCK = threading.RLock()
-_BRIDGE_ABI = 1
+_BRIDGE_ABI = 2
 
 
 def _cache_dir() -> str:
@@ -157,6 +157,8 @@ class _CallbackEntity:
             return False
         self._stats_snapshot = self.stats()
         self._namespace.close(self._implementation)
+        if isinstance(self, PythonCallbackEventCallback):
+            self._python_callback = None
         drain_python_callback_releases()
         self._closed = True
         return True
@@ -209,6 +211,224 @@ class PythonCallbackTimer(_CallbackEntity):
         if self._closed:
             raise RuntimeError("PythonCallbackTimer is closed")
         return self._namespace.entity(self._implementation)
+
+
+class PythonCallbackEventCallback(_CallbackEntity):
+    """Compiled event trampoline suitable for rclcpp event callback slots."""
+
+    @property
+    def cpp_callback(self) -> Any:
+        if self._closed:
+            raise RuntimeError("PythonCallbackEventCallback is closed")
+        return self._namespace.cpp_callback(self._implementation)
+
+    def __call__(self, event: Any) -> Any:
+        """Retain normal callable shape for validation and direct invocation."""
+        if self._closed:
+            raise RuntimeError("PythonCallbackEventCallback is closed")
+        return self._python_callback(event)
+
+    def stats(self) -> PythonCallbackEntityStats:
+        if isinstance(self._stats_snapshot, PythonCallbackEntityStats):
+            return self._stats_snapshot
+        return PythonCallbackEntityStats(
+            callbacks=int(self._namespace.callbacks(self._implementation)),
+            bridge_errors=int(self._namespace.bridge_errors(self._implementation)),
+            python_callback_crossings=int(
+                self._namespace.callbacks(self._implementation)),
+            message_cpp_copies=0,
+            request_cpp_copies=0,
+            response_cpp_copies=0,
+        )
+
+    def __init__(self, implementation: Any, source_id: str,
+                 compile_result: dict[str, Any], namespace: Any,
+                 callback: Callable[..., Any]):
+        super().__init__(implementation, source_id, compile_result, namespace)
+        self._python_callback = callback
+
+
+def _event_callback_source(
+    source_id: str, event_cpp_type: str, proxy_type: str,
+):
+    namespace = "rclcpp_kit_python_callback_%s" % source_id
+    implementation = "EventCallback_%s" % source_id
+    factory = "make_event_callback_%s" % source_id
+    declarations = r"""
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+using EventT = %s;
+class %s;
+std::shared_ptr<%s> %s(PyObject*, PyObject*, PyObject*);
+std::function<void(EventT&)> cpp_callback(std::shared_ptr<%s>);
+uint64_t callbacks(std::shared_ptr<%s>);
+uint64_t bridge_errors(std::shared_ptr<%s>);
+void close(std::shared_ptr<%s>);
+uint64_t drain_releases();
+}
+""" % (namespace, event_cpp_type, implementation, implementation, factory,
+       implementation, implementation, implementation, implementation)
+    code = r"""
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <utility>
+#include <vector>
+#include <type_traits>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+class PyObjectReaper {
+public:
+  static PyObjectReaper& instance() {
+    static PyObjectReaper value;
+    return value;
+  }
+  void enqueue(PyObject* object) {
+    if (!object) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    pending_.push_back(object);
+  }
+  uint64_t drain() {
+    std::vector<PyObject*> batch;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      batch.swap(pending_);
+    }
+    for (PyObject* object : batch) Py_DECREF(object);
+    return batch.size();
+  }
+private:
+  std::mutex mutex_;
+  std::vector<PyObject*> pending_;
+};
+using EventT = %s;
+using ProxyT = %s;
+static_assert(std::is_same<EventT, ProxyT>::value,
+  "event proxy type must match the callback event type");
+using CallbackT = std::function<void(EventT&)>;
+class DispatchState {
+public:
+  DispatchState(PyObject* callback, PyObject* bind_object, PyObject* proxy_type)
+  : callback(callback), bind_object(bind_object), proxy_type(proxy_type) {
+    Py_INCREF(this->callback);
+    Py_INCREF(this->bind_object);
+    Py_INCREF(this->proxy_type);
+  }
+  ~DispatchState() {
+    PyObjectReaper::instance().enqueue(callback);
+    PyObjectReaper::instance().enqueue(bind_object);
+    PyObjectReaper::instance().enqueue(proxy_type);
+  }
+  void dispatch(EventT& event) {
+    PyGILState_STATE gil = PyGILState_Ensure();
+    if (closing.load(std::memory_order_acquire)) {
+      PyGILState_Release(gil);
+      return;
+    }
+    auto* owned = new EventT(event);
+    PyObject* address = PyLong_FromVoidPtr(owned);
+    PyObject* proxy = address ? PyObject_CallFunctionObjArgs(
+      bind_object, address, proxy_type, nullptr) : nullptr;
+    Py_XDECREF(address);
+    if (!proxy || PyObject_SetAttrString(proxy, "__python_owns__", Py_True) < 0) {
+      Py_XDECREF(proxy);
+      delete owned;
+      PyErr_Print();
+      bridge_errors.fetch_add(1, std::memory_order_relaxed);
+      PyGILState_Release(gil);
+      return;
+    }
+    PyObject* result = PyObject_CallFunctionObjArgs(callback, proxy, nullptr);
+    Py_DECREF(proxy);
+    if (!result) {
+      PyErr_Print();
+      bridge_errors.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      Py_DECREF(result);
+      callbacks.fetch_add(1, std::memory_order_relaxed);
+    }
+    PyGILState_Release(gil);
+  }
+  PyObject* callback;
+  PyObject* bind_object;
+  PyObject* proxy_type;
+  std::atomic<uint64_t> callbacks{0};
+  std::atomic<uint64_t> bridge_errors{0};
+  std::atomic<bool> closing{false};
+};
+class %s {
+public:
+  explicit %s(std::shared_ptr<DispatchState> state) : state_(std::move(state)) {}
+  ~%s() { close(); }
+  CallbackT callback() const {
+    auto state = state_;
+    return [state](EventT& event) { state->dispatch(event); };
+  }
+  uint64_t callbacks() const { return state_->callbacks.load(); }
+  uint64_t bridge_errors() const { return state_->bridge_errors.load(); }
+  void close() {
+    if (state_) state_->closing.store(true, std::memory_order_release);
+    state_.reset();
+  }
+private:
+  std::shared_ptr<DispatchState> state_;
+};
+std::function<void(EventT&)> cpp_callback(std::shared_ptr<%s> value) {
+  return value->callback();
+}
+uint64_t callbacks(std::shared_ptr<%s> value) { return value->callbacks(); }
+uint64_t bridge_errors(std::shared_ptr<%s> value) { return value->bridge_errors(); }
+void close(std::shared_ptr<%s> value) { value->close(); }
+uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
+std::shared_ptr<%s> %s(PyObject* callback, PyObject* bind_object,
+                        PyObject* proxy_type) {
+  auto state = std::make_shared<DispatchState>(callback, bind_object, proxy_type);
+  return std::make_shared<%s>(std::move(state));
+}
+}
+""" % (namespace, event_cpp_type, proxy_type, implementation, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, factory, implementation)
+    return namespace, declarations, code
+
+
+def create_python_event_callback(
+    owner: Any,
+    event_cpp_type_name: str,
+    event_proxy_type: Any,
+    callback: Callable[..., Any],
+) -> PythonCallbackEventCallback:
+    """Build a compiled callback for one concrete rclcpp event-info type."""
+    if not callable(callback):
+        raise TypeError("event callback must be callable")
+    event_cpp_type = _cpp_type_name(event_cpp_type_name, "event_cpp_type_name")
+    proxy_type = _proxy_class_name(event_proxy_type, "event_proxy_type")
+    source_id = _source_id("python-event-callback", {
+        "cpp_type": event_cpp_type,
+        "proxy_type": proxy_type,
+        "header_digest": _header_digest("rclcpp/rclcpp.hpp"),
+    })
+    namespace, declarations, code = _event_callback_source(
+        source_id, event_cpp_type, proxy_type)
+    with _BRIDGE_LOCK:
+        compile_result = _compile(code, declarations,
+                                  "rclcpp_python_event_callback_%s" % source_id, ())
+        implementation = getattr(cppyy.gbl, namespace)
+        _REAPER_DRAINERS[source_id] = implementation.drain_releases
+        native = getattr(implementation, "make_event_callback_%s" % source_id)(
+            callback, cppyy.bind_object, event_proxy_type)
+        resource = PythonCallbackEventCallback(native, source_id,
+                                              compile_result, implementation,
+                                              callback)
+    return owner.register_resource(resource)
 
 
 def _subscription_source(
@@ -283,8 +503,8 @@ namespace %s {
 using MessageT = %s;
 class %s;
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node>, const std::string&,
-  const rclcpp::QoS&, std::shared_ptr<rclcpp::CallbackGroup>, PyObject*,
-  PyObject*, PyObject*);
+  const rclcpp::QoS&, std::shared_ptr<rclcpp::CallbackGroup>,
+  const rclcpp::SubscriptionOptions&, bool, PyObject*, PyObject*, PyObject*);
 std::shared_ptr<rclcpp::Subscription<MessageT>> entity(std::shared_ptr<%s>);
 uint64_t callbacks(std::shared_ptr<%s>);
 uint64_t bridge_errors(std::shared_ptr<%s>);
@@ -402,10 +622,11 @@ class %s {
 public:
   %s(std::shared_ptr<rclcpp::Node> node, const std::string& topic,
      const rclcpp::QoS& qos, std::shared_ptr<rclcpp::CallbackGroup> group,
+     const rclcpp::SubscriptionOptions& supplied_options, bool use_options,
      PyObject* callback, PyObject* bind_object, PyObject* proxy_type)
   : state_(std::make_shared<DispatchState>(callback, bind_object, proxy_type)) {
-    rclcpp::SubscriptionOptions options;
-    options.callback_group = std::move(group);
+    rclcpp::SubscriptionOptions options = supplied_options;
+    if (!use_options) options.callback_group = std::move(group);
     auto state = state_;
     CallbackT dispatch = [state](%s) {
       state->dispatch(%s);
@@ -456,10 +677,11 @@ void close(std::shared_ptr<%s> value) { value->close(); }
 uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
 std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
   const std::string& topic, const rclcpp::QoS& qos,
-  std::shared_ptr<rclcpp::CallbackGroup> group, PyObject* callback,
-  PyObject* bind_object, PyObject* proxy_type) {
+  std::shared_ptr<rclcpp::CallbackGroup> group,
+  const rclcpp::SubscriptionOptions& options, bool use_options,
+  PyObject* callback, PyObject* bind_object, PyObject* proxy_type) {
   return std::make_shared<%s>(std::move(node), topic, qos,
-    std::move(group), callback, bind_object, proxy_type);
+    std::move(group), options, use_options, callback, bind_object, proxy_type);
 }
 }
 """ % (
@@ -485,6 +707,7 @@ def create_python_subscription(
     *,
     callback_group: Any = None,
     with_message_info: bool = False,
+    subscription_options: Any = None,
 ) -> PythonCallbackSubscription:
     """Create a typed subscription whose Python callback uses compiled glue.
 
@@ -515,11 +738,223 @@ def create_python_subscription(
         smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
         if smart_group is None:
             smart_group = cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+        use_options = subscription_options is not None
+        options = (subscription_options if use_options else
+                   cppyy.gbl.rclcpp.SubscriptionOptions())
         implementation = getattr(cppyy.gbl, namespace)
         _REAPER_DRAINERS[source_id] = implementation.drain_releases
         native = getattr(implementation, "make_subscription_%s" % source_id)(
-            node, str(topic), qos, smart_group, callback,
-            cppyy.bind_object, message_proxy_type)
+            node, str(topic), qos, smart_group, options, use_options,
+            callback, cppyy.bind_object, message_proxy_type)
+        resource = PythonCallbackSubscription(
+            native, source_id, compile_result, implementation)
+    return owner.register_resource(resource)
+
+
+def _generic_subscription_source(source_id: str) -> tuple[str, str, str]:
+    namespace = "rclcpp_kit_python_callback_%s" % source_id
+    implementation = "GenericSubscription_%s" % source_id
+    factory = "make_generic_subscription_%s" % source_id
+    declarations = r"""
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+class %s;
+std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node>, const std::string&,
+  const std::string&, const rclcpp::QoS&, const rclcpp::SubscriptionOptions&,
+  PyObject*);
+std::shared_ptr<rclcpp::GenericSubscription> entity(std::shared_ptr<%s>);
+uint64_t callbacks(std::shared_ptr<%s>);
+uint64_t bridge_errors(std::shared_ptr<%s>);
+uint64_t python_callback_crossings(std::shared_ptr<%s>);
+uint64_t message_cpp_copies(std::shared_ptr<%s>);
+uint64_t request_cpp_copies(std::shared_ptr<%s>);
+uint64_t response_cpp_copies(std::shared_ptr<%s>);
+void close(std::shared_ptr<%s>);
+uint64_t drain_releases();
+}
+""" % (namespace, implementation, implementation, factory, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation)
+    code = r"""
+#include <atomic>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+class PyObjectReaper {
+public:
+  static PyObjectReaper& instance() {
+    static PyObjectReaper value;
+    return value;
+  }
+  void enqueue(PyObject* object) {
+    if (!object) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    pending_.push_back(object);
+  }
+  uint64_t drain() {
+    std::vector<PyObject*> batch;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      batch.swap(pending_);
+    }
+    for (PyObject* object : batch) Py_DECREF(object);
+    return batch.size();
+  }
+private:
+  std::mutex mutex_;
+  std::vector<PyObject*> pending_;
+};
+using CallbackT = std::function<void(std::shared_ptr<rclcpp::SerializedMessage>)>;
+class DispatchState {
+public:
+  explicit DispatchState(PyObject* callback) : callback(callback) {
+    Py_INCREF(this->callback);
+  }
+  ~DispatchState() { PyObjectReaper::instance().enqueue(callback); }
+  void dispatch(const std::shared_ptr<rclcpp::SerializedMessage>& message) {
+    PyGILState_STATE gil = PyGILState_Ensure();
+    if (closing.load(std::memory_order_acquire)) {
+      PyGILState_Release(gil);
+      return;
+    }
+    python_callback_crossings.fetch_add(1, std::memory_order_relaxed);
+    message_cpp_copies.fetch_add(1, std::memory_order_relaxed);
+    const auto& serialized = message->get_rcl_serialized_message();
+    PyObject* payload = PyBytes_FromStringAndSize(
+      reinterpret_cast<const char*>(serialized.buffer),
+      static_cast<Py_ssize_t>(serialized.buffer_length));
+    if (!payload) {
+      PyErr_Print();
+      bridge_errors.fetch_add(1, std::memory_order_relaxed);
+      PyGILState_Release(gil);
+      return;
+    }
+    PyObject* result = PyObject_CallFunctionObjArgs(callback, payload, nullptr);
+    Py_DECREF(payload);
+    if (!result) {
+      PyErr_Print();
+      bridge_errors.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      Py_DECREF(result);
+      callbacks.fetch_add(1, std::memory_order_relaxed);
+    }
+    PyGILState_Release(gil);
+  }
+  PyObject* callback;
+  std::atomic<uint64_t> callbacks{0};
+  std::atomic<uint64_t> bridge_errors{0};
+  std::atomic<uint64_t> python_callback_crossings{0};
+  std::atomic<uint64_t> message_cpp_copies{0};
+  std::atomic<bool> closing{false};
+};
+class %s {
+public:
+  %s(std::shared_ptr<rclcpp::Node> node, const std::string& topic,
+     const std::string& topic_type, const rclcpp::QoS& qos,
+     const rclcpp::SubscriptionOptions& options, PyObject* callback)
+  : state_(std::make_shared<DispatchState>(callback)) {
+    auto state = state_;
+    CallbackT dispatch = [state](std::shared_ptr<rclcpp::SerializedMessage> value) {
+      state->dispatch(value);
+    };
+    subscription_ = node->create_generic_subscription(
+      topic, topic_type, qos, std::move(dispatch), options);
+  }
+  ~%s() { close(); }
+  std::shared_ptr<rclcpp::GenericSubscription> entity() const {
+    return subscription_;
+  }
+  uint64_t callbacks() const { return state_->callbacks.load(); }
+  uint64_t bridge_errors() const { return state_->bridge_errors.load(); }
+  uint64_t python_callback_crossings() const {
+    return state_->python_callback_crossings.load();
+  }
+  uint64_t message_cpp_copies() const { return state_->message_cpp_copies.load(); }
+  uint64_t request_cpp_copies() const { return 0; }
+  uint64_t response_cpp_copies() const { return 0; }
+  void close() {
+    if (!state_) return;
+    state_->closing.store(true, std::memory_order_release);
+    subscription_.reset();
+    state_.reset();
+  }
+private:
+  std::shared_ptr<DispatchState> state_;
+  std::shared_ptr<rclcpp::GenericSubscription> subscription_;
+};
+std::shared_ptr<rclcpp::GenericSubscription> entity(std::shared_ptr<%s> value) {
+  return value->entity();
+}
+uint64_t callbacks(std::shared_ptr<%s> value) { return value->callbacks(); }
+uint64_t bridge_errors(std::shared_ptr<%s> value) { return value->bridge_errors(); }
+uint64_t python_callback_crossings(std::shared_ptr<%s> value) {
+  return value->python_callback_crossings();
+}
+uint64_t message_cpp_copies(std::shared_ptr<%s> value) {
+  return value->message_cpp_copies();
+}
+uint64_t request_cpp_copies(std::shared_ptr<%s> value) {
+  return value->request_cpp_copies();
+}
+uint64_t response_cpp_copies(std::shared_ptr<%s> value) {
+  return value->response_cpp_copies();
+}
+void close(std::shared_ptr<%s> value) { value->close(); }
+uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
+std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
+  const std::string& topic, const std::string& topic_type,
+  const rclcpp::QoS& qos, const rclcpp::SubscriptionOptions& options,
+  PyObject* callback) {
+  return std::make_shared<%s>(std::move(node), topic, topic_type, qos,
+    options, callback);
+}
+}
+""" % (namespace, implementation, implementation, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation,
+       factory, implementation)
+    return namespace, declarations, code
+
+
+def create_python_generic_subscription(
+    owner: Any,
+    node: Any,
+    package: str,
+    topic: str,
+    topic_type: str,
+    qos: Any,
+    callback: Callable[[bytes], Any],
+    subscription_options: Any,
+) -> PythonCallbackSubscription:
+    """Create a generic subscription with compiled callback and event options."""
+    if not callable(callback):
+        raise TypeError("subscription callback must be callable")
+    source_id = _source_id("python-generic-subscription", {
+        "package": str(package),
+        "header_digest": _header_digest("rclcpp/rclcpp.hpp"),
+    })
+    namespace, declarations, code = _generic_subscription_source(source_id)
+    with _BRIDGE_LOCK:
+        compile_result = _compile(code, declarations,
+                                  "rclcpp_python_generic_callback_%s" % source_id,
+                                  (str(package),))
+        implementation = getattr(cppyy.gbl, namespace)
+        _REAPER_DRAINERS[source_id] = implementation.drain_releases
+        native = getattr(implementation, "make_generic_subscription_%s" % source_id)(
+            node, str(topic), str(topic_type), qos, subscription_options, callback)
         resource = PythonCallbackSubscription(
             native, source_id, compile_result, implementation)
     return owner.register_resource(resource)

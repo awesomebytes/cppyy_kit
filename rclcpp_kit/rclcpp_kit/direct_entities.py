@@ -886,9 +886,14 @@ def _publisher_options_with_events(
                  "matched"):
         signature = _PUBLISHER_EVENT_SIGNATURES[name]
         if name in validated_events:
-            wrapped = _pinned_std_function(
-                "void(%s)" % signature, validated_events[name])
-            cpp_event_callbacks[name] = wrapped
+            callback = validated_events[name]
+            if getattr(callback, "callback_handoff", None) == "compiled_python_callback":
+                wrapped = callback.cpp_callback
+                cpp_event_callbacks[name] = callback
+            else:
+                wrapped = _pinned_std_function(
+                    "void(%s)" % signature, callback)
+                cpp_event_callbacks[name] = wrapped
             args.append(wrapped)
         else:
             args.append(cppyy.gbl.std.function["void(%s)" % signature]())
@@ -911,9 +916,14 @@ def _subscription_options_with_events(
                  "incompatible_type", "matched"):
         signature = _SUBSCRIPTION_EVENT_SIGNATURES[name]
         if name in validated_events:
-            wrapped = _pinned_std_function(
-                "void(%s)" % signature, validated_events[name])
-            cpp_event_callbacks[name] = wrapped
+            callback = validated_events[name]
+            if getattr(callback, "callback_handoff", None) == "compiled_python_callback":
+                wrapped = callback.cpp_callback
+                cpp_event_callbacks[name] = callback
+            else:
+                wrapped = _pinned_std_function(
+                    "void(%s)" % signature, callback)
+                cpp_event_callbacks[name] = wrapped
             args.append(wrapped)
         else:
             args.append(cppyy.gbl.std.function["void(%s)" % signature]())
@@ -940,10 +950,15 @@ class DirectSubscription:
     # without one (defensive backward compatibility, should not occur via
     # the factories below).
     managed: Any = None
+    callback_handoff: str | None = None
+    source_id: str | None = None
+    event_callback_handoffs: dict | None = None
 
     @property
     def owning_cpp_copy_count(self) -> int:
         """Number of owning native copies constructed for Python callbacks."""
+        if self.managed is not None and hasattr(self.managed, "owning_cpp_copy_count"):
+            return int(self.managed.owning_cpp_copy_count)
         return self._owning_cpp_copy_count[0]
 
     def close(self) -> bool:
@@ -961,6 +976,10 @@ class DirectSubscription:
         if self.closed:
             return False
         released = bool(self.managed.close()) if self.managed is not None else True
+        for callback in (self.cpp_event_callbacks or {}).values():
+            close = getattr(callback, "close", None)
+            if callable(close):
+                close()
         self.entity = None
         self.callback = None
         self.dispatch_callback = None
@@ -1614,8 +1633,57 @@ def create_managed_publisher(
     else:
         managed = manage_publisher(
             publisher, message_type, callback_group=callback_group)
+    compiled_adapters = [
+        callback for callback in cpp_event_callbacks.values()
+        if getattr(callback, "callback_handoff", None) == "compiled_python_callback"
+    ]
+    if compiled_adapters:
+        if len(compiled_adapters) != len(cpp_event_callbacks):
+            raise TypeError("compiled and cppyy QoS event callbacks cannot be mixed")
+        return _ManagedPublisherWithCompiledEvents(
+            managed, compiled_adapters, cpp_event_callbacks)
     cppyy_kit.keep_alive(managed, validated_events, cpp_event_callbacks)
     return managed
+
+
+class _ManagedPublisherWithCompiledEvents:
+    """Keep event adapters alive while preserving the native publisher surface."""
+
+    def __init__(self, native: Any, adapters: list, callbacks: dict):
+        self._native = native
+        self._adapters = tuple(adapters)
+        self._callbacks = callbacks
+        self.callback_handoff = "compiled_python_callback"
+        self.event_callback_handoffs = {
+            key: getattr(value, "source_id", None)
+            for key, value in callbacks.items()
+        }
+
+    def entity(self) -> Any:
+        return self._native.entity()
+
+    @property
+    def publish(self) -> Any:
+        # Return the cppyy bound method itself; callers set __release_gil__ on it.
+        return self._native.publish
+
+    @property
+    def publish_loaned(self) -> Any:
+        return self._native.publish_loaned
+
+    @property
+    def closed(self) -> bool:
+        return bool(self._native.closed()) if callable(self._native.closed) else bool(self._native.closed)
+
+    def close(self) -> bool:
+        try:
+            released = bool(self._native.close())
+        finally:
+            for adapter in self._adapters:
+                adapter.close()
+            self._adapters = ()
+            self._callbacks = {}
+        return released
 
 
 def _create_subscription_with_options(
@@ -1629,6 +1697,7 @@ def _create_subscription_with_options(
     with_default_qos_overriding: bool,
     *,
     callback_group: Any = None,
+    callback_owner: Any = None,
 ) -> DirectSubscription:
     """Create a subscription with events, a content filter, and/or QoS-override
     options bound at construction.
@@ -1641,6 +1710,16 @@ def _create_subscription_with_options(
     """
     _reject_incompatible_type_if_unsupported(validated_events)
     cpp_type_name, cpp_type, _ = resolve_supported_type(message_type)
+    compiled_events = {
+        name: value for name, value in validated_events.items()
+        if getattr(value, "callback_handoff", None) == "compiled_python_callback"
+    }
+    if compiled_events and len(compiled_events) != len(validated_events):
+        raise TypeError("compiled and cppyy QoS event callbacks cannot be mixed")
+    if compiled_events and callback_owner is None:
+        raise TypeError(
+            "compiled QoS event callbacks require callback_owner so the primary "
+            "subscription callback also uses compiled dispatch")
     owning_cpp_copy_count = [0]
     precache = _submessage_precache(cpp_type)
 
@@ -1651,8 +1730,6 @@ def _create_subscription_with_options(
             precache(owning_message)
         callback(owning_message)
 
-    cpp_callback = _pinned_std_function(
-        "void(std::shared_ptr<const %s>)" % cpp_type_name, dispatch_callback)
     options, cpp_event_callbacks = _subscription_options_with_events(
         node, callback_group, validated_events)
     if validated_filter is not None:
@@ -1662,6 +1739,27 @@ def _create_subscription_with_options(
     if with_default_qos_overriding:
         options.qos_overriding_options = (
             cppyy.gbl.rclcpp.QosOverridingOptions.with_default_policies())
+    if compiled_events:
+        from rclcpp_kit.python_callback_entities import create_python_subscription
+        bridge = create_python_subscription(
+            callback_owner, node, cpp_type_name, cpp_type,
+            resolve_supported_type(message_type)[2], str(topic), qos, callback,
+            callback_group=callback_group, subscription_options=options)
+        entity = bridge.entity
+        return DirectSubscription(
+            entity, callback, None, bridge, "compiled_python_callback_with_options",
+            owning_cpp_copy_count, callback_group,
+            event_callbacks=validated_events,
+            cpp_event_callbacks=cpp_event_callbacks,
+            managed=bridge,
+            callback_handoff=bridge.callback_handoff,
+            source_id=bridge.source_id,
+            event_callback_handoffs={
+                name: adapter.source_id for name, adapter in compiled_events.items()
+            },
+        )
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<const %s>)" % cpp_type_name, dispatch_callback)
     original = getattr(node, _ORIG_CREATE_SUBSCRIPTION, None)
     if original is None:
         raise TypeError("node has no original typed rclcpp subscription factory")
@@ -1708,6 +1806,7 @@ def create_subscription(
     event_callbacks: Any = None,
     content_filter: Any = None,
     qos_overriding: Any = None,
+    callback_owner: Any = None,
 ) -> DirectSubscription:
     """Create a typed subscription whose callback receives an owning C++ copy.
 
@@ -1757,6 +1856,7 @@ def create_subscription(
             validated_filter,
             validated_qos_overriding,
             callback_group=callback_group,
+            callback_owner=callback_owner,
         )
     cpp_type_name, cpp_type, header = resolve_supported_type(message_type)
     owning_cpp_copy_count = [0]
@@ -1821,6 +1921,7 @@ def create_raw_subscription(
     callback_group: Any = None,
     event_callbacks: Any = None,
     content_filter: Any = None,
+    callback_owner: Any = None,
 ) -> DirectSubscription:
     """Create a raw/generic subscription: the callback receives each message's
     wire bytes (via ``rclcpp::GenericSubscription``/``create_generic_subscription``)
@@ -1857,6 +1958,14 @@ def create_raw_subscription(
         raise TypeError("subscription callback must be callable")
     validated_events = _validate_event_callbacks(
         event_callbacks, _SUBSCRIPTION_EVENT_NAMES)
+    compiled_events = {
+        name: value for name, value in validated_events.items()
+        if getattr(value, "callback_handoff", None) == "compiled_python_callback"
+    }
+    if compiled_events and len(compiled_events) != len(validated_events):
+        raise TypeError("compiled and cppyy QoS event callbacks cannot be mixed")
+    if compiled_events and callback_owner is None:
+        raise TypeError("compiled QoS event callbacks require callback_owner")
     validated_filter = _validate_content_filter(content_filter)
     _reject_incompatible_type_if_unsupported(validated_events)
     cpp_type_name, _, _ = resolve_supported_type(message_type)
@@ -1867,14 +1976,37 @@ def create_raw_subscription(
         owning_cpp_copy_count[0] += 1
         callback(_serialized_message_to_bytes(serialized_message))
 
-    cpp_callback = _pinned_std_function(
-        "void(std::shared_ptr<rclcpp::SerializedMessage>)", dispatch_callback)
     options, cpp_event_callbacks = _subscription_options_with_events(
         node, callback_group, validated_events)
     if validated_filter is not None:
         expression, parameters = validated_filter
         options.content_filter_options.filter_expression = expression
         options.content_filter_options.expression_parameters = list(parameters)
+    if compiled_events:
+        from rclcpp_kit.python_callback_entities import create_python_generic_subscription
+        bridge = create_python_generic_subscription(
+            callback_owner, node, cpp_type_name.split("::", 1)[0], str(topic),
+            topic_type, qos, callback, options)
+        entity = bridge.entity
+        if validated_filter is not None and not bool(entity.is_cft_enabled()):
+            bridge.close()
+            raise ContentFilterUnsupported(
+                "content filtering not supported by %s; refusing to return an "
+                "unfiltered subscription" % _active_rmw_implementation())
+        return DirectSubscription(
+            entity, callback, None, bridge, "compiled_python_generic_with_options",
+            owning_cpp_copy_count, callback_group,
+            event_callbacks=validated_events,
+            cpp_event_callbacks=cpp_event_callbacks,
+            managed=bridge,
+            callback_handoff=bridge.callback_handoff,
+            source_id=bridge.source_id,
+            event_callback_handoffs={
+                name: adapter.source_id for name, adapter in compiled_events.items()
+            },
+        )
+    cpp_callback = _pinned_std_function(
+        "void(std::shared_ptr<rclcpp::SerializedMessage>)", dispatch_callback)
     try:
         entity = node.create_generic_subscription(
             str(topic), topic_type, qos, cpp_callback, options)
