@@ -105,6 +105,22 @@ class PythonCallbackEntityStats:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class PythonCallbackServiceStats:
+    """Backward-compatible service counters for compiled Python callbacks."""
+
+    requests: int
+    exceptions: int
+    python_callback_crossings: int
+    request_cpp_copies: int
+    response_cpp_copies: int
+    compile_cache_hits: int
+    compile_cache_misses: int
+
+    def to_dict(self) -> dict[str, int]:
+        return asdict(self)
+
+
 class _CallbackEntity:
     def __init__(self, implementation: Any, source_id: str,
                  compile_result: dict[str, Any], namespace: Any):
@@ -114,7 +130,9 @@ class _CallbackEntity:
         self.compile_result = dict(compile_result)
         self.callback_handoff = "compiled_python_callback"
         self._closed = False
-        self._stats_snapshot: PythonCallbackEntityStats | None = None
+        self._stats_snapshot: (
+            PythonCallbackEntityStats | PythonCallbackServiceStats | None
+        ) = None
 
     @property
     def closed(self) -> bool:
@@ -153,6 +171,11 @@ class PythonCallbackSubscription(_CallbackEntity):
             raise RuntimeError("PythonCallbackSubscription is closed")
         return self._namespace.entity(self._implementation)
 
+    @property
+    def owning_cpp_copy_count(self) -> int:
+        """Compatibility alias for the owning message-copy counter."""
+        return self.stats().message_cpp_copies
+
 
 class PythonCallbackService(_CallbackEntity):
     """A typed rclcpp service dispatched through a compiled trampoline."""
@@ -162,6 +185,20 @@ class PythonCallbackService(_CallbackEntity):
         if self._closed:
             raise RuntimeError("PythonCallbackService is closed")
         return self._namespace.raw_service(self._implementation)
+
+    def stats(self) -> PythonCallbackServiceStats:
+        if isinstance(self._stats_snapshot, PythonCallbackServiceStats):
+            return self._stats_snapshot
+        counters = super().stats()
+        return PythonCallbackServiceStats(
+            requests=counters.callbacks,
+            exceptions=counters.bridge_errors,
+            python_callback_crossings=counters.python_callback_crossings,
+            request_cpp_copies=counters.request_cpp_copies,
+            response_cpp_copies=counters.response_cpp_copies,
+            compile_cache_hits=int(bool(self.compile_result.get("cached"))),
+            compile_cache_misses=int(not bool(self.compile_result.get("cached"))),
+        )
 
 
 class PythonCallbackTimer(_CallbackEntity):
@@ -985,6 +1022,7 @@ def drain_python_callback_releases() -> int:
 __all__ = [
     "PythonCallbackEntityStats",
     "PythonCallbackService",
+    "PythonCallbackServiceStats",
     "PythonCallbackSubscription",
     "PythonCallbackTimer",
     "create_python_clock_timer",
