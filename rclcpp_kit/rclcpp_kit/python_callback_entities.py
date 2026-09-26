@@ -134,13 +134,14 @@ class _CallbackEntity:
             response_cpp_copies=int(ns.response_cpp_copies(impl)),
         )
 
-    def close(self) -> None:
+    def close(self) -> bool:
         if self._closed:
-            return
+            return False
         self._stats_snapshot = self.stats()
         self._namespace.close(self._implementation)
         drain_python_callback_releases()
         self._closed = True
+        return True
 
 
 class PythonCallbackSubscription(_CallbackEntity):
