@@ -164,6 +164,16 @@ class PythonCallbackService(_CallbackEntity):
         return self._namespace.raw_service(self._implementation)
 
 
+class PythonCallbackTimer(_CallbackEntity):
+    """A typed rclcpp clock timer dispatched through a compiled trampoline."""
+
+    @property
+    def entity(self) -> Any:
+        if self._closed:
+            raise RuntimeError("PythonCallbackTimer is closed")
+        return self._namespace.entity(self._implementation)
+
+
 def _subscription_source(
     source_id: str,
     message_cpp_type: str,
@@ -769,6 +779,204 @@ def create_python_service(
     return owner.register_resource(resource)
 
 
+def _timer_source(source_id: str) -> tuple[str, str, str]:
+    namespace = "rclcpp_kit_python_callback_timer_%s" % source_id
+    implementation = "Timer_%s" % source_id
+    factory = "make_timer_%s" % source_id
+    timer_type = "rclcpp::GenericTimer<std::function<void()>>"
+    decls = r"""
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+using TimerT = %s;
+class %s;
+std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node>,
+  std::shared_ptr<rclcpp::Clock>, int64_t,
+  std::shared_ptr<rclcpp::CallbackGroup>, bool, PyObject*);
+std::shared_ptr<TimerT> entity(std::shared_ptr<%s>);
+uint64_t callbacks(std::shared_ptr<%s>);
+uint64_t bridge_errors(std::shared_ptr<%s>);
+uint64_t python_callback_crossings(std::shared_ptr<%s>);
+uint64_t message_cpp_copies(std::shared_ptr<%s>);
+uint64_t request_cpp_copies(std::shared_ptr<%s>);
+uint64_t response_cpp_copies(std::shared_ptr<%s>);
+void close(std::shared_ptr<%s>);
+uint64_t drain_releases();
+}
+""" % (namespace, timer_type, implementation, implementation, factory,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation, implementation)
+    code = r"""
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <utility>
+#include <vector>
+#include <Python.h>
+#include <rclcpp/rclcpp.hpp>
+namespace %s {
+class PyObjectReaper {
+public:
+  static PyObjectReaper& instance() {
+    static PyObjectReaper value;
+    return value;
+  }
+  void enqueue(PyObject* object) {
+    if (!object) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    pending_.push_back(object);
+  }
+  uint64_t drain() {
+    std::vector<PyObject*> batch;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      batch.swap(pending_);
+    }
+    for (PyObject* object : batch) Py_DECREF(object);
+    return batch.size();
+  }
+private:
+  std::mutex mutex_;
+  std::vector<PyObject*> pending_;
+};
+using TimerT = %s;
+class DispatchState {
+public:
+  explicit DispatchState(PyObject* callback) : callback(callback) {
+    Py_INCREF(this->callback);
+  }
+  ~DispatchState() { PyObjectReaper::instance().enqueue(callback); }
+  void dispatch() {
+    PyGILState_STATE gil = PyGILState_Ensure();
+    if (closing.load(std::memory_order_acquire)) {
+      PyGILState_Release(gil);
+      return;
+    }
+    python_callback_crossings.fetch_add(1, std::memory_order_relaxed);
+    PyObject* result = PyObject_CallFunctionObjArgs(callback, nullptr);
+    if (!result) {
+      PyErr_Print();
+      bridge_errors.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      Py_DECREF(result);
+      callbacks.fetch_add(1, std::memory_order_relaxed);
+    }
+    PyGILState_Release(gil);
+  }
+  PyObject* callback;
+  std::atomic<uint64_t> callbacks{0};
+  std::atomic<uint64_t> bridge_errors{0};
+  std::atomic<uint64_t> python_callback_crossings{0};
+  std::atomic<bool> closing{false};
+};
+class %s {
+public:
+  %s(std::shared_ptr<rclcpp::Node> node,
+     std::shared_ptr<rclcpp::Clock> clock, int64_t period_ns,
+     std::shared_ptr<rclcpp::CallbackGroup> group, bool autostart,
+     PyObject* callback)
+  : state_(std::make_shared<DispatchState>(callback)) {
+    auto state = state_;
+    std::function<void()> dispatch = [state]() { state->dispatch(); };
+    timer_ = rclcpp::create_timer(
+      std::move(clock), std::chrono::nanoseconds(period_ns),
+      std::move(dispatch), std::move(group),
+      node->get_node_base_interface().get(),
+      node->get_node_timers_interface().get(), autostart);
+  }
+  ~%s() { close(); }
+  std::shared_ptr<TimerT> entity() const { return timer_; }
+  uint64_t callbacks() const { return state_->callbacks.load(); }
+  uint64_t bridge_errors() const { return state_->bridge_errors.load(); }
+  uint64_t python_callback_crossings() const {
+    return state_->python_callback_crossings.load();
+  }
+  void close() {
+    if (!state_) return;
+    state_->closing.store(true, std::memory_order_release);
+    timer_.reset();
+    state_.reset();
+  }
+private:
+  std::shared_ptr<DispatchState> state_;
+  std::shared_ptr<TimerT> timer_;
+};
+std::shared_ptr<TimerT> entity(std::shared_ptr<%s> value) {
+  return value->entity();
+}
+uint64_t callbacks(std::shared_ptr<%s> value) { return value->callbacks(); }
+uint64_t bridge_errors(std::shared_ptr<%s> value) { return value->bridge_errors(); }
+uint64_t python_callback_crossings(std::shared_ptr<%s> value) {
+  return value->python_callback_crossings();
+}
+uint64_t message_cpp_copies(std::shared_ptr<%s>) { return 0; }
+uint64_t request_cpp_copies(std::shared_ptr<%s>) { return 0; }
+uint64_t response_cpp_copies(std::shared_ptr<%s>) { return 0; }
+void close(std::shared_ptr<%s> value) { value->close(); }
+uint64_t drain_releases() { return PyObjectReaper::instance().drain(); }
+std::shared_ptr<%s> %s(std::shared_ptr<rclcpp::Node> node,
+  std::shared_ptr<rclcpp::Clock> clock, int64_t period_ns,
+  std::shared_ptr<rclcpp::CallbackGroup> group, bool autostart,
+  PyObject* callback) {
+  return std::make_shared<%s>(std::move(node), std::move(clock), period_ns,
+    std::move(group), autostart, callback);
+}
+}
+""" % (namespace, timer_type, implementation, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, implementation, implementation,
+       implementation, implementation, factory, implementation)
+    return namespace, decls, code
+
+
+def create_python_clock_timer(
+    owner: Any,
+    node: Any,
+    clock: Any,
+    period_ns: int,
+    callback: Callable[[], Any],
+    *,
+    callback_group: Any = None,
+    autostart: bool = True,
+) -> PythonCallbackTimer:
+    """Create a native clock timer whose callback uses compiled C++ dispatch."""
+    if isinstance(period_ns, bool) or not isinstance(period_ns, int) or period_ns <= 0:
+        raise TypeError("clock timer requires a positive integer period in nanoseconds")
+    if not callable(callback):
+        raise TypeError("timer callback must be callable")
+    if not isinstance(autostart, bool):
+        raise TypeError("timer autostart must be bool")
+    native_clock = getattr(clock, "raw_clock", clock)
+    if callable(native_clock) and not hasattr(native_clock, "__smartptr__"):
+        native_clock = native_clock()
+    smart_node = getattr(node, "__smartptr__", lambda: node)()
+    smart_clock = getattr(native_clock, "__smartptr__", lambda: native_clock)()
+    smart_group = getattr(callback_group, "__smartptr__", lambda: callback_group)()
+    if smart_group is None:
+        smart_group = cppyy.gbl.std.shared_ptr["rclcpp::CallbackGroup"]()
+    source_id = _source_id("python-clock-timer", {
+        "timer_type": "rclcpp::GenericTimer<std::function<void()>>",
+        "abi": _BRIDGE_ABI,
+    })
+    namespace, declarations, code = _timer_source(source_id)
+    name = "rclcpp_python_callback_timer_%s" % source_id
+    with _BRIDGE_LOCK:
+        compile_result = _compile(code, declarations, name, ())
+        implementation = getattr(cppyy.gbl, namespace)
+        _REAPER_DRAINERS[source_id] = implementation.drain_releases
+        native = getattr(implementation, "make_timer_%s" % source_id)(
+            smart_node, smart_clock, period_ns, smart_group, autostart, callback)
+        resource = PythonCallbackTimer(
+            native, source_id, compile_result, implementation)
+    return owner.register_resource(resource)
+
+
 def drain_python_callback_releases() -> int:
     """Drain bridge callback references released on native executor threads."""
     return sum(int(drain()) for drain in tuple(_REAPER_DRAINERS.values()))
@@ -778,6 +986,8 @@ __all__ = [
     "PythonCallbackEntityStats",
     "PythonCallbackService",
     "PythonCallbackSubscription",
+    "PythonCallbackTimer",
+    "create_python_clock_timer",
     "create_python_service",
     "create_python_subscription",
     "drain_python_callback_releases",
