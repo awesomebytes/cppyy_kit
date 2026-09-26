@@ -11,6 +11,11 @@ conda-forge currently exposes only `cppyy==2.3.1` with Python 3.9 on
 `linux-aarch64`. The GitHub Actions Pixi environment cache preserves the
 resulting native build and uses an architecture-qualified key.
 
+This source-test environment is separate from the package proof. The package
+path builds the small `cppyy` conda bridge on native ARM64 from
+[`recipe/cppyy/`](../../recipe/cppyy/README.md), then installs and exercises it
+from a local channel alongside the suite packages.
+
 Run the suites from this directory:
 
 ```bash
@@ -33,9 +38,8 @@ standalone failure probe is claimed.
 ## Package status
 
 The `cppyy-kit` and `ros-jazzy-rclcpp-kit` artifacts are noarch Python
-packages, and `recipe/prove_all.sh` now selects `linux-64` or
-`linux-aarch64` from the native host. A fresh conda-only ARM64 package proof
-is still blocked by the missing `cppyy >=3.5` conda runtime described above.
-The proof script is architecture-ready, but it must not be treated as passing
-on ARM64 until that runtime is published; source-building cppyy is confined to
-this CI workspace and does not weaken package dependency metadata.
+packages. On ARM64, `recipe/build_rclcpp.sh` first builds and proves the local
+`cppyy` bridge, then builds the suite packages; `recipe/prove_rclcpp.sh` installs
+the stack from that local channel and runs its installed-package smoke. This
+proves the local artifacts and does not make a claim about their current
+publication status.

@@ -115,8 +115,8 @@ recipe/bump_version.sh 0.2.0
 `v*` tag → [`.github/workflows/release.yml`](../.github/workflows/release.yml):
 build the eleven suite packages on x86_64, build the bridge on native ARM64,
 prove all twelve, attest provenance and an SPDX SBOM per artifact, then run
-`rattler-build upload prefix --channel awesomebytes` (OIDC). **Before the first
-release**, authorize this repo on prefix.dev:
+`rattler-build upload prefix --channel awesomebytes` (OIDC). Before uploading a
+release, ensure this repository is authorized on prefix.dev:
 `awesomebytes` channel → Repository Access → `awesomebytes/cppyy_kit`,
 `release.yml`, read/write. The rclcppyy authorization does not carry over.
 

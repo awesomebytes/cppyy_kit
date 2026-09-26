@@ -242,7 +242,7 @@ jobs:
           - name: cppyy
             version: "3.5.0"
             platform: linux-aarch64
-            build: py312hf18b547_0
+            build: py312h7e7ac48_2
             dependencies: >-
               python cpycppyy cppyy-backend cppyy-cling libstdcxx libgcc
               python_abi
