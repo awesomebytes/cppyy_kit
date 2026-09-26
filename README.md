@@ -5,12 +5,13 @@
 **Prototype in Python, run at C++ speed — mix Python and C++ with ease.**
 
 cppyy_kit is a suite of *kits* that drive real C++ robotics libraries from short
-Python via [cppyy](https://cppyy.readthedocs.io). No bindings to write, no code
-generation, no build step: the C++ library you already have installed is called
-directly, its own class and method names intact, while your Python does the
-orchestration. When a hot path needs C++ speed, you write that path in C++ inline —
-in the same file — and the kits handle the data marshaling and object lifetime
-across the boundary.
+Python via [cppyy](https://cppyy.readthedocs.io). You do not write or maintain
+bindings or a separate extension build for each library: cppyy reads the installed
+headers and JIT-compiles wrappers as needed. The C++ library keeps its own class and
+method names while Python handles orchestration. When a hot path needs C++ speed,
+you can write that path inline in the same file; the kits handle data marshaling and
+object lifetime across the boundary. The C++ libraries and their headers still need
+to be installed in the environment.
 
 You get the productivity of a Python prototype and the performance of the C++
 library underneath it, and the same code climbs an optimization ladder (freeze the
@@ -86,9 +87,12 @@ library's own API 1:1.
 
 **Published.** The suite ships as 11 conda packages on the prefix.dev
 `awesomebytes` channel (browse: <https://repo.prefix.dev/awesomebytes>). Each package
-is pure-Python (`noarch`); its C++ dependency is a run dependency the solver pulls
-in. `cppyy-kit` and `wbc-kit` are distro-free; the ROS-touching kits are published as
-`ros-jazzy-*`.
+contains a pure-Python (`noarch`) wrapper; its C++ dependency is a run dependency the
+solver pulls in. The package recipes currently target Python 3.12. Linux ARM64 also
+needs the separately built, architecture-specific `cppyy` bridge described in
+[`recipe/cppyy/README.md`](recipe/cppyy/README.md); this is an additional runtime
+package beyond the eleven kits. `cppyy-kit` and `wbc-kit` are distro-free; the
+ROS-touching kits are published as `ros-jazzy-*`.
 
 ```toml
 # pixi.toml
@@ -115,6 +119,8 @@ Or add one at a time:
 Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching kits
 pull `ros-jazzy-rclcpp-kit`, transitively. To hack on the suite instead, see
 [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+The Pixi example above targets `linux-64`; use the matching native platform and
+ROS dependencies for an ARM64 environment.
 
 ## Showcase
 
