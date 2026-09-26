@@ -1720,6 +1720,10 @@ def _create_subscription_with_options(
         raise TypeError(
             "compiled QoS event callbacks require callback_owner so the primary "
             "subscription callback also uses compiled dispatch")
+    if callback_owner is not None and validated_events and not compiled_events:
+        raise TypeError(
+            "callback_owner requires compiled QoS event adapters when events "
+            "are requested")
     owning_cpp_copy_count = [0]
     precache = _submessage_precache(cpp_type)
 
@@ -1739,7 +1743,7 @@ def _create_subscription_with_options(
     if with_default_qos_overriding:
         options.qos_overriding_options = (
             cppyy.gbl.rclcpp.QosOverridingOptions.with_default_policies())
-    if compiled_events:
+    if callback_owner is not None:
         from rclcpp_kit.python_callback_entities import create_python_subscription
         bridge = create_python_subscription(
             callback_owner, node, cpp_type_name, cpp_type,
@@ -1966,6 +1970,10 @@ def create_raw_subscription(
         raise TypeError("compiled and cppyy QoS event callbacks cannot be mixed")
     if compiled_events and callback_owner is None:
         raise TypeError("compiled QoS event callbacks require callback_owner")
+    if callback_owner is not None and validated_events and not compiled_events:
+        raise TypeError(
+            "callback_owner requires compiled QoS event adapters when events "
+            "are requested")
     validated_filter = _validate_content_filter(content_filter)
     _reject_incompatible_type_if_unsupported(validated_events)
     cpp_type_name, _, _ = resolve_supported_type(message_type)
@@ -1982,7 +1990,7 @@ def create_raw_subscription(
         expression, parameters = validated_filter
         options.content_filter_options.filter_expression = expression
         options.content_filter_options.expression_parameters = list(parameters)
-    if compiled_events:
+    if callback_owner is not None:
         from rclcpp_kit.python_callback_entities import create_python_generic_subscription
         bridge = create_python_generic_subscription(
             callback_owner, node, cpp_type_name.split("::", 1)[0], str(topic),
