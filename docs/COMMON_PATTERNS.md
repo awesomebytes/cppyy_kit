@@ -274,7 +274,7 @@ Five related conversion cases need explicit handling:
 ### 12. Mirror, don't sugar
 Patch/return the library's real classes so methods keep their C++ names (add
 snake_case aliases). A bespoke DSL was prototyped for bt_kit and **rejected**: it
-needed a module-global registry (a footgun across trees/re-imports/tests) and
+needed a module-global registry, creating risks across trees, re-imports, and tests, and
 forced knowledge that doesn't transfer. Both kits ship the mirror.
 
 ### 13. GIL / concurrency (what "parallel" means)
@@ -390,7 +390,7 @@ class and C++ calls its overrides in a hot loop (RRT\* calls a Python
   ones) and probe the subclass `cppdef` out-of-process; a kit should ship the mandatory
   boilerplate as a constant (`wbc_kit.ACTION_MODEL_CLONES` is the worked example).
 - **Pin the subclass instance** with `keep_alive` (or an `owner`): the "callable
-  was deleted" footgun (Pattern 4) applies to override *instances* too — C++ holds
+  was deleted" risk (Pattern 4) applies to override *instances* too — C++ holds
   the object, cppyy won't keep it alive for you.
 - Pointer arguments arrive **auto-downcast** (Pattern 17b) so member access on the
   concrete type works with no explicit cast.
@@ -477,7 +477,7 @@ Before investing in a kit, a couple of one-line greps tell you what's separable:
 - **Probe layered blockers one at a time, and know when to stop.** gtsam via cppyy
   is the worked example: fixing the boost blocker (add headers) only exposed a
   `GTSAM_USE_TBB` → tbb-headers blocker, which when fixed exposed the Cling **ORC
-  static-init wall** (§9) — a *Cling limitation no dependency fixes*. Peel one layer,
+  static-initializer limitation** (§9), which adding dependencies does not resolve. Check one layer,
   re-probe out-of-process; when the bottom layer is a Cling limitation rather than a
   missing dep, stop and take the Python-binding fallback for that batch step. Don't
   continue adding dependencies for an issue caused by Cling's parser.
@@ -506,7 +506,7 @@ solvers (bio_ik, pick_ik) both built first try this way; pick_ik needed only one
 header-only dep (`range-v3`) added to the env, no source patches.
 
 ### 22. Overload mis-resolution: a compilable-but-WRONG overload that crashes
-Distinct from the parse/execution faults (§9): with a **thicket of overloads**, cppyy
+Distinct from the parse/execution faults (§9): with a **large set of overloads**, cppyy
 can pick one that **compiles and runs but is the wrong one**, crashing at runtime
 (bus error, no Python traceback). tf: `tf2_ros::Buffer::lookupTransform(target,
 source, TimePoint)` resolved into the `rclcpp::Time`+timeout `canTransform` path,
