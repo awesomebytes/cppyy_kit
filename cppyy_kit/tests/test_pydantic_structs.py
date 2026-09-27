@@ -11,6 +11,7 @@ The process shares one Cling interpreter, so each model schema compiles into a
 hash-suffixed namespace; distinct schemas here never collide, and re-compiling
 one is idempotent.
 """
+import gc
 from typing import List, Optional
 
 import pytest
@@ -165,6 +166,17 @@ def test_column_aliases_storage():
     assert abs(col[0] - 0.9) < 1e-12
     vec[0].score = 0.25                      # mutate via C++
     assert abs(col[0] - 0.25) < 1e-12        # visible through the view (aliases)
+
+
+def test_column_view_retains_vector_through_backing_buffer():
+    vec = pyd.cpp_vector(Detection, _sample())
+    col = pyd.column(vec, Detection, "score")
+    sliced = col[:]
+    del vec
+    del col
+    gc.collect()
+    assert abs(sliced[0] - 0.9) < 1e-12
+    assert abs(sliced[1] - 0.2) < 1e-12
 
 
 def test_column_rejects_non_numeric():

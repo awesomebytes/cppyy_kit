@@ -27,8 +27,10 @@ if _HAVE:
     cppyy.cppdef(r"""
     #include <thread>
     #include <chrono>
+    #include <stdexcept>
     namespace ck_nogil_test {
       void sleep_300() { std::this_thread::sleep_for(std::chrono::milliseconds(300)); }
+      void throw_error() { throw std::runtime_error("expected nogil test exception"); }
     }
     """)
 
@@ -82,6 +84,12 @@ def test_run_async_lets_event_loop_run():
 
     n = asyncio.run(main())
     assert n > 100, "event loop should keep running during the blocking C++ call, got %d" % n
+
+
+def test_nogil_restores_gil_when_cpp_throws():
+    with pytest.raises(Exception, match="expected nogil test exception"):
+        nogil(cppyy.gbl.ck_nogil_test.throw_error)
+    assert _co_thread_ticks(lambda: nogil(cppyy.gbl.ck_nogil_test.sleep_300)) > 100
 
 
 def test_ensure_is_thread_safe_single_compile():

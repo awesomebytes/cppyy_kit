@@ -38,10 +38,18 @@ _SHIM = r"""
 #include <Python.h>
 #include <functional>
 namespace cppyy_kit_nogil {
+class GilRelease {
+  PyThreadState* state_;
+public:
+  GilRelease() : state_(PyEval_SaveThread()) {}
+  ~GilRelease() noexcept { PyEval_RestoreThread(state_); }
+  GilRelease(const GilRelease&) = delete;
+  GilRelease& operator=(const GilRelease&) = delete;
+};
+
 void run_nogil(std::function<void()> f) {
-  Py_BEGIN_ALLOW_THREADS
+  GilRelease released;
   f();
-  Py_END_ALLOW_THREADS
 }
 }
 """

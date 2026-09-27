@@ -96,8 +96,9 @@ throwaway `lambda` handed to the raw `std_function` was collected before the cal
 - For **non-callback** objects (a buffer backing a zero-copy view, a logger),
   `cppyy_kit.keep_alive(owner, *objs)` is the primitive. **pcl:** the source cloud
   is pinned on the ctypes buffer backing a NumPy view so it can't outlive its
-  storage. **bt:** leaf callbacks are pinned on the factory (via `callback(owner=)`)
-  and carried onto the tree.
+  storage. `keep_alive` raises `TypeError` if the owner cannot store its lifetime
+  pins; don't ignore that failure. **bt:** leaf callbacks are pinned on the factory
+  (via `callback(owner=)`) and carried onto the tree.
 
 ### C++ → Python direction (no helper needed)
 The reverse crossing is already one line, so it is documented, not wrapped
@@ -698,7 +699,8 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
 drops the GIL (`Py_BEGIN_ALLOW_THREADS`) around it, so concurrent Python threads run
 during the call. Measured (test_nogil.py): a 500 ms C++ sleep called directly lets a
 co-thread advance ~1 tick; through `nogil` it advances **~470** — the co-thread runs
-the whole time.
+the whole time. The shim restores the GIL on both normal return and C++ exception
+unwinding before cppyy translates an exception back into Python.
 - **The ergonomic front-end: `@cpp(nogil=True)` (§26).** When the C++ you want to run
   GIL-free is a kernel you're writing anyway, skip the `std::function` ceremony — add
   `nogil=True` to `@cpp` and the decorated call releases the GIL around the compiled
@@ -894,7 +896,8 @@ C++ excursion can't silently violate the model.
   zero-copy numeric column view is **strided/non-contiguous** (stride = `sizeof(Struct)`),
   a read/mutate-in-place convenience, not a free numpy pipeline; contiguous SoA columns
   are just numpy. The view aliases the vector's buffer, so the vector must outlive it and
-  any `resize`/`push_back` invalidates it (`column()` pins via `keep_alive`).
+  any `resize`/`push_back` invalidates it (`column()` pins the vector on its ctypes
+  backing buffer via `keep_alive`, which raises if pinning fails).
 
 Positioning: the "I already maintain Pydantic models — make the hot path compact and
 typed without a codegen step" tool (contrast FlatBuffers/protobuf's separate schema +

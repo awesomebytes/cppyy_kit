@@ -101,14 +101,20 @@ def keep_alive(owner, *objects):
     """Pin Python objects to ``owner`` so cppyy does not collect them while C++
     still references them (callbacks, their ``std::function`` wrappers, buffers
     backing a zero-copy view, ...). Stored in a list attribute on ``owner``;
-    best-effort if ``owner`` cannot hold attributes."""
+    raises ``TypeError`` if ``owner`` cannot hold attributes, since silently
+    failing to retain an object would violate the lifetime guarantee."""
     store = getattr(owner, "_cppyy_kit_kept_alive", None)
     if store is None:
         store = []
         try:
             owner._cppyy_kit_kept_alive = store
-        except (AttributeError, TypeError):
-            return
+        except (AttributeError, TypeError) as exc:
+            raise TypeError(
+                "cppyy_kit.keep_alive: owner of type %s cannot store lifetime pins."
+                % type(owner).__name__) from exc
+    elif not isinstance(store, list):
+        raise TypeError(
+            "cppyy_kit.keep_alive: owner's _cppyy_kit_kept_alive attribute must be a list.")
     store.extend(objects)
 
 

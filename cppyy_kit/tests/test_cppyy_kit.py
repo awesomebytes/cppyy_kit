@@ -72,9 +72,10 @@ def test_keep_alive_pins_objects():
     assert marker in owner._cppyy_kit_kept_alive
 
 
-def test_keep_alive_best_effort_on_unattributable_owner():
-    # ints can't hold attributes; must not raise.
-    cppyy_kit.keep_alive(5, object())
+def test_keep_alive_rejects_unattributable_owner():
+    # Failing silently would leave the native reference without a lifetime pin.
+    with pytest.raises(TypeError, match="cannot store lifetime pins"):
+        cppyy_kit.keep_alive(5, object())
 
 
 def test_unwrap_expected():

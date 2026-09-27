@@ -344,7 +344,7 @@ def cpp_vector_columnar(model, columns):
 def column(vec, model, field):
     """Zero-copy strided NumPy view of a numeric scalar ``field`` over ``vec``
     (an array-of-structs). The view *aliases* the vector's storage: mutating it
-    changes the structs. The vector is pinned on the view; a later
+    changes the structs. The vector is pinned on the view's backing buffer; a later
     ``push_back``/``resize`` reallocates and invalidates the view (documented
     hazard). Raises for a non-numeric / non-scalar field."""
     import ctypes
@@ -364,8 +364,8 @@ def column(vec, model, field):
     base = spec._helper("_vec_data")(vec)
     dtype = _NUMERIC_CPP[f.cpp_type]
     raw = (ctypes.c_char * (n * stride)).from_address(base)
+    cppyy_kit.keep_alive(raw, vec)
     view = np.ndarray(shape=(n,), dtype=dtype, buffer=raw, offset=off, strides=(stride,))
-    cppyy_kit.keep_alive(view, vec, raw)
     return view
 
 
