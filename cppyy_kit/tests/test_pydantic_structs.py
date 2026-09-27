@@ -173,6 +173,11 @@ def test_column_view_retains_vector_through_backing_buffer():
     col = pyd.column(vec, Detection, "score")
     sliced = col[:]
     assert np.shares_memory(sliced, col)
+    backing = sliced
+    while isinstance(backing, (np.ndarray, memoryview)):
+        backing = backing.base if isinstance(backing, np.ndarray) else backing.obj
+    assert any(pinned is vec for pinned in backing._cppyy_kit_kept_alive)
+    del backing
     del vec
     del col
     gc.collect()
