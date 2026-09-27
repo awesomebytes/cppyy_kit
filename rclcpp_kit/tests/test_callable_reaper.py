@@ -224,7 +224,9 @@ def test_gc_after_quiescent_close_stays_clean():
     """Regression guard: closing (and aggressively GC'ing) only after the
     peer callback has already genuinely returned was clean even before
     Slice 2.5a2; it must stay clean after."""
-    process = run_helper("_gc_after_quiescent_close_helper.py", timeout=200)
+    # ARM64 needed 121s for 59 iterations here; keep the hang watchdog
+    # separate from realistic full-loop runtime.
+    process = run_helper("_gc_after_quiescent_close_helper.py", timeout=420)
     assert process.returncode == 0, format_output(process)
     assert "GC_AFTER_QUIESCENT_ALL_OK" in process.stdout, format_output(process)
 
