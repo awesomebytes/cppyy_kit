@@ -80,7 +80,8 @@ common_env=(
 )
 
 helper="$repo_root/rclcpp_kit/tests/_native_safety_stress_helper.py"
-env "${common_env[@]}" timeout 300 python "$helper" --compile-only \
+printf '%s\n' 'PHASE: native glue cold prebuild (compilation)' >&2
+env "${common_env[@]}" timeout 900 python "$helper" --compile-only \
   > "$work_dir/prebuild.log" 2>&1
 
 mapfile -t native_libraries < <(
@@ -97,6 +98,7 @@ for library in "${native_libraries[@]}"; do
 done
 
 stress_evidence="$evidence_dir/native-safety-sanitized.json"
+printf '%s\n' 'PHASE: native safety runtime stress' >&2
 env "${common_env[@]}" timeout 300 python "$helper" \
   --evidence "$stress_evidence" > "$work_dir/stress.log" 2>&1
 grep -q "NATIVE_SAFETY_STRESS_OK" "$work_dir/stress.log"
@@ -119,6 +121,7 @@ lsan_base_cache="$work_dir/lsan-base-cache"
 rm -rf "$lsan_cache_home" "$lsan_base_cache"
 mkdir -p "$lsan_cache_home" "$lsan_base_cache"
 lsan_helper="$repo_root/rclcpp_kit/tests/_native_generated_lsan_helper.py"
+printf '%s\n' 'PHASE: generated LSan cold prebuild (compilation)' >&2
 env \
   "CXX=$compiler_wrapper" \
   "CPPYY_KIT_CACHE_DIR=$lsan_base_cache" \
@@ -127,7 +130,7 @@ env \
   "LD_PRELOAD=$preload" \
   "ASAN_OPTIONS=detect_leaks=0:halt_on_error=1" \
   "UBSAN_OPTIONS=halt_on_error=1:print_stacktrace=1" \
-  timeout 300 python "$lsan_helper" --prebuild \
+  timeout 900 python "$lsan_helper" --prebuild \
   > "$work_dir/lsan-prebuild.log" 2>&1
 grep -q "NATIVE_GENERATED_LSAN_PREBUILD_OK" "$work_dir/lsan-prebuild.log"
 
@@ -156,6 +159,7 @@ lsan_env=(
 )
 
 clean_lsan_evidence="$evidence_dir/native-generated-lsan-clean.json"
+printf '%s\n' 'PHASE: generated LSan clean runtime check' >&2
 env "${lsan_env[@]}" timeout 300 python "$lsan_helper" \
   --case clean --after-session-close --evidence "$clean_lsan_evidence" \
   > "$work_dir/lsan-clean.log" 2>&1
@@ -167,6 +171,7 @@ if grep -q 'LeakSanitizer: detected memory leaks' "$work_dir/lsan-clean.log"; th
 fi
 
 leak_lsan_evidence="$evidence_dir/native-generated-lsan-intentional-leak.json"
+printf '%s\n' 'PHASE: generated LSan intentional-leak runtime check' >&2
 set +e
 env "${lsan_env[@]}" timeout 300 python "$lsan_helper" \
   --case intentional-leak --after-session-close \
