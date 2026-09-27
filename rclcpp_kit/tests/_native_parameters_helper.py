@@ -248,6 +248,8 @@ def main():
         pre = parameters.add_pre_set_parameters_callback(node, pre_callback)
         on = parameters.add_on_set_parameters_callback(node, on_callback)
         post = parameters.add_post_set_parameters_callback(node, post_callback)
+        assert all(callback.callback_handoff == "compiled_python_callback"
+                   for callback in (pre, on, post))
         callbacks.extend((pre, on, post))
         accepted = parameters.set_parameters_atomically(
             node, [parameters.parameter_integer("count", 3)])

@@ -16,7 +16,6 @@ from typing import Any, Callable, Iterable
 import cppyy
 
 from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
-from rclcpp_kit.direct_entities import _pinned_std_function
 
 
 PARAMETER_NOT_SET = 0
@@ -61,10 +60,12 @@ def _ensure_helpers() -> Any:
                     #include <cstdint>
                     #include <functional>
                     #include <memory>
+                    #include <mutex>
                     #include <stdexcept>
                     #include <string>
                     #include <utility>
                     #include <vector>
+                    #include <Python.h>
                     #include <rclcpp/rclcpp.hpp>
 
                     namespace rclcpp_kit_native_parameters {
@@ -195,6 +196,7 @@ def _ensure_helpers() -> Any:
 
                       void mark_exception() { exception_ = true; }
                       bool exception() const { return exception_; }
+                      virtual void mark_bridge_error() { mark_exception(); }
 
                     protected:
                       std::vector<rclcpp::Parameter> parameters_;
@@ -216,6 +218,12 @@ def _ensure_helpers() -> Any:
                       std::vector<rclcpp::Parameter> take_replacement()
                       {
                         return std::move(replacement_);
+                      }
+
+                      void mark_bridge_error() override
+                      {
+                        mark_exception();
+                        replacement_.clear();
                       }
 
                     private:
@@ -244,93 +252,243 @@ def _ensure_helpers() -> Any:
                         return result_;
                       }
 
+                      void mark_bridge_error() override
+                      {
+                        mark_exception();
+                        result_.successful = false;
+                        result_.reason = "parameter callback raised";
+                      }
+
                     private:
                       rcl_interfaces::msg::SetParametersResult result_;
                     };
 
-                    using PreSetParametersCallback =
-                      std::function<void(PreSetParametersInvocation*)>;
-                    using OnSetParametersCallback =
-                      std::function<void(OnSetParametersInvocation*)>;
-                    using PostSetParametersCallback =
-                      std::function<void(ParameterBatchInvocation*)>;
+                    class ParameterCallbackReaper {
+                    public:
+                      static ParameterCallbackReaper& instance()
+                      {
+                        static ParameterCallbackReaper value;
+                        return value;
+                      }
+
+                      void enqueue(PyObject* object)
+                      {
+                        if (!object) return;
+                        std::lock_guard<std::mutex> lock(mutex_);
+                        pending_.push_back(object);
+                      }
+
+                      uint64_t drain()
+                      {
+                        std::vector<PyObject*> batch;
+                        {
+                          std::lock_guard<std::mutex> lock(mutex_);
+                          batch.swap(pending_);
+                        }
+                        for (PyObject* object : batch) Py_DECREF(object);
+                        return batch.size();
+                      }
+
+                    private:
+                      std::mutex mutex_;
+                      std::vector<PyObject*> pending_;
+                    };
+
+                    class ParameterCallbackCounters final {
+                    public:
+                      std::atomic<uint64_t> calls{0};
+                      std::atomic<uint64_t> exceptions{0};
+                      std::atomic<uint64_t> rejections{0};
+                      std::atomic<uint64_t> bridge_errors{0};
+                    };
+
+                    template<class InvocationT>
+                    class ParameterCallbackState final {
+                    public:
+                      ParameterCallbackState(
+                          std::shared_ptr<ParameterCallbackCounters> counters,
+                          PyObject* callback,
+                          PyObject* bind_object,
+                          PyObject* proxy_type)
+                      : counters_(std::move(counters)),
+                        callback_(callback),
+                        bind_object_(bind_object),
+                        proxy_type_(proxy_type)
+                      {
+                        Py_INCREF(callback_);
+                        Py_INCREF(bind_object_);
+                        Py_INCREF(proxy_type_);
+                      }
+
+                      ~ParameterCallbackState()
+                      {
+                        ParameterCallbackReaper::instance().enqueue(callback_);
+                        ParameterCallbackReaper::instance().enqueue(bind_object_);
+                        ParameterCallbackReaper::instance().enqueue(proxy_type_);
+                      }
+
+                      void dispatch(InvocationT& invocation)
+                      {
+                        counters_->calls.fetch_add(1, std::memory_order_relaxed);
+                        PyGILState_STATE gil = PyGILState_Ensure();
+                        PyObject* address = PyLong_FromVoidPtr(&invocation);
+                        PyObject* proxy = address ? PyObject_CallFunctionObjArgs(
+                          bind_object_, address, proxy_type_, nullptr) : nullptr;
+                        Py_XDECREF(address);
+                        if (!proxy || PyObject_SetAttrString(
+                            proxy, "__python_owns__", Py_False) < 0)
+                        {
+                          Py_XDECREF(proxy);
+                          PyErr_Clear();
+                          counters_->bridge_errors.fetch_add(
+                            1, std::memory_order_relaxed);
+                          counters_->exceptions.fetch_add(
+                            1, std::memory_order_relaxed);
+                          invocation.mark_bridge_error();
+                          PyGILState_Release(gil);
+                          return;
+                        }
+                        PyObject* result = PyObject_CallFunctionObjArgs(
+                          callback_, proxy, nullptr);
+                        Py_DECREF(proxy);
+                        if (!result) {
+                          PyErr_Clear();
+                          counters_->bridge_errors.fetch_add(
+                            1, std::memory_order_relaxed);
+                          invocation.mark_bridge_error();
+                        } else {
+                          Py_DECREF(result);
+                        }
+                        if (invocation.exception()) {
+                          counters_->exceptions.fetch_add(
+                            1, std::memory_order_relaxed);
+                        }
+                        PyGILState_Release(gil);
+                      }
+
+                      void record_rejection()
+                      {
+                        counters_->rejections.fetch_add(
+                          1, std::memory_order_relaxed);
+                      }
+
+                      void mark_bridge_error()
+                      {
+                        counters_->bridge_errors.fetch_add(
+                          1, std::memory_order_relaxed);
+                        counters_->exceptions.fetch_add(
+                          1, std::memory_order_relaxed);
+                      }
+
+                      uint64_t calls() const { return counters_->calls.load(); }
+                      uint64_t exceptions() const {
+                        return counters_->exceptions.load();
+                      }
+                      uint64_t rejections() const {
+                        return counters_->rejections.load();
+                      }
+                      uint64_t bridge_errors() const {
+                        return counters_->bridge_errors.load();
+                      }
+
+                    private:
+                      std::shared_ptr<ParameterCallbackCounters> counters_;
+                      PyObject* callback_;
+                      PyObject* bind_object_;
+                      PyObject* proxy_type_;
+                    };
+
+                    uint64_t drain_parameter_callback_releases()
+                    {
+                      return ParameterCallbackReaper::instance().drain();
+                    }
 
                     class PreSetParametersBridge final {
                     public:
                       PreSetParametersBridge(
                           std::shared_ptr<rclcpp::Node> node,
-                          PreSetParametersCallback callback)
-                      : node_(node), callback_(std::move(callback))
+                          PyObject* callback,
+                          PyObject* bind_object,
+                          PyObject* proxy_type)
+                      : node_(node),
+                        counters_(std::make_shared<ParameterCallbackCounters>()),
+                        state_(std::make_shared<
+                          ParameterCallbackState<PreSetParametersInvocation>>(
+                            counters_, callback, bind_object, proxy_type))
                       {
+                        auto state = state_;
                         handle_ = node->add_pre_set_parameters_callback(
-                          [this](std::vector<rclcpp::Parameter>& parameters) {
-                            calls_.fetch_add(1, std::memory_order_relaxed);
+                          [state](std::vector<rclcpp::Parameter>& parameters) {
                             try {
                               PreSetParametersInvocation invocation(parameters);
-                              callback_(&invocation);
-                              if (invocation.exception()) {
-                                exceptions_.fetch_add(1, std::memory_order_relaxed);
-                              }
+                              state->dispatch(invocation);
                               parameters = invocation.take_replacement();
                             } catch (...) {
-                              exceptions_.fetch_add(1, std::memory_order_relaxed);
+                              state->mark_bridge_error();
                               parameters.clear();
                             }
                           });
                       }
 
                       ~PreSetParametersBridge() { close(); }
-                      uint64_t calls() const { return calls_.load(); }
-                      uint64_t exceptions() const { return exceptions_.load(); }
+                      uint64_t calls() const { return counters_->calls.load(); }
+                      uint64_t exceptions() const {
+                        return counters_->exceptions.load();
+                      }
+                      uint64_t bridge_errors() const {
+                        return counters_->bridge_errors.load();
+                      }
                       bool closed() const { return !handle_; }
 
                       void close() noexcept
                       {
-                        if (!handle_) {
-                          return;
-                        }
-                        if (auto node = node_.lock()) {
-                          try {
-                            node->remove_pre_set_parameters_callback(handle_.get());
-                          } catch (...) {
+                        if (handle_) {
+                          if (auto node = node_.lock()) {
+                            try {
+                              node->remove_pre_set_parameters_callback(handle_.get());
+                            } catch (...) {
+                            }
                           }
+                          handle_.reset();
                         }
-                        handle_.reset();
-                        callback_ = nullptr;
+                        state_.reset();
                       }
 
                     private:
                       std::weak_ptr<rclcpp::Node> node_;
-                      PreSetParametersCallback callback_;
+                      std::shared_ptr<ParameterCallbackCounters> counters_;
+                      std::shared_ptr<ParameterCallbackState<
+                        PreSetParametersInvocation>> state_;
                       rclcpp::node_interfaces::PreSetParametersCallbackHandle::SharedPtr
                         handle_;
-                      std::atomic<uint64_t> calls_{0};
-                      std::atomic<uint64_t> exceptions_{0};
                     };
 
                     class OnSetParametersBridge final {
                     public:
                       OnSetParametersBridge(
                           std::shared_ptr<rclcpp::Node> node,
-                          OnSetParametersCallback callback)
-                      : node_(node), callback_(std::move(callback))
+                          PyObject* callback,
+                          PyObject* bind_object,
+                          PyObject* proxy_type)
+                      : node_(node),
+                        counters_(std::make_shared<ParameterCallbackCounters>()),
+                        state_(std::make_shared<
+                          ParameterCallbackState<OnSetParametersInvocation>>(
+                            counters_, callback, bind_object, proxy_type))
                       {
+                        auto state = state_;
                         handle_ = node->add_on_set_parameters_callback(
-                          [this](const std::vector<rclcpp::Parameter>& parameters) {
-                            calls_.fetch_add(1, std::memory_order_relaxed);
+                          [state](const std::vector<rclcpp::Parameter>& parameters) {
                             try {
                               OnSetParametersInvocation invocation(parameters);
-                              callback_(&invocation);
-                              if (invocation.exception()) {
-                                exceptions_.fetch_add(1, std::memory_order_relaxed);
-                              }
+                              state->dispatch(invocation);
                               if (!invocation.result().successful) {
-                                rejections_.fetch_add(1, std::memory_order_relaxed);
+                                state->record_rejection();
                               }
                               return invocation.result();
                             } catch (...) {
-                              exceptions_.fetch_add(1, std::memory_order_relaxed);
-                              rejections_.fetch_add(1, std::memory_order_relaxed);
+                              state->mark_bridge_error();
+                              state->record_rejection();
                               rcl_interfaces::msg::SetParametersResult result;
                               result.successful = false;
                               result.reason = "parameter callback raised";
@@ -340,112 +498,130 @@ def _ensure_helpers() -> Any:
                       }
 
                       ~OnSetParametersBridge() { close(); }
-                      uint64_t calls() const { return calls_.load(); }
-                      uint64_t exceptions() const { return exceptions_.load(); }
-                      uint64_t rejections() const { return rejections_.load(); }
+                      uint64_t calls() const { return counters_->calls.load(); }
+                      uint64_t exceptions() const {
+                        return counters_->exceptions.load();
+                      }
+                      uint64_t rejections() const {
+                        return counters_->rejections.load();
+                      }
+                      uint64_t bridge_errors() const {
+                        return counters_->bridge_errors.load();
+                      }
                       bool closed() const { return !handle_; }
 
                       void close() noexcept
                       {
-                        if (!handle_) {
-                          return;
-                        }
-                        if (auto node = node_.lock()) {
-                          try {
-                            node->remove_on_set_parameters_callback(handle_.get());
-                          } catch (...) {
+                        if (handle_) {
+                          if (auto node = node_.lock()) {
+                            try {
+                              node->remove_on_set_parameters_callback(handle_.get());
+                            } catch (...) {
+                            }
                           }
+                          handle_.reset();
                         }
-                        handle_.reset();
-                        callback_ = nullptr;
+                        state_.reset();
                       }
 
                     private:
                       std::weak_ptr<rclcpp::Node> node_;
-                      OnSetParametersCallback callback_;
+                      std::shared_ptr<ParameterCallbackCounters> counters_;
+                      std::shared_ptr<ParameterCallbackState<
+                        OnSetParametersInvocation>> state_;
                       rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
                         handle_;
-                      std::atomic<uint64_t> calls_{0};
-                      std::atomic<uint64_t> exceptions_{0};
-                      std::atomic<uint64_t> rejections_{0};
                     };
 
                     class PostSetParametersBridge final {
                     public:
                       PostSetParametersBridge(
                           std::shared_ptr<rclcpp::Node> node,
-                          PostSetParametersCallback callback)
-                      : node_(node), callback_(std::move(callback))
+                          PyObject* callback,
+                          PyObject* bind_object,
+                          PyObject* proxy_type)
+                      : node_(node),
+                        counters_(std::make_shared<ParameterCallbackCounters>()),
+                        state_(std::make_shared<
+                          ParameterCallbackState<ParameterBatchInvocation>>(
+                            counters_, callback, bind_object, proxy_type))
                       {
+                        auto state = state_;
                         handle_ = node->add_post_set_parameters_callback(
-                          [this](const std::vector<rclcpp::Parameter>& parameters) {
-                            calls_.fetch_add(1, std::memory_order_relaxed);
+                          [state](const std::vector<rclcpp::Parameter>& parameters) {
                             try {
                               ParameterBatchInvocation invocation(parameters);
-                              callback_(&invocation);
-                              if (invocation.exception()) {
-                                exceptions_.fetch_add(1, std::memory_order_relaxed);
-                              }
+                              state->dispatch(invocation);
                             } catch (...) {
-                              exceptions_.fetch_add(1, std::memory_order_relaxed);
+                              state->mark_bridge_error();
                             }
                           });
                       }
 
                       ~PostSetParametersBridge() { close(); }
-                      uint64_t calls() const { return calls_.load(); }
-                      uint64_t exceptions() const { return exceptions_.load(); }
+                      uint64_t calls() const { return counters_->calls.load(); }
+                      uint64_t exceptions() const {
+                        return counters_->exceptions.load();
+                      }
+                      uint64_t bridge_errors() const {
+                        return counters_->bridge_errors.load();
+                      }
                       bool closed() const { return !handle_; }
 
                       void close() noexcept
                       {
-                        if (!handle_) {
-                          return;
-                        }
-                        if (auto node = node_.lock()) {
-                          try {
-                            node->remove_post_set_parameters_callback(handle_.get());
-                          } catch (...) {
+                        if (handle_) {
+                          if (auto node = node_.lock()) {
+                            try {
+                              node->remove_post_set_parameters_callback(handle_.get());
+                            } catch (...) {
+                            }
                           }
+                          handle_.reset();
                         }
-                        handle_.reset();
-                        callback_ = nullptr;
+                        state_.reset();
                       }
 
                     private:
                       std::weak_ptr<rclcpp::Node> node_;
-                      PostSetParametersCallback callback_;
+                      std::shared_ptr<ParameterCallbackCounters> counters_;
+                      std::shared_ptr<ParameterCallbackState<
+                        ParameterBatchInvocation>> state_;
                       rclcpp::node_interfaces::PostSetParametersCallbackHandle::SharedPtr
                         handle_;
-                      std::atomic<uint64_t> calls_{0};
-                      std::atomic<uint64_t> exceptions_{0};
                     };
 
                     std::shared_ptr<PreSetParametersBridge>
                     make_pre_set_parameters_bridge(
                         std::shared_ptr<rclcpp::Node> node,
-                        PreSetParametersCallback callback)
+                        PyObject* callback,
+                        PyObject* bind_object,
+                        PyObject* proxy_type)
                     {
                       return std::make_shared<PreSetParametersBridge>(
-                        std::move(node), std::move(callback));
+                        std::move(node), callback, bind_object, proxy_type);
                     }
 
                     std::shared_ptr<OnSetParametersBridge>
                     make_on_set_parameters_bridge(
                         std::shared_ptr<rclcpp::Node> node,
-                        OnSetParametersCallback callback)
+                        PyObject* callback,
+                        PyObject* bind_object,
+                        PyObject* proxy_type)
                     {
                       return std::make_shared<OnSetParametersBridge>(
-                        std::move(node), std::move(callback));
+                        std::move(node), callback, bind_object, proxy_type);
                     }
 
                     std::shared_ptr<PostSetParametersBridge>
                     make_post_set_parameters_bridge(
                         std::shared_ptr<rclcpp::Node> node,
-                        PostSetParametersCallback callback)
+                        PyObject* callback,
+                        PyObject* bind_object,
+                        PyObject* proxy_type)
                     {
                       return std::make_shared<PostSetParametersBridge>(
-                        std::move(node), std::move(callback));
+                        std::move(node), callback, bind_object, proxy_type);
                     }
                     }  // namespace rclcpp_kit_native_parameters
                 """
@@ -896,15 +1072,21 @@ class NativeParameterCallback:
         implementation: Any,
         callback: Callable[..., Any],
         dispatch: Callable[..., Any],
-        cpp_callback: Any,
+        proxy_type: Any,
         failures: "_CallbackFailures",
     ):
         self.kind = kind
         self._implementation = implementation
         self._callback = callback
         self._dispatch = dispatch
-        self._cpp_callback = cpp_callback
+        self._proxy_type = proxy_type
         self._failures = failures
+        self.callback_handoff = "compiled_python_callback"
+        self._implementation.close.__release_gil__ = True
+
+    @property
+    def bridge_errors(self) -> int:
+        return int(self._implementation.bridge_errors())
 
     @property
     def closed(self) -> bool:
@@ -922,16 +1104,16 @@ class NativeParameterCallback:
     def close(self) -> None:
         """Release the native parameter-callback bridge.
 
-        ``_cpp_callback``/``_dispatch``/``_callback`` are deliberately NOT
-        nulled here (Slice 2.5a4, PLAN-mte-unlock.md Addendum v3.2): the
-        callable's lifetime is now pinned to the ``std::function`` value
-        itself (see ``add_{pre,on,post}_set_parameters_callback``), not to
-        these Python-side references surviving -- severing them eagerly
-        here is exactly the pattern that slice fixed for
-        subscriptions/timers/services.
+        The C++ callback lambda retains its shared dispatch state until the
+        last in-flight callback copy is destroyed. Its Python references are
+        then released by the GIL-held reaper.
         """
         if not self.closed:
             self._implementation.close()
+            self._callback = None
+            self._dispatch = None
+            self._proxy_type = None
+            drain_parameter_callback_releases()
 
     def take_exception(self) -> BaseException | None:
         """Return and clear the oldest contained Python callback exception."""
@@ -959,6 +1141,17 @@ def _batch(invocation: Any) -> tuple[NativeParameter, ...]:
     )
 
 
+def drain_parameter_callback_releases() -> int:
+    """Drain Python references retired by native parameter callbacks.
+
+    This must run on a GIL-holding thread, after native parameter dispatch
+    has returned to a safe Python operation or executor-pump boundary.
+    """
+    if not _HELPERS_READY:
+        return 0
+    return int(_HELPERS_NAMESPACE.drain_parameter_callback_releases())
+
+
 def add_pre_set_parameters_callback(
     node: Any,
     callback: Callable[[tuple[NativeParameter, ...]], Iterable[NativeParameter]],
@@ -976,20 +1169,11 @@ def add_pre_set_parameters_callback(
             invocation.mark_exception()
             invocation.replace(parameter_vector(()))
 
-    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
-    # Addendum v3.2): pin the Python callable to the std::function VALUE
-    # itself, not to this implementation object's own Python-side GC
-    # timing. This bridge's C++ implementation move-constructs its own
-    # callback_ member from this exact value (PreSetParametersBridge(node,
-    # callback) : callback_(std::move(callback))), so callback_ inherits
-    # the same reaper-backed protection regardless of anything on the
-    # Python side.
-    cpp_callback = _pinned_std_function(
-        "void(rclcpp_kit_native_parameters::PreSetParametersInvocation*)",
-        dispatch)
-    implementation = namespace.make_pre_set_parameters_bridge(node, cpp_callback)
+    proxy_type = namespace.PreSetParametersInvocation
+    implementation = namespace.make_pre_set_parameters_bridge(
+        node, dispatch, cppyy.bind_object, proxy_type)
     return NativeParameterCallback(
-        "pre", implementation, callback, dispatch, cpp_callback, failures)
+        "pre", implementation, callback, dispatch, proxy_type, failures)
 
 
 def add_on_set_parameters_callback(
@@ -1016,16 +1200,11 @@ def add_on_set_parameters_callback(
             invocation.set_result(make_set_parameters_result(
                 False, "parameter callback raised"))
 
-    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
-    # Addendum v3.2): see add_pre_set_parameters_callback above for the
-    # rationale -- identical here (OnSetParametersBridge's own callback_
-    # member is move-constructed from this exact pinned value).
-    cpp_callback = _pinned_std_function(
-        "void(rclcpp_kit_native_parameters::OnSetParametersInvocation*)",
-        dispatch)
-    implementation = namespace.make_on_set_parameters_bridge(node, cpp_callback)
+    proxy_type = namespace.OnSetParametersInvocation
+    implementation = namespace.make_on_set_parameters_bridge(
+        node, dispatch, cppyy.bind_object, proxy_type)
     return NativeParameterCallback(
-        "on", implementation, callback, dispatch, cpp_callback, failures)
+        "on", implementation, callback, dispatch, proxy_type, failures)
 
 
 def add_post_set_parameters_callback(
@@ -1044,16 +1223,11 @@ def add_post_set_parameters_callback(
             failures.add(exception)
             invocation.mark_exception()
 
-    # Native-owned callable lifetime (Slice 2.5a4, PLAN-mte-unlock.md
-    # Addendum v3.2): see add_pre_set_parameters_callback above for the
-    # rationale -- identical here (PostSetParametersBridge's own callback_
-    # member is move-constructed from this exact pinned value).
-    cpp_callback = _pinned_std_function(
-        "void(rclcpp_kit_native_parameters::ParameterBatchInvocation*)",
-        dispatch)
-    implementation = namespace.make_post_set_parameters_bridge(node, cpp_callback)
+    proxy_type = namespace.ParameterBatchInvocation
+    implementation = namespace.make_post_set_parameters_bridge(
+        node, dispatch, cppyy.bind_object, proxy_type)
     return NativeParameterCallback(
-        "post", implementation, callback, dispatch, cpp_callback, failures)
+        "post", implementation, callback, dispatch, proxy_type, failures)
 
 
 __all__ = [
@@ -1075,6 +1249,7 @@ __all__ = [
     "CHECKED_PARAMETER_MISSING",
     "CHECKED_PARAMETER_STATIC_UNINITIALIZED",
     "CHECKED_PARAMETER_VALUE",
+    "drain_parameter_callback_releases",
     "add_on_set_parameters_callback",
     "add_post_set_parameters_callback",
     "add_pre_set_parameters_callback",

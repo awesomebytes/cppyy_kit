@@ -1509,6 +1509,13 @@ def drain_callable_reaper() -> int:
         drained += drain_python_callback_releases()
     except ImportError:
         pass
+    try:
+        from rclcpp_kit.native_parameters import (
+            drain_parameter_callback_releases,
+        )
+        drained += drain_parameter_callback_releases()
+    except ImportError:
+        pass
     return drained
 
 

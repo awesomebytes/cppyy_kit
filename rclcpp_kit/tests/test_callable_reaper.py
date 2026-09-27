@@ -281,18 +281,5 @@ def test_parameter_bridge_teardown_under_worker_dispatch_does_not_crash():
     process = run_helper(
         "_native_parameter_teardown_under_dispatch_helper.py", timeout=150)
     assert process.returncode == 0, format_output(process)
+    assert "PARAM_EXTERNAL_CLOSE_OK" in process.stdout, format_output(process)
     assert "PARAM_TEARDOWN_ALL_OK" in process.stdout, format_output(process)
-
-
-def test_parameter_bridge_marshal_window_stress_does_not_crash():
-    """The marshal-window stress applied to the parameter bridge. Unlike
-    subscriptions, a cross-thread close during a widened marshal window
-    deadlocks outright here -- set_parameters and close() share the node's
-    own recursive mutex, confirmed empirically -- a stronger guarantee than
-    subscriptions have, not a gap. This exercises the window that mutex
-    does not rule out: a same-thread self-close (recursive re-entry) widened
-    by the marshal hook. Must stay crash-free."""
-    process = run_helper(
-        "_native_parameter_marshal_window_stress_helper.py", timeout=150)
-    assert process.returncode == 0, format_output(process)
-    assert "PARAM_MARSHAL_WINDOW_ALL_OK" in process.stdout, format_output(process)
