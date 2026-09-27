@@ -33,6 +33,37 @@ def test_scalar_function():
     assert int(add_i(20, 22)) == 42
 
 
+def test_python_defaults_and_keyword_arguments():
+    @cpp
+    def add(a: int, b: int = 1) -> int:
+        """return a + b;"""
+    assert int(add(a=41)) == 42
+    assert int(add(40, b=2)) == 42
+
+
+def test_invalid_calls_are_rejected_before_compilation():
+    @cpp
+    def add(a: int, b: int) -> int:
+        """return a + b;"""
+    for call in (lambda: add(1), lambda: add(1, 2, 3),
+                 lambda: add(1, a=2), lambda: add(1, 2, ignored=3)):
+        with pytest.raises(TypeError):
+            call()
+        assert add._impl is None
+
+
+def test_unsupported_parameter_kinds_fail_at_decoration():
+    with pytest.raises(TypeError, match="unsupported parameter kind"):
+        @cpp
+        def keyword_only(*, value: int) -> int:
+            """return value;"""
+
+    with pytest.raises(TypeError, match="unsupported parameter kind"):
+        @cpp
+        def variadic(*values: int) -> int:
+            """return 0;"""
+
+
 def test_verbatim_scalar_type_and_double_return():
     @cpp
     def scale1(x: "double", k: "double") -> float:  # noqa: F722,F821

@@ -26,6 +26,10 @@ Annotation → marshaling (the §6 "pass raw addresses" pattern, with the
 * any other verbatim string — used as the C++ parameter type, value passed through.
 * return ``None`` → ``void``; ``int``/``float``/``bool`` or a verbatim string → that.
 
+Calls bind against the original Python signature before compilation or marshaling,
+so defaults and keyword arguments work and invalid calls raise ``TypeError`` early.
+Keyword-only and variadic parameters are rejected at decoration time.
+
 Only the honest subset above is marshaled; anything else raises at decoration time.
 Compose with real libraries via ``@cpp(include_paths=..., libraries=...)``.
 
@@ -76,6 +80,13 @@ class _CppFunc:
                  nogil, cached):
         self._fn = fn
         self._name = name or fn.__name__
+        self.__signature__ = inspect.signature(fn)
+        unsupported = [p.name for p in self.__signature__.parameters.values()
+                       if p.kind not in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
+        if unsupported:
+            raise TypeError(
+                "cppyy_kit.cpp: unsupported parameter kind for %s; use positional "
+                "parameters (unsupported: %s)." % (self._name, ", ".join(unsupported)))
         self._nogil = bool(nogil)
         self._cached = cached
         self._opts = {"include_paths": tuple(include_paths), "library_paths": tuple(library_paths),
@@ -112,10 +123,12 @@ class _CppFunc:
                                 cached=self._cached, **self._opts)
             self._impl = getattr(cppyy.gbl.cppyy_kit_cpp, cpp_name)
 
-    def __call__(self, *args):
-        self._ensure()
+    def __call__(self, *args, **kwargs):
+        bound = self.__signature__.bind(*args, **kwargs)
+        bound.apply_defaults()
         marshaled = []
-        for kind, arg in zip(self._plan["marshal"], args):
+        for kind, name in zip(self._plan["marshal"], self._plan["params"]):
+            arg = bound.arguments[name]
             if kind == "scalar":
                 marshaled.append(arg)
             elif kind == "ptr":
@@ -123,6 +136,7 @@ class _CppFunc:
             elif kind == "arr":
                 marshaled.append(_address(arg))
                 marshaled.append(int(getattr(arg, "size", len(arg))))
+        self._ensure()
         return self._impl(*marshaled)
 
 
@@ -217,7 +231,8 @@ def _build_plan(name, fn, body, nogil=False):
     # the .so on a cache hit). The wrapper's signature is plain POD -> no Python.h here.
     decls = ("#include <cstdint>\n#include <cstddef>\nnamespace cppyy_kit_cpp { %s %s(%s); }\n"
              % (ret, entry, sig))
-    return {"source": source, "decls": decls, "cpp_name": entry, "marshal": marshal}
+    return {"source": source, "decls": decls, "cpp_name": entry, "marshal": marshal,
+            "params": params}
 
 
 def cpp(func=None, *, name=None, include_paths=(), library_paths=(), libraries=(),

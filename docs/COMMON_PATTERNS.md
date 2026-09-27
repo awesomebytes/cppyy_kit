@@ -672,6 +672,10 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
   `reinterpret_cast` is injected); `cpp.arr("T")` is the numpy→**pointer+size**
   convenience (body sees `name` and `name_size`). Return `None`→`void`. Only that
   honest subset is marshaled; anything else raises at decoration time.
+- **Calls follow Python binding rules.** Defaults and keyword arguments work;
+  missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
+  C++ kernel is compiled. Keyword-only and variadic parameters are rejected when
+  decorating the function.
 - **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
   after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
