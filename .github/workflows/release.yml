@@ -4,18 +4,9 @@ name: Release
 # architecture-scoped cppyy 3.5.0 ARM64 bridge, prove each from an isolated
 # channel, then upload them to the prefix.dev channel `awesomebytes`.
 #
-# ┌────────────────────────────────────────────────────────────────────────────┐
-# │ ⚠  MANUAL STEP REQUIRED BEFORE THE FIRST RELEASE — Sam, action needed:       │
-# │                                                                              │
-# │ The UPLOAD step will FAIL until the cppyy_kit repo is authorized on          │
-# │ prefix.dev. OIDC trusted publishing is scoped per repo+workflow, and the     │
-# │ existing rclcppyy authorization does NOT cover this repo. Add it at:         │
-# │   prefix.dev → channel `awesomebytes` → Settings → Repository Access →       │
-# │   authorize  awesomebytes/cppyy_kit , workflow  release.yml , read/write.    │
-# │                                                                              │
-# │ The build + artifact-proof steps run and gate regardless, so a tag pushed    │
-# │ before authorization still validates all 12 packages; only the upload 401s.  │
-# └────────────────────────────────────────────────────────────────────────────┘
+# A prior OIDC upload from this repository succeeded. The 0.3.0 workflow is
+# untested; if upload fails, check prefix.dev authorization for this repo and
+# workflow (`awesomebytes/cppyy_kit`, `release.yml`).
 #
 # Authentication: OIDC trusted publishing (no API token stored). `id-token:
 # write` lets the job mint the GitHub OIDC token that `rattler-build upload

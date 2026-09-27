@@ -4,7 +4,7 @@ name: CI
 # auto-skips per kit in the default env), with no manual steps beyond `pixi run`.
 on:
   push:
-    branches: [main]
+    branches: [main, 'ci/**']
   pull_request:
 
 # A newer push to the same branch/PR cancels the in-flight run.

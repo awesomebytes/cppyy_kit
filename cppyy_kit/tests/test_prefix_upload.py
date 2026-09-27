@@ -37,7 +37,7 @@ class Response:
 def _artifact(tmp_path, payload=b"package bytes"):
     subdir = tmp_path / "noarch"
     subdir.mkdir()
-    artifact = subdir / "cppyy-kit-0.2.0-pyh123_0.conda"
+    artifact = subdir / "cppyy-kit-0.3.0-pyh123_0.conda"
     artifact.write_bytes(payload)
     return artifact
 
