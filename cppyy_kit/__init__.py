@@ -356,7 +356,8 @@ print("CPPYY_KIT_CPPDEF_OK")
 """
 
 
-def probe_cppdef(code, include_paths=(), library_paths=(), headers=(), libraries=()):
+def probe_cppdef(code, include_paths=(), library_paths=(), headers=(), libraries=(),
+                 timeout=60):
     """Compile ``code`` with ``cppyy.cppdef`` in a throwaway subprocess; return
     ``(ok, message)``.
 
@@ -375,7 +376,13 @@ def probe_cppdef(code, include_paths=(), library_paths=(), headers=(), libraries
     for lib in libraries:
         setup.append("cppyy.load_library(%r)" % lib)
     script = _PROBE_TEMPLATE.format(setup="\n".join(setup), code=code)
-    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True)
+    if timeout <= 0:
+        raise ValueError("probe_cppdef: timeout must be positive.")
+    try:
+        proc = subprocess.run([sys.executable, "-c", script], capture_output=True,
+                              text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return False, "cppdef probe timed out after %s seconds." % timeout
     if proc.returncode == 0 and "CPPYY_KIT_CPPDEF_OK" in proc.stdout:
         return True, "ok"
     return False, (proc.stderr.strip() or proc.stdout.strip()

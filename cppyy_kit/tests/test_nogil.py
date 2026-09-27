@@ -5,6 +5,8 @@ The proof is behavioural: a blocking C++ call made directly holds the GIL and st
 a concurrent Python thread; through nogil() the GIL is released and the thread runs.
 Needs cppyy + a compiler (default env)."""
 import asyncio
+import subprocess
+import sys
 import threading
 import time
 
@@ -27,10 +29,8 @@ if _HAVE:
     cppyy.cppdef(r"""
     #include <thread>
     #include <chrono>
-    #include <stdexcept>
     namespace ck_nogil_test {
       void sleep_300() { std::this_thread::sleep_for(std::chrono::milliseconds(300)); }
-      void throw_error() { throw std::runtime_error("expected nogil test exception"); }
     }
     """)
 
@@ -87,9 +87,30 @@ def test_run_async_lets_event_loop_run():
 
 
 def test_nogil_restores_gil_when_cpp_throws():
-    with pytest.raises(Exception, match="expected nogil test exception"):
-        nogil(cppyy.gbl.ck_nogil_test.throw_error)
-    assert _co_thread_ticks(lambda: nogil(cppyy.gbl.ck_nogil_test.sleep_300)) > 100
+    # Isolate the throwing native call: a regression can leave CPython without
+    # the GIL and corrupt or hang the pytest process before an assertion runs.
+    script = r"""
+import cppyy
+from cppyy_kit import nogil
+cppyy.cppdef(r'''#include <stdexcept>
+namespace ck_nogil_throw_test {
+  void fail() { throw std::runtime_error("expected nogil test exception"); }
+  void succeed() {}
+}''')
+try:
+    nogil(cppyy.gbl.ck_nogil_throw_test.fail)
+except Exception as exc:
+    assert "expected nogil test exception" in str(exc), str(exc)
+else:
+    raise AssertionError("native exception was not propagated")
+assert 6 * 7 == 42
+nogil(cppyy.gbl.ck_nogil_throw_test.succeed)
+print("NOGIL_EXCEPTION_RECOVERED")
+"""
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True,
+                          text=True, timeout=30)
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+    assert "NOGIL_EXCEPTION_RECOVERED" in proc.stdout
 
 
 def test_ensure_is_thread_safe_single_compile():

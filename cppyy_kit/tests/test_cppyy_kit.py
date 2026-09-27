@@ -123,6 +123,21 @@ def test_probe_cppdef_accepts_valid_and_rejects_invalid():
     assert message  # carries some diagnostic text
 
 
+def test_probe_cppdef_reports_timeout(monkeypatch):
+    def timeout(*args, **kwargs):
+        raise cppyy_kit.subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
+    monkeypatch.setattr(cppyy_kit.subprocess, "run", timeout)
+    ok, message = cppyy_kit.probe_cppdef("namespace ckp { }", timeout=0.1)
+    assert ok is False
+    assert "timed out after 0.1 seconds" in message
+
+
+def test_probe_cppdef_rejects_nonpositive_timeout():
+    with pytest.raises(ValueError, match="timeout must be positive"):
+        cppyy_kit.probe_cppdef("namespace ckp { }", timeout=0)
+
+
 @pytest.fixture
 def isolated_teardown_registry():
     """Give a test its own teardown registry, then restore the module's so the

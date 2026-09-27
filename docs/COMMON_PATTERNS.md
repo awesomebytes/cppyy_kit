@@ -233,8 +233,8 @@ during transaction revert** (no Python traceback).
   kernels, not the `Model` itself.
 - **Mitigation:** probe risky glue out-of-process first —
   `cppyy_kit.probe_cppdef(code, include_paths=, headers=, libraries=)` compiles it
-  in a throwaway subprocess and returns `(ok, message)` without risking the main
-  interpreter. Pass it the **full ament include-path set** (every package's include
+  in a throwaway subprocess with a 60-second default timeout and returns
+  `(ok, message)` without risking the main interpreter. Pass it the **full ament include-path set** (every package's include
   dir, via `get_packages_with_prefixes`), not just the target library's — else a
   header that transitively pulls the ROS message tree fails on a missing transitive
   header (a false negative).
