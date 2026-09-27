@@ -3,5 +3,5 @@ set -euxo pipefail
 export PKG_NAME="ros-jazzy-control-kit"
 export PKG_IMPORT="control_kit"
 export PKG_WHERE="control_kit"
-export PKG_VERSION="0.2.0"
+export PKG_VERSION="0.3.0"
 bash "${SRC_DIR}/recipe/_build_kit.sh"

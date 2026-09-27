@@ -247,40 +247,40 @@ jobs:
               python cpycppyy cppyy-backend cppyy-cling libstdcxx libgcc
               python_abi
           - name: cppyy-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_2
             dependencies: python cppyy
           - name: ros-jazzy-bt-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-behaviortree-cpp
           - name: ros-jazzy-control-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control
           - name: ros-jazzy-cv-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit opencv
           - name: ros-jazzy-dbow-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-cv-kit opencv
           - name: ros-jazzy-moveit-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-moveit
               ros-jazzy-ament-index-python
           - name: ros-jazzy-nav2-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
@@ -290,19 +290,19 @@ jobs:
               ros-jazzy-nav2-regulated-pure-pursuit-controller
               ros-jazzy-nav2-msgs
           - name: ros-jazzy-ompl-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-ompl
           - name: ros-jazzy-pcl-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit pcl
               ros-jazzy-pcl-conversions
           - name: ros-jazzy-rclcpp-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_1
             dependencies: >-
@@ -312,7 +312,7 @@ jobs:
               ros-jazzy-composition-interfaces ros-jazzy-lifecycle-msgs
               ros-jazzy-ament-index-python
           - name: wbc-kit
-            version: "0.2.0"
+            version: "0.3.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit crocoddyl

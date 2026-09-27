@@ -30,13 +30,13 @@ case "$(uname -m)" in
     ;;
 esac
 
-echo "Building cppyy-kit 0.2.0 into $output_dir"
+echo "Building cppyy-kit 0.3.0 into $output_dir"
 rattler-build build \
   --recipe recipe/cppyy-kit/recipe.yaml \
   "${channels[@]}" \
   --output-dir "$output_dir"
 
-echo "Building ros-jazzy-rclcpp-kit 0.2.0 against the local base artifact"
+echo "Building ros-jazzy-rclcpp-kit 0.3.0 against the local base artifact"
 rattler-build build \
   --recipe recipe/ros-jazzy-rclcpp-kit/recipe.yaml \
   -c "file://$output_dir" \
@@ -45,11 +45,11 @@ rattler-build build \
   --output-dir "$output_dir"
 
 mapfile -t artifacts < <(
-  find "$output_dir" -name 'cppyy-kit-0.2.0-*.conda' -o \
-    -name 'ros-jazzy-rclcpp-kit-0.2.0-*.conda' | sort
+  find "$output_dir" -name 'cppyy-kit-0.3.0-*.conda' -o \
+    -name 'ros-jazzy-rclcpp-kit-0.3.0-*.conda' | sort
 )
 if [ "${#artifacts[@]}" -lt 2 ]; then
-  echo "Expected both 0.2.0 package artifacts in $output_dir" >&2
+  echo "Expected both 0.3.0 package artifacts in $output_dir" >&2
   exit 1
 fi
 printf 'Built artifact: %s\n' "${artifacts[@]}"

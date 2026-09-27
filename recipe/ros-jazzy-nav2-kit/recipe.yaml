@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: ros-jazzy-nav2-kit
   # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.2.0"
+  version: "0.3.0"
 
 package:
   name: ${{ name }}
@@ -28,8 +28,8 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.2.0
-    - ros-jazzy-rclcpp-kit ==0.2.0
+    - cppyy-kit ==0.3.0
+    - ros-jazzy-rclcpp-kit ==0.3.0
     - ros-jazzy-nav2-costmap-2d
     - ros-jazzy-nav2-navfn-planner
     - ros-jazzy-nav2-smac-planner

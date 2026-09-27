@@ -107,7 +107,7 @@ collapsing to a single multi-output recipe (which the per-package layout here
 deliberately keeps). Bump every occurrence in one step:
 
 ```bash
-recipe/bump_version.sh 0.2.0
+recipe/bump_version.sh 0.3.0
 ```
 
 ## Release
