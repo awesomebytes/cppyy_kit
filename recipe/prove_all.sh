@@ -84,9 +84,11 @@ from pathlib import Path
 import sys
 
 def package_record(name):
-    matches = list((Path(sys.prefix) / "conda-meta").glob(name + "-*.json"))
+    matches = [json.loads(path.read_text())
+               for path in (Path(sys.prefix) / "conda-meta").glob(name + "-*.json")]
+    matches = [record for record in matches if record.get("name") == name]
     assert len(matches) == 1, (name, matches)
-    return json.loads(matches[0].read_text())
+    return matches[0]
 
 assert package_record("cppyy-kit")["build_number"] == 2
 for package, version in (("gcc", "14.3.0"), ("gxx", "14.3.0"),
