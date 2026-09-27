@@ -72,9 +72,8 @@ plugins:
 # stale content links (BT.CPP_KIT.md-style cheat-sheet names, ../kits/ and
 # ../vision/ paths from the docs/kits -> docs and vision -> cv_kit moves) were
 # fixed in the content pass (task #48), so `links.not_found` is now `warn` (fails
-# under --strict). `unrecognized_links` stays `info`: a few kit docs link to
-# sibling source DIRECTORIES (../cppyy_kit, ../cv_kit/, ../dbow_kit/) which are
-# valid in the repo but are not renderable doc pages — intentional, non-failing.
+# under --strict). `unrecognized_links` stays `info` for references to source
+# directories or assets that are not rendered as documentation pages.
 validation:
   nav:
     omitted_files: warn

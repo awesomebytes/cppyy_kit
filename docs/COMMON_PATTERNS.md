@@ -687,18 +687,15 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
   compiles the kernel in-memory and skips the `.so` cache (the §23 debugging escape
   hatch, also `cppyy_kit.disable_caching()` / `CPPYY_KIT_NO_CACHE=1`; see FREEZE.md
   "Debugging: turning the caches off").
-- **The honest headline: the win tracks "custom kernel vs library primitive", not
-  "C++ vs Python" (webcam).** Reach for a `@cpp`/`cppdef` kernel where you'd otherwise
-  write a **per-element Python loop with no vectorized-NumPy/library one-liner** — a
-  hand-written NCC patch tracker measured **~12–15×** (4.32 ms vs 66.3 ms/frame at
-  640×480). Where the per-frame work is *only* library-provided ops (OpenCV
-  ORB/match/RANSAC, where `cv2` is C++ too) the gap collapses to **~1.1–1.2×**
-  per-frame orchestration — do **not** expect a win from merely chaining library
-  primitives. Robotics code constantly hand-writes the former (trackers, cost
-  functions, robust estimators), which is exactly where cppyy_kit earns its keep.
-  (For an honest A-vs-B bench, bracket each pipeline with `time.process_time()` deltas:
-  `cpu% = 100 * Δcpu/Δwall` is a dependency-free per-pipeline CPU meter when the driver
-  is single-threaded and the calls are sequential — no psutil needed.)
+- **Performance depends on the workload.** A hand-written NCC patch tracker measured
+  **~12–15×** faster in the C++ kernel (4.32 ms vs 66.3 ms/frame at 640×480). For
+  per-frame OpenCV library operations (ORB/match/RANSAC), the gap was **~1.1–1.2×**
+  in orchestration. A `@cpp`/`cppdef` kernel is suited to per-element Python loops
+  without a vectorized NumPy or library equivalent, such as custom trackers, cost
+  functions, and robust estimators. Chaining library primitives alone may give little
+  benefit when those operations are already implemented in C++.
+  For A-vs-B CPU measurements, record `time.process_time()` deltas for sequential,
+  single-threaded calls: `cpu% = 100 * Δcpu/Δwall`.
 
 ### 27. `nogil()` — release the GIL around a blocking C++ call
 §13's rule ("cppyy does not release the GIL on a blocking C++ call") has a fix:
@@ -724,8 +721,8 @@ unwinding before cppyy translates an exception back into Python.
 - **`fn` must be C++, not Python.** A Python callable would re-acquire the GIL to run
   (cppyy takes it to enter Python), defeating the point. Bind args/results in C++ (a
   `cppdef`/`@cpp` nullary wrapper writing its result into a C++ object you read
-  after). This is §13's "run the blocking work on a C++ path, not a Python thread",
-  made a one-liner.
+  after). This follows §13's guidance to put blocking work on a C++ path rather than
+  a Python thread.
 - **`run_async(fn)`** is the asyncio form: `await`s the blocking C++ work on an
   executor thread *with the GIL released*, so the event loop keeps running.
 - **Callback caveat:** if `fn` calls back into Python while the GIL is released, that

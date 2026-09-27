@@ -6,7 +6,8 @@
 
 **What:** drive OpenCV's C++ API (core / imgproc / features2d) from Python via
 cppyy, with a **zero-copy** bridge from a ROS 2 `sensor_msgs/Image` (C++
-message) into `cv::Mat`. Pairs with [`dbow_kit`](../dbow_kit/) for loop closure.
+message) into `cv::Mat`. Pairs with [`dbow_kit`](../dbow_kit/WHY.md) for loop
+closure.
 
 **Why (not cv2):** composition. A `cv::Mat` can alias a C++ message's `data`
 buffer with no copy, run C++ `cv::ORB`, and hand descriptors straight to DBoW2 —

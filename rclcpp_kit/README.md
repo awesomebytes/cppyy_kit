@@ -6,8 +6,9 @@ ROS-touching kit — and the [rclcppyy](https://github.com/awesomebytes/rclcppyy
 product — builds on. It was carved out of rclcppyy's core **with git history**
 (`git log --follow` traces any module back into rclcppyy).
 
-It sits between the ROS-free [`cppyy_kit`](../cppyy_kit) base (load_libraries /
-keep_alive / register_teardown / pretty_cpp_error) and the domain kits.
+It sits between the ROS-free [`cppyy_kit`](../kits/cppyy_kit.md) base
+(load_libraries / keep_alive / register_teardown / pretty_cpp_error) and the domain
+kits.
 
 ## What's here
 

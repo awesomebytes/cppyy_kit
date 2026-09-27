@@ -5,7 +5,7 @@
 
 **What:** drive DBoW2 (Gálvez-López & Tardós, "Bags of Binary Words") from
 Python via cppyy for ORB place recognition / loop-closure detection. Pairs with
-[`cv_kit`](../cv_kit/) (which produces the ORB descriptor Mats).
+[`cv_kit`](../cv_kit/WHY.md) (which produces the ORB descriptor Mats).
 
 **Why (impossible → possible):** DBoW2 has **no Python binding** and is **not**
 packaged on conda-forge. cppyy makes it drivable from Python without writing a
@@ -30,4 +30,5 @@ db.add(dbow_kit.descriptors_from_mat(orb_descriptors))   # Nx32 CV_8U -> vector<
 `descriptors_from_mat` does that split in C++.
 
 **Full story:** [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
-Demos live in [`cv_kit/demos/`](../cv_kit/demos/) (the loop-closure pipeline is joint cv+dbow).
+The joint cv+dbow loop-closure flow is covered in the
+[vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md).

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/awesomebytes/cppyy_kit/actions/workflows/ci.yml/badge.svg)](https://github.com/awesomebytes/cppyy_kit/actions/workflows/ci.yml)
 
-**Prototype in Python, run at C++ speed — mix Python and C++ with ease.**
+**Drive C++ robotics libraries from Python with cppyy.**
 
 cppyy_kit is a suite of *kits* that drive real C++ robotics libraries from short
 Python via [cppyy](https://cppyy.readthedocs.io). You do not write or maintain

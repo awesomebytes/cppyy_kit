@@ -54,4 +54,4 @@ the size, stability, or portability of an improvement.
   a path for performance.
 
 For copy-paste patterns see [SKILL.md](SKILL.md); for the base primitives it builds
-on, [`cppyy_kit`](../cppyy_kit).
+on, [`cppyy_kit`](../kits/cppyy_kit.md).
