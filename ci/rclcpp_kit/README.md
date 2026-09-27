@@ -5,11 +5,13 @@ suites on native x86-64 and ARM64 Linux runners. It is separate from the root
 workspace because the root manifest includes all domain-kit dependencies, some
 of which are not published for ARM64.
 
-The ARM64 environment builds `cppyy==3.5.0` from the upstream source
-distribution. RoboStack's Jazzy packages require Python 3.12, while
-conda-forge currently exposes only `cppyy==2.3.1` with Python 3.9 on
-`linux-aarch64`. The GitHub Actions Pixi environment cache preserves the
-resulting native build and uses an architecture-qualified key.
+The ARM64 environment installs `cppyy==3.5.0` from the upstream source
+distribution against its preinstalled conda-forge components. Build isolation
+is disabled for this pure-Python shim so its build does not try to compile a
+second Cling stack from PyPI. RoboStack's Jazzy packages require Python 3.12,
+while conda-forge currently exposes only `cppyy==2.3.1` with Python 3.9 on
+`linux-aarch64`. The GitHub Actions Pixi cache uses an architecture-qualified
+key for this environment.
 
 This source-test environment is separate from the package proof. The package
 path builds the small `cppyy` conda bridge on native ARM64 from

@@ -40,6 +40,12 @@ cppyy-cling = "==6.32.8"
 [target.linux-aarch64.pypi-dependencies]
 cppyy = "==3.5.0"
 
+# Install the pure-Python cppyy shim against the conda-forge components above.
+# Its isolated sdist build resolves cppyy-backend/Cling from PyPI and attempts
+# an unsupported cppyy-cling 6.30.0 source build on a clean ARM environment.
+[pypi-options]
+no-build-isolation = ["cppyy"]
+
 [activation.env]
 RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
