@@ -193,8 +193,9 @@ that is **struct-of-arrays (SoA)** — which is just… numpy (claim 2's caveat)
 
 **Lifetime:** the view aliases the vector's heap buffer; the vector must outlive
 the view, and any `push_back`/`resize` reallocates and **invalidates** it. `column()`
-pins the vector on the returned array (`keep_alive`) and documents the resize
-hazard. Requires a POD-ish prefix layout (`offsetof` is well-defined for the
+pins the vector on the array's ctypes backing buffer (`keep_alive`); pinning raises
+`TypeError` if the buffer cannot hold the lifetime reference. Requires a POD-ish
+prefix layout (`offsetof` is well-defined for the
 standard-layout numeric members; the `std::string`/`vector` members sit after and
 are never viewed).
 

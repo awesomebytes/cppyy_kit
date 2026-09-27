@@ -72,11 +72,10 @@ for t in threads: t.start()
 for t in threads: t.join()                                          # all 8 run at once, one per core
 ```
 
-`@cpp(nogil=True)` wraps the compiled body in `Py_BEGIN_ALLOW_THREADS` /
-`Py_END_ALLOW_THREADS`, so the interpreter lock is dropped while the C++ runs — no
-trick, just the GIL released for the native work; only cppyy's argument/result
-marshaling stays under the lock. The jobs are independent and write into distinct C++
-slots, so none needs the GIL while computing.
+`@cpp(nogil=True)` releases the interpreter lock around the compiled body, so only
+cppyy's argument/result marshaling stays under the lock. The C++ shim restores the
+lock on normal return and when a C++ exception unwinds. The jobs are independent and
+write into distinct C++ slots, so none needs the GIL while computing.
 
 The friction these three share — locating and loading the `.so`s, pinning callback
 lifetimes, hiding cppyy's template and ownership sharp edges — is factored into the

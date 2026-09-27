@@ -232,13 +232,14 @@ during transaction revert** (no Python traceback).
   the abstract/custom-model path (crocoddyl action models, §31) and *non*-pinocchio glue
   kernels, not the `Model` itself.
 - **Mitigation:** probe risky glue out-of-process first —
-  `cppyy_kit.probe_cppdef(code, include_paths=, headers=, libraries=)` compiles it
-  in a throwaway subprocess with a 60-second default timeout and returns
-  `(ok, message)` without risking the main interpreter. Pass it the **full ament
-  include-path set** (every package's include dir, via `get_packages_with_prefixes`),
-  not just the target library's — else a
-  header that transitively pulls the ROS message tree fails on a missing transitive
-  header (a false negative).
+  `cppyy_kit.probe_cppdef(code, include_paths=(), library_paths=(), headers=(),
+  libraries=(), timeout=60)` compiles it in a throwaway subprocess and returns
+  `(ok, message)` without risking the main interpreter. The timeout is in seconds;
+  nonpositive values raise `ValueError`, and an expired probe returns
+  `(False, diagnostic)`. Pass it the **full
+  ament include-path set** (every package's include dir, via
+  `get_packages_with_prefixes`), not just the target library's; otherwise, a header
+  that transitively pulls the ROS message tree can fail on a missing transitive header.
 
 ### 10. Error ergonomics: strip the signature wall
 cppyy prefixes a C++ exception with the mangled call signature and ` => `. Split
@@ -676,7 +677,8 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
 - **Calls follow Python binding rules.** Defaults and keyword arguments work;
   missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
   C++ kernel is compiled. Keyword-only and variadic parameters are rejected when
-  decorating the function.
+  decorating the function. For example, a parameter declared `factor: float = 2.0`
+  can be omitted or passed by name.
 - **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
   after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
@@ -701,8 +703,8 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
 ### 27. `nogil()` — release the GIL around a blocking C++ call
 §13's rule ("cppyy does not release the GIL on a blocking C++ call") has a fix:
 `cppyy_kit.nogil(fn)` runs a **C++** nullary callable through a compiled shim that
-drops the GIL (`Py_BEGIN_ALLOW_THREADS`) around it, so concurrent Python threads run
-during the call. Measured (test_nogil.py): a 500 ms C++ sleep called directly lets a
+drops the GIL around it, so concurrent Python threads run during the call. Measured
+(test_nogil.py): a 500 ms C++ sleep called directly lets a
 co-thread advance ~1 tick; through `nogil` it advances **~470** — the co-thread runs
 the whole time. The shim restores the GIL on both normal return and C++ exception
 unwinding before cppyy translates an exception back into Python.
@@ -710,11 +712,12 @@ unwinding before cppyy translates an exception back into Python.
   GIL-free is a kernel you're writing anyway, skip the `std::function` ceremony — add
   `nogil=True` to `@cpp` and the decorated call releases the GIL around the compiled
   body directly. `@cpp` compiles a small wrapper (in the same cached `.so`) that
-  forwards the already-marshaled POD arguments into the kernel inside
-  `Py_BEGIN/END_ALLOW_THREADS`, so the GIL is dropped for **only** the C++ body —
-  cppyy's argument/result marshaling stays under the lock on either side. The release
-  wrapper adds ~0.04 µs/call over `nogil=False` (a trivial `add`; measured), and plain
-  Python threads each calling the kernel run on N cores: eight jobs, **7.7× faster**
+  forwards the already-marshaled POD arguments into the kernel while the GIL is
+  released, so the GIL is dropped for **only** the C++ body — cppyy's argument/result
+  marshaling stays under the lock on either side. An RAII guard restores the GIL on
+  normal return and C++ exception unwinding. The wrapper adds ~0.04 µs/call over
+  `nogil=False` (a trivial `add`; measured). Plain Python threads calling the kernel
+  run on N cores: eight jobs, **7.7× faster**
   than GIL-held on a 16-core box (`examples/parallel_demo`, the front-page snippet).
   Reach for the raw `nogil(fn)` below only for a *pre-existing* C++ callable you did not
   write with `@cpp` (a library's blocking `spin()`/`wait()`).
