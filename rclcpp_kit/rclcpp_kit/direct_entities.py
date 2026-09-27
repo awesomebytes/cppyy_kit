@@ -966,16 +966,27 @@ class DirectSubscription:
 
         ``managed.close()`` runs first: it drops the C++-owned entity
         reference (rclcpp reclaims it via its own weak_ptr collection on
-        the executor's next collect) and only then drops the keep-alive
-        callable reference -- never severing the callable while the entity
-        may still be referenced by a native worker (the UAF class this
-        slice fixes). The fields below are dropped afterward for bookkeeping/
-        introspection only; by this point ``managed`` already owns (and has
-        already safely released) the real C++-side lifetime.
+        the executor's next collect) and resets the managed wrapper's
+        duplicate callback. Once that succeeds, release the wrapper's
+        redundant Python keep-alive list. Every native ``std::function``
+        copy independently pins its dispatch callable, so an entity still
+        held by a wait set or active worker retains the callback until that
+        copy is destroyed. The fields below are dropped afterward for
+        bookkeeping/introspection only; ``managed`` remains available for
+        closed-state inspection.
         """
         if self.closed:
             return False
-        released = bool(self.managed.close()) if self.managed is not None else True
+        managed = self.managed
+        released = bool(managed.close()) if managed is not None else True
+        if managed is not None:
+            # cppyy_kit.keep_alive is defense in depth; _pinned_std_function
+            # owns the callback lifetime for every native std::function copy.
+            # Clearing only after native close succeeds avoids retaining
+            # callback -> facade -> managed-proxy cycles after destroy().
+            keep_alive = getattr(managed, "_cppyy_kit_kept_alive", None)
+            if keep_alive is not None:
+                keep_alive.clear()
         for callback in (self.cpp_event_callbacks or {}).values():
             close = getattr(callback, "close", None)
             if callable(close):
