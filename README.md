@@ -184,7 +184,7 @@ Available options include reducing startup work and moving selected hot paths to
 - **Freeze.** With the auto-PCH hook installed and a matching PCH available, Cling
   loads cached headers at startup instead of parsing them again. In one shared-host
   rclcpp measurement, bringup took ~1.73 s cold and 0.064 s warm (~27×); this is not a
-  portable startup estimate. See the
+  portable startup claim. See the
   [auto-PCH measurement](docs/benchmarks.md#auto-pch--zero-config-cold-vs-warm-bringup).
   The compile cache can reuse compatible `@cpp`/`cppdef` artifacts. For the PCL
   VoxelGrid benchmark, JIT took 632 ms, a cache miss took 91 ms, and cache hits took
