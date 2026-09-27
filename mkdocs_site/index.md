@@ -83,7 +83,7 @@ below names its benchmark and links to it.
 | Lever | Result |
 |---|---|
 | **Accelerate** — PCL cloud stays in C++ end to end | [**15.1× latency / 7.4× CPU**](docs/benchmarks.md#pcl-showcase-cloud-stays-in-c-end-to-end) at 74-LOC parity, in the PCL pipeline benchmark |
-| **Freeze** — Cling PCH of library headers | rclcpp bringup [**~1.73 s cold → 0.064 s warm (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) in one shared-host measurement; not a portable startup estimate |
+| **Freeze** — Cling PCH of library headers | rclcpp bringup [**~1.73 s cold → 0.064 s warm (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) in one shared-host measurement; not a portable startup claim |
 | **Compile cache** — content-hashed `@cpp`/`cppdef` artifacts | PCL VoxelGrid [**632 ms JIT / 91 ms cache miss / 89–94 ms cache hits**](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) in the benchmark |
 | **Lower (L2)** — hot leaf authored as native C++ | inline Crocoddyl model [**22.9×**](docs/benchmarks.md#wbc-custom-crocoddyl-action-model-python-derived-vs-inline-c) on the WBC action model, bit-identical |
 | **TF ingest** — C++ `tf2` listener vs Python callback | [**7.4–16.9×**](docs/benchmarks.md#tf-ingest-c-tf2-listener-vs-python-callback) lower ingest CPU, in the TF ingest benchmark |
@@ -154,7 +154,7 @@ Available options include reducing startup work and moving selected hot paths to
 - **Freeze.** With the auto-PCH hook installed and a matching PCH available, Cling
   loads cached headers at startup instead of parsing them again. In one shared-host
   rclcpp measurement, bringup took ~1.73 s cold and 0.064 s warm (~27×); this is not a
-  portable startup estimate. See the
+  portable startup claim. See the
   [auto-PCH measurement](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup).
   The compile cache can reuse compatible `@cpp`/`cppdef` artifacts. For the PCL
   VoxelGrid benchmark, JIT took 632 ms, a cache miss took 91 ms, and cache hits took
