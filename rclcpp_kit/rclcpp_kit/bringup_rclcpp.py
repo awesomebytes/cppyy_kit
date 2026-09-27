@@ -14,6 +14,7 @@ from typing import Any, List, Optional, Set, Dict
 from ament_index_python.packages import get_package_prefix, get_packages_with_prefixes
 
 RCLCPP_BRINGUP_DONE = False
+_ROS_INCLUDE_PATHS_ADDED = False
 
 # Headers bringup_rclcpp() JIT-parses (the ~1.7 s cost). Registered with the
 # zero-config PCH so they are baked and that parse is eliminated on later runs.
@@ -98,8 +99,12 @@ def ros2_include_paths() -> List[str]:
 def add_ros2_include_paths() -> bool:
     # All of these are needed for rclcpp to work. Instead of hardcoding the list,
     # get every available package's include dir.
+    global _ROS_INCLUDE_PATHS_ADDED
+    if _ROS_INCLUDE_PATHS_ADDED:
+        return True
     for include_path in ros2_include_paths():
         cppyy.add_include_path(include_path)
+    _ROS_INCLUDE_PATHS_ADDED = True
     return True
 
 
@@ -363,6 +368,10 @@ def _resolve_message_type(message_type):
             # std_msgs.msg._multi_array_layout or rcl_interfaces.msg._parameter_event
             hpp_file_name = f"{module_parts[2][1:]}.hpp"
             header_path = f"{package}/msg/{hpp_file_name}"
+            # Message headers often include headers from other ROS packages.
+            # Ensure their package-specific include directories are registered
+            # even when message resolution is used before rclcpp bringup.
+            add_ros2_include_paths()
             cppyy.add_include_path(os.path.join(get_package_prefix(package), "include", package))
             cppyy.include(header_path)
             _load_message_typesupport(package)
