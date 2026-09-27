@@ -1,31 +1,24 @@
 # cppyy_kit — common patterns for driving a C++ library from Python
 
-This is the shared playbook behind the cppyy_kit suite (`bt_kit` for
-BehaviorTree.CPP, `pcl_kit` for the Point Cloud Library, and eight more). A kit
-wraps a C++ library so it can be driven from short Python that **mirrors the
-library's own API**, hiding only the cppyy friction. That friction is the same from
-one library to the next, so it is factored into `cppyy_kit`; this document is the
-narrative and the evidence behind it, for the next kit author (human or LLM).
-
-Two independent kits confirm every pattern below: BehaviorTree.CPP (a callback /
-tree engine) and PCL (templated bulk-data algorithms) stress different edges, and
-the union is what a general `cppyy_kit` must cover.
+This playbook collects integration patterns from BehaviorTree.CPP, PCL, and other
+domain kits. The examples describe behavior tested for the named libraries; coverage
+and requirements vary by library. The shared utilities in `cppyy_kit` address common
+loading, conversion, callback, and lifetime tasks.
 
 ## The three-ingredient recipe
 
-Every kit is the same three moves:
+A typical integration includes three steps:
 
 1. **Bringup** — locate the install, add include paths, JIT-include the headers,
    and `load_library` the `.so` set.
-2. **Hide that library's cppyy sharp edges** — the traps below (containers,
-   ownership, lifetime, template attributes).
-3. **Mirror the library's own API** — expose the real class/method names so a
-   user's (or an LLM's training on the) library transfers 1:1; no DSL, no hidden
-   state.
+2. **Handle cppyy-specific requirements** — for example, container construction,
+   ownership, lifetime, and template attributes.
+3. **Expose selected native operations** — preserve class and method names where
+   practical; add wrappers for bringup, conversion, or lifetime management as needed.
 
-`bringup_bt()` and `bringup_pcl()` are the same shape; the leaf/algorithm calls
-after bringup are the library's own (`factory.registerSimpleAction`,
-`pcl.VoxelGrid[pcl.PointXYZ]`).
+For example, `bringup_bt()` and `bringup_pcl()` both load their library and prepare
+its headers. Calls after bringup use native operations such as
+`factory.registerSimpleAction` and `pcl.VoxelGrid[pcl.PointXYZ]`.
 
 ---
 
@@ -84,13 +77,13 @@ fn = cppyy_kit.callback(on_value)            # ready to pass to any C++ std::fun
 - `cppyy_kit.std_function(sig, fn)` is the low-level escape hatch (raw wrapper, you
   handle lifetime yourself); prefer `callback`.
 
-### 4. Lifetime: the "callable was deleted" footgun (now handled)
+### 4. Python callback and buffer lifetime
 cppyy does **not** keep a Python callable (nor its `std::function` wrapper, nor a
 buffer backing a view) alive just because C++ holds it — a collected callback
 raises `TypeError: callable was deleted` when fired. This bit us for real: a
 throwaway `lambda` handed to the raw `std_function` was collected before the call.
-- **`callback()` makes it impossible to hit silently:** it always pins. With
-  `owner=` the wrapper + fn live as long as that object; without `owner=` they are
+- **`callback()` retains the Python callable and wrapper.** With `owner=` they live
+  as long as that object; without `owner=` they are
   pinned in a module-level registry for the process lifetime
   (`cppyy_kit.release_callbacks()` drops those when you're sure C++ is done).
 - For **non-callback** objects (a buffer backing a zero-copy view, a logger),
@@ -122,13 +115,14 @@ that handle. `cppyy_kit.HandleRegistry` is the table.
   handle. This is what makes two nodes of the same registered ID keep independent
   state.
 
-### 6. Containers & bulk data: build in C++, pass raw addresses
-Constructing/inserting STL containers **from Python** can **SIGSEGV with no
-traceback** (cppyy's `MapFromPairs` on a map, aligned-storage construction). Keep
-all container/buffer work inside a `cppyy.cppdef` helper.
+### 6. Containers and bulk data: use C++ helpers for unsupported conversions
+In tested configurations, some STL construction and insertion operations from
+Python terminated the process without a Python traceback. Build affected containers
+in a C++ helper; pass raw addresses for bulk buffers when that avoids per-element
+conversion.
 - **bt:** the `PortsList` (`unordered_map<string,PortInfo>`) is built in C++ from
-  two **parallel `vector<string>`** (names, types) — passing a `vector<pair>` or
-  the map itself from Python is what crashes.
+  two parallel `vector<string>` values (names, types); constructing the map or a
+  `vector<pair>` from Python triggered the failure in this test.
 - **pcl:** NumPy↔cloud copies are a `cppdef` helper taking `reinterpret_cast`-able
   integer addresses (`arr.ctypes.data` as `uintptr_t`) and doing the
   `memcpy`/strided copy in C++ — a per-element Python loop is ~90x slower.
@@ -181,53 +175,50 @@ straight from Python — no explicit `[T]`, no wrapper.
   `PointT` from the cloud. Reach for a `cppdef` helper only when a template arg
   can't be deduced or ownership must not cross (Pattern 5).
 
-### 9. Cling is an older clang: attributes & failed-`cppdef` crashes
-Cling's parser trips on some modern constructs, and a **failed `cppdef` can crash
-during transaction revert** (no Python traceback).
+### 9. Cling parser compatibility and failed declarations
+Cling may reject constructs accepted by newer clang versions. In tested failures, a
+`cppdef` error terminated the interpreter during transaction rollback without a
+Python traceback. Probe risky declarations and includes in a subprocess.
 - **pcl:** a trailing type-attribute (`struct { ... } EIGEN_ALIGN16;`) parse-errors
   — use a prefix form (`struct alignas(16) X`). Custom point types must be declared
   that way.
-- **A failed `cppyy.include` contaminates the interpreter too, not just `cppdef`
-  (nav2).** When one header failed mid-parse (a missing transitive dep), the *next,
-  unrelated* `cppyy.include` in the same process failed spuriously — though it
-  includes cleanly in a fresh process. So probe a **risky include** (heavy/uncertain
-  transitive deps) out-of-process, exactly as for `cppdef`.
-- **`generate_parameter_library` headers SIGSEGV the Cling parser (moveit).** Any
-  `*_parameters.hpp` (fmt + rsl + validators) crashes on include — and modern ROS 2
-  packages all generate one. Never `cppyy.include` it; find the *clean* base header
-  and load the class/plugin directly. (ros2_control's headers happen to be
-  Cling-clean — this wall is per-package, so probe.)
-- **Confirmed a *parse*-wall only — the compiled artifact is fine (ik_bench).**
-  pick_ik is the positive control: a `generate_parameter_library`-heavy MoveIt IK
-  plugin whose generated `*_parameters.hpp` is exactly the SIGSEGV header, yet it
-  **builds and `dlopen`s cleanly** — because its own CMake compiles the g_p_l code into
-  `libpick_ik_plugin.so` and pluginlib loads the finished `.so`; nothing ever
-  `cppyy.include`s a pick_ik header. Rule stands: load the plugin, never parse its
-  params header (§19).
-- **The ORC static-initializer wall: parse succeeds, *execution* fails (vision/gtsam).**
+- **A failed `cppyy.include` can leave Cling in a bad state (nav2).** In one test, a
+  header parse failure caused a later, unrelated include to fail in the same process;
+  the latter header parsed in a fresh process. Probe headers with uncertain
+  dependencies in a subprocess.
+- **A tested MoveIt parameter header crashes Cling during parsing.** The
+  `generate_parameter_library`-generated `kinematics_parameters.hpp` and
+  `planning_pipeline_parameters.hpp` failed in the tested MoveIt environment. Avoid
+  including these headers in the main process; load the compiled plugin or probe the
+  header in a subprocess. This result is specific to the tested headers and Cling
+  version; test other generated headers separately.
+- **The parser limitation does not imply a plugin build failure (ik_bench).** The
+  tested pick_ik plugin builds its generated parameter code with CMake and loads
+  through pluginlib without parsing those headers through Cling. Load the compiled
+  plugin rather than including its parameter headers in Cling (§19).
+- **ORC static-initializer failure: parsing succeeds, execution fails (vision/gtsam).**
   A header can `cppyy.include` cleanly yet the first use fault later, when Cling's ORC
   JIT must materialize a **namespace-scope internal-linkage static** it can't emit —
   gtsam's `static const KeyFormatter DefaultKeyFormatter` (`Key.h`, a non-exported
-  `std::function` global; each TU emits its own init). No dependency change fixes it
-  (it is a Cling limitation, not a missing dep). This is a distinct failure *stage*
-  from a parse error — worth suspecting when includes pass but a symbol won't
-  materialize; the honest fallback is §20 (the library's own Python binding for batch
-  steps).
-- **`boost::variant` template-arity is an env-version parse wall (wbc/pinocchio).**
+  `std::function` global; each TU emits its own init). In this test, the failure was
+  specific to Cling's JIT rather than a missing dependency. It differs from a parse
+  error; when includes pass but a symbol does not materialize, use §20 (the library's
+  Python binding for batch steps) for this path.
+- **`boost::variant` template-arity incompatibility (wbc/pinocchio).**
   A big `boost::variant` that a **precompiled** `.so` carries fine can be
   **un-JIT-able from headers** under a newer boost whose preprocessed arity limit it
   exceeds. pinocchio's `JointModelVariant` is a **25-type `boost::variant`**;
   re-instantiating `ModelTpl<Scalar>` for a new scalar hits **boost 1.90**'s
   `make_variant_list` limit (`wrong number of template arguments (25, should be at
   least 0)`) — while the shipped `double`/casadi libraries sidestep it by being
-  precompiled. This is a **parse** failure, distinct from the ORC static-init wall
+  precompiled. This is a **parse** failure, distinct from the ORC static-initializer
   (an *execution* failure). Reproduce with `g++` to confirm it is not a Cling quirk;
   suspect it when a template *class* re-instantiation for a new parameter fails but
   the shipped specialization works. **2nd instance (retarget): it also blocks the
   default-`double` `Model`, not just exotic scalars** — instantiating
   `pinocchio::Model` from headers at all (a URDF parse, FK on a real robot, a crocoddyl
   `StateMultibody`) trips the same `make_variant_list` limit, a clean compile error at
-  `JointModelTpl<double>` (probed out-of-process, not a crash). So drive pinocchio's
+  `JointModelTpl<double>` (probed out-of-process). Use pinocchio's
   rigid-body **multibody core via its Python bindings**; cppyy's win for this stack is
   the abstract/custom-model path (crocoddyl action models, §31) and *non*-pinocchio glue
   kernels, not the `Model` itself.
@@ -238,21 +229,21 @@ during transaction revert** (no Python traceback).
   nonpositive values raise `ValueError`, and an expired probe returns
   `(False, diagnostic)`. Pass it the **full
   ament include-path set** (every package's include dir, via
-  `get_packages_with_prefixes`), not just the target library's; otherwise, a header
+  `get_packages_with_prefixes`), not just the target library's. A header
   that transitively pulls the ROS message tree can fail on a missing transitive header.
 
-### 10. Error ergonomics: strip the signature wall
+### 10. Error messages: remove the C++ signature prefix
 cppyy prefixes a C++ exception with the mangled call signature and ` => `. Split
 on ` => ` and collapse whitespace for a readable one-line message, re-raised as a
 kit exception (`cppyy_kit.pretty_cpp_error`, `CppyyKitError`).
-- **bt:** `BtXmlError` turns the `createTreeFromText(...) =>` wall into
+- **bt:** `BtXmlError` removes the `createTreeFromText(...) =>` signature prefix, yielding
   `RuntimeError: Error at line 4: -> Node not recognized: Nope`.
 
 ### 11. Values that don't cross as ints: enums, `unsigned char`, macros
 C++ enums behave like their int values across the boundary
 (`BT.NodeStatus.SUCCESS == 2`). Expose plain-int constants for convenience while
 keeping the real enum available (`bt_kit.SUCCESS` and `bt.NodeStatus.SUCCESS`).
-But five neighbours are silent traps:
+Five related conversion cases need explicit handling:
 - **`unsigned char` (and `uint8_t`-backed `enum class`) crosses as a length-1
   Python `str`, not an int** (nav2, control). `Costmap2D::getCost()` and its
   `static constexpr unsigned char` cost constants come back as `'\xfe'`, and
@@ -287,8 +278,8 @@ needed a module-global registry (a footgun across trees/re-imports/tests) and
 forced knowledge that doesn't transfer. Both kits ship the mirror.
 
 ### 13. GIL / concurrency (what "parallel" means)
-Kit callbacks run in the **calling C++ thread**. A single-threaded engine (a tick
-loop, a spin) never contends.
+Kit callbacks run in the **calling C++ thread**. A single-threaded engine serializes
+its callbacks; concurrency with other threads depends on the driver.
 - **bt:** `ParallelNode` is cooperative bookkeeping, not OS threads — Python leaves
   under it run sequentially (no true parallelism, no contention). A leaf that
   sleeps / does I/O releases the GIL, so spinning the tree from a background thread
@@ -443,9 +434,8 @@ material when the override dominates (then lower it to C++, the L2 rung).
 ### 18. Reserved-word method names: `getattr(obj, "as")[T]()` for C++ `as<T>()`
 The pervasive C++ idiom `obj->as<T>()` is a Python `SyntaxError` (`as` is a
 keyword — even `obj.as` won't parse). The spelling is `getattr(obj, "as")[T]()`
-(fetch the attribute by string, then subscript the template arg). A one-liner, but
-a guaranteed stumble for any library with a method named `as`, `from`, `import`,
-`class`, `global`, … — reach for `getattr` when a C++ name collides with a keyword.
+(fetch the attribute by string, then subscript the template arg). Use `getattr` when
+a C++ method name is a Python keyword such as `as`, `from`, or `class`.
 
 ### 19. In-process pluginlib + a parameterized node (the ROS 2 plugin/param bootstrap)
 Modern ROS 2 stacks load their algorithms as pluginlib plugins configured by node
@@ -490,7 +480,7 @@ Before investing in a kit, a couple of one-line greps tell you what's separable:
   static-init wall** (§9) — a *Cling limitation no dependency fixes*. Peel one layer,
   re-probe out-of-process; when the bottom layer is a Cling limitation rather than a
   missing dep, stop and take the Python-binding fallback for that batch step. Don't
-  keep adding dependencies against a wall that isn't a dependency problem.
+  continue adding dependencies for an issue caused by Cling's parser.
 - **Distrust environment shims, prefer the native binary.** A library's console-
   script entry point can be broken in an env while its native binary works (vision:
   the `rerun` console script vs spawning the viewer binary by its executable path).
@@ -528,24 +518,24 @@ mixes a `using`-imported base form with timeout/clock forms of the same name.
   cppyy's — picks it. Probe a suspicious overloaded call out-of-process; a
   wrong-overload crash gives you nothing to read in Python.
 
-### 23. Compile cache: kill the first-use wrapper JIT persistently (`cppdef_cached`)
-The one-time, per-signature call-wrapper JIT (§15) is *relocatable* with `warmup()`
-but comes back every process — a PCH can't touch it (that's an AST; this is
-codegen). `cppyy_kit.cppdef_cached(code, decls=..., name=...)` **eliminates** it:
-compile the C++ glue once into a real `.so` (the direct-compile recipe, factored
-into `cppyy_kit._compile`), and on every later run `load_library` it instead of
-JIT-generating the wrapper. Measured with bt_kit adopted (t01): first-use register
+### 23. Reuse compiled wrapper artifacts (`cppdef_cached`)
+The per-signature call-wrapper JIT (§15) can be moved earlier with `warmup()`. The
+compile cache stores supported C++ glue in a `.so` artifact. When caching is enabled
+and a compatible artifact exists, `cppyy_kit.cppdef_cached(code, decls=..., name=...)`
+loads it instead of regenerating the wrapper. A cache miss compiles the artifact.
+Measured with bt_kit adopted (t01): first-use register
 **~233 ms → ~60 ms**, and freeze + cache compose to **~1.77 s → ~0.43 s** end-to-end
 (FREEZE.md §4); pcl_kit's d02 frame-0 **~681 ms → ~88 ms**. Run 1 pays a one-time
-`.so` compile (per machine); a kit can *ship warm* by pre-building the `.so` at
-package-build time (`cppyy_kit.cache.prebuild`).
+`.so` compile in its cache directory; later runs can reuse it when the cache key and
+environment match. A kit can include a prebuilt artifact with
+`cppyy_kit.cache.prebuild`.
 - **Declarations are mandatory for the speedup.** Cling emits any function *body*
   it can see (inline or not), ignoring the `.so` copy — so the fast path must give
   Cling **bodiless declarations** (`decls=`) and let the definitions live only in
   the `.so`. Without `decls` the call safely degrades to a plain `cppyy.cppdef`
   (correct, uncached) and says so once. `extern "C"` and free functions / classes
   with out-of-line methods are the clean supported subset.
-- **The big win is caching the *crossing*, not just the glue.** The ~0.4 s isn't
+- **Cache the crossing as well as the glue.** The ~0.4 s isn't
   cppyy internals you can intercept — it's the `std::function<Ret(Args)>` thunk +
   the register call wrapper. Build **both in compiled code**: a trampoline whose
   `.so` constructs the `std::function` wrapping the Python callable and does the
@@ -556,7 +546,7 @@ package-build time (`cppyy_kit.cache.prebuild`).
   `cppdef_cached(..., trampoline=True)` adds the Python + CPyCppyy include and the
   `libcppyy` link. bt's `BT::NodeStatus(BT::TreeNode&)` is the worked example
   (`scripts/cache/validate_cache_bt.py`, the kit-adoption reference).
-- **Honest boundary:** this caches the glue/trampolines the *kit* authors. cppyy's
+- **Cache scope:** this caches the glue/trampolines the *kit* authors. cppyy's
   on-demand template member instantiations from arbitrary user calls
   (`node.getInput[T]` for a new `T`) are not cached — they stay JIT unless routed
   through their own cached helper. Artifacts are env-version-tagged + gitignored
@@ -566,7 +556,8 @@ package-build time (`cppyy_kit.cache.prebuild`).
   misbehaves, bypass it so `cppdef_cached` is a plain in-memory `cppyy.cppdef` (no
   `.so` read/write): per call `cppdef_cached(..., cached=False)` / `@cpp(cached=False)`;
   process-wide `cppyy_kit.disable_caching()` (or `with cppyy_kit.caching_disabled():`);
-  or the `CPPYY_KIT_NO_CACHE=1` env var. Nuke artifacts with `cppyy_kit.clear_cache()`.
+  or the `CPPYY_KIT_NO_CACHE=1` env var. Remove artifacts with
+  `cppyy_kit.clear_cache()`.
   The PCH has its own switch (`CPPYY_KIT_NO_AUTOPCH=1`). Full decision tree + artifact
   locations: **FREEZE.md §9, "Debugging: turning the caches off".**
 
@@ -673,14 +664,14 @@ sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctype
   int address as `uintptr_t` and hands the body the typed pointer (the
   `reinterpret_cast` is injected); `cpp.arr("T")` is the numpy→**pointer+size**
   convenience (body sees `name` and `name_size`). Return `None`→`void`. Only that
-  honest subset is marshaled; anything else raises at decoration time.
+  supported subset is marshaled; other annotations raise at decoration time.
 - **Calls follow Python binding rules.** Defaults and keyword arguments work;
   missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
   C++ kernel is compiled. Keyword-only and variadic parameters are rejected when
   decorating the function. For example, a parameter declared `factor: float = 2.0`
   can be omitted or passed by name.
-- **It composes with the cache**, so a `@cpp` kernel is persistent (no first-use JIT
-  after the first machine build) — the same guarantee `cppdef_cached` gives. Pass
+- **It composes with the cache.** With caching enabled, a compatible `@cpp` artifact
+  can be reused across runs, avoiding wrapper JIT on a cache hit. Pass
   `@cpp(include_paths=..., libraries=...)` to call into a real library from the body.
 - **`@cpp(nogil=True)` releases the GIL around only the compiled body** (the ergonomic
   form of §27) — plain Python threads calling the kernel run on N cores. **`cached=False`**
@@ -744,7 +735,7 @@ cppyy_kit stubgen <module> -o <module>.pyi` emits a static `.pyi` for the module
 **public Python surface** — functions, classes (with methods) and scalar constants,
 including names re-exported from submodules — giving name + arity completion and a
 mypy corridor. Committed pilots: `cppyy_kit/__init__.pyi`, `bt_kit/bt_kit/__init__.pyi`.
-- **Honest scope:** it stubs the statically-knowable *kit* API, not the C++ namespace
+- **Scope:** it stubs the statically knowable *kit* API, not the C++ namespace
   a bringup returns (`cppyy.gbl.BT.*` are dynamic cppyy proxies with no static
   signature — a bringup's return is `Any`). Signatures are names + arity with `Any`
   types (always-valid, loose) rather than guessed C++ types; tighten by hand where a
@@ -843,8 +834,8 @@ same "prototype → lower" arc:
   match is the regression gate). ompl_kit's Python validity checker was ~350 ns/override
   call, 1–3 M dispatches/s (§16); the win is invisible for small problems, material when
   the override dominates the loop.
-- This is the L2 native-lowering rung (FREEZE.md) made a one-liner: keep the crossing
-  out of the hot loop by putting the *whole* per-iteration virtual in C++. Watch for
+- This is the L2 native-lowering rung (FREEZE.md): keep the crossing out of the hot
+  loop by putting the *whole* per-iteration virtual in C++. Watch for
   versioned pure-virtual creep (§16) and the failed-`cppdef` minefield (§9) when
   authoring the subclass; probe it out-of-process first.
 
@@ -910,7 +901,7 @@ build), not a wire format and not a numpy replacement.
 
 ### 34. Hybrid pipelines: a commodity-ML front end, a cppyy hot path, two envs
 A realistic robotics pipeline mixes a Python ML library (its inference *is* a library
-primitive — don't wrap it, per §26's honest headline) with a cppyy_kit hot path, and the
+primitive — don't wrap it, as §26's benchmark comparison shows) with a cppyy_kit hot path, and the
 two halves can have **incompatible native dependencies**. The retarget capture rig was the
 worked example: MediaPipe perception feeds a pinocchio retarget solve, and the two halves
 were originally split across two envs because the ROS stack pinned libboost 1.90 while
@@ -922,7 +913,7 @@ pinocchio's conda stack pinned 1.86.
 > landmark frames straight off `/tf` (rclcpp_kit's C++ listener). The **two-env pattern
 > below remains the general lesson** for any genuinely incompatible pair; it is simply no
 > longer forced for this pinocchio+ROS case. Note this is the *solve/ABI* boundary only —
-> the Cling **header-parse** wall on `pinocchio::Model` (§9, the 25-type `boost::variant`)
+> the Cling header-parse limitation on `pinocchio::Model` (§9, the 25-type `boost::variant`)
 > is **unchanged**: it trips on boost 1.90 too, so the IK solve stays a bindings job either
 > way.
 
@@ -948,8 +939,8 @@ The pattern for building such a system (still valid whenever two halves truly ca
   the /tf marshaling (§6 build-once-refill, 265×) and the per-frame retarget glue kernel
   (coord transform + target map + a sequential One-Euro filter in one `cppdef` pass,
   **303.8×**, bit-identical) — both §6/§26, both with numeric-agreement checks. The IK
-  *solve* stays a pinocchio-bindings job (§9's `Model` wall); an honest "kit blocked here"
-  cell, documented with the exact wall.
+  *solve* stays a pinocchio-bindings job (§9's `Model` limitation); record this blocked
+  integration with the specific cause.
 
 ### 35. Low-jitter timed loops from Python: timer slack is the first lever
 A control/HIL loop *orchestrated from Python* can hit a µs-scale period median on a
@@ -976,19 +967,19 @@ language is not what sets the median.
   soft-real-time (prototyping / HIL / sim / teleop) from Python now; hard-RT is a tuning
   path on the same kernel, and the graduation to a native `update()` (§31) is unchanged.
 
-### 36. Zero-config PCH: eliminate the header parse with nothing to set
-The Cling PCH that removes a kit's header-parse cost (FREEZE.md) is normally a manual
-build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use into
-`${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`, auto-loaded on every later run.**
-- **Activation is independent of import order** because it runs from a `.pth` in the
-  environment's site-packages, whose line executes at every interpreter start *before
-  any user import*. The `.pth` calls a standalone bootstrap (`cppyy_kit._autopch_boot`,
+### 36. Automatic PCH setup
+The Cling PCH that reduces a kit's header-parse cost (FREEZE.md) can be built manually
+or through `cppyy_kit.autopch`. Auto-PCH schedules a build on first use and stores it
+under `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`. A compatible artifact can be loaded
+in later processes when the startup hook is installed and the cache is enabled.
+- **Startup activation uses a `.pth` file.** In environments that process the hook,
+  it runs before user imports. The `.pth` calls a standalone bootstrap
+  (`cppyy_kit._autopch_boot`,
   stdlib-only, never-raising) that binds `CLING_STANDARD_PCH` from the env's manifest.
   cppyy_kit self-installs it on first import (`python -m cppyy_kit.autopch --uninstall`
   to remove). This matters: `import cppyy` early in a program sets `CLING_STANDARD_PCH`
-  to cppyy's *own* std PCH, so an in-process `setup()` that runs after that import is too
-  late — the earlier design silently recorded the manifest forever and never warmed up
-  when cppyy won the import race. The `.pth` runs first, so it always wins. cppyy_kit's
+  to cppyy's *own* std PCH, so an in-process `setup()` after that import is too
+  late. The startup hook sets the PCH before a later user import of cppyy. cppyy_kit's
   own import then prints the one `Cling PCH loaded from …` line from a marker the `.pth`
   set (a print at every `python` start would be noise).
 - **A kit registers the headers it parses**, once, at bringup:
@@ -1007,7 +998,8 @@ build + a launcher. `cppyy_kit.autopch` makes it automatic: **built on first use
   never committed. When debugging, this is the PCH's "off" switch — the compile cache
   (§23) has its own; see **FREEZE.md §9, "Debugging: turning the caches off"** for the
   whole story.
-- **Characterized (rclcpp, one shared host):** for `bringup_rclcpp()`, the
+- **Characterized (rclcpp, one shared host):** for `bringup_rclcpp()`, with a fresh
+  cache directory and the background build complete between first and warm run, the
   `rclcpp C++ headers loaded (…)` line was ~1.9 s cold and ~0.0 s warm, while the
   whole call was ~1.9 s and ~0.06 s (an observed ~30× ratio). This verifies cache
   pickup, including when the program imports `cppyy` before `cppyy_kit`; it is not a

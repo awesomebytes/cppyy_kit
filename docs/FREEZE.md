@@ -1,8 +1,9 @@
 # Freezing a kit — L0 → L1 (and one leaf to L2)
 
-**Status: WORKING.** The bt_kit header parse — ~89 % of bringup, the one real cost
-of the JIT approach — is *eliminated* by loading a prebuilt Cling precompiled
-header (PCH), and the same 16-test suite passes on the frozen path.
+**Status: tested.** In the bt_kit measurement below, header parsing accounted for
+about 89% of bringup time. Loading a prebuilt Cling PCH removed that parse step in
+the tested environment. The 16-test `test-bt` suite passed on both JIT and frozen
+paths.
 
 This is the "freeze" rung of the lowering cycle:
 
@@ -16,11 +17,11 @@ The contract is the same tests at every rung: `pixi run -e bt test-bt` (16 tests
 is green on L0 *and* L1, and the L2 leaf is differential-tested against its L0
 Python original.
 
-> **Zero-config path.** §1–§4 describe the *manual* freeze: build an artifact, then
-> launch scripts through a wrapper that sets `CLING_STANDARD_PCH`. §8 wraps the same
-> mechanism so the L1 fast path needs **no configuration at all** — the PCH is built
-> on first use into a standard cache dir and auto-loaded on every later run. rclcpp_kit
-> uses it; its ~1.7 s header parse disappears on the second run with nothing to set.
+> **Automatic path.** §1–§4 describe the manual freeze: build an artifact, then launch
+> through a wrapper that sets `CLING_STANDARD_PCH`. §8 describes startup-hook
+> activation. In the measured rclcpp setup, the first run scheduled a PCH build and a
+> later run in the same environment loaded it; a missing or incompatible artifact
+> falls back to JIT.
 
 ---
 
@@ -63,8 +64,8 @@ that per-kit table.
 
 ## 2. Recipe — freeze bt_kit
 
-*This is the explicit/manual path, useful for CI or full control. For everyday use you
-run none of it — §8's zero-config auto-PCH builds and loads the PCH for you.*
+*This is the explicit/manual path, useful for CI or controlled runs. §8 describes the
+optional startup hook and background build.*
 
 ```bash
 pixi install -e bt
@@ -179,13 +180,11 @@ t01 specifically because `warmup()` also warms the *stateful* path (~340 ms) tha
 t01 doesn't use; for a tree that uses all node kinds the totals converge. The win
 is **predictability**, not throughput.
 
-**Cold start, best case = freeze + the compile cache — both automatic now.** The
-auto-PCH (§8) removes the ~0.9 s header parse with nothing to set, and the compile
-cache (§4, "The compile cache", below) eliminates the first-use wrapper JIT
-*persistently*. `warmup()` only *relocates* that JIT to init, so it is no longer the
-answer — it stays useful only as a fallback when no compiler/CPyCppyy toolchain is
-present. Measured freeze+cache cold start: ~1.77 s → ~0.43 s (below), versus L0's
-~920 ms bringup and an unpredictable ~680 ms stall on the first live tick.
+**Observed cold-start result with freeze and cache.** In the bt_kit benchmark below,
+the compatible PCH and compiled wrapper artifacts were already available: the
+freeze-plus-cache run took ~0.43 s end-to-end, compared with ~1.77 s for the JIT
+baseline. Cache misses still require artifact builds. `warmup()` moves wrapper JIT to
+initialization when no compatible compiled artifact is available.
 
 ### A second functional data point
 
@@ -209,8 +208,8 @@ eliminable, persistently, by not asking cppyy to generate the wrapper at all:
 compile the crossing **once** into a real `.so` and `load_library` it thereafter.
 This is `cppyy_kit.cppdef_cached` (see COMMON_PATTERNS §23).
 
-The wrapper JIT is Clang front-end codegen — call it at a compiler once, cache the
-`.so`, and every later run pays a ~ms symbol call. Two things are cacheable:
+The wrapper JIT is Clang front-end codegen. On a compatible cache hit, loading the
+`.so` replaces that code generation with a ~ms symbol call. Two things are cacheable:
 
 * **kit glue** (`makePorts`, the stateful shim, …) — definitions we control,
   split into a bodiless-declarations header (cheap to `cppdef` on a hit) and the
@@ -237,19 +236,18 @@ machine, `pixi run -e bt bench-cache-bt[-frozen]`):**
 | L0 + cache (run ≥2) | ~60 ms | ~5 ms | ~1200 ms |
 | frozen JIT baseline | ~278 ms | ~9 ms | ~970 ms |
 | **frozen + cache (run ≥2)** | **~62 ms** | **~5 ms** | **~425 ms** |
-| cached run 1 (miss) | — | — | +~2 s one-time `.so` compile |
+| cached run 1 (miss) | — | — | +~2 s `.so` compile |
 
-So freeze + cache compose: the PCH removes the ~0.89 s **parse**, the cache removes
-the bulk of the first-use **wrapper JIT** — best cold start **~1.77 s → ~0.43 s
-(~4.1×)**, first-use register **~233 → ~60 ms persistently** (not just moved into a
-warmup window; `bt_kit.warmup()` becomes a no-op on the cached path). Run 1 pays a
-one-time ~2 s to compile the `.so`; a kit can skip even that by *shipping warm* —
-building the `.so` at package-build time (`cppyy_kit.cache.prebuild`) so the
-artifact is present on first run.
+With compatible artifacts available, freeze + cache compose: the PCH removes the
+~0.89 s **parse**, and the cache removes much of the first-use **wrapper JIT**. In
+these runs, end-to-end time was ~1.77 s for L0 JIT and ~0.43 s for frozen + cache
+(~4.1×); first-register time was ~233 ms and ~60 ms. The cache miss took ~2 s to
+compile the `.so`. A kit can include a prebuilt artifact with
+`cppyy_kit.cache.prebuild`.
 
-**The residual ~60 ms** is honest and expected: the cache kills the `std::function`
-thunk and the `registerSimpleAction`/`registerStateful` wrapper (the big costs, all
-compiled into the `.so`), but cppyy still JIT-generates a call wrapper the first time
+**Residual time (~60 ms).** The cached `.so` contains the `std::function` thunk and
+the `registerSimpleAction`/`registerStateful` wrapper. cppyy still JIT-generates a call
+wrapper the first time
 Python calls *our* trampoline entry points (`register_py_action`, `makePorts`) —
 that codegen is cppyy-internal, not interceptable at this layer. It is a smaller,
 simpler-signature wrapper (~60 ms vs ~233 ms), and it is the same cost whether or
@@ -262,7 +260,7 @@ frame-0 (`from_msg → voxel → to_msg`) **~681 ms → ~88 ms (~7.7×)** — ev
 cache is library-independent, like the PCH. (Here the win is instantiating a
 *library* template in compiled code, the pcl analogue of bt's callback trampoline.)
 
-**Honest boundary.** This caches the glue/trampolines the kit *authors*. cppyy's
+**Cache scope.** This caches the glue and trampolines the kit *authors*. cppyy's
 on-demand template instantiations triggered by arbitrary user calls (e.g.
 `node.getInput[T](key)` for a new `T`), and the call wrappers cppyy makes to reach
 the kit's entry points, are not cached by this. Artifacts are env-version-tagged and
@@ -331,24 +329,23 @@ and runs at engine speed. Registration still crosses cppyy once
 
 ---
 
-## 8. Zero-config auto-PCH (`cppyy_kit.autopch`)
+## 8. Automatic PCH setup (`cppyy_kit.autopch`)
 
 §1–§4 prove the mechanism but ask the user to build an artifact and launch through a
-wrapper. `cppyy_kit.autopch` removes both steps: the PCH is created on first use into
-a standard cache dir and auto-loaded on every later run, with a clear line printed for
-each event. Nothing to set, no launcher, no pixi task.
+wrapper. `cppyy_kit.autopch` can install a startup hook and schedule a PCH build on
+first use. Once a compatible artifact is available, the hook can select it in later
+processes using the same environment and cache directory. A missing or disabled cache
+uses the JIT path.
 
-### How it engages — a startup `.pth`, so import order does not matter
+### Startup hook activation
 
 Cling binds its PCH when the interpreter first imports cppyy, so `CLING_STANDARD_PCH`
-must be set before that. Rather than depend on a program importing `cppyy_kit` before
-`cppyy` (which many programs do not — `import cppyy` early in a module wins the race),
-activation runs from a `.pth` file installed in the environment's site-packages. A
-`.pth` line executes at every interpreter start, *before any user import*, so the PCH
-binds regardless of import order.
+must be set before that. When enabled and installed, a `.pth` file in the environment's
+site-packages activates the hook during normal Python startup, before user imports.
+This allows the hook to set the variable before cppyy initializes Cling.
 
 * **The `.pth`** runs `cppyy_kit._autopch_boot.activate()` (installed alongside it as a
-  standalone, stdlib-only module). `activate()` reads this environment's manifest, and
+  standalone, stdlib-only module). `activate()` reads this environment's manifest and,
   if a matching PCH exists, points `CLING_STANDARD_PCH` at it and sets a marker. It is
   silent, costs a few milliseconds (it imports `cppyy_backend` only, to read the cppyy
   version for the cache key — not cppyy itself), respects `CPPYY_KIT_NO_AUTOPCH=1` and
@@ -357,11 +354,9 @@ binds regardless of import order.
 * **`cppyy_kit` self-installs the `.pth`** on first import (a one-time notice), and
   refreshes it if out of date. `python -m cppyy_kit.autopch --uninstall` removes it;
   `--status` shows install + cache state.
-* **`cppyy_kit`'s own import** (`autopch.setup()`) reads the marker and prints the one
-  user-facing line, `cppyy_kit: Cling PCH loaded from <path>` (a print from the `.pth`
-  on every `python` start would be noise). Before the `.pth` exists — the very first
-  run — `setup()` still activates from the manifest if cppyy is not yet loaded, so even
-  that run can be warm.
+* **`cppyy_kit`'s own import** (`autopch.setup()`) reads the marker and prints a
+  user-facing line, `cppyy_kit: Cling PCH loaded from <path>`. Before the `.pth`
+  exists, `setup()` can activate from the manifest if cppyy has not yet been imported.
 
 A kit declares the headers it parses via the hook
 
@@ -369,16 +364,17 @@ A kit declares the headers it parses via the hook
 cppyy_kit.register_pch_headers(headers, include_paths=..., force_symbols=None)
 ```
 
-called at bringup around its `cppyy.include(...)`. On a warm run whose active PCH
-already bakes those headers this is a cheap no-op; otherwise the header set is folded
-into the environment manifest and a **detached background build** is kicked off at
-interpreter exit (guarded by a lockfile, written atomically), so the *next* run is
-warm. rclcpp_kit's `bringup_rclcpp()` registers `rclcpp/rclcpp.hpp` +
+called at bringup around its `cppyy.include(...)`. When the active PCH already bakes
+those headers this is a no-op; otherwise, the header set is added to the environment
+manifest and a **detached background build** is scheduled at interpreter exit
+(lockfile-guarded and written atomically). A later run can use it after a successful
+build, provided it uses the same compatible environment and cache. rclcpp_kit's
+`bringup_rclcpp()` registers `rclcpp/rclcpp.hpp` +
 `rcl_interfaces/msg/parameter_event.hpp` with every ament include dir; no
 force-symbols are needed for rclcpp (verified: the full `test-rclcpp` suite passes with
-the PCH active). The kit modules import `cppyy_kit` before `cppyy` as a secondary
-safety net, so a kit program is warm on its second run even in an environment where the
-`.pth` could not be installed (e.g. a read-only site-packages).
+the PCH active). The kit modules import `cppyy_kit` before `cppyy` as a fallback for
+environments where the `.pth` could not be installed (for example, read-only
+site-packages).
 
 ### Cache layout — `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/`
 
@@ -462,10 +458,10 @@ edit that isn't taking.
     `enable_caching()`), or the scoped `with cppyy_kit.caching_disabled(): ...`.
   * **Whole process, before import:** set `CPPYY_KIT_NO_CACHE=1` in the environment.
 
-  If the run is then correct, the cached `.so` was stale — nuke it (below) so the next
+  If the run is then correct, the cached `.so` was stale; remove it (below) so the next
   cached run rebuilds it clean.
 
-### Where the artifacts live, and how to nuke them safely
+### Artifact locations and removal
 
 * **Compile cache.** `$CPPYY_KIT_CACHE_DIR` if set, else `<cwd>/build/cppyy_kit_cache/`,
   under a version-tagged subdir. Everything there is regenerable and gitignored.
@@ -473,7 +469,7 @@ edit that isn't taking.
   and returns the count; `cppyy_kit.cache_info()` lists what's there; `cache_dir()`
   prints the path. Deleting the directory by hand is equally safe — a missing `.so` is
   just a miss. (Already-loaded `.so`s stay mapped in the running process; the switches
-  above only affect *later* calls, so bounce the process to fully drop them.)
+  above only affect *later* calls; restart the process to fully release loaded artifacts.)
 * **auto-PCH.** `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/`. `python -m cppyy_kit.autopch
   --prune` trims to the newest per environment (keeping any a live manifest references);
   deleting the dir is safe (the next run falls back to JIT and reschedules a build).

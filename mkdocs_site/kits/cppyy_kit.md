@@ -1,35 +1,28 @@
 # cppyy_kit — the base
 
-`cppyy_kit` is the **ROS-free base** every other kit depends on. Unlike the domain
-kits it has no `WHY`/`REPORT`/`SKILL` trio — its surface is the shared machinery,
+`cppyy_kit` is the ROS-free base used by the domain kits. Its shared utilities are
 documented across [The Patterns](../docs/COMMON_PATTERNS.md) and
 [Freeze & Cache](../docs/FREEZE.md).
 
 ## What it provides
 
-- **Friction primitives** — the glue every cppyy kit needs: `load` / library
-  resolution, `keep_alive` and `HandleRegistry` (lifetime discipline), `callback`
-  (inferred, auto-pinned Python→C++ callbacks), `warmup` / `first_use` notices,
-  `teardown`, and capability `probe`s. These encode the 36 documented patterns so a
-  kit author never re-discovers the GIL truth, the silent-SIGSEGV traps, or the
-  keep-alive rules.
-- **Zero-config freeze (auto-PCH)** — a Cling PCH of a library's headers turns the
-  one-time header JIT-parse into a millisecond load, and it is automatic: built in
-  the background on first use into `~/.cache/cppyy_kit`, activated by a startup
-  `.pth` so it loads on every later run regardless of import order, and self-pruning.
-  Nothing to set (`python -m cppyy_kit.autopch --status` to inspect,
-  `CPPYY_KIT_NO_AUTOPCH=1` to opt out); a manual PCH build + launcher remains
-  available for explicit control, alongside the direct-compile / vendored-source
-  recipes. See [Freeze & Cache](../docs/FREEZE.md).
-- **Compile cache** — content-hash each `cppdef` and compile it **once** to a real
-  `.so`, then `dlopen` it: the first-use wrapper JIT is paid once per machine rather
-  than once per process, *persistently*. Composes with the auto-PCH. Both caches have
-  **debugging off-switches** (`CPPYY_KIT_NO_AUTOPCH=1` for the PCH; `cached=False` /
-  `cppyy_kit.disable_caching()` / `CPPYY_KIT_NO_CACHE=1` for the compile cache) — see
-  [Freeze & Cache §9, "Debugging: turning the caches off"](../docs/FREEZE.md).
-- **True multi-core threads** — `@cpp(nogil=True)` releases the GIL around only the
-  compiled body, so plain Python threads each calling the kernel run in parallel on N
-  cores (`nogil(fn)` is the lower-level form for a pre-existing blocking C++ callable).
+- **Shared utilities** — library loading, `keep_alive`, `HandleRegistry`, callbacks,
+  warmup and first-use notices, teardown, and capability probes. The patterns guide
+  records tested behavior for named libraries; API coverage and requirements vary by
+  library.
+- **Automatic PCH setup** — when the startup hook is installed and a compatible PCH
+  exists in the cache, it can load the artifact before Cling parses the same headers
+  again. A cache miss uses JIT and may schedule a background build. Inspect status
+  with `python -m cppyy_kit.autopch --status`; disable with
+  `CPPYY_KIT_NO_AUTOPCH=1`. See [Freeze & Cache](../docs/FREEZE.md).
+- **Compile cache** — stores supported C++ glue in `.so` artifacts. A compatible cache
+  hit can avoid regenerating wrappers; a miss compiles the artifact. Cache reuse
+  depends on the cache key and environment. Disable it with `cached=False`,
+  `cppyy_kit.disable_caching()`, or `CPPYY_KIT_NO_CACHE=1`; see
+  [Freeze & Cache §9](../docs/FREEZE.md).
+- **GIL release** — `@cpp(nogil=True)` and `nogil(fn)` release the GIL around a C++
+  body or call. This lets other Python threads run during the native work; parallel
+  speed depends on the workload and hardware.
 
 ## Install
 

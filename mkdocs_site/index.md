@@ -1,20 +1,17 @@
 # cppyy_kit
 
-**Prototype in Python, run at C++ speed — mix Python and C++ with ease.**
+**Drive C++ robotics libraries from Python with cppyy.**
 
-cppyy_kit is a suite of *kits* that drive real C++ robotics libraries from short
-Python via [cppyy](https://cppyy.readthedocs.io). No bindings to write, no code
-generation, no build step: the C++ library you already have installed is called
-directly, its own class and method names intact, while your Python does the
-orchestration. When a hot path needs C++ speed, you write that path in C++ inline —
-in the same file — and the kits handle the data marshaling and object lifetime across
-the boundary.
+cppyy_kit provides Python interfaces to C++ robotics libraries through
+[cppyy](https://cppyy.readthedocs.io). For supported APIs, cppyy reads installed
+headers and JIT-compiles wrappers, so a separate binding or extension build is not
+usually needed for each library. Kits expose selected native APIs and provide
+helpers for data conversion and object lifetime. The libraries, headers, and other
+native dependencies must be installed in the environment.
 
-You get the productivity of a Python prototype and the performance of the C++ library
-underneath it, and the same code climbs an optimization ladder (freeze the startup
-cost, cache the compile, lower a hot leaf) without changing shape. Every number on
-this site is measured on one machine on one day and linked to the row that produced
-it in **[Benchmarks](docs/benchmarks.md)**.
+The suite includes options to reduce repeated header parsing and wrapper compilation,
+and to write selected hot paths in C++. Results below link to the corresponding
+benchmarks; measurements depend on the machine, environment, and workload.
 
 <p align="center">
   <img src="docs/media/cppyy_kit_logo.jpg" alt="cppyy_kit logo" width="420">
@@ -22,9 +19,8 @@ it in **[Benchmarks](docs/benchmarks.md)**.
 
 ## Three ways to mix Python and C++
 
-**Drive a whole C++ library from Python** — the real BehaviorTree.CPP engine parses
-the XML, owns the tree, and ticks it; there is no Python binding for it, so this
-capability does not otherwise exist:
+**Drive BehaviorTree.CPP from Python.** The C++ engine parses the XML, owns the tree,
+and ticks it through cppyy:
 
 ```python
 import bt_kit
@@ -33,9 +29,9 @@ tree = bt.BehaviorTreeFactory().create_tree_from_text(xml)   # the C++ factory
 tree.tickWhileRunning()                                      # the C++ engine ticks
 ```
 
-**Or drop to inline C++ for a hot kernel** — the decorated function's docstring *is*
-its C++ body; its annotations drive the NumPy marshaling; it compiles once and is
-cached to a real `.so` thereafter (no first-use JIT after the first build):
+**Write an inline C++ kernel.** The decorated function's docstring is its C++ body;
+its annotations define argument marshaling. By default the compiled artifact is
+cached; a compatible cache hit avoids recompiling the wrapper:
 
 ```python
 import numpy as np
@@ -45,14 +41,13 @@ from cppyy_kit import cpp
 def sum_sq(data: cpp.arr("float")) -> float:      # numpy -> (float* data, size_t data_size)
     "double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"
 
-sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no ctypes, no build, no bindings
+sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no manual ctypes conversion
 ```
 
-**Run those kernels on every core** — plain Python threads run in true parallel once a
-`@cpp` kernel releases the GIL around its compiled body, which pure-Python threads
-cannot do. Add `nogil=True` and the body runs with the interpreter lock dropped; on a
-16-core machine, eight independent jobs finish about **7.7× faster** than with the GIL
-held (≈150 ms → ≈20 ms). The
+**Run independent kernels concurrently.** `@cpp(nogil=True)` releases the GIL around
+the C++ body, allowing other Python threads to run during that work. On the 16-core
+test machine, the eight-job CPU-bound example took about **150 ms with the GIL held
+and 20 ms with it released** (about **7.7×**). The
 [runnable example](https://github.com/awesomebytes/cppyy_kit/blob/main/examples/parallel_demo/parallel_demo.py)
 has the full version:
 
@@ -67,7 +62,7 @@ def crunch(out: "double*", slot: int, iters: int) -> None:
 out = np.zeros(8)                                                    # 8 independent jobs, one slot each
 threads = [threading.Thread(target=crunch, args=(out, i, 20_000_000)) for i in range(8)]
 for t in threads: t.start()
-for t in threads: t.join()                                          # all 8 run at once, one per core
+for t in threads: t.join()                                          # wait for all 8 jobs
 ```
 
 `@cpp(nogil=True)` releases the interpreter lock around the compiled body, so only
@@ -75,22 +70,21 @@ cppyy's argument/result marshaling stays under the lock. The C++ shim restores t
 lock on normal return and when a C++ exception unwinds. The jobs are independent and
 write into distinct C++ slots, so none needs the GIL while computing.
 
-The friction these three share — locating and loading the `.so`s, pinning callback
-lifetimes, hiding cppyy's template and ownership sharp edges — is factored into the
-`cppyy_kit` base, so each domain kit stays thin and its Python mirrors the library's
-own API 1:1.
+`cppyy_kit` provides shared utilities for library loading, callback lifetimes, C++
+templates, and ownership. Domain kits build on these utilities and document the native
+APIs and conversions they support.
 
 ## Measured results
 
-The [Benchmarks](docs/benchmarks.md) page is the single consolidated source (one
-machine, one day, reproducible commands); each kit's `REPORT.md` carries the original
-evidence. Each row below names its benchmark and links to it.
+The [Benchmarks](docs/benchmarks.md) page consolidates results with their commands
+and conditions; each kit's `REPORT.md` carries the underlying evidence. Each row
+below names its benchmark and links to it.
 
 | Lever | Result |
 |---|---|
 | **Accelerate** — PCL cloud stays in C++ end to end | [**15.1× latency / 7.4× CPU**](docs/benchmarks.md#pcl-showcase-cloud-stays-in-c-end-to-end) at 74-LOC parity, in the PCL pipeline benchmark |
-| **Freeze** — zero-config Cling PCH of the library headers | rclcpp bringup [**~1.73 s → 0.064 s (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) in the auto-PCH measurement, header parse eliminated |
-| **Compile cache** — content-hashed `@cpp`/`cppdef` → `.so` | first-use JIT [**632 → 91 ms**](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) on the PCL VoxelGrid kernel, paid once per machine |
+| **Freeze** — Cling PCH of library headers | rclcpp bringup [**~1.73 s cold → 0.064 s warm (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) in one shared-host measurement; not a portable startup estimate |
+| **Compile cache** — content-hashed `@cpp`/`cppdef` artifacts | PCL VoxelGrid [**632 ms JIT / 91 ms cache miss / 89–94 ms cache hits**](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) in the benchmark |
 | **Lower (L2)** — hot leaf authored as native C++ | inline Crocoddyl model [**22.9×**](docs/benchmarks.md#wbc-custom-crocoddyl-action-model-python-derived-vs-inline-c) on the WBC action model, bit-identical |
 | **TF ingest** — C++ `tf2` listener vs Python callback | [**7.4–16.9×**](docs/benchmarks.md#tf-ingest-c-tf2-listener-vs-python-callback) lower ingest CPU, in the TF ingest benchmark |
 
@@ -98,14 +92,14 @@ evidence. Each row below names its benchmark and links to it.
 
 | Kit | What it drives | Headline |
 |---|---|---|
-| **[cppyy_kit](kits/cppyy_kit.md)** (base) | the ROS-free machinery: load / callback / lifetime, `@cpp`, `require`, `nogil`, [freeze & compile-cache](docs/FREEZE.md) | first-use JIT paid once per machine: 632 → 91 ms on the PCL VoxelGrid kernel [↗](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) |
+| **[cppyy_kit](kits/cppyy_kit.md)** (base) | the ROS-free machinery: loading, callbacks, lifetime, `@cpp`, `require`, `nogil`, [freeze & compile cache](docs/FREEZE.md) | PCL VoxelGrid: 632 ms JIT, 91 ms cache miss, 89–94 ms cache hits [↗](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) |
 | **[rclcpp_kit](rclcpp_kit/WHY.md)** | rclcpp (ROS 2 core): bringup, messages, tf, rosbag2, CDR | TF ingest **7.4–16.9×** lower CPU |
-| **[bt_kit](bt_kit/WHY.md)** | BehaviorTree.CPP v4 (no Python binding exists) | Groot2-compatible trees from Python |
+| **[bt_kit](bt_kit/WHY.md)** | BehaviorTree.CPP v4 | Groot2-compatible trees from Python |
 | **[pcl_kit](pcl_kit/WHY.md)** | Point Cloud Library (no maintained binding) | **15.1× latency / 7.4× CPU** at LOC parity |
 | **[ompl_kit](ompl_kit/WHY.md)** | Open Motion Planning Library | Python validity-checker in the planner's inner loop, no codegen |
 | **[nav2_kit](nav2_kit/WHY.md)** | Nav2 algorithm cores, composed from Python | the real RegulatedPurePursuit with **no lifecycle servers / no pluginlib** |
-| **[moveit_kit](moveit_kit/WHY.md)** | the full MoveIt 2 C++ API | the *whole* C++ surface, not `moveit_py`'s subset |
-| **[control_kit](control_kit/WHY.md)** | ros2_control | a Python controller in the *real* controller_manager |
+| **[moveit_kit](moveit_kit/WHY.md)** | MoveIt 2 native APIs through cppyy | robot models, planning, and kinematics |
+| **[control_kit](control_kit/WHY.md)** | ros2_control | Python controllers in `controller_manager` |
 | **[cv_kit](cv_kit/WHY.md)** | OpenCV C++ | zero-copy `Image` → `cv::Mat`, one CUDA branch point |
 | **[dbow_kit](dbow_kit/WHY.md)** | DBoW2 place recognition (no binding, not on conda-forge) | loop closure from short Python |
 | **[wbc_kit](docs/wbc/REPORT.md)** | Crocoddyl custom action models | inline-C++ model, **no build system** |
@@ -125,7 +119,7 @@ Every headline links to the exact row that produced it in
 | [IK 5-solver bench](docs/ik_bench/WHY.md) | benchmark C++-only IK solvers (incl. unpackaged bio_ik/pick_ik) from *one* Python file | pure-Python [**10–25× slower**](docs/benchmarks.md#ik-benchmark-same-panda-same-200-targets-per-solver-subprocess); bio_ik 991 solve/s |
 | [WBC inline-C++ model](docs/wbc/REPORT.md) | a custom Crocoddyl action model authored inline, JIT-compiled, no CMake | [**22.9×**](docs/benchmarks.md#wbc-custom-crocoddyl-action-model-python-derived-vs-inline-c) vs Python-derived, bit-identical |
 | [Retargeting teleop rig](docs/retarget_pipeline/REPORT.md) | webcam → body/hand tracking → TF → whole-body retarget onto G1/Talos, live, one Rerun viewer | glue kernel [**341.5×**](docs/benchmarks.md#retarget-pipeline-perception-tf-marshaling-retarget-glue-kernel), /tf marshaling 258.9× |
-| [Visual loop closure](docs/tutorials/vision_loop_closure.md) | ORB + DBoW2 + GTSAM front-end in short Python, pixels never leave C++ | 1080p ingest [**135.8×**](docs/benchmarks.md#vision-cv_kit-dbow_kit-synthetic-sequence); 19 loops, P/R 1.00/0.95 |
+| [Visual loop closure](docs/tutorials/vision_loop_closure.md) | ORB + DBoW2 + GTSAM front-end in short Python; image data remain in C++ in this pipeline | 1080p ingest [**135.8×**](docs/benchmarks.md#vision-cv_kit-dbow_kit-synthetic-sequence); 19 loops, P/R 1.00/0.95 |
 | [Jitter bench](docs/jitter_bench/REPORT.md) | a ~1 kHz control loop orchestrated from Python on a *stock* kernel | [**~2 µs median**](docs/benchmarks.md#jitter-bench-reduced-reference-set-a1-b-c-idle-60-s-each) period, unprivileged |
 | [cppyy-accelerate skill](skills/cppyy-accelerate/SKILL.md) | point a coding agent at slow Python; it moves the hot path to a kit | [**16.3×**](docs/benchmarks.md#accelerate-the-llm-skill-worked-example) (49.6 → 3.04 ms), bit-identical |
 
@@ -149,7 +143,7 @@ than the absolute times.
 
 ## The optimization ladder
 
-The same code climbs rungs as you need more speed — the kit API does not change:
+Available options include reducing startup work and moving selected hot paths to C++:
 
 - **Prototype (L0).** Plain Python driving the kit. Headers parsed and per-signature
   wrappers JIT-compiled on first use. Fastest to write.
@@ -157,14 +151,14 @@ The same code climbs rungs as you need more speed — the kit API does not chang
   lower latency in the
   [PCL pipeline benchmark](docs/benchmarks.md#pcl-showcase-cloud-stays-in-c-end-to-end),
   where the cloud stays in C++ end to end.
-- **Freeze.** A zero-config Cling PCH of the library headers is built once into
-  `~/.cache/cppyy_kit` and auto-loaded thereafter, eliminating the header parse —
-  ~27× on rclcpp bringup (~1.73 s → 0.064 s) in the
+- **Freeze.** With the auto-PCH hook installed and a matching PCH available, Cling
+  loads cached headers at startup instead of parsing them again. In one shared-host
+  rclcpp measurement, bringup took ~1.73 s cold and 0.064 s warm (~27×); this is not a
+  portable startup estimate. See the
   [auto-PCH measurement](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup).
-  The compile cache does the same for `@cpp`/`cppdef` kernels: the first-use JIT —
-  632 → 91 ms on the
-  [PCL VoxelGrid kernel](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached)
-  — is paid once per machine, not once per process.
+  The compile cache can reuse compatible `@cpp`/`cppdef` artifacts. For the PCL
+  VoxelGrid benchmark, JIT took 632 ms, a cache miss took 91 ms, and cache hits took
+  89–94 ms [↗](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached).
 - **Lower (L2).** A proven-hot leaf is authored as a native C++ node — 22.9× on the
   [WBC Crocoddyl action model](docs/benchmarks.md#wbc-custom-crocoddyl-action-model-python-derived-vs-inline-c)
   (bit-identical cost), removing the per-call cppyy boundary.
@@ -194,7 +188,7 @@ downsampler **16.3×** with bit-identical output.
 
 - **[Getting Started](getting-started.md)** — install the packages, or develop from the repo.
 - **[The Patterns](docs/COMMON_PATTERNS.md)** — the canonical cppyy playbook.
-- **[Benchmarks](docs/benchmarks.md)** — every number here, one machine, one day, reproducible.
+- **[Benchmarks](docs/benchmarks.md)** — results with benchmark commands and conditions.
 - **[Architecture](docs/ARCHITECTURE_V2.md)** — how the suite is put together.
 
 ---
