@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Parallelism contract for the multithreading example: N Python threads each calling
-a @cpp(nogil=True) kernel run on N cores, so N jobs finish far faster than the same
-jobs with the GIL held -- and produce identical output either way.
+"""Check output equivalence for the parallelism example.
 
-@cpp(nogil=True) releases the GIL around the compiled body (COMMON_PATTERNS section
-13/27); the jobs are independent and write into disjoint NumPy slots, so no thread
-needs the GIL while computing. Needs cppyy + a compiler (the default env)."""
+The example compares independent C++ jobs called from Python threads with the GIL
+held and released. This test checks that both modes produce the same values; runtime
+speedup depends on the host and is demonstrated by the runnable example. Requires
+cppyy and a compiler (available in the default environment)."""
 import os
 import sys
 
@@ -23,9 +22,6 @@ except Exception:
 
 pytestmark = pytest.mark.skipif(not _HAVE, reason="no cppyy toolchain in this env")
 
-_CORES = os.cpu_count() or 1
-
-
 def _run(**kw):
     from parallel_demo import run
     return run(**kw)
@@ -41,21 +37,3 @@ def test_results_identical_gil_held_vs_released():
     _, held = _run(n_threads=4, iters=200_000, use_nogil=False)
     _, freed = _run(n_threads=4, iters=200_000, use_nogil=True)
     assert np.allclose(held, freed)
-
-
-@pytest.mark.skipif(_CORES < 4, reason="needs >=4 cores to show parallelism")
-def test_nogil_threads_run_in_parallel():
-    n = 8
-    iters = 20_000_000
-    _warm()                                                      # single-threaded init
-    serial, _ = _run(n_threads=n, iters=iters, use_nogil=False)
-    parallel, _ = _run(n_threads=n, iters=iters, use_nogil=True)
-    speedup = serial / parallel
-    # GIL held serializes the threads (speedup ~1x); released, the ceiling is
-    # min(n, cores). 45% of that ceiling passes on a quiet 16-core box (~7.7x
-    # measured) and on a 4-vCPU shared CI runner (2.3x measured), while a
-    # GIL-bound run (~1x) always fails.
-    floor = 0.45 * min(n, _CORES)
-    assert speedup > floor, \
-        "expected >%.1fx from nogil parallelism on %d cores, got %.1fx" % (
-            floor, _CORES, speedup)

@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
-"""True multi-core parallelism from plain Python threads, via @cpp(nogil=True).
+"""Demonstrate C++ work from Python threads with @cpp(nogil=True).
 
-Python's GIL serialises threads, so eight pure-Python threads doing CPU work take as
-long as one. A kernel written with @cpp(nogil=True) releases the GIL around its
-compiled body, so N Python threads each calling the kernel run genuinely in parallel
-on N cores.
+Python's GIL limits concurrent execution of Python bytecode. A kernel written with
+@cpp(nogil=True) releases the GIL while its compiled body runs, allowing independent
+jobs to overlap. Actual speedup depends on available CPU resources and system load.
 
-There is no trick: @cpp(nogil=True) wraps the compiled body in Py_BEGIN_ALLOW_THREADS
-/ Py_END_ALLOW_THREADS, dropping the interpreter lock for the duration of the C++ work
-and re-taking it after -- while cppyy's argument/result marshaling stays under the lock
-(see cppyy_kit/_cpp.py and COMMON_PATTERNS section 13/27). The jobs must be independent
-and write their results into C++ memory -- here, disjoint slots of a NumPy array -- so
-no thread needs the GIL while it computes.
+Argument and result marshaling occurs with the GIL held. The example uses independent
+jobs that write to disjoint NumPy array slots, so each compiled computation can run
+without accessing Python objects.
 
 Run:  python examples/parallel_demo/parallel_demo.py
 Needs cppyy + a C++ compiler (the default env).
