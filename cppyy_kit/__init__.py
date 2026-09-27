@@ -364,7 +364,8 @@ def probe_cppdef(code, include_paths=(), library_paths=(), headers=(), libraries
     A ``cppdef`` that fails to parse can crash the interpreter during transaction
     revert (with no Python traceback), so risky glue should be probed
     out-of-process before it is run for real in-process. The subprocess first
-    replicates the given include paths, headers and libraries.
+    replicates the given include paths, headers and libraries; ``timeout`` bounds
+    its runtime and returns a failure diagnostic when exceeded.
     """
     setup = []
     for path in include_paths:
