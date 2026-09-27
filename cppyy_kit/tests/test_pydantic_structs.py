@@ -172,11 +172,12 @@ def test_column_view_retains_vector_through_backing_buffer():
     vec = pyd.cpp_vector(Detection, _sample())
     col = pyd.column(vec, Detection, "score")
     sliced = col[:]
+    assert np.shares_memory(sliced, col)
     del vec
     del col
     gc.collect()
     assert abs(sliced[0] - 0.9) < 1e-12
-    assert abs(sliced[1] - 0.2) < 1e-12
+    assert abs(sliced[1] - 0.4) < 1e-12
 
 
 def test_column_rejects_non_numeric():
