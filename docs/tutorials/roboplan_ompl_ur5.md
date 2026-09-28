@@ -24,26 +24,46 @@ obstacle.
 pixi run -e roboplan-ompl demo-ompl-roboplan
 ```
 
-The command runs the comparison in
-[`compare_roboplan_rrtconnect.py`](../../ompl_kit/demos/compare_roboplan_rrtconnect.py).
+The command runs `ompl_kit/demos/compare_roboplan_rrtconnect.py`.
 It prints the repeated-trial results and a solve-time ranking. Keep the machine
-otherwise idle for repeatability. No timing or winner is asserted here in
-advance; use the output from your run.
+otherwise idle for repeatability. Use your run's output for your machine.
+
+### Local result (28 September 2026)
+
+On an x86-64 Intel Core Ultra 9 285H with Python 3.12, RoboPlan 0.7.0,
+and OMPL 1.7.0, ten fresh processes each ran five measured plans per library.
+Each process also ran one unmeasured warmup plan per library. All 50 returned
+paths from each library passed the shared endpoint, limit, and sampled-segment
+checks. The table aggregates ten invocations of the command above; the script
+reports the five-trial median for one invocation.
+
+| Library | Valid paths | Median of process medians | Range of process medians |
+|---|---:|---:|---:|
+| RoboPlan | 50/50 | 0.48 ms | 0.47–0.49 ms |
+| OMPL via `ompl_kit` | 50/50 | 1.33 ms | 1.13–1.41 ms |
+
+RoboPlan ranked first by median solve time, about 2.8× faster in this setup.
+This measures OMPL with a Python collision callback against RoboPlan's C++
+scene integration. The scene has self-collision geometry but no world obstacle;
+the result does not isolate planner-kernel speed or predict other problems.
 
 ## Shared validity contract
 
 RoboPlan's `Scene` exposes collision and joint-limit queries on joint vectors.
-Its `SceneContext` provides the collision query with private scratch for a
-consumer. The adapter must map OMPL's active arm coordinates into the same
-full UR5 joint vector before asking the shared checker:
+Its `SceneContext` provides the collision query with private scratch. The
+OMPL callback maps each arm state into the same full UR5 joint vector:
 
 ```python
+import numpy as np
 from roboplan.core import SceneContext
 
 context = SceneContext(scene)
+reference = full_start.copy()  # fixed values for joints outside the arm group
 
-def is_valid(q_arm):
-    q_full = context.toFullJointPositions("arm", q_arm)
+def is_valid(state):
+    q_arm = np.asarray([state[i] for i in range(len(q_indices))])
+    q_full = reference.copy()
+    q_full[q_indices] = q_arm
     return scene.isValidConfiguration(q_full) and not context.hasCollisions(q_full)
 ```
 
@@ -54,10 +74,12 @@ setup object:
 import ompl_kit
 
 ob, og = ompl_kit.bringup_ompl()
-ss = make_ompl_setup_for_ur5(ob, start_arm, goal_arm)  # demo helper; arm bounds + metric
+space = ob.RealVectorStateSpace(len(q_indices))
+# Configure arm bounds and start/goal states as in the runnable demo.
+ss = og.SimpleSetup(ob.StateSpacePtr(space))
 ss.setStateValidityChecker(ompl_kit.validity_checker(is_valid, owner=ss))
 ss.setPlanner(ob.PlannerPtr(og.RRTConnect(ss.getSpaceInformation())))
-solved = bool(ss.solve(planning_time_limit_s))
+ss.setup()  # complete setup before timing solve()
 ```
 
 The RoboPlan side uses its `Scene` and RRT API directly; its RRT planner calls
@@ -69,10 +91,10 @@ the `Scene`/`JointConfiguration`/`RRT` flow in its
 from roboplan.core import JointConfiguration
 from roboplan.rrt import RRT, RRTOptions
 
-options = RRTOptions(group_name="arm", max_planning_time=planning_time_limit_s)
+options = RRTOptions(group_name="arm", rrt_connect=True, max_planning_time=1.0)
 planner = RRT(scene, options)
-start = JointConfiguration(); start.positions = start_arm
-goal = JointConfiguration(); goal.positions = goal_arm
+start = JointConfiguration(joint_names, start_arm)
+goal = JointConfiguration(joint_names, goal_arm)
 path = planner.plan(start, goal)
 ```
 
@@ -91,12 +113,11 @@ as valid. Rank solve time only among planners whose paths passed validation;
 show unsuccessful or invalid results separately rather than treating them as
 fast wins.
 
-The timing covers the repeated planning trials only. It excludes model loading,
-library bring-up, and an unmeasured warmup solve for each planner. OMPL's Python validity
-callback also crosses Python/C++ once per state check, while RoboPlan's planner
-uses its own C++ scene integration. Record validity-call counts alongside time
-where available, and interpret the timing as an end-to-end result for these
-configurations, not as a standalone planner-kernel measurement.
+The timing covers each `solve()` or `plan()` call. It excludes model loading,
+library bring-up, planner construction, explicit OMPL setup, and one warmup
+solve per planner. OMPL's Python validity callback crosses Python/C++ once per
+state check; RoboPlan uses its C++ scene integration. Interpret the result as
+API-call time for these Python configurations.
 
 ## Equivalence limits
 
@@ -106,9 +127,9 @@ configuration. Their sampling, distance/interpolation rules, termination,
 shortcutting, and planner defaults need not match. OMPL's default discrete
 motion validation samples edges at a configured resolution; a coarse
 resolution can miss collisions between samples. RoboPlan's edge checks also
-use a step size. The comparison must set and report comparable joint-space
-edge-check spacing, then validate every returned segment with the shared
-collision checker at that spacing. [OMPL motion validation](https://ompl.kavrakilab.org/core/stateValidation.html)
+use a step size. The example sets 0.05-radian joint-space edge checks and
+validates every returned segment with the shared collision checker at that
+spacing. [OMPL motion validation](https://ompl.kavrakilab.org/core/stateValidation.html)
 
 This experiment does not establish general performance superiority, physical
 robot safety, or equivalence between all features in RoboPlan and OMPL. Its

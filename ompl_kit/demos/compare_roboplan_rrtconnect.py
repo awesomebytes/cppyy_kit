@@ -3,9 +3,8 @@
 
 Run in the optional OMPL + RoboPlan Pixi environment. Each trial uses the same
 endpoints, UR5 self-collision model, joint bounds, and 0.05-radian edge-check
-spacing. Setup is outside the timed solve; the first OMPL trial can still include
-lazy initialization. OMPL's validity callback crosses Python/C++, while RoboPlan
-checks in C++.
+spacing. Setup and one warmup solve per planner are outside the timed solves.
+OMPL's validity callback crosses Python/C++, while RoboPlan checks in C++.
 """
 import math
 import statistics
@@ -109,6 +108,7 @@ def make_ompl(ob, og, scene, lower, upper, q_indices, reference, context,
         goal_state[i] = float(goal[i])
     setup.setStartAndGoalStates(start_state, goal_state)
     setup.setPlanner(ob.PlannerPtr(og.RRTConnect(setup.getSpaceInformation())))
+    setup.setup()
     return setup
 
 
@@ -128,13 +128,13 @@ def run_ompl(ob, og, scene, context, q_indices, reference, lower, upper, start, 
         solved = bool(setup.solve(TIME_LIMIT))
         elapsed = time.perf_counter() - begin
         if not solved:
-            results.append((elapsed, False))
+            results.append((elapsed, False, False))
             continue
         points = [np.asarray(p, dtype=np.float64)
                   for p in ompl_kit.path_to_list(setup.getSolutionPath(), dim=len(start))]
-        results.append((elapsed, path_is_valid(scene, context, q_indices,
-                                               reference, points, start, goal,
-                                               lower, upper)))
+        results.append((elapsed, True, path_is_valid(scene, context, q_indices,
+                                                     reference, points, start, goal,
+                                                     lower, upper)))
     return results
 
 
@@ -171,21 +171,24 @@ def run_roboplan(scene, context, q_indices, joint_names, reference,
             path = None
         elapsed = time.perf_counter() - begin
         if path is None:
-            results.append((elapsed, False))
+            results.append((elapsed, False, False))
             continue
         points = [np.asarray(q, dtype=np.float64) for q in path.positions]
-        results.append((elapsed, path_is_valid(scene, context, q_indices,
-                                               reference, points, start, goal,
-                                               lower, upper)))
+        results.append((elapsed, True, path_is_valid(scene, context, q_indices,
+                                                     reference, points, start, goal,
+                                                     lower, upper)))
     return results
 
 
 def summarize(name, results):
-    valid_times = [elapsed for elapsed, valid in results if valid]
-    print(f"{name:8} validated {len(valid_times)}/{len(results)}; "
-          f"median solve {statistics.median(valid_times) * 1000:.2f} ms"
-          if len(valid_times) == len(results) else
-          f"{name:8} validated {len(valid_times)}/{len(results)}; median solve n/a")
+    valid_times = [elapsed for elapsed, _, valid in results if valid]
+    solved = sum(solved for _, solved, _ in results)
+    invalid = solved - len(valid_times)
+    median = (f"{statistics.median(valid_times) * 1000:.2f} ms"
+              if len(valid_times) == len(results) else "n/a")
+    print(f"{name:8} solved {solved}/{len(results)}, "
+          f"validated {len(valid_times)}/{len(results)}, "
+          f"invalid paths {invalid}; median solve {median}")
     return statistics.median(valid_times) if len(valid_times) == len(results) else None
 
 
@@ -237,7 +240,9 @@ def main():
     om = summarize("OMPL", ompl_results)
     if rp is not None and om is not None:
         winner = "RoboPlan" if rp < om else "OMPL" if om < rp else "tie"
-        print(f"Median validated-solve-time ranking: {winner} (all trials validated).")
+        ratio = max(rp, om) / min(rp, om)
+        print(f"Median validated-solve-time ranking: {winner} "
+              f"({ratio:.2f}x; all trials validated).")
     else:
         print("Median validated-solve-time ranking: unavailable (at least one "
               "planner had an unvalidated or failed trial).")
