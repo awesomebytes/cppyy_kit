@@ -8,4 +8,4 @@
 ## Local repair follow-up
 
 - Restored the missing OpenBLAS library in the gitignored OMPL Pixi prefix from the exact package in the local Pixi cache. `pixi run --frozen --no-install -e ompl demo-ompl-plan` now passes and finds a valid path.
-- `pixi run --frozen --no-install -e ompl python -c 'import roboplan'` fails with `ModuleNotFoundError`. No RoboPlan package or checkout is present locally. The new environment cannot be installed because this shell cannot resolve package hosts, so the RoboPlan comparison and speed ranking remain unmeasured.
+- `pixi run --frozen --no-install -e ompl python -c 'import roboplan'` fails with `ModuleNotFoundError`. No RoboPlan package or checkout is present locally. The command shell explicitly has `CODEX_SANDBOX_NETWORK_DISABLED=1`; direct HTTPS by IP also fails. A writable Pixi cache under `/tmp` does not change this. The RoboPlan comparison and speed ranking remain unmeasured until this shell can download the package or receives it locally.
