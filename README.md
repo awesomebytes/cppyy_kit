@@ -150,6 +150,7 @@ Every headline links to the exact row that produced it in
 | [WBC inline-C++ model](docs/wbc/REPORT.md) | a custom Crocoddyl action model authored inline, JIT-compiled, no CMake | **22.9×** vs Python-derived, bit-identical cost [↗](docs/benchmarks.md#wbc--custom-crocoddyl-action-model-python-derived-vs-inline-c) |
 | [Retargeting teleop rig](docs/retarget_pipeline/REPORT.md) | webcam → body/hand tracking → TF → whole-body retarget onto G1/Talos, live, one Rerun viewer | glue kernel **341.5×**, /tf marshaling **258.9×**, bit-identical [↗](docs/benchmarks.md#retarget-pipeline--perception-tf-marshaling--retarget-glue-kernel) |
 | [Visual loop closure](docs/tutorials/vision_loop_closure.md) | ORB + DBoW2 + GTSAM front-end in short Python; image data remain in C++ in this pipeline | 1080p ingest **135.8×**; 19 loops, precision/recall 1.00/0.95 [↗](docs/benchmarks.md#vision--cv_kit--dbow_kit-synthetic-sequence) |
+| [RoboPlan vs OMPL on UR5](docs/tutorials/roboplan_ompl_ur5.md) | compare RRT-Connect path validity and measured solve time on one robot scene from Python | run locally for a speed ranking |
 | [Jitter bench](docs/jitter_bench/REPORT.md) | a ~1 kHz control loop orchestrated from Python on a *stock* kernel | **~2 µs median** period, unprivileged [↗](docs/benchmarks.md#jitter-bench--reduced-reference-set-a1--b--c-idle-60-s-each) |
 | [cppyy-accelerate skill](skills/cppyy-accelerate/SKILL.md) | point a coding agent at slow Python; it moves the hot path to a kit | **16.3×** (49.6 → 3.04 ms), output bit-identical [↗](docs/benchmarks.md#accelerate--the-llm-skill-worked-example) |
 
@@ -229,7 +230,7 @@ Full documentation site: **<https://awesomebytes.github.io/cppyy_kit/>**
 - [Benchmarks](docs/benchmarks.md) — reported results with commands and conditions;
   see linked reports for run-specific context.
 - [Architecture](docs/ARCHITECTURE_V2.md) — how the suite is put together.
-- [Tutorials](docs/tutorials/vision_loop_closure.md) — end-to-end walkthroughs.
+- [Tutorials](docs/tutorials/roboplan_ompl_ur5.md) — motion planning comparison and other walkthroughs.
 - Per kit: its **Why** (the pitch), **Report** (the evidence), **Skill** (LLM cheat sheet).
 
 Questions, ideas, and bug reports are welcome on the

@@ -157,6 +157,13 @@ bench-ompl = "python ompl_kit/demos/bench_ompl_validity.py"
 # ompl_kit tests (gate on OMPL headers). The base cppyy_kit layer is covered by test-bt.
 test-ompl = "pytest ompl_kit/tests/test_ompl_kit.py -v"
 
+# Compare RRT-Connect on one RoboPlan UR5 scene through both Python interfaces.
+[feature.roboplan.dependencies]
+roboplan-python = "0.7.*"
+
+[feature.roboplan.tasks]
+demo-ompl-roboplan = "python ompl_kit/demos/compare_roboplan_rrtconnect.py"
+
 # --- nav2: Nav2 algorithm cores ----------------------------------------------
 [feature.nav2.dependencies]
 ros-jazzy-nav2-costmap-2d = "*"                        # Costmap2D core classes
@@ -456,6 +463,7 @@ docs-build = "mkdocs build --strict"
 bt = { features = ["bt"], solve-group = "default" }
 pcl = { features = ["pcl"], solve-group = "default" }
 ompl = { features = ["ompl"], solve-group = "default" }
+roboplan-ompl = { features = ["ompl", "roboplan"], solve-group = "default" }
 nav2 = { features = ["nav2"], solve-group = "default" }
 moveit = { features = ["moveit"], solve-group = "default" }
 # IK benchmark: moveit_kit + the extra packaged solver (trac_ik). bio_ik and

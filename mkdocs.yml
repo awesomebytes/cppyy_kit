@@ -137,6 +137,7 @@ nav:
     - Why: docs/ik_bench/WHY.md
     - Report: docs/ik_bench/REPORT.md
   - Tutorials:
+    - RoboPlan vs OMPL on UR5: docs/tutorials/roboplan_ompl_ur5.md
     - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - WBC (Crocoddyl): docs/wbc/REPORT.md
   - Retargeting Pipeline: docs/retarget_pipeline/REPORT.md
