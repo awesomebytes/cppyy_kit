@@ -17,8 +17,9 @@ software stacks.
 
 Use the comparison environment and the bundled RoboPlan UR5 model selected by
 the demo. Both planners receive the same arm joints, start and goal, limits,
-self-collision model, and edge-validation step size. This example adds no world
-obstacle.
+self-collision model, world obstacle, and edge-validation step size. The scene
+adds a box measuring 0.22 m on each axis, centered at `(0.35, 0, 0.55)` in
+`base_link`.
 
 ```bash
 pixi run -e roboplan-ompl demo-ompl-roboplan
@@ -34,18 +35,24 @@ On an x86-64 Intel Core Ultra 9 285H with Python 3.12, RoboPlan 0.7.0,
 and OMPL 1.7.0, ten fresh processes each ran five measured plans per library.
 Each process also ran one unmeasured warmup plan per library. All 50 returned
 paths from each library passed the shared endpoint, limit, and sampled-segment
-checks. The table aggregates ten invocations of the command above; the script
-reports the five-trial median for one invocation.
+checks. The table reports the median and range of the ten per-process medians;
+the script reports the five-trial median for one invocation.
 
 | Library | Valid paths | Median of process medians | Range of process medians |
 |---|---:|---:|---:|
-| RoboPlan | 50/50 | 0.48 ms | 0.47–0.49 ms |
-| OMPL via `ompl_kit` | 50/50 | 1.33 ms | 1.13–1.41 ms |
+| RoboPlan | 50/50 | 1.19 ms | 1.18–1.29 ms |
+| OMPL via `ompl_kit` | 50/50 | 1.50 ms | 1.19–3.43 ms |
 
-RoboPlan ranked first by median solve time, about 2.8× faster in this setup.
-This measures OMPL with a Python collision callback against RoboPlan's C++
-scene integration. The scene has self-collision geometry but no world obstacle;
-the result does not isolate planner-kernel speed or predict other problems.
+RoboPlan's median was about 1.26× lower in this run. One OMPL process had a
+rounded median equal to RoboPlan's, and OMPL's process-to-process spread was
+larger, so the result is a modest observed difference rather than a consistent
+per-run win. The selected start and goal are both valid in a baseline scene
+without the added box, and their straight joint-space interpolation passes the
+0.05-radian sampled edge check there but collides after the box is added. This
+confirms that the box blocks the checked direct interpolation and makes the
+planning problem require a detour. The timing compares OMPL's Python validity
+callback with RoboPlan's C++ scene integration; it does not isolate
+planner-kernel speed or predict other problems.
 
 ## Shared validity contract
 
@@ -102,6 +109,94 @@ These excerpts show the public API shape; they are illustrative, not a copy of
 the demo's full setup code. The runnable comparison script is the source of
 truth for model loading, OMPL state-space setup, joint ordering, planner
 options, seeding, and result validation.
+
+## Two ways to make C++ algorithms available in Python
+
+RoboPlan ships Python modules alongside its C++ packages. Its architecture
+documents nanobind bindings and typed stubs for those packages, including the
+RRT module; its source build instructions explicitly include building Python
+bindings. This is a solid route when a project wants a supported Python API
+with a curated surface. [RoboPlan architecture](https://roboplan.readthedocs.io/en/latest/design/architecture.html)
+· [RoboPlan build instructions](https://roboplan.readthedocs.io/en/0.2.0/getting_started.html)
+
+This OMPL example uses cppyy differently: it loads the installed OMPL library
+and exposes its C++ declarations from headers at runtime. The tutorial uses
+OMPL's API directly, so adding a planner does not require writing a Python
+wrapper for that planner. For example, after bringing up `ompl_kit`, include
+PRM's header and pass the planner to the configured `SimpleSetup` `ss` from
+the earlier OMPL setup example:
+
+```python
+import cppyy
+import ompl_kit
+
+ob, og = ompl_kit.bringup_ompl()
+cppyy.include("ompl/geometric/planners/prm/PRM.h")
+
+prm = og.PRM(ss.getSpaceInformation())
+ss.setPlanner(ob.PlannerPtr(prm))
+```
+
+The kit still has a small amount of OMPL-specific glue for callback signatures,
+object lifetimes, and result extraction. The practical benefit is avoiding
+per-algorithm wrapper authoring and build work while exploring or composing
+algorithms against the installed C++ library. A maintained binding package
+like RoboPlan's can invest that effort in a polished, stable Python interface.
+
+## Optional: compare OMPL planners and edit the obstacle
+
+The 2D sweep compares RRTConnect, RRTstar, and PRM on a unit-square problem
+with a circular obstacle. It includes PRM's header at runtime, as in the
+example above, and saves the validated paths as an SVG:
+
+```bash
+pixi run -e ompl demo-ompl-sweep
+```
+
+One local default run (seed 42, 1 s solve cap per planner) returned valid paths
+for all three planners:
+
+| Planner | Solve time | Path length |
+|---|---:|---:|
+| RRTConnect | 12.98 ms | 1.4391 |
+| RRTstar | 1016.70 ms | 1.2455 |
+| PRM | 49.72 ms | 1.2656 |
+
+This is one illustrative run, not a performance benchmark. RRTstar uses its
+full time cap to improve path quality, so its solve time should not be ranked
+against RRTConnect or PRM.
+
+![RRTConnect, RRTstar, and PRM paths around the circular obstacle](ompl_planner_sweep.svg)
+
+Move or resize the obstacle from the command line and rerun the sweep to see
+how the routes change:
+
+```bash
+pixi run -e ompl demo-ompl-sweep --obstacle-x 0.45 --obstacle-y 0.55 --obstacle-radius 0.20
+```
+
+Compare the returned path lengths and validity as well as the routes in the
+figure.
+
+### Optional: measure validity-check overhead
+
+The OMPL hot-loop demo compares a Python callback, a Python checker subclass,
+and a cppyy JIT C++ checker on the same separate 2D problem. Run its microbench
+with:
+
+```bash
+pixi run -e ompl bench-ompl --micro-n 200000
+```
+
+In one local run, the two Python checker variants each recorded 136 validity
+checks; all variants returned a path of length 1.4391. The isolated
+microbenchmark measured 300.8 ns per Python
+callback check, 349.2 ns per Python subclass check, and 15.4 ns per JIT C++
+check, about 20× less time per check for the C++ checker than the Python
+callback. Whole-solve times were 11.37, 10.64, and 8.61 ms, respectively;
+these include planning work, while the microbenchmark times direct checker
+calls. This is a separate 2D OMPL experiment, not a measurement of the UR5 or
+RoboPlan scene.
 
 ## Reading the results
 

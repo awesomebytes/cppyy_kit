@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 610" width="680" height="610">
+<rect width="680" height="610" fill="white"/>
+<rect x="70" y="50" width="500" height="500" fill="#f6f8fa" stroke="#344054" stroke-width="2"/>
+<circle cx="320.00" cy="300.00" r="125.00" fill="#f4a6a6" stroke="#a32222" stroke-width="2"/>
+<text x="70" y="30" font-family="sans-serif" font-size="16">OMPL planner paths (unit square)</text>
+<polyline points="120.00,500.00 184.59,374.19 164.69,249.39 267.45,152.23 282.55,129.29 410.51,189.51 520.00,100.00" fill="none" stroke="#1769aa" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="120.00,500.00 150.66,489.59 195.58,474.73 226.43,464.10 284.44,444.52 320.60,432.30 355.23,420.90 376.65,412.41 392.57,402.80 414.17,384.95 433.10,355.14 448.21,314.56 466.23,262.31 475.24,236.66 486.86,203.66 497.66,171.11 509.78,134.43 520.00,100.00" fill="none" stroke="#d1495b" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="120.00,500.00 209.51,214.98 333.91,145.63 433.70,119.23 520.00,100.00" fill="none" stroke="#2a9d63" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="120.00" cy="500.00" r="6" fill="#111827"/>
+<circle cx="520.00" cy="100.00" r="6" fill="#111827"/>
+<text x="70" y="585" font-family="sans-serif" font-size="13">Start ●   Goal ●   Obstacle (red)</text>
+<text x="430" y="70" fill="#1769aa" font-family="sans-serif" font-size="13">RRTConnect: length 1.439</text>
+<text x="430" y="92" fill="#d1495b" font-family="sans-serif" font-size="13">RRTstar: length 1.245</text>
+<text x="430" y="114" fill="#2a9d63" font-family="sans-serif" font-size="13">PRM: length 1.266</text>
+</svg>

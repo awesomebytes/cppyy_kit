@@ -150,6 +150,8 @@ eigen = "*"          # OMPL dependency (eigen3 headers)
 [feature.ompl.tasks]
 # OMPL's first geometric-planning tutorial (2D plan around an obstacle) via ompl_kit.
 demo-ompl-plan = "python ompl_kit/demos/d01_first_plan.py"
+# Compare RRTConnect, RRTstar and PRM via OMPL's runtime C++ headers.
+demo-ompl-sweep = "python ompl_kit/demos/d03_planner_sweep.py"
 # Plan a 2D path, then publish it as nav_msgs/Path on a ROS 2 topic (needs bridge).
 demo-ompl-path = "python ompl_kit/demos/d02_publish_path.py"
 # The honest hot-loop bench: Python-callback / Python-subclass / native JIT'd C++ checkers.

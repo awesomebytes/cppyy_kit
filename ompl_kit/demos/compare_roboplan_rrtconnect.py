@@ -22,24 +22,45 @@ SEED = 42
 TRIALS = 5
 TIME_LIMIT = 1.0
 EDGE_STEP = 0.05
+OBSTACLE_CENTER = (0.35, 0.0, 0.55)
+OBSTACLE_SIZE = (0.22, 0.22, 0.22)
 
 
-def collision_free_pair(context, q_indices):
-    """Choose one deterministic, separated collision-free pair for all trials."""
-    context.setRngSeed(SEED)
-    start = context.randomCollisionFreePositions(1000)
-    if start is None:
-        raise RuntimeError("Could not sample a collision-free UR5 start state")
-    for _ in range(100):
-        goal = context.randomCollisionFreePositions(1000)
-        if goal is None:
+def collision_free_pair(scene, context, baseline_scene, baseline_context, q_indices):
+    """Find a pair clear in the baseline whose direct edge hits the added box."""
+    baseline_context.setRngSeed(SEED)
+    for _ in range(20):
+        start = baseline_context.randomCollisionFreePositions(1000)
+        if start is None:
             continue
-        fixed_goal = start.copy()
-        fixed_goal[q_indices] = goal[q_indices]
-        if (np.linalg.norm(fixed_goal[q_indices] - start[q_indices]) >= 1.0
-                and not context.hasCollisions(fixed_goal)):
-            return start, fixed_goal
-    raise RuntimeError("Could not sample two separated, collision-free UR5 states")
+        if (not scene.isValidConfiguration(start) or context.hasCollisions(start)):
+            continue
+        for _ in range(100):
+            goal = baseline_context.randomCollisionFreePositions(1000)
+            if goal is None:
+                continue
+            fixed_goal = start.copy()
+            fixed_goal[q_indices] = goal[q_indices]
+            if np.linalg.norm(fixed_goal[q_indices] - start[q_indices]) < 1.0:
+                continue
+            if (not baseline_scene.isValidConfiguration(fixed_goal)
+                    or baseline_context.hasCollisions(fixed_goal)
+                    or not scene.isValidConfiguration(fixed_goal)
+                    or context.hasCollisions(fixed_goal)):
+                continue
+            baseline_edge_clear = edge_is_valid(
+                baseline_scene, baseline_context, q_indices, start,
+                start[q_indices], fixed_goal[q_indices])
+            obstacle_edge_clear = edge_is_valid(
+                scene, context, q_indices, start,
+                start[q_indices], fixed_goal[q_indices])
+            if baseline_edge_clear and not obstacle_edge_clear:
+                return start, fixed_goal
+    raise RuntimeError(
+        "Could not find endpoints valid in both scenes with a clear baseline "
+        "edge and an edge blocked by the world obstacle after 20 starts x "
+        "100 goals"
+    )
 
 
 def edge_is_valid(scene, context, q_indices, reference, start, goal):
@@ -202,6 +223,16 @@ def main():
     description = core.loadUrdfSceneDescription(str(urdf), [str(models.parent)])
     scene = core.Scene("ur5", description)
     scene.importSrdf(srdf.read_text())
+    baseline_description = core.loadUrdfSceneDescription(
+        str(urdf), [str(models.parent)])
+    baseline_scene = core.Scene("ur5_baseline", baseline_description)
+    baseline_scene.importSrdf(srdf.read_text())
+    obstacle_pose = np.eye(4, dtype=np.float64, order="F")
+    obstacle_pose[:3, 3] = OBSTACLE_CENTER
+    scene.addBoxGeometry(
+        "tutorial_obstacle", "base_link", core.Box(*OBSTACLE_SIZE),
+        obstacle_pose, np.array([0.9, 0.15, 0.1, 1.0], dtype=np.float64),
+    )
     group = scene.getJointGroupInfo(GROUP)
     q_indices = np.asarray(group.q_indices, dtype=np.int64)
     joint_names = list(group.joint_names)
@@ -212,8 +243,11 @@ def main():
     if len(q_indices) != len(lower) or len(joint_names) != len(lower):
         raise RuntimeError("UR5 group ordering/limits are inconsistent")
 
+    # SceneContext snapshots collision geometry, so create it after the obstacle.
     context = core.SceneContext(scene)
-    full_start, full_goal = collision_free_pair(context, q_indices)
+    baseline_context = core.SceneContext(baseline_scene)
+    full_start, full_goal = collision_free_pair(
+        scene, context, baseline_scene, baseline_context, q_indices)
     # Freeze every non-arm variable at the start sample for both planners.
     reference = full_start.copy()
     scene.setJointPositions(reference)
@@ -232,6 +266,9 @@ def main():
           f"seed={SEED} (OMPL stream), RoboPlan seeds={SEED}..{SEED + TRIALS - 1}, "
           f"edge step={EDGE_STEP:g} rad, "
           f"time limit={TIME_LIMIT:g} s/trial")
+    print(f"World box at {OBSTACLE_CENTER}, size={OBSTACLE_SIZE}; "
+          "selected endpoints are valid in both scenes; straight interpolation "
+          "is clear without the box and blocked with it.")
     roboplan_results = run_roboplan(scene, context, q_indices, joint_names,
                                     reference, lower, upper, start, goal)
     ompl_results = run_ompl(ob, og, scene, context, q_indices, reference,
