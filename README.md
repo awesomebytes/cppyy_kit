@@ -20,11 +20,13 @@ and keeping objects alive.
 ## Try both examples
 
 The numeric `@cpp` annotations below are new in `cppyy-kit` 0.4.0. Published
-0.3.x packages do not support them. Until 0.4.0 is published, use this source
-checkout: run `pixi run -e bt python tree.py` for the tree example and
-`pixi run python kernel.py` for the numeric example. See
+0.3.x packages do not support them. Before 0.4.0 is published, use a clone of
+this repository: first save the tree and kernel examples below as `tree.py` and
+`kernel.py` in the checkout root, then run `pixi run -e bt python tree.py` and
+`pixi run python kernel.py` from that root. See the
 [source-checkout instructions](https://awesomebytes.github.io/cppyy_kit/getting-started/#run-repository-demos-or-develop-the-kits).
-After publication, use `pixi add "cppyy-kit>=0.4.0" numpy` for the numeric example.
+After publication, create a standalone environment with
+`pixi add "cppyy-kit>=0.4.0" ros-jazzy-bt-kit numpy`.
 
 Install [Pixi](https://pixi.sh/latest/installation/), then create an environment
 for the two examples below:
@@ -32,7 +34,7 @@ for the two examples below:
 ```bash
 pixi init cppyy-example -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge
 cd cppyy-example
-pixi add cppyy-kit ros-jazzy-bt-kit numpy
+pixi add "cppyy-kit>=0.4.0" ros-jazzy-bt-kit numpy
 ```
 
 Packages are available for Linux x86_64 and ARM64. Pixi installs Python and the

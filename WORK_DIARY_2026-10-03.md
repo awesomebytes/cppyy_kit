@@ -52,3 +52,9 @@
 - Final core regression passed: `pixi run -e default pytest -q cppyy_kit/tests examples/parallel_demo/test_parallel.py --durations=10` reported **180 passed, 49 skipped in 7.21s**. The skips were optional BehaviorTree.CPP, Pydantic v2, and opt-in Auto-PCH end-to-end coverage. The focused test run reported **93 passed in 3.81s** with no new skips.
 - Full Pixi lint passed after test-style fixes. The strict MkDocs build, release-version test and `v0.4.0` verification, README kernel example, and scoped diff check also passed (details above).
 - Work remains local on `feat/numeric-cpp-annotations`; no push, ARM tests, or release publication occurred.
+
+### Numeric annotation final audit and installed-package proof coverage
+
+- Final audit found stale standalone install commands that could resolve pre-0.4.0 packages and a packaging table that omitted NumPy; both documentation gaps were corrected.
+- Updated the `prove_all.sh` and `prove_rclcpp.sh` installed-package lanes to expect base recipe build number 0 and exercise the installed `@cpp` API with an annotated float32 array, typed float sequence, and inferred float32/float64 arrays. The proofs verify that `cppyy_kit` imports from the installed prefix; `PYTHONPATH` is cleared for the throwaway environments.
+- Added a release test that reads the recipe build number and checks both proof scripts against it. Validation passed: `pixi run -m cppyy_kit pytest cppyy_kit/cppyy_kit/tests/test_release_version.py -q` (**9 passed**) and `bash -n recipe/prove_all.sh recipe/prove_rclcpp.sh`. Installed artifact proofs were not run locally; CI will provide that evidence.

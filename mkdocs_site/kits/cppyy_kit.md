@@ -6,13 +6,12 @@ passing callbacks and arrays, and keeping objects alive.
 
 ## Write a C++ function
 
-Follow [Getting Started](../getting-started.md) to create an environment with
-`cppyy-kit` and NumPy, then save this as `kernel.py`:
-
-The numeric annotations below are new in `cppyy-kit` 0.4.0. Until that version
-is published, run from this repository checkout with `pixi run python kernel.py`;
-the installed 0.3.x package does not support them. After publication, use
-`pixi add "cppyy-kit>=0.4.0" numpy` in a standalone project.
+The numeric annotations below are new in `cppyy-kit` 0.4.0. Published 0.3.x
+packages do not support them. Before 0.4.0 is published, use a clone of this
+repository: save the example below as `kernel.py` in the checkout root, then
+run `pixi run python kernel.py` from that root. For standalone use after
+publication, follow [Getting Started](../getting-started.md) and install
+`cppyy-kit>=0.4.0` with `pixi add`.
 
 ```python
 import numpy as np

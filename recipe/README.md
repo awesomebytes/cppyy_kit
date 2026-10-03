@@ -21,7 +21,7 @@ for the same eleven suite recipes.
 
 | conda package | import | run deps (beyond `python`) |
 |---|---|---|
-| `cppyy-kit` | `cppyy_kit` | `cppyy` |
+| `cppyy-kit` | `cppyy_kit` | `cppyy`, `numpy` |
 | `ros-jazzy-rclcpp-kit` | `rclcpp_kit` | `cppyy-kit`, `ros-jazzy-rclcpp`, `ros-jazzy-rclpy`, `ros-jazzy-ament-index-python` |
 | `ros-jazzy-bt-kit` | `bt_kit` | `cppyy-kit`, `ros-jazzy-behaviortree-cpp` |
 | `ros-jazzy-pcl-kit` | `pcl_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `pcl`, `ros-jazzy-pcl-conversions` |

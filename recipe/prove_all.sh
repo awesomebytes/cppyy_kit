@@ -70,7 +70,7 @@ PY
   local t0=$SECONDS
   # Fresh workspace has no lockfile; pixi run solves + installs from the channels
   # then runs the smoke. (No --locked: there is nothing to lock against yet.)
-  if ( cd "$wd" && pixi run python smoke.py ); then
+  if ( cd "$wd" && env PYTHONPATH= pixi run python smoke.py ); then
     RESULTS="${RESULTS}\n  PASS  ${conda_name}  ($((SECONDS - t0))s)"; PASS=$((PASS+1))
   else
     RESULTS="${RESULTS}\n  FAIL  ${conda_name}  ($((SECONDS - t0))s)"; FAIL=$((FAIL+1))
@@ -90,7 +90,7 @@ def package_record(name):
     assert len(matches) == 1, (name, matches)
     return matches[0]
 
-assert package_record("cppyy-kit")["build_number"] == 2
+assert package_record("cppyy-kit")["build_number"] == 0
 for package, version in (("gcc", "14.3.0"), ("gxx", "14.3.0"),
                          ("libgcc", "15.2.0"), ("libstdcxx", "15.2.0")):
     record = package_record(package)
@@ -100,6 +100,38 @@ print("  pinned Cling runtime OK (GCC/G++ 14.3, libgcc/libstdcxx 15.2)")
 cppyy.cppdef("namespace pk { inline int add(int a, int b) { return a + b; } }")
 assert cppyy.gbl.pk.add(2, 3) == 5, "cppdef roundtrip failed"
 print("  cppdef roundtrip OK (pk::add(2,3)==5)")'
+
+NUMERIC_CPP='import cppyy_kit
+from pathlib import Path
+import sys
+import numpy as np
+from numpy.typing import NDArray
+from cppyy_kit import cpp
+
+installed_package = Path(cppyy_kit.__file__).resolve()
+assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_package
+
+@cpp(cached=False)
+def sum_sq(data: NDArray[np.float32]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
+assert sum_sq(np.array([1, 2, 3], dtype=np.float32)) == 14.0
+
+@cpp(cached=False)
+def total(values: list[float]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;"""
+assert total([1.25, 2.75]) == 4.0
+
+@cpp(cached=False)
+def inferred_total(values) -> float:
+    """double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;"""
+@cpp(cached=False)
+def inferred_size(values) -> int:
+    """return sizeof(values[0]);"""
+for dtype, size in ((np.float32, 4), (np.float64, 8)):
+    values = np.array([1.25, 2.75], dtype=dtype)
+    assert inferred_total(values) == 4.0
+    assert inferred_size(values) == size
+print("  installed numeric @cpp API OK (NDArray, typed sequence, inferred float32/64)")'
 
 BRINGUP='from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 r = bringup_rclcpp()
@@ -114,8 +146,11 @@ assert hasattr(cr, "ActionModelUnicycle"), "crocoddyl namespace missing ActionMo
 assert hasattr(cr, "SolverFDDP"), "crocoddyl namespace missing SolverFDDP"
 print("  crocoddyl bringup OK (ActionModelUnicycle, SolverFDDP present)")'
 
-prove "cppyy-kit"              "cppyy_kit"   "$CPPDEF"
-prove "ros-jazzy-rclcpp-kit"   "rclcpp_kit"  "$BRINGUP"
+prove "cppyy-kit"              "cppyy_kit"   "$CPPDEF
+$NUMERIC_CPP"
+prove "ros-jazzy-rclcpp-kit"   "rclcpp_kit"  "$BRINGUP
+$CPPDEF
+$NUMERIC_CPP"
 prove "ros-jazzy-cv-kit"       "cv_kit"      ""
 prove "ros-jazzy-bt-kit"       "bt_kit"      ""
 prove "ros-jazzy-ompl-kit"     "ompl_kit"    ""
