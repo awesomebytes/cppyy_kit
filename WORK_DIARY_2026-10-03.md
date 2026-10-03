@@ -29,3 +29,7 @@
 - Moved tutorials ahead of advanced references in the site navigation, added the WBC usage/API pages to the site mirror, and gave contributor/design pages explicit audience context. Added these reader-priority rules to `AGENTS.md`.
 - Ran both literal README examples in the isolated installed-package environment with the repository `PYTHONPATH` unset: `tree.py` printed `True`; `kernel.py` printed `14.0`. The strict docs build with broken anchors treated as warnings, the local Markdown link audit, and `git diff --check` passed. Numerical results in the evidence reports were not rerun or changed.
 - Changes are local. No push was made.
+
+### Inline C++ example formatting
+
+- Reformatted the repeated `sum_sq` documentation example with a triple-quoted multiline docstring and an indented C++ loop. Documentation only; no code was executed.

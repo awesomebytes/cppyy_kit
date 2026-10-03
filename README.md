@@ -69,7 +69,13 @@ from cppyy_kit import cpp
 
 @cpp
 def sum_sq(data: cpp.arr("float")) -> float:
-    "double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"
+    """
+    double s = 0;
+    for (std::size_t i = 0; i < data_size; ++i) {
+        s += data[i] * data[i];
+    }
+    return s;
+    """
 
 print(sum_sq(np.array([1, 2, 3], np.float32)))  # 14.0
 ```
