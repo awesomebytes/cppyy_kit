@@ -6,16 +6,31 @@ project, or **develop** from the repo to hack on the suite.
 ## Install (use a kit)
 
 > **Published.** All 11 packages are live on the prefix.dev `awesomebytes` channel
-> (browse: <https://repo.prefix.dev/awesomebytes>). The snippets below work as-is;
-> or use the *Develop* path to hack on the suite from the repo.
+> (browse: <https://repo.prefix.dev/awesomebytes>). The install example below targets
+> Linux x86_64; use the *Develop* path to hack on the suite from the repo.
 
-Every package is pure-Python (`noarch`) and installs into any [pixi](https://pixi.sh)
-or conda env; its C++ dependency is pulled by the solver. Add the `awesomebytes`
-channel plus `robostack-jazzy` + `conda-forge`:
+The packages are pure-Python (`noarch`) wrappers; the solver installs their native
+dependencies. The published recipes currently target Python 3.12 on Linux x86_64
+and ARM64. This manifest targets Linux x86_64; for ARM64, change `platforms` to
+`["linux-aarch64"]`. ARM64 also needs the architecture-specific cppyy bridge noted
+in [`recipe/cppyy/README.md`](https://github.com/awesomebytes/cppyy_kit/blob/main/recipe/cppyy/README.md).
+The `awesomebytes`, `robostack-jazzy`, and `conda-forge` channels provide the packages:
+
+Install [Pixi](https://pixi.sh/latest/installation/) first.
+
+Create and enter a project directory:
+
+```bash
+mkdir cppyy-example
+cd cppyy-example
+```
+
+Save the following as `pixi.toml` in that directory:
 
 ```toml
 # pixi.toml
 [workspace]
+name = "cppyy-example"
 channels = ["https://prefix.dev/awesomebytes", "robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
 
@@ -26,14 +41,33 @@ ros-jazzy-bt-kit = "*"       # a kit — pulls cppyy-kit + behaviortree-cpp
 # -control-kit, -cv-kit, -dbow-kit  — install only what you need
 ```
 
-Then use it in short Python:
+Create `example.py` in the same directory with this complete BehaviorTree.CPP
+example. `AlwaysSuccess` is a built-in node, so no custom node registration is
+needed:
 
 ```python
 import bt_kit
 bt = bt_kit.bringup_bt()
-tree = bt.BehaviorTreeFactory().create_tree_from_text(xml)
-tree.tickWhileRunning()
+xml = """
+<root BTCPP_format="4">
+  <BehaviorTree ID="MainTree"><AlwaysSuccess/></BehaviorTree>
+</root>
+"""
+factory = bt.BehaviorTreeFactory()
+tree = factory.create_tree_from_text(xml)
+status = tree.tickWhileRunning()
+print(status == bt.NodeStatus.SUCCESS)  # True
 ```
+
+Install the packages and run the example from that directory:
+
+```bash
+pixi install
+pixi run python example.py
+```
+
+On first use, cppyy may take longer while it prepares its compilation cache; later
+runs can reuse the cache.
 
 Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching
 kits pull `ros-jazzy-rclcpp-kit`, transitively.

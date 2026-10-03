@@ -2,12 +2,20 @@
 
 **Drive C++ robotics libraries from Python with cppyy.**
 
+**New here? Start with [Getting Started](getting-started.md)** for installation or
+development instructions.
+
 cppyy_kit provides Python interfaces to C++ robotics libraries through
 [cppyy](https://cppyy.readthedocs.io). For supported APIs, cppyy reads installed
 headers and JIT-compiles wrappers, so a separate binding or extension build is not
 usually needed for each library. Kits expose selected native APIs and provide
 helpers for data conversion and object lifetime. The libraries, headers, and other
 native dependencies must be installed in the environment.
+
+Here, **cppyy** is the C++-to-Python runtime, **cppyy_kit** is the shared ROS-free
+base package, and **domain kits** such as `bt_kit` or `pcl_kit` expose selected APIs
+from particular C++ libraries. Installing the base package does not install every
+domain kit or its native library.
 
 The suite includes options to reduce repeated header parsing and wrapper compilation,
 and to write selected hot paths in C++. Results below link to the corresponding
@@ -25,8 +33,15 @@ and ticks it through cppyy:
 ```python
 import bt_kit
 bt = bt_kit.bringup_bt()
-tree = bt.BehaviorTreeFactory().create_tree_from_text(xml)   # the C++ factory
-tree.tickWhileRunning()                                      # the C++ engine ticks
+xml = """
+<root BTCPP_format="4">
+  <BehaviorTree ID="MainTree"><AlwaysSuccess/></BehaviorTree>
+</root>
+"""
+factory = bt.BehaviorTreeFactory()
+tree = factory.create_tree_from_text(xml)                    # the C++ factory
+status = tree.tickWhileRunning()                             # the C++ engine ticks
+print(status == bt.NodeStatus.SUCCESS)  # True
 ```
 
 **Write an inline C++ kernel.** The decorated function's docstring is its C++ body;
@@ -43,6 +58,9 @@ def sum_sq(data: cpp.arr("float")) -> float:      # numpy -> (float* data, size_
 
 sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no manual ctypes conversion
 ```
+
+This example requires NumPy in the environment; NumPy is not a dependency of the
+base `cppyy-kit` package.
 
 **Run independent kernels concurrently.** `@cpp(nogil=True)` releases the GIL around
 the C++ body, allowing other Python threads to run during that work. On the 16-core
