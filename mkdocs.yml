@@ -87,8 +87,9 @@ validation:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - The Patterns: docs/COMMON_PATTERNS.md
-  - Freeze & Cache: docs/FREEZE.md
+  - Tutorials:
+    - RoboPlan vs OMPL on UR5: docs/tutorials/roboplan_ompl_ur5.md
+    - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - Kits:
     - cppyy_kit (base): kits/cppyy_kit.md
     - rclcpp_kit:
@@ -135,16 +136,19 @@ nav:
   - IK Benchmark:
     - Why: docs/ik_bench/WHY.md
     - Report: docs/ik_bench/REPORT.md
-  - Tutorials:
-    - RoboPlan vs OMPL on UR5: docs/tutorials/roboplan_ompl_ur5.md
-    - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
-  - WBC (Crocoddyl): docs/wbc/REPORT.md
+  - WBC (Crocoddyl):
+    - Usage: wbc_kit/WHY.md
+    - API reference: wbc_kit/SKILL.md
+    - Report: docs/wbc/REPORT.md
   - Retargeting Pipeline: docs/retarget_pipeline/REPORT.md
   - Jitter Bench: docs/jitter_bench/REPORT.md
   - Benchmarks: docs/benchmarks.md
   - Accelerate (LLM skill):
     - Skill: skills/cppyy-accelerate/SKILL.md
     - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
-  - Architecture:
+  - Reference:
+    - The Patterns: docs/COMMON_PATTERNS.md
+    - Startup cache: docs/FREEZE.md
+  - Maintainers and design:
     - Kit Architecture (V2): docs/ARCHITECTURE_V2.md
     - Project Plan: PLAN.md

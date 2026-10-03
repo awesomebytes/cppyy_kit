@@ -1,9 +1,18 @@
 # Common patterns for using C++ libraries from Python
 
-This guide describes integration patterns from BehaviorTree.CPP, PCL, and other
-domain kits. The examples describe behavior tested for the named libraries; coverage
-and requirements vary by library. The shared utilities in `cppyy_kit` address common
-loading, conversion, callback, and lifetime tasks.
+This is an advanced usage and kit-author reference for using C++ libraries from
+Python through cppyy. For installation and a first working example, start with
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+
+To find a practical pattern, see
+[callbacks](#python-callbacks) and
+[callback and buffer lifetime](#callback-lifetimes),
+[writing an inline C++ kernel](#inline-cpp),
+or [reusing compiled C++ with the cache](#compile-cache).
+The catalog draws on BehaviorTree.CPP, PCL, and other domain kits. Each example
+describes behavior tested with its named library; coverage and requirements vary
+by library. Shared `cppyy_kit` utilities cover loading, conversion, callbacks, and
+lifetime management.
 
 ## Three integration steps
 
@@ -48,6 +57,8 @@ expensive stages and let the caller skip what they don't need.
   (538 ms) < bt.CPP (0.9 s) < pcl (1.3 s). Measure the actual `include(...)` call
   before estimating bringup time from the library size.
 
+<a id="python-callbacks"></a>
+
 ### 3. Crossing a Python function **into** C++ (`callback`)
 Pass a Python callable to C++ with `cppyy_kit.callback(fn)`. The helper infers the
 signature and retains the callable for the required lifetime.
@@ -76,6 +87,8 @@ fn = cppyy_kit.callback(on_value)            # ready to pass to any C++ std::fun
   the GIL); a single-threaded driver (a tick loop, a `spin_some`) never contends.
 - `cppyy_kit.std_function(sig, fn)` is the low-level option (raw wrapper, you
   handle lifetime yourself); prefer `callback`.
+
+<a id="callback-lifetimes"></a>
 
 ### 4. Python callback and buffer lifetime
 cppyy does **not** keep a Python callable (nor its `std::function` wrapper, nor a
@@ -502,11 +515,20 @@ mixes a `using`-imported base form with timeout/clock forms of the same name.
   exact call in a `cppdef` free function, letting C++ overload resolution pick it. Probe a suspicious overloaded call out-of-process; a
   wrong-overload crash gives you nothing to read in Python.
 
+<a id="compile-cache"></a>
+
 ### 23. Reuse compiled wrapper artifacts (`cppdef_cached`)
-The per-signature call-wrapper JIT (§15) can be moved earlier with `warmup()`. The
-compile cache stores supported C++ glue in a `.so` artifact. When caching is enabled
-and a compatible artifact exists, `cppyy_kit.cppdef_cached(code, decls=..., name=...)`
-loads it instead of regenerating the wrapper. A cache miss compiles the artifact.
+Use `@cpp` (§26) for a C++ kernel you write in Python. Use
+`cppyy_kit.cppdef_cached(code, decls=...)` for reusable C++ helpers or trampolines:
+the definitions compile into a `.so`, and `decls` lets Cling call them without
+JIT-compiling those function bodies again. The first compatible cache miss builds
+the `.so`; later runs in the same compatible environment can reuse it. This caches
+kit-authored glue, not arbitrary template calls made directly by application code
+(see **Cache scope** below).
+
+The compile cache reduces first-use call-wrapper JIT (§15). The separate PCH cache
+reduces header parsing (see
+[FREEZE.md, Automatic PCH setup](FREEZE.md#8-automatic-pch-setup-cppyy_kitautopch)).
 Measured with bt_kit adopted (t01): first-use register
 **~233 ms → ~60 ms**, and freeze + cache compose to **~1.77 s → ~0.43 s** end-to-end
 (FREEZE.md §4); pcl_kit's d02 frame-0 **~681 ms → ~88 ms**. Run 1 pays a one-time
@@ -629,6 +651,8 @@ top-level directory.
 - **Integrity + reproducibility:** `sha256` is mandatory for a fetch (a mismatch
   raises, the partial download is removed). Point `$CPPYY_KIT_REQUIRE_DIR` at a
   persistent dir (e.g. `~/.cache`) for a machine-wide header cache.
+
+<a id="inline-cpp"></a>
 
 ### 26. `@cpp`, write a C++ kernel in Python, compiled + cached + auto-marshaled
 For a small hot kernel you'd otherwise hand-write as a `cppdef` helper plus manual

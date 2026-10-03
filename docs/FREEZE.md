@@ -1,27 +1,31 @@
-# Freeze a kit: L0 to L1, and one leaf to L2
+# Compile cache and cached headers
 
-**Status: tested.** In the bt_kit measurement below, header parsing accounted for
-about 89% of bringup time. Loading a prebuilt Cling PCH removed that parse step in
-the tested environment. The 16-test `test-bt` suite passed on both JIT and frozen
-paths.
+`@cpp` functions use the [compile cache](#compile-cache-reduces-first-use-jit-time)
+by default. The first run builds the function; later compatible runs load the
+compiled code. Kit authors can also use `cppdef_cached` for reusable C++ helpers.
 
-The freeze step moves a kit from JIT parsing (L0) to PCH loading (L1):
+For library headers, kits can use [automatic precompiled-header caching](#8-automatic-pch-setup-cppyy_kitautopch).
+A precompiled header (PCH) saves the parsed headers for reuse. That section explains
+startup-hook installation and status checks. Kits register their header lists;
+the cache can build in the background and load on a later run.
+
+The [manual bt_kit PCH recipe](#2-build-and-use-a-pch-for-bt_kit) is for CI or
+controlled runs that need to build and select an artifact explicitly. The later
+[native C++ example](#5-l2-compile-one-leaf-to-native-c) shows how to move a
+frequently called tree action to C++ and avoid entering Python on each call.
+
+## Levels and validation
 
 | Level | What it is | bt_kit today |
 |---|---|---|
 | **L0** | JIT prototype, headers parsed by Cling at bringup | the default kit |
 | **L1** | **frozen**, header AST loaded from a prebuilt PCH, no per-run parse | **this doc** |
-| **L2** | native C++ emitted for a hot path | one leaf, below (§5) |
+| **L2** | native C++ emitted for a hot path | one leaf, below |
 
-Use the same tests at each level: `pixi run -e bt test-bt` (16 tests)
-is green on L0 *and* L1, and the L2 leaf is differential-tested against its L0
-Python original.
-
-> **Automatic path.** §1 to §4 describe the manual freeze: build an artifact, then launch
-> through a wrapper that sets `CLING_STANDARD_PCH`. §8 describes startup-hook
-> activation. In the measured rclcpp setup, the first run scheduled a PCH build and a
-> later run in the same environment loaded it; a missing or incompatible artifact
-> falls back to JIT.
+In the bt_kit measurement below, header parsing accounted for about 89% of bringup
+time, and a prebuilt Cling PCH removed that parse step. The 16-test `test-bt` suite
+passed on both L0 and L1 (`pixi run -e bt test-bt`); the L2 leaf is
+differential-tested against its L0 Python original.
 
 ---
 

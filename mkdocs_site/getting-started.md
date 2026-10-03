@@ -1,49 +1,27 @@
 # Getting Started
 
-Choose one of two options: **install** the published conda packages to use a kit
-in your project, or **develop** the suite from the repository.
+Run an existing C++ library and an inline C++ function from Python. The two
+examples below use one Pixi environment.
 
-## Install (use a kit)
+## Set up the environment
 
-> **Published packages:** 11 packages are available on the prefix.dev `awesomebytes`
-> channel at <https://repo.prefix.dev/awesomebytes>. This install example targets
-> Linux x86_64. To develop the suite from source, see [Develop](#develop-from-source).
+These packages support Linux x86_64 and ARM64 and use Python 3.12. Pixi installs
+Python and the C++ libraries in the project environment.
 
-The packages are pure-Python (`noarch`) wrappers. Pixi installs their native
-dependencies. The published recipes currently target Python 3.12 on Linux x86_64
-and ARM64. This manifest targets Linux x86_64; for ARM64, change `platforms` to
-`["linux-aarch64"]`. ARM64 also needs the architecture-specific cppyy bridge noted
-in [`recipe/cppyy/README.md`](https://github.com/awesomebytes/cppyy_kit/blob/main/recipe/cppyy/README.md).
-The `awesomebytes`, `robostack-jazzy`, and `conda-forge` channels provide the packages:
-
-Install [Pixi](https://pixi.sh/latest/installation/) first.
-
-Create and enter a project directory:
+Install [Pixi](https://pixi.sh/latest/installation/), then run:
 
 ```bash
-mkdir cppyy-example
+pixi init cppyy-example -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge
 cd cppyy-example
+pixi add cppyy-kit ros-jazzy-bt-kit numpy
 ```
 
-Save the following as `pixi.toml` in that directory:
+`cppyy-kit` supplies the shared tools, `ros-jazzy-bt-kit` adds BehaviorTree.CPP,
+and `numpy` supplies the array used in the second example.
 
-```toml
-# pixi.toml
-[workspace]
-name = "cppyy-example"
-channels = ["https://prefix.dev/awesomebytes", "robostack-jazzy", "conda-forge"]
-platforms = ["linux-64"]
+## Call BehaviorTree.CPP
 
-[dependencies]
-cppyy-kit = "*"              # ROS-free base (cppyy only)
-ros-jazzy-bt-kit = "*"       # installs cppyy-kit and behaviortree-cpp
-# Add other kits as needed: ros-jazzy-rclcpp-kit, -pcl-kit, -ompl-kit,
-# -nav2-kit, -moveit-kit, -control-kit, -cv-kit, and -dbow-kit.
-```
-
-Create `example.py` in the same directory with this complete BehaviorTree.CPP
-example. `AlwaysSuccess` is a built-in node, so no custom node registration is
-needed:
+Save this as `tree.py` in the project directory:
 
 ```python
 import bt_kit
@@ -59,54 +37,107 @@ status = tree.tickWhileRunning()
 print(status == bt.NodeStatus.SUCCESS)  # True
 ```
 
-Install the packages and run the example from that directory:
+Run it:
 
 ```bash
-pixi install
-pixi run python example.py
+pixi run python tree.py
 ```
 
-On first use, cppyy may take longer while it prepares its compilation cache; later
-runs can reuse the cache.
+The script prints `True`: the tree's `AlwaysSuccess` node returns the C++
+`NodeStatus.SUCCESS` value. See [bt_kit](bt_kit/WHY.md) to register Python actions
+and conditions.
 
-Every kit depends on `cppyy-kit`. ROS kits also depend on
-`ros-jazzy-rclcpp-kit`.
+## Write an inline C++ function
 
-## Develop from source
+Save this as `kernel.py`:
 
-Install [Pixi](https://pixi.sh). Clone the repository and use its workspace
-environments. The default environment contains the ROS and cppyy dependencies.
-Each kit's environment adds its C++ dependencies.
+```python
+import numpy as np
+from cppyy_kit import cpp
+
+@cpp
+def sum_sq(data: cpp.arr("float")) -> float:
+    "double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"
+
+print(sum_sq(np.array([1, 2, 3], np.float32)))  # 14.0
+```
+
+Run it:
+
+```bash
+pixi run python kernel.py
+```
+
+The script prints `14.0`, the sum of the squared array elements. `@cpp` compiles
+the C++ body in the docstring. `cpp.arr("float")` supplies a pointer and an element
+count; `data_size` is available inside the C++ body.
+
+On first use, cppyy compiles the required code. Compatible cached code can be
+reused on later runs. See [Compile cache and cached headers](docs/FREEZE.md) when
+you want to inspect or manage startup compilation.
+
+## Install another kit
+
+Choose a package for the library you want to use and add it to the same project.
+For example:
+
+```bash
+pixi add ros-jazzy-ompl-kit
+```
+
+| Library or task | Package | Python import |
+|---|---|---|
+| Inline C++ and shared helpers | `cppyy-kit` | `cppyy_kit` |
+| BehaviorTree.CPP | `ros-jazzy-bt-kit` | `bt_kit` |
+| PCL | `ros-jazzy-pcl-kit` | `pcl_kit` |
+| OMPL | `ros-jazzy-ompl-kit` | `ompl_kit` |
+| MoveIt | `ros-jazzy-moveit-kit` | `moveit_kit` |
+| Nav2 | `ros-jazzy-nav2-kit` | `nav2_kit` |
+| ros2_control | `ros-jazzy-control-kit` | `control_kit` |
+| OpenCV C++ | `ros-jazzy-cv-kit` | `cv_kit` |
+| DBoW2 | `ros-jazzy-dbow-kit` | `dbow_kit` |
+| Crocoddyl custom action models | `wbc-kit` | `wbc_kit` |
+| ROS 2 C++ APIs | `ros-jazzy-rclcpp-kit` | `rclcpp_kit` |
+
+Pixi installs each kit's dependencies. The kit's usage page describes any
+additional setup, such as building DBoW2 from source.
+
+## Run repository demos or develop the kits
+
+The tutorial commands with named environments, such as `pixi run -e ompl`, use
+this repository's Pixi project. Clone it to run those demos or change the kits:
 
 ```bash
 git clone https://github.com/awesomebytes/cppyy_kit
 cd cppyy_kit
-
-# Run lint and the default test suite. Tests without available dependencies are skipped.
-pixi run lint
-pixi run test
-
-# a kit: its demo + test suite run in the kit's feature env
-pixi run -e bt   demo-bt-t01     # Run the first BehaviorTree.CPP tree
-pixi run -e bt   test-bt         # bt_kit + base cppyy_kit tests
-pixi run -e ompl demo-ompl-plan  # OMPL 2D plan
-pixi run -e nav2 test-nav2       # Nav2 cores from Python
+pixi run -e bt demo-bt-t01
+pixi run -e ompl demo-ompl-plan
 ```
 
-In the repo, kits resolve via `PYTHONPATH` (set in `pixi.toml` `[activation.env]`):
-the repo root plus each kit dir. ROS-touching kits get the ROS 2 core through the
-local `rclcpp_kit` package plus the default `ros-base` env.
+Each environment installs the dependencies for its demos. The repository configures
+Python's import paths so the commands use the local kit sources.
 
-## Build the docs
+For code changes, run the corresponding kit tests and the shared lint check:
 
 ```bash
-pixi run -e docs docs-serve    # live preview at http://127.0.0.1:8000
-pixi run -e docs docs-build    # strict build into ./site
+pixi run -e bt test-bt
+pixi run lint
 ```
 
-## Where next
+## Preview the documentation
 
-- **[The Patterns](docs/COMMON_PATTERNS.md)**: 36 cppyy usage patterns.
-- **[Freeze & Cache](docs/FREEZE.md)**: L0→L1→L2 options and the compile cache.
-- **[Tutorials](docs/tutorials/vision_loop_closure.md)**: end-to-end walkthroughs.
-- Each kit has a purpose page, an evidence report, and an API guide for coding agents.
+From the repository checkout:
+
+```bash
+pixi run -e docs docs-serve    # http://127.0.0.1:8000
+pixi run -e docs docs-build    # build into ./site
+```
+
+## What to try next
+
+- [RoboPlan and OMPL on UR5](docs/tutorials/roboplan_ompl_ur5.md): compare path
+  validity and planning speed from Python.
+- [Visual loop closure](docs/tutorials/vision_loop_closure.md): build an image
+  processing and place-recognition pipeline.
+- [Callbacks, arrays, and C++ object lifetimes](docs/COMMON_PATTERNS.md): look up
+  a usage pattern as you need it.

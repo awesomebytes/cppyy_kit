@@ -1,42 +1,40 @@
 # Tutorial: visual loop closure with Python and C++
 
-This tutorial implements the **place-recognition / loop-closure front-end** of a
-visual SLAM system as a Python ROS 2 node. The node calls the C++ OpenCV and DBoW2
-libraries through [cppyy](https://cppyy.readthedocs.io), and displays results in
-[Rerun](https://rerun.io). The image data stays in C++ from the ROS subscription
-through the DBoW2 query.
+This tutorial shows how a Python ROS 2 node can use C++ OpenCV and DBoW2 for visual
+place recognition and loop closure. The example receives C++ ROS image messages
+through `rclcpp_kit`, keeps image data in C++ through ORB and the DBoW2 query, and
+shows results in Rerun.
 
-**Pipeline:**
+The published Pixi packages are `ros-jazzy-cv-kit` and `ros-jazzy-dbow-kit`. For
+package setup and the supported Pixi environment, see the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
-1. **ORB features** on every frame (Mur-Artal & Tardós, *ORB-SLAM: a Versatile and
-   Accurate Monocular SLAM System*, IEEE T-RO 2015).
-2. **DBoW2** place recognition: map binary descriptors to a vocabulary of
-   "visual words", then compare images by their word histograms (Gálvez-López & Tardós, *Bags of Binary Words for Fast Place Recognition
-   in Image Sequences*, IEEE T-RO 2012).
-3. A **temporal-consistency gate** so a loop is only confirmed once a candidate
-   persists over several frames (the DLoopDetector idea).
-4. **(optional)** a **GTSAM pose graph** that uses the confirmed loop to correct a
-   drifting trajectory.
-
-This pipeline does not have a complete Python API across these libraries. OpenCV has
-`cv2`, but the image is copied between Python and C++. DBoW2 has no Python binding or
-conda package. GTSAM's C++ API depends on Boost. cppyy lets Python call OpenCV and
-DBoW2 while image data stays in C++. GTSAM uses its Python binding in this tutorial.
-
-You need only this repo and [pixi](https://pixi.sh). Every step is a `pixi run`.
-
----
-
-## 0. Setup (once)
+## Start from this repository checkout
 
 ```bash
-pixi install -e vision          # OpenCV 4 (C++ + cv2), rerun-sdk, gtsam, cppyy, ROS 2
-pixi run -e vision build-dbow2  # clone + patch + compile DBoW2 -> build/vendor/libDBoW2.so
+pixi install -e vision
+pixi run -e vision build-dbow2
 ```
 
-`build-dbow2` prints the two patches it applies and finishes with
-`OK -> .../libDBoW2.so`. See [the DBoW2-from-source section](#dbow2-from-source) for
-what those patches are and why.
+`build-dbow2` finishes with `OK -> .../libDBoW2.so`. Run the synthetic loop demo:
+
+```bash
+pixi run -e vision demo-vision-loop
+```
+
+The deterministic synthetic sequence needs no download. Expected result: the
+200-frame sequence reports **19 confirmed loops** as its last 20 frames revisit its
+first 20. With a display, Rerun opens a viewer. For a headless recording, run
+`RCLCPPYY_RERUN_SPAWN=0 pixi run -e vision demo-vision-loop`; it saves under
+`build/vision/`.
+
+For feature extraction alone, run `pixi run -e vision demo-vision-features`. The
+optional pose-graph stage is `pixi run -e vision demo-vision-posegraph`. The
+[real-data path](#real-data-tum-rgb-d-and-orbvoc) downloads a TUM sequence and the
+ORB vocabulary.
+
+The example detects recurring places and loop events. The later
+[limits section](#limits-and-follow-up-work) describes the remaining pose estimation
+and geometric verification work.
 
 > Run a demo with a display to open a live Rerun window. The window shows the camera
 > stream, ORB keypoints, and a processing-time plot. Stages 3 and 4 also show loop
@@ -46,9 +44,17 @@ what those patches are and why.
 > `rerun <file>`. Set `RCLCPPYY_RERUN_SPAWN=1` to force the live viewer or `=0` to
 > force a recording. `cv_kit/demos/vision_viz.py` selects the mode.
 
-> By default, the demos use a deterministic synthetic loop sequence and need no
-> downloads. The [real-data path](#real-data-tum-rgb-d-and-orbvoc) downloads a TUM RGB-D sequence and the
-> ORB vocabulary.
+**Pipeline:**
+
+1. **ORB (Oriented FAST and Rotated BRIEF) features** on every frame (Mur-Artal & Tardós, *ORB-SLAM: a Versatile and
+   Accurate Monocular SLAM System*, IEEE T-RO 2015).
+2. **DBoW2 (bag of binary words)** place recognition: map binary descriptors to a vocabulary of
+   "visual words", then compare images by their word histograms (Gálvez-López & Tardós,
+   *Bags of Binary Words for Fast Place Recognition in Image Sequences*, IEEE T-RO 2012).
+3. A **temporal-consistency gate** confirms a loop after a candidate persists over
+   several frames (the DLoopDetector idea).
+4. An **optional GTSAM pose graph** uses confirmed loops to correct a drifting
+   trajectory.
 
 ---
 
@@ -185,25 +191,11 @@ compares detected loop pairs with a recorded baseline. Precision is 1.0. Vocabul
 training uses `srand` so results are reproducible. The test needs no download.
 
 <a name="dbow2-from-source"></a>
-### DBoW2 from source
+### DBoW2 build details
 
-DBoW2 is **not on conda-forge and has no Python binding**, so `build-dbow2` vendors it:
-it clones `dorian3d/DBoW2` into `build/vendor/` (gitignored) and direct-compiles it
-with the env's C++ compiler, the same recipe as `scripts/freeze/build_l2_node.py`,
-sidestepping DBoW2's CMake (which pulls a DLib dependency the ORB path never needs).
-Two small, documented, idempotent patches (kept as a scripted in-place edit, never a
-fork):
-
-1. **Compile only the DLib-free ORB sources** (skip `FBrief`/`FSurf64`, which need
-   DVision/opencv-contrib); include the specific headers rather than the umbrella
-   `DBoW2.h` that would drag them in.
-2. **Add an ORB-SLAM2-style `loadFromTextFile` plus a raw binary cache** to
-   `TemplatedVocabulary.h`, so we can read the canonical `ORBvoc.txt` (which stock
-   DBoW2 can't) and cache it as a fast-loading binary.
-
-`dbow_kit` then mirrors DBoW2's own API (`train_vocabulary`, `make_database`,
-`add_image`, `query`), keeping only the fiddly N×32-Mat → `vector<cv::Mat>` descriptor
-split in C++.
+The one-time `build-dbow2` task vendors and compiles the DBoW2 sources required by
+this ORB pipeline. DBoW2 has no Python binding. The source selection, patches, and
+text-vocabulary cache are documented in the [capability report](../../cv_kit/REPORT.md#2-build-dbow2-from-source).
 
 ---
 

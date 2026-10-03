@@ -1,57 +1,7 @@
 # CUDA-enabled OpenCV (`cv::cuda::ORB`) for the vision tutorial
 
-This guide covers GPU-enabled `cv::cuda::ORB` for the vision tutorial. It describes
-the Esri OpenCV package, how it works with the CPU OpenCV package, and how to
-provision and validate it. Testing used OpenCV 4.13.0 on an RTX PRO 2000 Blackwell
-GPU (sm_120).
-
----
-
-## Package availability
-
-The package search found no CUDA builds on conda-forge. It found a CUDA-enabled
-OpenCV 4.13.0 package in the Esri channel.
-
-### conda-forge builds OpenCV without CUDA
-- The recipe sets these build options: conda-forge/opencv-feedstock `recipe/build.sh` sets
-  `-DWITH_CUDA=0 -DWITH_CUBLAS=0 -DWITH_OPENCL=0`.
-- The build configuration has no CUDA variant: `recipe/conda_build_config.yaml` has only `qt_version`
-  (`none`/`6`) and an macOS SDK key, with no `cuda`, `cuda_compiler`, or
-  `cuda_compiler_version`.
-- The package listings show: The anaconda.org API lists **6357** `conda-forge/libopencv`
-  files across every version/platform; **0** carry a `cuda` build string. Same for
-  `conda-forge/opencv`. (Latest is 4.13.0 `qt6_py312..._610`, which is what
-  `feature.vision` pins.)
-- The package configuration has remained CPU-only: Feedstock issues
-  [#74](https://github.com/conda-forge/opencv-feedstock/issues/74) (2017) and
-  [#109](https://github.com/conda-forge/opencv-feedstock/issues/109) (2018) request
-  CUDA builds; they were declined (CI/binary-size/licensing). Builds remain CPU-only.
-
-### CUDA-enabled OpenCV package in the Esri channel
-A cross-channel sweep (anaconda.org `search` API over every channel shipping
-`opencv`/`libopencv`, then a per-channel scan of build strings for `cuda`/`gpu`)
-found CUDA builds on: `ab-geo` (4.8.0, CUDA 11.8, old), `edj.david` (4.6.0, old),
-`rocketce` (ppc64le only), `sdy623` (win-64 only), and `Esri`. The selected package:
-
-| Field | Value |
-|---|---|
-| Package | **`Esri::libopencv`** |
-| Version / build | **`4.13.0` / `cuda129_py313_4`** (linux-64) |
-| Matches vision env? | **Yes, OpenCV 4.13.0** (conda-forge pins the same) |
-| CUDA | 12.9 (cudart/cublas/cufft/npp 12.9; cudnn 9.10). CUDA >=12.8 supports Blackwell sm_120 |
-| License | **Apache-2.0** (OpenCV's own license) |
-| Public? | **Yes** (`public: true`); uploaded 2026-03-17 |
-| Size / sha256 | 86 MB / `1a9a3286db27f75bc4d01e505cb8b39417f61b32121992c91466bfa97262b278` |
-| Modules | Full contrib CUDA set incl. `libopencv_cudafeatures2d.so` (`cv::cuda::ORB`), `cudaarithm`, `cudawarping`, `cudafilters`, `cudaimgproc`, `cudaoptflow`, `cudastereo`, ... |
-| GPU code | SASS `sm_50..sm_90` + **`compute_50` PTX** (no native sm_120 -- see below) |
-
-**Why not install it directly with conda:** the package's dependency pins
-(`gstreamer >=1.24.12,<1.25`, plus `ffmpeg 8`, `hdf5 1.14.5`, `cudnn`, `cusparselt`,
-`cudss`, `cufile`) no longer co-solve against *current* conda-forge, and
-`cv::cuda::ORB` needs none of them (those are `videoio`/`highgui`/`hdf`/`dnn`
-modules). The setup extracts the C++ shared libraries and headers and supplies the
-CUDA 12.9 runtime the ORB path actually links (`cudart`, `cublas`, `cufft`, `npp`)
-from conda-forge. This is what the `cudabuild` pixi feature + provisioning script do.
+The default `vision` environment uses CPU OpenCV; CUDA ORB requires an NVIDIA GPU
+and compatible driver. Follow the [install and build steps](#install-and-validate) to enable and validate it.
 
 ---
 
@@ -60,10 +10,11 @@ from conda-forge. This is what the `cudabuild` pixi feature + provisioning scrip
 The files are written to `build/vendor/opencv-cuda/` (gitignored). Run these commands:
 
 ```bash
-# 1. download + verify(sha256) + extract the prebuilt's libs & headers
+pixi install -e cudabuild
+# download, verify (sha256), and extract the prebuilt libraries and headers
 pixi run -e cudabuild provision-cuda-opencv
 
-# 2. compile + run the C++ cv::cuda::ORB smoke test and CPU-vs-CUDA fps bench
+# compile and run the C++ cv::cuda::ORB smoke test and CPU-vs-CUDA FPS benchmark
 pixi run -e cudabuild validate-cuda-opencv
 ```
 
@@ -72,6 +23,7 @@ the vision stack **and** the CUDA 12.9 runtime in one process) and put the vendo
 CUDA libs/headers first on cppyy's search path:
 
 ```bash
+pixi install -e vision-cuda
 export OPENCV_CUDA_ROOT="$PWD/build/vendor/opencv-cuda"
 # CUDA OpenCV FIRST so every libopencv_*.so.413 soname resolves to the CUDA build:
 export LD_LIBRARY_PATH="$OPENCV_CUDA_ROOT/lib:$LD_LIBRARY_PATH"
@@ -117,6 +69,36 @@ Runtime source options:
   the vendored `lib` dir.
 - **`vision` + standalone `cudabuild`:** prepend BOTH `build/vendor/opencv-cuda/lib`
   and `.pixi/envs/cudabuild/lib` (the latter has cudart/cublas/cufft/npp).
+
+---
+
+## Package details (recorded July 2026)
+
+The package search at that time found no CUDA builds on conda-forge and identified
+the Esri OpenCV 4.13.0 build used by the provisioning script. These package and
+feedstock findings are a dated snapshot; use the install steps above for the
+repository's validated route.
+
+### conda-forge and Esri packages
+
+- The conda-forge OpenCV recipe set `WITH_CUDA=0`, `WITH_CUBLAS=0`, and
+  `WITH_OPENCL=0`. The package listing search found 0 CUDA build strings across
+  6,357 conda-forge `libopencv` files at the time of the search.
+- A cross-channel sweep found older CUDA builds in `ab-geo` (4.8.0), `edj.david`
+  (4.6.0), `rocketce` (ppc64le), and `sdy623` (win-64), as well as Esri. The
+  selected package was **`Esri::libopencv`**, version **4.13.0**, build
+  `cuda129_py313_4` (linux-64), with CUDA 12.9 and
+  `libopencv_cudafeatures2d.so` for `cv::cuda::ORB`. It was uploaded on 2026-03-17.
+- The package was Apache-2.0 and 86 MB (SHA-256
+  `1a9a3286db27f75bc4d01e505cb8b39417f61b32121992c91466bfa97262b278`). It
+  contains SASS through `sm_90` and `compute_50` PTX, but no native `sm_120` SASS.
+- Its dependency pins did not co-solve with the vision environment's conda-forge
+  packages. The provisioning task extracts its C++ libraries and headers and
+  supplies the CUDA runtime packages the ORB path needs (`cudart`, `cublas`,
+  `cufft`, and `npp`).
+
+See the package and feedstock links under [Sources](#sources). The commands to
+reproduce the package search are retained below.
 
 ---
 

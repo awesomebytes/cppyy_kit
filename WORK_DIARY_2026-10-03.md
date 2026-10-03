@@ -20,3 +20,12 @@
 - Reviewed all 57 tracked documentation pages, 1,062 ordinary Python docstrings, and 2,107 Python comment lines. The final scan found no em dashes or flagged rhetorical phrases in authored prose. Added writing rules for future changes.
 - Verification passed: `pixi run lint`, `git diff --check`, a strict MkDocs build with anchor validation set to warning, and the documentation integrity audit. Python AST comparisons preserved executable code and `@cpp` bodies, with four reviewed exceptions for explanatory output text. Benchmark table values and executable examples were preserved. The audit script and report remain in ignored `.pixi/docs-style-audit/`.
 - Changes are local. No push was made.
+
+### Reader tasks and first-use order
+
+- The user identified that the prior review left packaging details ahead of useful installation and examples. Nine Luna reviews covered reader priorities across the documentation, including an independent review of the revised entry pages. I selected and checked the changes before committing them.
+- Rebuilt README, Home, and Getting Started around two equally prominent uses: calling BehaviorTree.CPP and writing an inline C++ function. Each example has setup, run instructions, and expected output. Removed package counts, noarch details, bridge internals, and distribution terminology from those entry pages. Package names remain in the installation guide; build details remain in the packaging guide.
+- Put existing Python examples before C++ build comparisons in the kit usage pages. Marked source-checkout demo commands, corrected stale paths and the control initialization call, and fixed a retarget `--follow` command that conflicted with the task's built-in `--replay` option.
+- Moved tutorials ahead of advanced references in the site navigation, added the WBC usage/API pages to the site mirror, and gave contributor/design pages explicit audience context. Added these reader-priority rules to `AGENTS.md`.
+- Ran both literal README examples in the isolated installed-package environment with the repository `PYTHONPATH` unset: `tree.py` printed `True`; `kernel.py` printed `14.0`. The strict docs build with broken anchors treated as warnings, the local Markdown link audit, and `git diff --check` passed. Numerical results in the evidence reports were not rerun or changed.
+- Changes are local. No push was made.

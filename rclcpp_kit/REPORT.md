@@ -238,7 +238,8 @@ The ownership hypothesis is confirmed: the stock rclpy TransformListener feeds i
 buffer through Python, while the C++ listener does that work on its own C++ thread.
 The retained shared-host measurements showed Python/C++ ingest CPU ratios from
 6.7 to 14 and lower raw lookup medians for the C++ path. To estimate the effect on
-another workload, repeat the measurements on its target host. The module is available as
-`rclcpp_kit.tf` provides a small wrapper around the C++ API, with demos, a reproducible
-benchmark, and tests that include network ingestion. The wrapper uses about 35 lines
-of C++ glue to handle overloaded methods and construction from Python.
+another workload, repeat the measurements on its target host. The module is
+available as `rclcpp_kit.tf`; it provides a small wrapper around the C++ API, with
+demos, a reproducible benchmark, and tests that include network ingestion. The
+wrapper uses about 35 lines of C++ glue to handle overloaded methods and
+construction from Python.

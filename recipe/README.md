@@ -1,5 +1,8 @@
 # Packaging: rattler-build recipes and release matrix
 
+Maintainer guide for building, proving, and releasing packages. To install and
+use a kit, start with [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+
 Eleven `noarch: python` conda packages for the cppyy_kit suite, one recipe dir each.
 Every kit wrapper is pure Python and JITs C++ at *runtime* via cppyy, so no C++ is
 compiled during package build. The package set is currently supported on Linux

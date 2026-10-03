@@ -1,25 +1,98 @@
 # Why bt_kit: BehaviorTree.CPP from Python via cppyy
 
-`bt_kit` lets you build and run [BehaviorTree.CPP](https://www.behaviortree.dev)
-v4 trees from Python: the real C++ engine parses the XML, owns the tree, and
-ticks it, while the leaf nodes are ordinary Python functions. There is no
-official Python binding for BehaviorTree.CPP (py_trees is a separate, incompatible
-library), so this capability does not otherwise exist, and because it is the
-*same* C++ library reading the *same* XML, everything in the BT.CPP ecosystem
-(Groot2, the Nav2 behavior trees, plugins) stays compatible.
+`bt_kit` lets Python callbacks run as leaves in a tree parsed and ticked by the
+BehaviorTree.CPP v4 C++ engine. You can use BT.CPP XML and its tree factory from
+Python without writing a binding or building a wrapper for the Python callbacks.
 
-This document compares the Python and C++ workflows and describes two ways to use
-the kit. See [SKILL.md](SKILL.md) for the API and [REPORT.md](REPORT.md) for test
-results, limits, and benchmarks.
+Install `ros-jazzy-bt-kit` with `pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-bt-kit`.
+See the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+for setup, or the [project repository](https://github.com/awesomebytes/cppyy_kit).
+The `bt` Pixi environment and `demo-bt-t01` task below are for a source checkout.
+For the API, see [SKILL.md](SKILL.md); for implementation details and measurements,
+see [REPORT.md](REPORT.md).
 
----
+## Try a BT.CPP tree from Python
 
-## Compare the complete tutorial program in C++ and Python
+The existing first-tree example registers Python functions as leaves, then runs
+the tree with BT.CPP:
+
+### Python example
+
+```python
+#!/usr/bin/env python
+"""
+BehaviorTree.CPP official tutorial 1 ("Your first behavior tree"), in Python via
+bt_kit. It uses the same factory, registration functions, and tree methods as the
+C++ tutorial. The leaf callbacks are Python functions.
+"""
+import bt_kit
+
+bt = bt_kit.bringup_bt()
+
+XML = """
+<root BTCPP_format="4">
+  <BehaviorTree ID="MainTree">
+    <Sequence name="root_sequence">
+      <CheckBattery   name="check_battery"/>
+      <OpenGripper    name="open_gripper"/>
+      <ApproachObject name="approach_object"/>
+      <CloseGripper   name="close_gripper"/>
+    </Sequence>
+  </BehaviorTree>
+</root>
+"""
+
+
+def check_battery(node):
+    print("[ Battery: OK ]")
+    return bt.NodeStatus.SUCCESS
+
+
+def open_gripper(node):
+    print("GripperInterface::open")
+    return bt.NodeStatus.SUCCESS
+
+
+def approach_object(node):
+    print("ApproachObject: approach_object")
+    return bt.NodeStatus.SUCCESS
+
+
+def close_gripper(node):
+    print("GripperInterface::close")
+    return bt.NodeStatus.SUCCESS
+
+
+def main():
+    factory = bt.BehaviorTreeFactory()
+    factory.registerSimpleCondition("CheckBattery", check_battery)
+    factory.registerSimpleAction("OpenGripper", open_gripper)
+    factory.registerSimpleAction("ApproachObject", approach_object)
+    factory.registerSimpleAction("CloseGripper", close_gripper)
+
+    tree = factory.createTreeFromText(XML)
+    tree.tickWhileRunning()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+From a source checkout, run `pixi run -e bt demo-bt-t01`. It prints:
+
+```text
+[ Battery: OK ]
+GripperInterface::open
+ApproachObject: approach_object
+GripperInterface::close
+```
+
+## Compare with the complete C++ tutorial
 
 These are complete programs. The left side shows the official
 ["first tree" tutorial](https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree)
 from behaviortree.dev. The right side shows the runnable file
-`scripts/bt_kit_demos/t01_first_tree.py`. The Python code uses the same API names
+`bt_kit/demos/t01_first_tree.py`. The Python code uses the same API names
 as the C++ tutorial and omits the C++ build files and class definition.
 
 ### C++, `first_tree.cpp` (official tutorial)
@@ -107,72 +180,6 @@ This C++ example still needs a `CMakeLists.txt`
 `colcon build` (or `cmake . && make`), to compile and link a binary before you
 can execute it.
 
-### Python, `t01_first_tree.py` (bt_kit, shipped in this repo)
-
-```python
-#!/usr/bin/env python
-"""
-BehaviorTree.CPP official tutorial 1 ("Your first behavior tree"), in Python via
-bt_kit. It uses the same factory, registration functions, and tree methods as the
-C++ tutorial. The leaf callbacks are Python functions.
-"""
-import bt_kit
-
-bt = bt_kit.bringup_bt()
-
-XML = """
-<root BTCPP_format="4">
-  <BehaviorTree ID="MainTree">
-    <Sequence name="root_sequence">
-      <CheckBattery   name="check_battery"/>
-      <OpenGripper    name="open_gripper"/>
-      <ApproachObject name="approach_object"/>
-      <CloseGripper   name="close_gripper"/>
-    </Sequence>
-  </BehaviorTree>
-</root>
-"""
-
-
-def check_battery(node):
-    print("[ Battery: OK ]")
-    return bt.NodeStatus.SUCCESS
-
-
-def open_gripper(node):
-    print("GripperInterface::open")
-    return bt.NodeStatus.SUCCESS
-
-
-def approach_object(node):
-    print("ApproachObject: approach_object")
-    return bt.NodeStatus.SUCCESS
-
-
-def close_gripper(node):
-    print("GripperInterface::close")
-    return bt.NodeStatus.SUCCESS
-
-
-def main():
-    factory = bt.BehaviorTreeFactory()
-    factory.registerSimpleCondition("CheckBattery", check_battery)
-    factory.registerSimpleAction("OpenGripper", open_gripper)
-    factory.registerSimpleAction("ApproachObject", approach_object)
-    factory.registerSimpleAction("CloseGripper", close_gripper)
-
-    tree = factory.createTreeFromText(XML)
-    tree.tickWhileRunning()
-
-
-if __name__ == "__main__":
-    main()
-```
-
-Run it directly: `pixi run -e bt demo-bt-t01`. Same output as the C++ program
-(`[ Battery: OK ] / GripperInterface::open / ApproachObject: approach_object /
-GripperInterface::close`).
-
 ### Differences shown in the examples
 
 - **No compile step for the Python demo.** The C++ program needs a CMakeLists and a `colcon build`
@@ -183,13 +190,12 @@ GripperInterface::close`).
   `registerSimpleAction`, `registerSimpleCondition`, `createTreeFromText`,
   `tickWhileRunning` are the library's own names. The Python uses those names.
 - **Same XML, same engine.** The tree text is identical and is parsed and ticked
-  by the same `libbehaviortree_cpp.so`, so Groot2 / Nav2 ecosystem compatibility
-  is unchanged.
+  by `libbehaviortree_cpp.so`; BT.CPP XML remains usable with BT.CPP tools.
 - **Mixed C++/Python leaves in one tree.** You can keep some leaves in Python and
   move other leaves to C++ (JIT-compiled or in existing libraries) in the same tree. See
   Mode B and `t03_mixed_tree.py` below.
 
-**What the C++ version buys that this one doesn't.**
+**What the C++ version provides.**
 `registerNodeType<ApproachObject>` uses a *compile-time* C++ type, which gives
 static type checking and a full node *manifest*, the metadata Groot2 uses to
 populate its editor palette and that BT.CPP writes into a `TreeNodesModel`. From
@@ -209,11 +215,9 @@ Tutorials 1 and 2 (`t01_first_tree.py`, `t02_ports.py`) use this mode. It suppor
 tree setup, behavior changes, and tests with short edit-run cycles.
 
 ### Mode B: call existing C++ from a Python tree
-Because cppyy can call *any* C++ in the environment, a leaf can drive real,
-already-installed C++ software while Python only wires the tree together. Leaves
-of different languages coexist in one tree: some Python, some JIT'd C++, some
-calling into existing shared libraries. `scripts/bt_kit_demos/t03_mixed_tree.py`
-demonstrates the full spectrum in a single `Sequence`:
+The mixed-tree demo combines Python leaves, a JIT-compiled C++ leaf, and a call to
+an installed rclcpp library. `bt_kit/demos/t03_mixed_tree.py` demonstrates this in
+a single `Sequence`:
 
 1. `CheckSensors`, a **Python** leaf;
 2. `ComputePlan`, a **JIT-compiled C++** functor (no Python on that tick);
@@ -239,9 +243,9 @@ Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md) §3–4):
   library updates.
 - **On-demand template instantiation.** Templated members like
   `getInput<std::string>` are instantiated when called from Python. No need to pre-declare which specializations a binding exposes.
-- **Same XML + full ecosystem compatibility.** The trees are ordinary BT.CPP XML,
-  so they open in Groot2 and interoperate with the Nav2 / ROS behavior-tree
-  ecosystem unchanged. You are not forking the format or the engine.
+- **BT.CPP XML and engine.** Trees use BT.CPP's XML format and the installed C++
+  engine. Compatibility with a particular BT.CPP tool or plugin depends on that
+  component's requirements.
 - **Mixed-language leaves in one tree.** Python, JIT'd C++, and calls into
   existing `.so`s coexist in a single tree (Mode B). You pay a language boundary
   only for Python leaves, about 0.3 µs per leaf tick (~2x a C++

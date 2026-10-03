@@ -1,13 +1,27 @@
 # rclcpp_kit
 
-`rclcpp_kit` provides access to the rclcpp part of ROS 2 core. Domain kits and
-the [rclcppyy](https://github.com/awesomebytes/rclcppyy) product use it for ROS
-operations. Its modules came from rclcppyy; `git log --follow` shows their
-history.
+`rclcpp_kit` lets Python use ROS 2's real C++ objects and APIs through cppyy. It
+provides the `rclcpp` namespace, C++ message proxies, familiar node and pub/sub
+calls, and access to C++ libraries such as tf2 and rosbag2. Use it when you want
+to work with ROS 2 C++ APIs directly from Python. The separate
+[`rclcppyy`](https://github.com/awesomebytes/rclcppyy) product is a drop-in
+`rclpy` accelerator that re-exports `rclcpp_kit`.
 
-It sits between the ROS-free [`cppyy_kit`](../docs/COMMON_PATTERNS.md) base
-(load_libraries / keep_alive / register_teardown / pretty_cpp_error) and the domain
-kits.
+## Getting started
+
+For published package use or development from a checkout, follow the
+[Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+The published package is named `ros-jazzy-rclcpp-kit`.
+
+From this repository checkout, run the existing TF example with:
+
+```bash
+pixi run -e rclcpp demo-tf-lookup
+```
+
+For a verified rclpy-style pub/sub round-trip that publishes Python messages and
+receives C++ message proxies in the subscription callback, see the
+[example used by the tests](https://github.com/awesomebytes/cppyy_kit/blob/main/rclcpp_kit/tests/_pubsub_plain_helper.py).
 
 ## What's here
 

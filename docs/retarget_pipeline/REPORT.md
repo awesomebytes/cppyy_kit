@@ -11,8 +11,14 @@ pinocchio and rerun-sdk for offline retargeting.
 
 This pipeline records webcam body and hand landmarks, publishes TF, visualizes the
 input and robot in Rerun, and maps the motion to a humanoid robot. It writes a
-"policy-kickstart" dataset for policy training. MediaPipe runs inference in Python.
-cppyy builds the C++ glue. Recording and replay are supported.
+"policy-kickstart" dataset for policy training. MediaPipe inference and the CLIK
+inverse-kinematics solve use their existing Python bindings; cppyy builds the `/tf`
+message and batch retarget kernel in C++. Recording and replay are supported.
+
+## Run this example
+
+From this checkout, follow the [run-book](#run-book-spot-check-live) to record a
+landmark stream and replay it through the humanoid retargeter.
 
 ## Results
 
@@ -302,6 +308,8 @@ hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `
 
 ## Gates
 
+Recorded gate results:
+
 - `pixi run lint` → **0**.
 - `pixi run test` (default env) → **56 passed, 130 skipped** (unchanged by this lane;
   `retarget_pipeline/tests` is not in the default task).
@@ -335,8 +343,8 @@ pixi run -e wbc demo-retarget --robot g1    --replay build/pipeline/demo.jsonl  
 pixi run -e wbc bench-retarget --replay build/pipeline/demo.jsonl                # glue 303.8x
 
 # tests
-pixi run -e pipeline test-pipeline    # 9 passed
-pixi run -e wbc test-retarget         # 6 passed
+pixi run -e pipeline test-pipeline
+pixi run -e wbc test-retarget
 ```
 
 ### Live ROS-native teleoperation (two terminals, one viewer)
@@ -394,7 +402,7 @@ CI also replays this file format.
 # Terminal A (producer): use a webcam if available, otherwise synthetic input.
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --record build/pipeline/live.jsonl --duration 30
 # Terminal B (consumer): start first. It waits for the file and first frame.
-pixi run -e wbc demo-retarget --robot g1 --follow build/pipeline/live.jsonl
+pixi run -e wbc python retarget_pipeline/retarget.py --robot g1 --follow build/pipeline/live.jsonl
 ```
 
 `--follow` has two timeouts. The startup timeout (`--startup-timeout`, default 30 s) allows time

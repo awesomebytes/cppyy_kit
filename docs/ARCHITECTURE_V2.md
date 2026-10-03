@@ -1,5 +1,10 @@
 # Architecture decision: cppyy_kit and the kit suite
 
+This is a maintainer decision record, not setup guidance. For installation or
+development steps, see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+Section 4 records the approved direction; Sections 1–3 preserve the earlier
+proposal evaluation and layout.
+
 **Status: approved direction (2026-07-11).** Section 4 records two changes to
 the original proposal. The ROS core is packaged as **`rclcpp_kit`**. The
 standalone **`rclcppyy`** product depends on that kit. The kit suite moves to a

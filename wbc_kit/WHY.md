@@ -27,6 +27,15 @@ This use case follows the same approach as the OMPL validity checker and the
 ros2_control controller examples: write a prototype, then move a frequently called
 virtual method to C++.
 
+## Run this example
+
+From this checkout, run `pixi run -e wbc demo-wbc-lower`. It compares Python-derived,
+inline-C++, and built-in C++ Crocoddyl action models on the same unicycle solve; the
+recorded result reaches cost `250.039320` in 8 iterations for all three. For
+installation or source-development instructions, see
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/). The
+published package is [`wbc-kit`](https://repo.prefix.dev/awesomebytes).
+
 ## Scope
 
 - Use Crocoddyl's binding to prototype a model. Use wbc_kit to compile its C++ version.

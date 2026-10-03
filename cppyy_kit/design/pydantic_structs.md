@@ -187,7 +187,7 @@ are never viewed).
 
 ---
 
-## 6. API (final names)
+## 6. API shape
 
 ```python
 from cppyy_kit import pydantic_structs as pyd

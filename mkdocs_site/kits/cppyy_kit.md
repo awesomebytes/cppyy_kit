@@ -1,40 +1,50 @@
-# cppyy_kit: the base package
+# cppyy_kit: inline C++ and shared helpers
 
-`cppyy_kit` is the ROS-free base used by the domain kits. Its shared utilities are
-documented across [The Patterns](../docs/COMMON_PATTERNS.md) and
-[Freeze & Cache](../docs/FREEZE.md).
+Use `cppyy_kit` to write C++ functions in Python or to prepare a C++ library for
+Python calls. The library kits use these same helpers for loading libraries,
+passing callbacks and arrays, and keeping objects alive.
 
-## What it provides
+## Write a C++ function
 
-- **Shared utilities:** library loading, `keep_alive`, `HandleRegistry`, callbacks,
-  warmup and first-use notices, teardown, and capability probes. The patterns guide
-  records tested behavior for named libraries; API coverage and requirements vary by
-  library.
-- **Automatic PCH setup:** when the startup hook is installed and a compatible PCH
-  exists in the cache, it can load the artifact before Cling parses the same headers
-  again. A cache miss uses JIT and may schedule a background build. Inspect status
-  with `python -m cppyy_kit.autopch --status`; disable with
-  `CPPYY_KIT_NO_AUTOPCH=1`. See [Freeze & Cache](../docs/FREEZE.md).
-- **Compile cache:** stores supported C++ glue in `.so` artifacts. A compatible cache
-  hit can avoid regenerating wrappers; a miss compiles the artifact. Cache reuse
-  depends on the cache key and environment. Disable it with `cached=False`,
-  `cppyy_kit.disable_caching()`, or `CPPYY_KIT_NO_CACHE=1`; see
-  [Freeze & Cache §9](../docs/FREEZE.md).
-- **GIL release:** `@cpp(nogil=True)` and `nogil(fn)` release the GIL around a C++
-  body or call. This lets other Python threads run during the native work; parallel
-  speed depends on the workload and hardware.
-
-## Install
-
-```toml
-[dependencies]
-cppyy-kit = "*"   # depends on cppyy and has no ROS dependency
-```
+Follow [Getting Started](../getting-started.md) to create an environment with
+`cppyy-kit` and NumPy, then save this as `kernel.py`:
 
 ```python
-import cppyy_kit
-# the primitives are used by every kit; see The Patterns for direct usage.
+import numpy as np
+from cppyy_kit import cpp
+
+@cpp
+def sum_sq(data: cpp.arr("float")) -> float:
+    "double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"
+
+print(sum_sq(np.array([1, 2, 3], np.float32)))  # 14.0
 ```
 
-The base package has no ROS dependency and can be installed on its own. Robotics
-kits depend on the base package. See the [Architecture](../docs/ARCHITECTURE_V2.md).
+Run `pixi run python kernel.py`. It prints `14.0`. The annotations supply a typed
+array pointer and element count; the docstring is compiled as C++.
+
+The compiled function is cached between runs. Use `@cpp(nogil=True)` when
+independent Python threads should run while the C++ function is working.
+
+## Use C++ libraries and callbacks
+
+| Task | Helpers and reference |
+|---|---|
+| Load C++ libraries and prepare include paths | `load_libraries`; [library setup](../docs/COMMON_PATTERNS.md) |
+| Pass a Python function to C++ | `callback`; [callbacks and lifetime](../docs/COMMON_PATTERNS.md) |
+| Keep a callback or buffer alive while C++ uses it | `keep_alive` |
+| Compile reusable C++ helpers | `cppdef_cached`; [compile cache](../docs/FREEZE.md) |
+| Make header-only libraries available | `require` |
+| Release C++ resources in a defined order | `register_teardown`, `shutdown` |
+
+A kit's usage page shows how it applies these helpers to its C++ library. See the
+[library list](../index.md#choose-a-library) to choose a kit.
+
+## Reduce repeated startup work
+
+`@cpp` uses the compile cache by default. Library kits can also register headers
+for automatic precompiled-header (PCH) caching. The caches save different work:
+compiled C++ functions and parsed library headers.
+
+See [Compile cache and cached headers](../docs/FREEZE.md) for setup, status
+commands, and cache controls.

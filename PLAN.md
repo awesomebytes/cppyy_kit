@@ -1,5 +1,7 @@
 # cppyy_kit master plan
 
+This is the maintainer status ledger, not setup guidance; use [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/) to install packages or develop the suite.
+
 **Purpose:** provide Python interfaces to C++ robotics libraries through cppyy.
 The suite supports prototyping from Python, moving selected work to C++, and
 ahead-of-time compilation. Documentation also supports coding agents.

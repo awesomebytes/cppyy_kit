@@ -1,40 +1,26 @@
 # Why control_kit: Python and C++ ros2_control workflows
 
-ros2_control provides no Python controller API. A stock controller needs a C++ class,
-plugin metadata, a build, and a running `controller_manager`. control_kit lets Python
-code add a controller instance to a manager in the same process.
+`control_kit` lets a Python class derive from ros2_control's
+`ControllerInterface` and run inside a real `controller_manager` in the same
+process. It is useful for prototyping a controller with mock hardware without
+building a plugin package for each change.
 
-## Stock ros2_control: what a new controller costs
+Install `ros-jazzy-control-kit` with `pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-control-kit`.
+See the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+for setup, or the [project repository](https://github.com/awesomebytes/cppyy_kit).
+The `control` Pixi environment and `demo-control-python` task below require a
+source checkout. See [SKILL.md](SKILL.md) for API and ordering rules, and
+[REPORT.md](REPORT.md) for implementation details and measurements.
 
-To add a controller you write, minimum:
+## Python controller example
 
-1. **A C++ class** deriving `controller_interface::ControllerInterface`, implementing the
-   pure virtuals `on_init`, `command_interface_configuration`, `state_interface_configuration`,
-   `update`, plus the lifecycle `on_configure`/`on_activate`/`on_deactivate`, in a
-   `.hpp` + `.cpp` pair, with visibility macros.
-2. **A `plugin_description.xml`** declaring the class as a `pluginlib` plugin with its
-   `base_class_type`.
-3. **A `CMakeLists.txt`**, `ament_cmake` project, `pluginlib_export_plugin_description_file`,
-   `generate_parameter_library` for the params, link `controller_interface` /
-   `hardware_interface` / `rclcpp_lifecycle`, install targets.
-4. **A `package.xml`** with the build/exec deps.
-5. **A colcon build** of the workspace to produce the `.so` and register the plugin in the
-   ament index.
-6. **A YAML** with the controller's parameters and type, and a **launch file** starting
-   `ros2_control_node` (or `controller_manager`) with the robot description + that YAML.
-7. **A spawner** (`ros2 run controller_manager spawner my_controller`) to load, configure
-   and activate it into the running manager.
-
-Each change to the control law requires a rebuild and relaunch. This takes longer than
-rerunning a Python script.
-
-## The same controller in Python
+The controller below uses mock hardware and the real read/update/write loop.
 
 ```python
 import rclcpp_kit
 import control_kit as ck
 
-bringup_rclcpp().init()
+rclcpp_kit.bringup_rclcpp().init()
 ck.bringup_control()
 
 class MyPD(ck.ControllerInterface):                 # derive the REAL base class
@@ -65,6 +51,32 @@ build, launch file, spawner, or second process. `MyPD` derives from
 `controller_interface::ControllerInterface`. A real
 `controller_manager::ControllerManager` calls its `update()` method in the control loop.
 The manager uses `mock_components/GenericSystem` hardware created from a URDF string.
+
+From a source checkout, run `pixi run -e control demo-control-python`. The demo reports successful configure and activation, runs about 300 cycles at 100 Hz, and ends with `OK` when measured tracking error is below 0.1 rad.
+
+## The stock plugin workflow
+
+To add a controller you write, minimum:
+
+1. **A C++ class** deriving `controller_interface::ControllerInterface`, implementing the
+   pure virtuals `on_init`, `command_interface_configuration`, `state_interface_configuration`,
+   `update`, plus the lifecycle `on_configure`/`on_activate`/`on_deactivate`, in a
+   `.hpp` + `.cpp` pair, with visibility macros.
+2. **A `plugin_description.xml`** declaring the class as a `pluginlib` plugin with its
+   `base_class_type`.
+3. **A `CMakeLists.txt`**, `ament_cmake` project, `pluginlib_export_plugin_description_file`,
+   `generate_parameter_library` for the params, link `controller_interface` /
+   `hardware_interface` / `rclcpp_lifecycle`, install targets.
+4. **A `package.xml`** with the build/exec deps.
+5. **A colcon build** of the workspace to produce the `.so` and register the plugin in the
+   ament index.
+6. **A YAML** with the controller's parameters and type, and a **launch file** starting
+   `ros2_control_node` (or `controller_manager`) with the robot description + that YAML.
+7. **A spawner** (`ros2 run controller_manager spawner my_controller`) to load, configure
+   and activate it into the running manager.
+
+Each change to the control law requires a rebuild and relaunch. This takes longer than
+rerunning a Python script.
 
 ## Side-by-side
 

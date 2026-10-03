@@ -1,47 +1,63 @@
 # nav2_kit: use Nav2 algorithm cores from Python
 
-`nav2_kit` lets you build a navigation stack by driving [Nav2](https://nav2.org)'s
-**algorithm cores directly** from Python: the real C++ code owns the costmap grid and
-runs the planner (NavFn or Smac 2D) and the RegulatedPurePursuit controller. Python
-controls the loop and provides the world data. The kit uses the installed Nav2
-headers. It does not require lifecycle servers, pluginlib, code generation, or a build
-step.
+`nav2_kit` is for mobile-base navigation on an occupancy grid. Python provides the
+world and controls the loop; Nav2's C++ classes provide the costmap and planners
+(NavFn or Smac 2D), and optionally the RegulatedPurePursuit controller. Its
+planning domain is 2D grid navigation for mobile bases.
 
-Nav2's Python interface is client-side: it configures C++ servers with YAML and sends
-them goals. This document shows how to build a small stack from Nav2's C++ classes
-with Python. For the API, see [SKILL.md](SKILL.md). For implementation evidence,
-limitations, and benchmarks, see [REPORT.md](REPORT.md).
+The kit uses cppyy to expose classes from the installed Nav2 headers. Helpers
+bridge a NumPy grid to the C++ costmap and return planner paths as NumPy arrays.
 
----
+From a source checkout, run the included grid plan from the `cppyy_kit` directory:
 
-## Implementing a custom planning loop with stock Nav2
+```bash
+pixi run -e nav2 demo-nav2-plan
+```
 
-Suppose you just want to try your own idea: "take this occupancy grid, plan across it
-with NavFn, and drive along the result." In stock Nav2, the supported way to run a
-*custom* planner or controller is to make it a **C++ pluginlib plugin inside a
-lifecycle server**. Concretely, per the
-[Nav2 "writing a new planner plugin" docs](https://docs.nav2.org/plugin_tutorials/docs/writing_new_nav2planner_plugin.html):
+The output includes a waypoint count and confirms that the route passes through
+the doorway in the wall. These commands use the source checkout's Pixi environment.
+For installed use, see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+and the published package `ros-jazzy-nav2-kit`.
 
-- **Write a C++ class** deriving `nav2_core::GlobalPlanner`, implementing
-  `configure() / activate() / deactivate() / cleanup() / createPlan()`, taking a
-  `LifecycleNode`, a `tf2_ros::Buffer`, and a `Costmap2DROS`.
-- **Export it as a plugin**, `PLUGINLIB_EXPORT_CLASS`, a `plugins.xml`, `ament`
-  registration, and a `CMakeLists.txt` that builds a shared library.
-- **Wire the lifecycle bringup**, a `planner_server` with a params YAML naming your
-  plugin, then launch the lifecycle manager to `configure`→`activate` it.
-- **Provide tf + a costmap**, the `Costmap2DROS` needs a transform tree
-  (`map`→`odom`→`base_link`) and sensor/static layers to populate the grid.
-
-The stock setup requires `colcon build`, plugin XML, YAML configuration, a launch file,
-a lifecycle manager, and a tf tree before you can call the planner. This setup suits
-production fleets, but adds steps when testing a planner on a grid.
-
-Contrast the cppyy "after": `pixi install -e nav2`, then `python your_plan.py`,
-JIT-including the installed Nav2 headers in ~70 ms at startup.
+For the API, see [SKILL.md](SKILL.md). For implementation evidence and detailed
+limitations, see [REPORT.md](REPORT.md).
 
 ---
 
-## Side by side: a custom planning loop, stock Nav2 vs nav2_kit
+## Plan on a grid with Nav2's C++ NavFn
+
+The included example builds a costmap from a NumPy occupancy grid, with a wall
+and doorway, then calls Nav2's `NavFn` planner directly.
+
+### nav2_kit, the complete runnable file this repo ships
+
+```python
+#!/usr/bin/env python
+import numpy as np
+import nav2_kit
+nav2_kit.bringup_nav2()
+
+grid = np.zeros((100, 100), dtype=np.uint8)                 # your world
+grid[:, 50] = nav2_kit.LETHAL_OBSTACLE                      # a wall
+grid[44:56, 50] = nav2_kit.FREE_SPACE                       # ... with a doorway
+costmap = nav2_kit.costmap_from_numpy(grid, resolution=0.05)
+
+path = nav2_kit.plan_navfn(costmap, start=(20, 50), goal=(80, 50))  # NavFn (C++)
+print(f"Planned {len(path)} waypoints from {tuple(path[0])} to {tuple(path[-1])}")
+```
+
+The command runs Nav2's C++ `nav2_navfn_planner::NavFn`, the same planner used by
+`planner_server`, and prints the waypoint count and confirms the route crosses the
+divider through its doorway. This grid example needs no server, plugin XML, YAML,
+tf, or build.
+
+---
+
+## What a custom planning loop takes in stock Nav2
+
+In stock Nav2, the supported way to run a custom planner or controller is to make
+it a C++ pluginlib plugin inside a lifecycle server. See the
+[Nav2 writing a new planner plugin docs](https://docs.nav2.org/plugin_tutorials/docs/writing_new_nav2planner_plugin.html).
 
 ### Stock Nav2, the shape of a custom global planner
 
@@ -72,39 +88,13 @@ planner_server:
 `planner_server` + lifecycle manager, and a tf tree feeding a `Costmap2DROS`. Then a
 `colcon build` and a lifecycle bringup, before the planner runs once.
 
-### nav2_kit, the complete runnable file this repo ships
+## What this gives you
 
-```python
-#!/usr/bin/env python
-import numpy as np
-import nav2_kit
-nav2_kit.bringup_nav2()
-
-grid = np.zeros((100, 100), dtype=np.uint8)                 # your world
-grid[:, 50] = nav2_kit.LETHAL_OBSTACLE                      # a wall
-grid[44:56, 50] = nav2_kit.FREE_SPACE                       # ... with a doorway
-costmap = nav2_kit.costmap_from_numpy(grid, resolution=0.05)
-
-path = nav2_kit.plan_navfn(costmap, start=(20, 50), goal=(80, 50))  # NavFn (C++)
-print(f"Planned {len(path)} waypoints from {tuple(path[0])} to {tuple(path[-1])}")
-```
-
-Run it: `pixi run -e nav2 demo-nav2-plan`. It plans across the grid with **Nav2's
-real NavFn algorithm**, the same C++ `nav2_navfn_planner::NavFn` the
-`planner_server` runs, and prints the path, with no server, no plugin XML, no YAML,
-no tf, no build.
-
-### What we gain (from the comparison above)
-
-- **No plugin, lifecycle, YAML, tf, or build setup.** The stock path needs a C++
-  plugin, `plugins.xml`, params YAML, a launch file + lifecycle manager, and a tf
-  tree; nav2_kit runs the moment you invoke it (~70 ms one-time cppyy bringup).
 - **The world and the loop are just Python.** The occupancy grid is a NumPy array;
   the follow controller is a Python function you can breakpoint and edit. You iterate
   in seconds, not `colcon build` cycles.
-- **It is the same `libnav2_*.so`.** `Costmap2D` and `NavFn` are Nav2's own classes,
-  header-following, so nav2_kit tracks whatever Nav2 is installed, no binding to fall
-  behind.
+- **C++ object access from Python.** cppyy exposes Nav2 classes from the installed
+  headers; kit helpers handle the NumPy-to-costmap copy and planner result arrays.
 - **A prototype-to-native path.** Prototype with cppyy JIT, then compile the planner
   as a Nav2 plugin when needed. The Nav2 calls stay the same.
 
@@ -150,21 +140,6 @@ robot. It publishes `nav_msgs/OccupancyGrid` +
 combinations reach the goal; `--planner smac --controller rpp` runs Nav2's real Smac 2D
 planner **and** its real RegulatedPurePursuit controller, both C++, driven from one
 self-contained Python file.
-
----
-
-## cppyy features
-
-Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
-
-- **No plugin, YAML, lifecycle, or build setup.** `python x.py` is the workflow; bringup
-  is a one-time ~70 ms JIT.
-- **Header-following, tracks the installed Nav2.** No hand-maintained binding.
-- **Bulk data stays fast.** A NumPy grid → `Costmap2D` is a single `memcpy`
-  (~600–3600× a per-cell Python loop); the plan never leaves C++ (NavFn on 1024² in
-  tens of ms vs ~2 s for a pure-Python A\* in this benchmark).
-- **A prototype-to-native lowering path**, as with bt_kit / pcl_kit / ompl_kit: the
-  same calls become a compiled Nav2 plugin when you deploy.
 
 ---
 
