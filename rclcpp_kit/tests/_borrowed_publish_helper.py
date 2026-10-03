@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated same-handle publish integration proof."""
+"""Isolated integration test for publishing through the same handle."""
 
 import gc
 import os

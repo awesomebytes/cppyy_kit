@@ -2,8 +2,8 @@
 """
 moveit_kit d01: the MoveIt RobotModel / RobotState basics from Python -- build the
 Panda model from its URDF+SRDF, do forward kinematics, then inverse kinematics via
-the real KDL plugin. Mirrors MoveIt's C++ RobotState tutorial; the kit only hides
-the cppyy bringup + the plugin-loading friction.
+the KDL plugin. It follows MoveIt's C++ RobotState tutorial. The kit handles cppyy
+bringup and plugin loading.
 
 Runs with the full MoveIt C++ API against the installed MoveIt 2 -- no moveit_py.
 

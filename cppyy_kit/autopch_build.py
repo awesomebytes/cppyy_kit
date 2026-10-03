@@ -8,9 +8,9 @@ Spawned by ``cppyy_kit.autopch`` at interpreter exit as::
 It reads the manifest's baked-header set and include paths, builds the PCH
 atomically (``cppyy_kit.autopch.generate_pch``), prunes stale artifacts, and always
 releases the lock. rootcling's output, the prune summary, and any failure go to
-``<out.pch>.log`` -- the process is detached from the run that scheduled it, so that
-log is where a build is diagnosed. A failure is honest and non-fatal: no artifact is
-left behind, and the next run simply reschedules the build.
+``<out.pch>.log``. The process is detached from the run that scheduled it, so use
+this log to diagnose a build. On failure, the worker leaves no artifact. A later
+run can schedule another build.
 """
 import json
 import os

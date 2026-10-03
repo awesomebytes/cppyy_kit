@@ -1,21 +1,23 @@
 """
-cppyy_kit.require -- make a header-only C++ library available to cppyy, CONDA-FIRST.
+cppyy_kit.require makes a header-only C++ library available to cppyy, checking
+Conda before downloading files.
 
 The policy, in order:
   1. **Conda first.** If the library's headers are already in the environment (the
      conda/robostack packaged copy, on ``$CONDA_PREFIX/include`` or a cppyy include
-     path), use them -- register the include dir and return. No download. This is
+     path), use them. Register the include directory and return without downloading.
+     This is
      the right answer for anything on conda-forge (Eigen, fmt, nlohmann_json, ...):
      the packaged version is ABI/toolchain-matched and offline.
   2. **Fetch only when unpackaged or an exact version is needed.** If ``url`` +
      ``sha256`` are given and the header isn't in the env, download once to a cache,
      verify the checksum, unpack (single header, ``.zip`` or ``.tar.gz``), and
-     register the cache include dir. Cached thereafter -> offline on later runs.
+     register the cache include directory. Later runs use the cached files offline.
 
-This generalizes the vendored-source flow (COMMON_PATTERNS §21) to the header-only
-case: §21 clones + patches + compiles a ``.so``; ``require`` just puts headers on the
-path so ``cppyy.include`` / ``cppdef_cached`` can use them. ``require`` fetches
-sources; it never compiles -- pair it with ``cppdef_cached`` when you need a ``.so``.
+This extends the vendored-source flow (COMMON_PATTERNS §21) to header-only
+libraries. That flow clones, patches, and compiles a ``.so``. ``require`` adds
+headers to the search path for ``cppyy.include`` or ``cppdef_cached``. It fetches
+files but does not compile them. Use ``cppdef_cached`` when you need a ``.so``.
 """
 import hashlib
 import os

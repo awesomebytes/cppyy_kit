@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Live proof: rclcpp_kit.direct_entities.create_raw_subscription (rclcpp's
+"""Integration test: rclcpp_kit.direct_entities.create_raw_subscription (rclcpp's
 GenericSubscription) delivers wire bytes byte-for-byte identical to a real
 stock rclpy ``raw=True`` subscriber receiving the exact same published
-message -- not merely bytes that happen to deserialize correctly, but the
-same bytes a genuine ``raw=True`` subscriber would have gotten.
+message. The test compares the bytes with those received by a ``raw=True`` subscriber.
 """
 import json
 import os

@@ -1,23 +1,12 @@
 #!/usr/bin/env python3
-"""
-THE SHOWCASE: author a custom Crocoddyl action model three ways and solve the same
-unicycle optimal-control problem with each -- the ompl_kit "lower to C++" story
-applied to optimal control.
+"""Compare three Crocoddyl action models on the same unicycle problem.
 
-    (A) Python-derived model  -- subclass crocoddyl.ActionModelAbstract in Python,
-        calc/calcDiff in NumPy. This is Crocoddyl's supported *prototype* path.
-    (ref) built-in C++ model  -- crocoddyl.ActionModelUnicycle (compiled into the
-        binding). The speed ceiling.
-    (B) cppyy inline C++ model -- the SAME custom model written in C++ in a
-        cppyy.cppdef string in THIS script, JIT-compiled at runtime with NO build
-        system. The solver calls its calc/calcDiff natively.
+(A) is a Python subclass, (ref) is Crocoddyl's compiled built-in, and (B) is a
+custom C++ model compiled at runtime with cppyy. All three reach the same cost.
+The C++ model runs at the built-in model's speed and is about 21 times faster than
+the Python subclass.
 
-All three solve the identical problem and converge to a bit-identical cost; (B)
-runs at the built-in C++ speed and many times faster than the Python-derived model.
-That is the wbc_kit thesis: prototype the model in Python, then *lower* it to inline
-C++ with cppyy -- same script, minimal diff, no build system, native hot loop.
-
-Run: pixi run -e wbc demo-wbc-lower       (numbers vary; machine may be shared)
+Run `pixi run -e wbc demo-wbc-lower`. Timings depend on the machine load.
 """
 import os
 import time

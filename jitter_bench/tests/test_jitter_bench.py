@@ -174,7 +174,7 @@ def test_cpp_loop_variant():
     try:
         rec, base, period_ns, n = cpp_loop.run_cpp_loop(
             1000.0, 0.05, compute_iters=10, use_nogil=True)   # 50 ms
-    except Exception as exc:                       # compile-toolchain / cppyy hiccup
+    except Exception as exc:                       # compile-toolchain or cppyy error
         pytest.skip("cppyy C++ loop unavailable: %s" % str(exc).splitlines()[0])
     assert n == 50
     assert rec.count == 50

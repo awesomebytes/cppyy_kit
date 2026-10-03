@@ -1,40 +1,37 @@
 """
-rclcppyy.kits.freeze -- L0->L1 "freeze" for cppyy kits.
+rclcppyy.kits.freeze builds and selects precompiled headers for cppyy kits.
 
 A kit's bringup cost is dominated by the one-time Cling JIT-parse of the library
 headers (bt_kit: ~0.83 s for ``cppyy.include("behaviortree_cpp/bt_factory.h")``).
-Freezing replaces that parse with loading a *prebuilt Cling precompiled header
-(PCH)* that already contains the header AST -- a few milliseconds instead of most
-of a second.
+Freezing replaces that parse with a prebuilt Cling precompiled header (PCH) that
+contains the header AST. Loading it takes a few milliseconds in this benchmark.
 
 Mechanism (the same one cppyy uses for its own std PCH): Cling loads the PCH named
 by the ``CLING_STANDARD_PCH`` environment variable when the interpreter starts.
-We build a PCH that bakes the kit's headers on top of the std ones and point
+We build a PCH that includes the kit's headers and point
 ``CLING_STANDARD_PCH`` at it. Because the interpreter binds its PCH at the first
 ``import cppyy`` (which ``import rclcppyy`` triggers transitively), the variable
-MUST be set *before* any cppyy import. The supported entry point is the launcher::
+must be set before any cppyy import. Use the launcher::
 
     RCLCPPYY_FROZEN=1 pixi run -e bt freeze-bt-run bt_kit/demos/t01_first_tree.py
     # or directly:
     python scripts/freeze/run_frozen.py <script.py> [args...]
 
-which sets the variable and then exec's the target in a fresh process, so the PCH
-is active before cppyy loads. See ``docs/kits/FREEZE.md`` for the full recipe and
-the artifact lifecycle.
+which sets the variable and runs the target in a fresh process before cppyy loads.
+See ``docs/FREEZE.md`` for the recipe and artifact lifecycle.
 
-This module is import-safe *without* the rclcppyy package (it imports only stdlib
-plus, lazily, ``cppyy_backend`` -- which does not initialise the interpreter), so
-``scripts/freeze/run_frozen.py`` can load it by file path to resolve the artifact
-location without dragging in cppyy.
+This module does not require rclcppyy. It imports only the standard library and,
+when needed, ``cppyy_backend``, which does not initialize the interpreter.
+``scripts/freeze/run_frozen.py`` can load it by file path without importing cppyy.
 """
 import os
 
 # A header static with internal linkage that inline/template code ODR-uses. The
 # AST-only PCH carries its declaration but the JIT never emits the definition, and
-# the library's own copy is a non-exported local symbol -- so JIT-compiled glue
+# the library's own copy is a non-exported local symbol. JIT-compiled glue
 # (makePorts, getInput<T>, setOutput<T>, ...) fails to resolve it. We emit one
 # strong, externally-visible definition under the exact mangled name so every JIT
-# module resolves to it. Applied ONLY on the frozen path (in L0 the live-parsed
+# module resolves to it. Apply only on the frozen path. In L0 the live-parsed
 # header already defines it, and a second definition would clash). Extend this
 # per-kit table if a freeze surfaces further unresolved internal-linkage symbols.
 _FORCE_SYMBOLS = {
@@ -49,7 +46,7 @@ std::type_index __rclcppyy_frozen_UndefinedAnyType
 def version_tag():
     """Cling-PCH compatibility tag ``<cppstd>.<backend-version>`` (e.g.
     ``17.6.32.8``), matching cppyy's own std-PCH naming so a stale artifact built
-    against a different cppyy-cling is obvious by filename."""
+    against a different cppyy-cling can be identified from the filename."""
     from cppyy_backend._get_cppflags import get_cppversion
     from cppyy_backend._version import __version__
     return "%s.%s" % (get_cppversion(), __version__)
@@ -77,7 +74,7 @@ def active(kit="bt"):
 
     Gated on the *filename* (not an exact path) so both the launcher and a
     hand-set ``CLING_STANDARD_PCH`` count, while the default cppyy std PCH does
-    not -- this is what tells the kit's bringup to apply the force-symbol glue."""
+    not. Bringup uses this result to decide whether to apply force-symbol glue."""
     base = os.path.basename(os.environ.get("CLING_STANDARD_PCH", ""))
     return base.startswith("%s_kit.pch" % kit)
 

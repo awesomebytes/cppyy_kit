@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for the ik_bench IK benchmark suite (M6c).
 
-Two gates so the suite is honest outside the env:
+Two checks let the suite run outside the benchmark environment:
   * ``_HAVE_PANDA`` -- the panda URDF is locatable via the ament index (the pure-
     NumPy FK / DLS + harness-metadata tests need only this; present in the moveit/ik
     envs).

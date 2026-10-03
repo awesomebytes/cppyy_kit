@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live Fast DDS proof: content_filter actually suppresses non-matching messages.
+"""Fast DDS integration test: content_filter suppresses non-matching messages.
 
 Runs only under RMW_IMPLEMENTATION=rmw_fastrtps_cpp (set by the caller via
 monkeypatch before spawning this subprocess, the established pattern from

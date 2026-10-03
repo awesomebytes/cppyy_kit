@@ -68,11 +68,11 @@ tests:
 about:
   license: BSD-3-Clause
   license_file: LICENSE.txt
-  summary: Python-C++ bindings interface based on Cling/LLVM
+  summary: Python and C++ bindings built with Cling and LLVM
   description: |
-    Architecture-scoped rebuild of the upstream cppyy 3.5.0 Python package for
-    Linux ARM64. The compiled CPyCppyy, backend, and Cling components remain the
-    exact conda-forge packages pinned above.
+    Rebuild the upstream cppyy 3.5.0 Python package for Linux ARM64. The
+    compiled CPyCppyy, backend, and Cling components use the conda-forge packages
+    pinned above.
   homepage: https://pypi.org/project/cppyy/
   repository: https://github.com/wlav/cppyy
   documentation: https://cppyy.readthedocs.io/

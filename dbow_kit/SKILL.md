@@ -1,34 +1,42 @@
-# dbow_kit — SKILL (seed)
+# dbow_kit
 
-> Seed cheat sheet. A full LLM-facing SKILL.md is a planned deliverable
-> (tracked in the project plan). This points at the authoritative sources.
+Use DBoW2 from Python through cppyy for ORB place recognition. It is useful when
+you want to compare image descriptors against a vocabulary without maintaining a
+separate Python binding. Pair it with [`cv_kit`](../cv_kit/SKILL.md), which
+provides C++ ORB descriptors.
 
-**What:** drive DBoW2 (Gálvez-López & Tardós, "Bags of Binary Words") from
-Python via cppyy for ORB place recognition / loop-closure detection. Pairs with
-[`cv_kit`](../cv_kit/WHY.md) (which produces the ORB descriptor Mats).
+The published Pixi package is `ros-jazzy-dbow-kit`. For package setup and the
+supported Pixi environment, start with the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
-**Why (impossible → possible):** DBoW2 has **no Python binding** and is **not**
-packaged on conda-forge. cppyy makes it drivable from Python without writing a
-binding. See [`WHY.md`](WHY.md) and [`REPORT.md`](REPORT.md).
+## Install and try the demo
 
-**One-time build (vendored from source):**
-```
-pixi run -e vision build-dbow2      # compiles dbow_kit/cpp/build_dbow2.py -> build/vendor/libDBoW2.so
-```
+From this repository checkout, DBoW2's source is built once in the `vision`
+environment, then the existing loop demo exercises vocabulary training,
+database queries, and loop confirmation:
 
-**Use:**
-```python
-import dbow_kit
-voc = dbow_kit.train_vocabulary(all_descriptors)   # small, zero-download; or
-voc = dbow_kit.load_vocabulary("data/ORBvoc.txt")  # real ORBvoc (binary-cached)
-db = dbow_kit.OrbDatabase(voc)
-db.add(dbow_kit.descriptors_from_mat(orb_descriptors))   # Nx32 CV_8U -> vector<cv::Mat>
+```bash
+pixi install -e vision
+pixi run -e vision build-dbow2
+pixi run -e vision demo-vision-loop
 ```
 
-**Descriptor layout:** ORB = 256-bit = 32 bytes; one image is an `Nx32 CV_8U`
-`cv::Mat`. DBoW2 wants a `std::vector<cv::Mat>` of `1x32` rows —
-`descriptors_from_mat` does that split in C++.
+The deterministic synthetic sequence reports 19 confirmed revisits in 200
+frames and needs no dataset download. See the [vision loop-closure
+tutorial](../docs/tutorials/vision_loop_closure.md) for the stages and the
+optional real-data route.
 
-**Full story:** [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
-The joint cv+dbow loop-closure flow is covered in the
-[vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md).
+## API shapes
+
+- `train_vocabulary(all_descriptors)` takes a sequence of nonempty C++ descriptor
+  Mats. Obtain these from `cv_kit.create_orb(...).detect_and_compute(...)` on
+  frames as shown by the existing feature and loop demos.
+- `make_database(vocabulary)` creates a searchable database.
+- `add_image(database, descriptors)` adds one image's `N x 32` ORB descriptor
+  Mat (one 32-byte row per feature, stored as 8-bit unsigned values);
+  `query(database, descriptors, max_results=...)` returns matching image IDs and
+  scores.
+- `load_vocabulary(path)` accepts a vocabulary file such as `ORBvoc.txt`; the
+  first load also writes a binary cache beside the text file.
+
+The [DBoW2 report](REPORT.md) and [`cv_kit/REPORT.md`](../cv_kit/REPORT.md)
+document build and benchmark details.

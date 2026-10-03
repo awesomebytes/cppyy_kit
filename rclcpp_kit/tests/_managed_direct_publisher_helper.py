@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live managed-publisher lifetime, C++ typing, and raw A/B proof."""
+"""Integration test for managed-publisher lifetime, C++ typing, and raw publishing."""
 
 import importlib
 import statistics

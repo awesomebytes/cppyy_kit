@@ -4,21 +4,21 @@ Vendored-source build of **bio_ik** -- a MoveIt kinematics plugin that is NOT on
 conda-forge/RoboStack (COMMON_PATTERNS 21: fetch + build from source when there is
 no package).
 
-bio_ik (PickNikRobotics fork, ``ros2`` branch) is a clean ``ament_cmake`` package,
-so unlike the DBoW2 direct-``$CXX`` compile we let its own CMake run -- but with a
+bio_ik (PickNikRobotics fork, ``ros2`` branch) is an ``ament_cmake`` package.
+Unlike the DBoW2 direct-``$CXX`` compile, this uses its own CMake with a
 plain ``cmake`` invocation (not colcon), installing into a private prefix under
 ``build/vendor/bio_ik_install``. ``ament_package()`` + ``pluginlib_export_plugin_
 description_file`` write the ament-index markers, the plugin description XML and the
 plugin ``.so`` into that prefix, so putting it on ``AMENT_PREFIX_PATH`` makes
-pluginlib discover ``bio_ik/BioIKKinematicsPlugin`` by lookup name -- exactly the
+pluginlib discover ``bio_ik/BioIKKinematicsPlugin`` by lookup name, using the
 in-process pluginlib recipe moveit_kit already uses (REPORT.md 2.2). cppyy never
 parses a bio_ik header; pluginlib ``dlopen``s the compiled ``.so``.
 
     pixi run -e ik build-bio-ik      # clone + configure + build + install (once)
 
-Everything lands in the gitignored ``build/vendor/`` tree. Idempotent: clone and
-build skip if already present (``--force`` rebuilds). Env-version-tagged by living
-under the pixi env's toolchain; a fresh env is a clean rebuild.
+Files are stored in the gitignored ``build/vendor/`` tree. Clone and build steps skip
+existing outputs; use ``--force`` to rebuild. The pixi toolchain version is part of the
+install path, so a new environment gets a separate build.
 """
 import argparse
 import os

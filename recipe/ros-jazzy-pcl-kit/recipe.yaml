@@ -2,8 +2,8 @@ schema_version: 1
 
 context:
   name: ros-jazzy-pcl-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -28,8 +28,8 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.3.0
-    - ros-jazzy-rclcpp-kit ==0.3.0
+    - cppyy-kit ==0.4.0
+    - ros-jazzy-rclcpp-kit ==0.4.0
     - pcl
     - ros-jazzy-pcl-conversions
 
@@ -44,10 +44,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Drive the Point Cloud Library from Python via cppyy (clouds stay in C++)"
+  summary: "Use the Point Cloud Library from Python through cppyy"
   description: |
-    pcl_kit drives the Point Cloud Library from Python via cppyy, with a ROS 2
-    PointCloud2 bridge so a cloud stays in C++ end to end through a pipeline.
+    pcl_kit exposes the Point Cloud Library to Python through cppyy. Its ROS 2
+    PointCloud2 bridge lets applications pass a C++ cloud through a pipeline
+    without converting it to a Python point-cloud object.
 
 extra:
   recipe-maintainers:

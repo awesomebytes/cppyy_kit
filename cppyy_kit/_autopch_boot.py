@@ -3,22 +3,22 @@ Standalone bootstrap for cppyy_kit's zero-config Cling PCH.
 
 A copy of this file is installed into the active environment's site-packages (as
 ``_cppyy_kit_autopch.py``) next to a ``.pth`` whose one line calls ``activate()`` at
-**every interpreter start -- before any user import**. That is what makes the PCH
+at every interpreter start, before any user import. This makes the PCH
 bind regardless of whether a program imports cppyy before cppyy_kit: Cling reads
 ``CLING_STANDARD_PCH`` when it initialises, and by the time any ``import cppyy`` runs
 the ``.pth`` has already set it.
 
-The SAME module is imported by ``cppyy_kit.autopch`` as the single source of the
-cache-path and key logic, so the ``.pth`` and the in-process code can never disagree
-on where an artifact lives. Two hard constraints follow:
+The same module is imported by ``cppyy_kit.autopch`` to share cache path and key
+logic between the ``.pth`` file and the running process. The installed copy has
+two requirements:
 
-  * **stdlib only, no package-relative imports** -- the installed copy is a top-level
+  * **stdlib only, no package-relative imports:** the installed copy is a top-level
     module, and this runs at interpreter startup for *every* program in the env;
-  * **never raises** -- a bootstrap that throws would print a traceback (or worse) on
-    every ``python`` invocation. ``activate()`` swallows everything.
+  * **does not raise:** an error here would print a traceback on every ``python``
+    invocation. ``activate()`` catches errors and returns without raising.
 
-It imports ``cppyy_backend`` (only) to read the cppyy version for the cache key; that
-import is a few milliseconds and does NOT initialise the Cling interpreter.
+It imports ``cppyy_backend`` only to read the cppyy version for the cache key. This
+takes a few milliseconds and does not initialize the Cling interpreter.
 """
 import hashlib
 import json
@@ -42,8 +42,8 @@ def env_prefix():
 
 
 def versions():
-    """``(cppstd, cppyy-backend-version)`` for the cache key -- an upgraded cppyy
-    changes it. Falls back to a coarse tag if cppyy_backend is unavailable."""
+    """Return ``(cppstd, cppyy-backend-version)`` for the cache key. A cppyy
+    upgrade changes this value. Use a coarse tag if cppyy_backend is unavailable."""
     try:
         from cppyy_backend._get_cppflags import get_cppversion
         from cppyy_backend._version import __version__ as backend_version

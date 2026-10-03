@@ -2,21 +2,18 @@
 """
 L0 (JIT) vs L1 (frozen PCH) bringup benchmark for bt_kit.
 
-Spawns a fresh subprocess per sample (bringup cost is a once-per-process startup
-cost, so it must be measured cold), with and without the frozen PCH active, and
-reports the median over N samples. Three things are measured:
+Starts a fresh subprocess for each sample, with and without the frozen PCH. This
+measures startup cost on a cold process. The script reports medians for:
 
-  * staged bringup wall time -- the same stages as docs/bt_kit/REPORT.md, so the
-    ~0.83 s header parse that the freeze removes is visible on its own line;
-  * time-to-first-tree-tick -- build the t01 tree and run one tickWhileRunning();
-  * total t01 demo runtime -- wall clock of the whole t01_first_tree.py process
-    (Python start -> exit), the number a user actually feels.
+  * bringup wall time, split into the stages listed in docs/bt_kit/REPORT.md;
+  * time to the first tree tick, including building the t01 tree;
+  * total runtime of the t01_first_tree.py process.
 
 Run inside the bt env (build the PCH first with `freeze-bt-build`)::
 
     pixi run -e bt freeze-bench            # default 5 samples
 
-The machine may be shared; medians over several samples keep it honest.
+The machine may be shared, so the script reports medians over several samples.
 """
 import argparse
 import json

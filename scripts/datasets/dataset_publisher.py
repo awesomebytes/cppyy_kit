@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 """
-dataset_publisher -- THE reusable image data source for the vision tutorial.
+dataset_publisher publishes image data for the vision tutorial.
 
 Publishes a sequence as ``sensor_msgs/Image`` on a topic via rclcppyy (the messages
 are C++ ``sensor_msgs::msg::Image`` on the wire, so a rclcppyy subscriber gets them
 with no Python copy). Sources, all behind one ``frame_source`` generator:
-  * ``synthetic`` -- the deterministic synthetic loop (scripts/datasets/synthetic_loop.py),
+  * ``synthetic``: the deterministic loop in scripts/datasets/synthetic_loop.py,
     zero download; published as ``mono8``;
-  * ``tum`` -- a TUM RGB-D sequence dir (uses its ``rgb/`` PNGs); published ``bgr8``;
-  * ``folder`` -- any directory of images (sorted by filename); ``bgr8``.
+  * ``tum``: a TUM RGB-D sequence directory that uses its ``rgb/`` PNGs; published as ``bgr8``;
+  * ``folder``: an image directory sorted by filename; published as ``bgr8``.
 
 Library::
 

@@ -20,7 +20,7 @@ class _WeakrefableCallback:
 
 def test_managed_subscription_destroy_under_live_mte_does_not_crash():
     """The reference repro: a subscription's entity is destroyed while a
-    peer subscription's callback is genuinely in flight on another native
+    peer subscription's callback is running on another native
     MultiThreadedExecutor worker. Pre-fix this crashed ('callable was
     deleted' / 'terminate called without an active exception'); post-fix it
     must be crash-free across every one of 60 iterations."""

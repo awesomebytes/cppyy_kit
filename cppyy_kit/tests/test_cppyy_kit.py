@@ -99,8 +99,8 @@ def test_unwrap_expected():
 
 def test_std_function_wraps_python_callable():
     # A Python callable becomes a std::function callable from C++/Python.
-    # The callable must stay referenced (std_function does not pin it -- passing a
-    # throwaway lambda would be collected and raise "callable was deleted").
+    # The callable must stay referenced. std_function does not pin it; passing a
+    # throwaway lambda would be collected and raise "callable was deleted".
     def inc(x):
         return x + 1
 
@@ -171,7 +171,7 @@ def test_shutdown_runs_lifo_and_is_idempotent(isolated_teardown_registry):
     # LIFO: last registered runs first; the duplicate did not add a second run.
     assert order == ["second", "first"]
 
-    # A second shutdown() is a no-op (idempotent) -- the atexit backstop and an
+    # A second shutdown() is a no-op (idempotent). The atexit backstop and an
     # explicit call cannot double-run teardown.
     cppyy_kit.shutdown()
     assert order == ["second", "first"]
@@ -194,7 +194,7 @@ def test_shutdown_swallows_callback_exceptions(isolated_teardown_registry):
     assert ran == ["good"]
 
 
-# --- callback() ergonomics -------------------------------------------------
+# --- callback() behavior --------------------------------------------------
 
 def _annotated(arg_type, ret_type):
     """A one-arg function `fn(x)` with the given parameter/return annotations."""
@@ -241,8 +241,7 @@ def test_callback_inference_error_is_readable():
 
 
 def test_callback_survives_gc_without_owner():
-    # The classic "callable was deleted" footgun: with callback() it is gone,
-    # because the module registry pins the callable even after local refs drop.
+    # callback() pins the callable in the module registry after local references drop.
     def make():
         def cb(x: int) -> int:
             return x + 1

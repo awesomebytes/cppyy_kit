@@ -1,11 +1,10 @@
 """
-Panda kinematics in pure NumPy -- the honest "no C++ solver" baseline row.
+Panda kinematics implemented in pure NumPy for the Python benchmark solver.
 
 Parses the SAME ``panda.urdf`` the C++ solvers use (located via the ament index)
 into the ``panda_link0 -> panda_link8`` chain, and implements forward kinematics,
 the geometric Jacobian, and a damped-least-squares (DLS) / Jacobian-transpose IK
-loop in NumPy. No MoveIt, no KDL, no cppyy -- this is the row that shows what plain
-Python costs so the C++-via-cppyy rows have something to beat.
+loop in NumPy. It does not use MoveIt, KDL, or cppyy.
 
 The FK here is validated against MoveIt's own FK to ~1e-9 in the correctness test
 (``tests/test_ik_bench.py``), so the benchmark's target poses (generated with MoveIt
@@ -268,7 +267,7 @@ def dls_ik(chain, target_pose, seed, pos_tol=1e-3, ori_tol=1e-2,
     within their timeout too), this descends from ``seed`` first and, on failure,
     restarts from fresh random configs until the position+orientation error is under
     tolerance or ``time_budget`` (seconds) elapses -- early-returning on success just
-    like the plugins. The honest weakness the benchmark still exposes: even with
+    like the plugins. One limitation is that even with
     restarts, doing this in Python is far slower per solve than the JIT'd C++ path."""
     import time
     start = time.perf_counter()

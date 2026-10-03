@@ -90,7 +90,7 @@ def ros2_include_paths() -> List[str]:
     paths = []
     for pkg, prefix in get_packages_with_prefixes().items():
         include_path = os.path.join(prefix, "include", pkg)
-        # The path may not exist if it's a Python package (or simply has no headers).
+        # The path may not exist for a Python package or a package with no headers.
         if os.path.exists(include_path):
             paths.append(include_path)
     return paths

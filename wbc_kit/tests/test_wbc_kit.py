@@ -3,13 +3,12 @@
 
 Crocoddyl is an optional dependency (the pixi ``wbc`` env), absent from the default
 env, so the whole module auto-skips when the headers are not installed -- the
-default ``pixi run test`` is unaffected. Run the real thing with
+default ``pixi run test`` is unaffected. Run these tests with
 ``pixi run -e wbc test-wbc``.
 
-The headline test is the numeric contract: a custom action model authored in inline
-C++ (JIT-compiled at runtime, no build system) drives an FDDP solve to a cost that
-is bit-identical to Crocoddyl's compiled built-in model. Pure Crocoddyl (no rclcpp),
-so the process exits cleanly.
+The main check compares a custom action model written in inline C++ with Crocoddyl's
+compiled built-in model. Both drive an FDDP solve and reach the same cost. These tests
+use Crocoddyl without rclcpp.
 """
 import os
 
@@ -76,8 +75,8 @@ def test_action_model_clones_formats():
 
 
 def test_inline_cpp_model_matches_builtin(cr, custom_model):
-    """HEADLINE: a custom action model authored in inline C++ (no build system)
-    drives an FDDP solve to a cost bit-identical to Crocoddyl's built-in model."""
+    """A custom action model written in inline C++ drives an FDDP solve. Its cost matches
+    the cost from Crocoddyl's built-in model."""
     # inline-C++ custom model, solved entirely in C++ (Pattern 6 containers)
     res = custom_model.solve(custom_model.make_unicycle(), T, MAXITER)
     assert res.converged
@@ -88,8 +87,7 @@ def test_inline_cpp_model_matches_builtin(cr, custom_model):
 
 
 def test_python_derived_model_matches_and_is_slower(cr):
-    """Crocoddyl's supported prototype path (Python subclass) reaches the SAME
-    optimum -- the inline-C++ model is a faithful lowering, not an approximation."""
+    """Crocoddyl's Python subclass path reaches the same optimum as the inline C++ model."""
     import crocoddyl as pcr
 
     class PyUnicycle(pcr.ActionModelAbstract):
@@ -142,10 +140,9 @@ def test_python_derived_model_matches_and_is_slower(cr):
 
 
 def test_safe_cppdef_reports_error_without_crashing(cr):
-    """Regression for the Pattern-9 mitigation: a broken model is caught
-    out-of-process and raises cleanly -- the interpreter survives (this test, and
-    everything after it, still runs)."""
+    """Checks that a broken model is detected in a subprocess and reported as an error.
+    The main interpreter remains available."""
     with pytest.raises(cppyy_kit.CppyyKitError):
         wbc_kit.safe_cppdef("namespace broken { this is not valid c++ ; }")
-    # interpreter intact: a real bringup call still works
+    # Confirm the interpreter can still make a bringup call.
     assert hasattr(wbc_kit.bringup_crocoddyl(), "SolverFDDP")

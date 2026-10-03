@@ -2,8 +2,8 @@ schema_version: 1
 
 context:
   name: ros-jazzy-bt-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -28,7 +28,7 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.3.0
+    - cppyy-kit ==0.4.0
     - ros-jazzy-behaviortree-cpp >=4.9,<5
 
 tests:
@@ -42,10 +42,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Drive BehaviorTree.CPP v4 from Python via cppyy"
+  summary: "Use BehaviorTree.CPP v4 from Python through cppyy"
   description: |
-    bt_kit drives BehaviorTree.CPP v4 from short Python via cppyy: build trees,
-    mix Python and JIT-compiled C++ leaves, with an L0->L1->L2 freeze path.
+    bt_kit lets Python build and run BehaviorTree.CPP v4 trees through cppyy.
+    Trees can use Python leaves and JIT-compiled C++ leaves. The kit also
+    supports the L0->L1->L2 freeze path.
 
 extra:
   recipe-maintainers:

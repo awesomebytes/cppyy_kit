@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-control_kit bench (Stage 4): the honest real-time verdict.
+control_kit benchmark (Stage 4): real-time measurements.
 
 Runs the in-process controller_manager update loop at a target rate for a fixed
 duration and measures the achieved rate, per-cycle jitter percentiles, and missed
-(late) cycles -- for a **Python** controller (cross-inherited PD) vs a **stock C++**
+(late) cycles for a **Python** controller (cross-inherited PD) and a **stock C++**
 controller (forward_command_controller) under the *same* rig and mock hardware. Also
 isolates the pure ``cm.update()`` cost (the controller-dispatch hot path: a Python
 crossing per cycle vs staying in C++).
@@ -67,7 +67,7 @@ def pct(sorted_vals, p):
 
 
 def measure_update_cost(rig, n=20000):
-    """Pure cm.update() cost: no read/write, no sleep -- isolates controller dispatch."""
+    """Measure cm.update() without read/write or sleep to isolate controller dispatch."""
     import cppyy
     period = cppyy.gbl.rclcpp.Duration.from_seconds(0.001)
     clock = rig.clock

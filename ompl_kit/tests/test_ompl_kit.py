@@ -95,7 +95,7 @@ def test_callback_respects_obstacle(ompl):
 
 
 def test_cross_inheritance_state_validity_checker(ompl):
-    """HEADLINE: a Python class deriving ob.StateValidityChecker, isValid
+    """A Python class derives ob.StateValidityChecker and overrides isValid
     overridden in Python, called by the C++ planner."""
     ob, og = ompl
 

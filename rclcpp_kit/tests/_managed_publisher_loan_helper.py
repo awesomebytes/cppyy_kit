@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Live proof: ManagedPublisher.publish_loaned() borrows/fills/publishes a
 fixed-size message through rclcpp's own loan path (Publisher::borrow_loaned_message
-/ publish(LoanedMessage&&)) on an RMW that actually supports it (Fast DDS)."""
+/ publish(LoanedMessage&&)) on an RMW that supports it (Fast DDS)."""
 
 import time
 

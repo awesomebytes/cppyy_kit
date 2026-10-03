@@ -1,28 +1,31 @@
 """
-control_kit -- write a ros2_control controller in Python and run it *inside the real
-controller_manager* via cppyy.
+control_kit lets you write a ros2_control controller in Python and run it inside the
+real ``controller_manager`` through cppyy.
 
-ros2_control has no Python controller story: a controller is a C++ class deriving
-``controller_interface::ControllerInterface``, exported through a pluginlib
-``plugin_description.xml``, built by CMake/ament into a ``.so``, and spawned into a
-``controller_manager`` process. This kit collapses that ceremony: you write a plain
-Python class deriving MoveIt-style the *real* ``ControllerInterface`` (cross-language
-inheritance, ompl_kit's headline pattern), and it is injected into a **real
-``controller_manager::ControllerManager``** running in *your* Python process against
-mock hardware from a URDF string -- the same C++ update loop
-(``read`` -> ``update`` -> ``write``) that drives a physical robot, driven from Python.
+ros2_control does not define a Python controller API. A controller is a C++ class
+derived from ``controller_interface::ControllerInterface``, exported through a
+pluginlib ``plugin_description.xml``, built by CMake/ament into a ``.so``, and
+loaded into a ``controller_manager`` process. This kit lets you write a Python
+class derived from the real ``ControllerInterface`` using cross-language
+inheritance. It injects the class into a real
+``controller_manager::ControllerManager`` running in the Python process with mock
+hardware from a URDF string. The manager runs the C++ ``read`` -> ``update`` ->
+``write`` loop.
 
-Unlike MoveIt (docs/moveit_kit/REPORT.md §2.1), **ros2_control's headers do NOT hit the
-generate_parameter_library Cling wall**: ``controller_manager/controller_manager.hpp``
-and ``controller_interface/controller_interface.hpp`` JIT-parse cleanly, so the full CM
-is reachable. The frictions this kit hides are different and specific (see REPORT):
+The MoveIt headers described in docs/moveit_kit/REPORT.md §2.1 do not parse in
+Cling. The ros2_control headers used here do parse. The report records that
+``controller_manager/controller_manager.hpp`` and
+``controller_interface/controller_interface.hpp`` parse with JIT. These headers do
+not include generated ``generate_parameter_library`` output. The kit handles the
+integration work listed in REPORT:
 
   * **Cross-inheritance + injection.** A Python class derives the *compiled*
-    ``ControllerInterface`` (deriving a JIT'd intermediate base breaks cppyy's override
-    dispatcher -- the ``CallbackReturn`` return type resolves to ``<unknown>``). Its
-    instance is injected via ``ControllerManager::add_controller(ControllerSpec)``, with
-    the spec assembled in C++ and the controller wrapped in a ``shared_ptr`` with a
-    **no-op deleter** (Python owns the object; the CM must not free it).
+    ``ControllerInterface``. Deriving a JIT-compiled intermediate base breaks cppyy's
+    override dispatcher because the ``CallbackReturn`` return type resolves to
+    ``<unknown>``. The kit injects the controller through
+    ``ControllerManager::add_controller(ControllerSpec)``. It assembles the spec in
+    C++ and wraps the controller in a ``shared_ptr`` with a **no-op deleter** so
+    Python retains ownership.
   * **Protected interfaces.** A controller reads/writes hardware through the *protected*
     ``state_interfaces_`` / ``command_interfaces_`` members, invisible to a Python
     subclass. The kit reaches them through a same-layout accessor
@@ -30,8 +33,8 @@ is reachable. The frictions this kit hides are different and specific (see REPOR
     ``read_state`` / ``write_command`` free functions taking the controller.
   * **Blocking activation.** ``switch_controller`` blocks until the ``update()`` loop
     applies the switch, so it must run off the loop thread. ``std::async`` does not JIT
-    in Cling; a plain-function ``std::thread`` does -- the kit runs the switch there and
-    pumps ``update()`` until it completes.
+    in Cling. A plain-function ``std::thread`` compiles there. The kit runs the
+    switch on that thread and calls ``update()`` until it completes.
   * **uint8_t enums.** ``return_type`` is ``uint8_t``-backed: a *returned* value crosses
     as a 1-char ``str`` (``'\\x00'`` == OK); ``ok()`` reads it with ``ord``.
   * **Teardown.** The CM owns a pal_statistics async publisher thread; if it outlives the
@@ -67,8 +70,8 @@ Minimal Python controller (mirrors the C++ tutorial's names 1:1)::
     rig.configure("pd"); rig.activate(["pd"])
     rig.run(seconds=1.0, rate_hz=100)     # the real read/update/write loop
 
-See docs/control_kit/REPORT.md for the capability matrix, the Route-A vs Route-B
-analysis, and the honest real-time verdict; CONTROL_KIT.md for the API cheat sheet.
+See docs/control_kit/REPORT.md for the capability matrix, route analysis, and
+real-time measurements. See CONTROL_KIT.md for the API reference.
 """
 import os
 import time
@@ -83,7 +86,7 @@ _HEADERS = (
     "rclcpp/executors.hpp",
 )
 # cppyy resolves a symbol's owning .so at call time; load the CM stack + pluginlib
-# engine. Do NOT load the controller/hardware plugin .so -- pluginlib dlopen's those.
+# engine. Do NOT load the controller/hardware plugin .so. pluginlib loads those.
 _LIBS = (
     "libclass_loader.so",
     "librealtime_tools.so",
@@ -97,7 +100,7 @@ _LIBS = (
 _MSG_LIBS = ("libstd_msgs__rosidl_typesupport_cpp.so",)
 
 # The C++ glue: an executor factory (make_shared of the executor is flaky from Python --
-# cppyy overload-cache sensitivity -- so build it in C++), the threaded switch runner,
+# cppyy overload-cache sensitivity. Build it in C++. The threaded switch runner,
 # the same-layout interface accessors, and the Python-controller injector.
 _GLUE = r"""
 #include <thread>
@@ -217,11 +220,11 @@ def bringup_control():
     Idempotent.
 
     JIT-includes ``controller_manager.hpp`` / ``controller_interface.hpp`` (both parse
-    cleanly in Cling -- ros2_control does *not* hit the generate_parameter_library wall),
+    cleanly in Cling. ros2_control does not include generate_parameter_library output),
     loads the CM ``.so`` stack + pluginlib engine, and defines the C++ glue (executor
     factory, threaded switch, interface accessors, Python-controller injector).
 
-    Returns ``cppyy.gbl.controller_interface`` -- derive ``.ControllerInterface`` for a
+    Returns ``cppyy.gbl.controller_interface``. Derive ``.ControllerInterface`` for a
     Python controller. The sibling ``cppyy.gbl.controller_manager`` namespace and this
     module's helpers (``mock_system_urdf``, ``make_controller_manager``, the ``read_state``
     / ``write_command`` accessors) are the rest of the surface.
@@ -245,7 +248,7 @@ def bringup_control():
 
 def load_message_support():
     """Load ``std_msgs`` typesupport so cppyy can create a publisher/subscription for
-    ``std_msgs::msg::Float64MultiArray`` -- the command topic a stock forward/position
+    ``std_msgs::msg::Float64MultiArray``, the command topic used by a stock forward/position
     controller subscribes to. Only needed for topic-driven controllers; a
     self-commanding controller (a PD law in ``update``) needs none of it. Idempotent.
     (sensor_msgs is intentionally NOT pulled: its headers JIT-parse very slowly and no
@@ -267,7 +270,7 @@ def _ns():
 
 class _Lazy:
     """Attribute proxy that resolves a dotted cppyy path on first access, bringing the
-    kit up if needed -- lets ``control_kit.ControllerInterface`` work at import time."""
+    kit up if needed. This lets ``control_kit.ControllerInterface`` work at import time."""
 
     def __init__(self, path):
         self._path = path
@@ -304,7 +307,7 @@ def ok(return_value):
     """True if a controller/CM ``return_type`` value is OK. A ``uint8_t``-backed enum
     *value* returned from C++ crosses as a 1-char ``str`` (``'\\x00'`` == OK == 0), so
     read it with ``ord`` (the enum *member* ``return_type.OK`` is a proxy that ints
-    directly -- this handles both)."""
+    directly. This handles both cases.)"""
     if isinstance(return_value, str):
         return ord(return_value) == 0
     return int(return_value) == 0
@@ -357,7 +360,7 @@ def mock_system_urdf(joints, command_interfaces=("position",),
                      state_interfaces=("position", "velocity"),
                      robot_name="mock_bot", initial_value=0.0):
     """
-    A minimal URDF string for a headless ``mock_components/GenericSystem`` rig -- the
+    A minimal URDF string for a headless ``mock_components/GenericSystem`` rig. The
     standard ros2_control mock hardware. One revolute joint per name in ``joints``, each
     with the given command/state interfaces. GenericSystem mirrors a position command
     back to the position state, so a position controller's effect is observable by
@@ -404,7 +407,7 @@ def mock_system_urdf(joints, command_interfaces=("position",),
 class ControlRig:
     """
     A running ``controller_manager::ControllerManager`` in this process, plus the cppyy
-    friction helpers around it. ``rig.cm`` is the *real* CM -- call any of its methods
+    helpers around it. ``rig.cm`` is the ControllerManager. Call any of its methods
     directly (``load_controller``, ``get_update_rate``, ``read``/``update``/``write``);
     the rig's methods wrap the operations that need special handling under cppyy
     (parameterized construction, off-thread activation, ordered teardown).
@@ -429,7 +432,7 @@ class ControlRig:
     def _guard_before_loop(self, what):
         # Once update() has run, the CM manages its controller list with real-time-safe
         # swaps that block a synchronous load_controller/add_controller until the loop
-        # pumps again -- which deadlocks a load issued from the (stopped) loop thread.
+        # pumps again. Otherwise, a load issued from the stopped loop thread deadlocks.
         # ros2_control_node loads the whole stack before spinning the RT loop; so must we.
         if self._updated:
             raise cppyy_kit.CppyyKitError(
@@ -437,7 +440,7 @@ class ControlRig:
                 "activate()/update()/run()). Load and configure every controller first, "
                 "then activate and run." % what)
 
-    # -- controller setup --
+    # Controller setup
     def load_controller(self, name, controller_type, parameters=None):
         """Load a stock (C++) controller by pluginlib type (e.g.
         ``"forward_command_controller/ForwardCommandController"``); pluginlib dlopen's
@@ -456,7 +459,7 @@ class ControlRig:
 
     def add_python_controller(self, controller, name, type_label="python_controller"):
         """Inject a Python controller instance (a subclass of
-        ``control_kit.ControllerInterface``) into the CM via ``add_controller`` -- no
+        ``control_kit.ControllerInterface``) into the CM via ``add_controller``. No
         pluginlib, no ``.so``. The instance is pinned alive for the rig's lifetime (C++
         holds it through a no-op-deleter ``shared_ptr``; cppyy would otherwise collect
         it). Returns the controller handle. Must be called before the update() loop
@@ -477,7 +480,7 @@ class ControlRig:
         for pname, value in parameters.items():
             node.set_parameter(Param(cppyy.gbl.std.string(pname), _parameter_value(value)))
 
-    # -- lifecycle --
+    # Lifecycle
     def configure(self, name):
         """Configure a loaded controller (calls its ``on_configure``); returns True on
         OK. INACTIVE afterwards."""
@@ -517,7 +520,7 @@ class ControlRig:
                     self._active.remove(n)
         return result_ok
 
-    # -- the real-time loop --
+    # Real-time loop
     def update(self, period=None):
         """One control cycle: ``cm.read(t, period)`` -> ``cm.update(t, period)`` (calls
         every active controller's ``update``) -> ``cm.write(t, period)``. ``t`` is the
@@ -530,7 +533,7 @@ class ControlRig:
         self.cm.write(t, p)
 
     def spin(self):
-        """``executor.spin_some()`` -- services the controller nodes' subscriptions /
+        """``executor.spin_some()`` services the controller nodes' subscriptions /
         services (e.g. a command topic). Call between ``update()``s in the command loop,
         NOT during a switch (which mutates the executor's node set)."""
         self.executor.spin_some()
@@ -617,7 +620,7 @@ def make_controller_manager(urdf, update_rate=100, node_name="controller_manager
 
 def _parameter_value(value):
     """A Python scalar / homogeneous list -> ``rclcpp::ParameterValue`` (bool / int /
-    float / str and lists thereof) -- the shapes controller params take."""
+    float / str and lists thereof), the supported controller parameter types."""
     pv = cppyy.gbl.rclcpp.ParameterValue
     std = cppyy.gbl.std
     if isinstance(value, bool):

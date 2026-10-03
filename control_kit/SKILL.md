@@ -1,9 +1,9 @@
-# CONTROL_KIT.md — API cheat sheet
+# control_kit API reference
 
-`control_kit` — write a ros2_control controller in Python and run it inside a
+Use `control_kit` to write a ros2_control controller in Python and run it inside a
 real `controller_manager::ControllerManager` in-process. Requires the pixi `control` env
 (`pixi run -e control ...`) and rclcpp initialized. See [REPORT.md](REPORT.md) for the
-mechanics/verdict and [WHY.md](WHY.md) for the stock-ros2_control contrast.
+implementation and measurements; see [WHY.md](WHY.md) for the stock workflow.
 
 ## Bring-up
 
@@ -30,7 +30,7 @@ rig = ck.make_controller_manager(urdf, update_rate=100)   # real ControllerManag
 #                           parameters=None) -> ControlRig
 ```
 
-`rig.cm` is the **real** `controller_manager::ControllerManager` — call any of its methods
+`rig.cm` is the **real** `controller_manager::ControllerManager`, call any of its methods
 directly (`is_resource_manager_initialized()`, `get_update_rate()`, `get_loaded_controllers()`,
 `read`/`update`/`write`, ...).
 
@@ -45,13 +45,13 @@ directly (`is_resource_manager_initialized()`, `get_update_rate()`, `get_loaded_
 | `rig.activate(names, timeout_s=5.0) -> bool` | activate (ACTIVE); off-thread switch + pumped `update()` |
 | `rig.deactivate(names, timeout_s=5.0) -> bool` | deactivate (INACTIVE) |
 | `rig.update(period=None)` | one `read`→`update`→`write` cycle |
-| `rig.spin()` | `executor.spin_some()` — service controller-node topics (not during a switch) |
+| `rig.spin()` | `executor.spin_some()`, service controller-node topics (not during a switch) |
 | `rig.run(seconds, rate_hz=None, spin=False, on_cycle=None) -> int` | hold the loop at `rate_hz` for `seconds` |
 | `rig.add_node(node)` | add an rclcpp node (e.g. a command publisher) to the CM executor |
 
 **Ordering rule:** load/configure/add every controller **before** the first
 `update()`/`activate()`/`run()`. After the loop has run, `load_*`/`add_*` raise (the CM's
-real-time-safe list swap would deadlock a synchronous load) — mirrors `ros2_control_node`.
+real-time-safe list swap would deadlock a synchronous load), mirrors `ros2_control_node`.
 
 ## Writing a Python controller
 
@@ -81,8 +81,8 @@ class MyController(ck.ControllerInterface):
 
 | name | note |
 |---|---|
-| `ck.CallbackReturn` | `.SUCCESS` / `.FAILURE` / `.ERROR` — return from `on_init`/`on_*` |
-| `ck.return_type` | `.OK` / `.ERROR` — return from `update` |
+| `ck.CallbackReturn` | `.SUCCESS` / `.FAILURE` / `.ERROR`, return from `on_init`/`on_*` |
+| `ck.return_type` | `.OK` / `.ERROR`, return from `update` |
 | `ck.ok(value) -> bool` | True if a returned `return_type` is OK (handles the uint8→1-char-str crossing) |
 | `ck.interface_config(names, config_type="individual")` | build an `InterfaceConfiguration` (`"individual"`/`"all"`/`"none"`) |
 | `ck.interface_configuration_type` | the `INDIVIDUAL`/`ALL`/`NONE` enum |
@@ -134,25 +134,25 @@ pixi run -e control test-control          # the test suite (auto-skips without r
 ## Fewer missed deadlines (real-time knobs)
 
 The jitter benchmark measured these unprivileged knobs on this rig's 1 kHz loop
-(~2.4 µs median wakeup on a stock kernel — [report](../docs/jitter_bench/REPORT.md)):
+(~2.4 µs median wakeup on a stock kernel, [report](../docs/jitter_bench/REPORT.md)):
 
 ```python
 from jitter_bench.harness import apply_timerslack, try_mlockall, apply_affinity
 apply_timerslack(1)   # Linux default slack is 50 us; this alone moved p50 52.4 -> 2.4 us
 try_mlockall()        # lock pages, avoid page-fault stalls (works unprivileged)
 apply_affinity(2)     # pin the loop to one core
-# apply_scheduling("fifo", 50)  # needs an rtprio grant -- see the jitter report, Stage 1
+# apply_scheduling("fifo", 50)  # needs an rtprio grant; see jitter report, Stage 1
 ```
 
 Apply them before `rig.run()`. A `nogil` C++ loop body additionally holds its median
 under machine load where a Python loop degrades (2.1–2.3 µs vs ~5 µs p50 in the same
 benchmark).
 
-## Gotchas (see REPORT §2)
+## Common errors (see REPORT §2)
 
 - **Load before the loop** (above). **`super().__init__()` is required** in your controller.
 - Derive `ck.ControllerInterface` **directly** (not a further Python/JIT base) or cppyy's
   override dispatcher fails.
-- A returned `return_type` is a 1-char `str` — use `ck.ok(...)`, not `int(...)`.
+- A returned `return_type` is a 1-char `str`, use `ck.ok(...)`, not `int(...)`.
 - Clean exit is automatic via the teardown registry; don't `unload_controller` a Python
   controller yourself.

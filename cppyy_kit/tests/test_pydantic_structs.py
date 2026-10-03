@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.pydantic_structs -- Pydantic v2 model -> C++ struct.
+"""Tests for converting Pydantic v2 models to C++ structs with pydantic_structs.
 
 These need pydantic v2 (plus cppyy + numpy). The default pixi env has no
 pydantic, so the whole module auto-skips there (keeping ``pixi run test``
 green); it runs under an env that provides pydantic. No external C++ library or
-compiler is required -- structs are JIT'd via cppdef and the type check runs in
+compiler is required. Structs are JIT-compiled with cppdef and the type check runs in
 a cppyy subprocess.
 
 The process shares one Cling interpreter, so each model schema compiles into a
@@ -17,11 +17,11 @@ from typing import List, Optional
 import pytest
 
 # Guard EVERY pydantic/numpy import behind a HAVE flag and skip at the module
-# level with skipif -- NOT pytest.importorskip. A module-level importorskip that
+# level with skipif, rather than pytest.importorskip. A module-level importorskip that
 # raises during collection aborts the *whole session's* collection under this
 # repo's pytest 7.4 + ament plugin stack (observed: sibling test files silently
 # collect 0 items), which would break the default `pixi run test` directory run.
-# The try/except + skipif pattern (as test_cache.py uses) imports cleanly and
+# The try/except + skipif pattern (as test_cache.py uses) imports the module and
 # skips only this module's tests when the deps are absent.
 try:
     import numpy as np

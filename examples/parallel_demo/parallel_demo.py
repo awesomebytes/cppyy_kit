@@ -23,9 +23,8 @@ from cppyy_kit import cpp
 # The same CPU-bound kernel, once with the GIL released and once with it held. @cpp
 # compiles each into a cached .so on first call and marshals the NumPy array (as
 # out.ctypes.data) into the `double*` parameter for us; `slot` picks the output slot.
-# The kernel is header-free arithmetic (a reciprocal sum) so it needs no includes
-# beyond @cpp's own -- and is unambiguously CPU-bound. (The body is the docstring, so
-# it must be an inline literal -- hence the two identical bodies below.)
+# The kernel computes a reciprocal sum and needs no includes. Each kernel body is
+# an inline string, so both functions contain the same body.
 @cpp(nogil=True)
 def crunch_parallel(out: "double*", slot: int, iters: int) -> None:  # noqa: F722,F821
     """double s = 0.0;
@@ -41,22 +40,18 @@ def crunch_gil(out: "double*", slot: int, iters: int) -> None:  # noqa: F722,F82
 
 
 def warm():
-    """Compile both kernels once before the timed runs, so those runs measure the
-    parallel work rather than one-time setup. (@cpp's first-use compile is thread-safe,
-    so this warm-up is for timing accuracy, not correctness -- threads may safely take
-    the first-use path concurrently.)"""
+    """Compile both kernels before timing so the runs measure their work, not setup.
+    First-use compilation is thread-safe, so this warm-up is for timing accuracy."""
     out = np.zeros(1)
     crunch_parallel(out, 0, 1000)
     crunch_gil(out, 0, 1000)
 
 
 def run(n_threads, iters, use_nogil):
-    """Run n_threads independent C++ jobs on Python threads; return (wall_s, out).
-
-    use_nogil=True calls the @cpp(nogil=True) kernel, which releases the GIL around its
-    body (true parallelism). use_nogil=False calls the plain @cpp kernel -- cppyy holds
-    the GIL for the call, so the threads serialise, which is the plain-Python behaviour.
-    Each thread writes a disjoint output slot, so results are identical either way."""
+    """Run ``n_threads`` independent C++ jobs from Python threads. Return wall time
+    and the output array. With ``use_nogil=True``, the kernel releases the GIL and
+    threads can run in parallel. Otherwise cppyy holds the GIL during each call, so
+    the threads run one at a time. Each thread writes to a separate output slot."""
     out = np.zeros(n_threads)
     kernel = crunch_parallel if use_nogil else crunch_gil
 

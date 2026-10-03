@@ -1,27 +1,23 @@
 #!/usr/bin/env python
-"""
-perceive.py (Process A) -- the perception half of the capture rig.
+"""Perception process for the human-to-robot capture pipeline.
 
-    webcam -> MediaPipe HolisticLandmarker (body + hands) -> a landmark stream
-    (record) -> TF frames via rclcpp_kit -> live Rerun.
+Reads webcam frames or synthetic input, detects body and hand landmarks with
+MediaPipe, writes a JSONL landmark stream, publishes transforms to `/tf`, and logs
+the result to Rerun.
 
-The ML inference is a **library primitive** (MediaPipe, commodity Python -- the
-webcam demo's honest-headline lesson: do not wrap inference in cppyy). What cppyy_kit owns here
-is the *glue*: publishing the ~75 detected landmark frames onto ``/tf`` every video
-frame. That message is **built in C++** by a ``cppyy.cppdef`` broadcaster that fills
-all the translations from one flat address (COMMON_PATTERNS s6), instead of
-constructing 75 ``TransformStamped`` proxies field-by-field in a Python loop. The
-``--bench`` mode measures exactly that A-vs-B difference on a recorded stream.
+MediaPipe performs inference in Python. cppyy builds the ROS transform message in C++.
+The builder fills about 75 landmark transforms from one flat address. The `--bench`
+mode compares this builder with a Python loop that creates each `TransformStamped`
+field by field.
 
-Record + replay from day one:
-    * live:    ``demo-perceive [--record build/pipeline/demo.jsonl]``
-    * replay:  ``demo-perceive --replay build/pipeline/demo.jsonl`` (no camera, no
-               MediaPipe -- re-renders the recorded landmarks to Rerun + /tf)
-    * headless/CI: no webcam or no model -> the synthetic waving-skeleton scene, so
-               it runs with no camera and no network (``--source synthetic``).
+Record a stream with `demo-perceive [--record build/pipeline/demo.jsonl]`. Replay
+one with `demo-perceive --replay build/pipeline/demo.jsonl`; this needs no camera or
+MediaPipe model. If no webcam or model is available, the demo can use a synthetic
+waving skeleton without a camera or network connection.
 
-The retargeting half (retarget.py) consumes the stream from the standalone ``wbc``
-env; the two never share a process (pinocchio vs ROS boost clash).
+The retarget process runs in the standalone `wbc` environment. The processes do not
+share a process because the pinocchio and ROS packages require different Boost
+versions.
 """
 import argparse
 import os

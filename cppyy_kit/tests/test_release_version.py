@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import re
 
 import pytest
 import yaml
@@ -16,8 +17,8 @@ def test_all_suite_release_metadata_matches_exact_tag():
     versions = verify_release_version.metadata_versions(ROOT)
 
     assert len(versions) == 23
-    assert set(versions.values()) == {"0.3.0"}
-    assert verify_release_version.verify(ROOT, "v0.3.0") == "0.3.0"
+    assert set(versions.values()) == {"0.4.0"}
+    assert verify_release_version.verify(ROOT, "v0.4.0") == "0.4.0"
 
 
 @pytest.mark.parametrize("tag", ["v0.1.0", "v0.2", "0.2.0", "v0.3.0-rc1", "v9.9.9"])
@@ -105,3 +106,20 @@ def test_ci_requires_native_package_proof_on_both_architectures():
         ("linux-64", "x86_64", True),
         ("linux-aarch64", "aarch64", True),
     }
+
+
+def test_installed_cppyy_proofs_match_recipe_build_number():
+    recipe = yaml.safe_load(
+        (ROOT / "recipe" / "cppyy-kit" / "recipe.yaml").read_text())
+    expected_build_number = recipe["build"]["number"]
+    proof_scripts = (
+        ROOT / "recipe" / "prove_all.sh",
+        ROOT / "recipe" / "prove_rclcpp.sh",
+    )
+    for script_path in proof_scripts:
+        script = script_path.read_text()
+        build_numbers = re.findall(
+            r'package_record\("cppyy-kit"\)\["build_number"\]\s*==\s*(\d+)',
+            script,
+        )
+        assert build_numbers == [str(expected_build_number)], script_path

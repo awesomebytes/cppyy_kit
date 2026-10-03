@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prove borrowed publication leaves Fast DDS RCL error state clean."""
+"""Check that borrowed publication leaves Fast DDS RCL error state clear."""
 
 import os
 

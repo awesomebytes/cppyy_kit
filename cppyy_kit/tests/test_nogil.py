@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.nogil -- the GIL-release shim (COMMON_PATTERNS §13).
+"""Tests for cppyy_kit.nogil, the GIL-release shim (COMMON_PATTERNS §13).
 
 The proof is behavioural: a blocking C++ call made directly holds the GIL and starves
 a concurrent Python thread; through nogil() the GIL is released and the thread runs.

@@ -1,37 +1,18 @@
 #!/usr/bin/env python3
-"""jitter_bench.harness -- the reusable core of the low-jitter control experiment.
+"""Timing loop, statistics, and system settings for jitter_bench.
 
-One fixed-rate loop primitive, one stats primitive, and the real-time knobs
-(``mlockall`` / CPU affinity / scheduling policy), all with **negligible per-cycle
-overhead** and **zero non-numpy dependencies**. Everything above this module (the
-variants, the matrix runner, the report) is glue.
+This module provides a fixed-rate loop, wakeup statistics, and best-effort calls for
+memory locking, CPU affinity, scheduling policy, and timer slack. Per-cycle timestamps
+use NumPy buffers and ctypes. The other jitter_bench modules use this harness.
 
-Clock discipline (why one clock, used everywhere)
---------------------------------------------------
-CPython's ``time.perf_counter``/``perf_counter_ns`` is ``clock_gettime(CLOCK_MONOTONIC)``
-on Linux (verified: ``time.get_clock_info('perf_counter')``). We therefore take *every*
-timestamp with ``time.clock_gettime_ns(CLOCK_MONOTONIC)`` and program *every* sleep
-deadline with ``clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ...)`` -- the sleep
-deadline and the measured wake time are then points on the **same** clock, so the wakeup
-latency ``wake - programmed_deadline`` is exact (no cross-clock skew). This is also the
-clock ``cyclictest`` uses by default, so the Stage-1 cyclictest reference is directly
-comparable to variant a1's latency histogram.
+The harness uses `CLOCK_MONOTONIC` for both deadlines and timestamps. On Linux,
+CPython's `perf_counter` uses this clock. `clock_nanosleep` also uses it, so wakeup
+latency is the measured wake time minus its deadline. `cyclictest` uses the same clock
+by default. The report also gives period jitter: each interval between wakes minus the
+requested period. See control_kit REPORT section 4 for that metric.
 
-The primary metric: wakeup latency
------------------------------------
-For a fixed-rate loop we program absolute wake deadlines ``base + i*period`` and record
-the actual wake time. The **wakeup latency** ``wake[i] - deadline[i]`` (how late, in µs,
-the loop woke relative to the ideal fixed grid) is the cyclictest-equivalent RT number
-and the one we headline. We also report the **period jitter** (consecutive interval minus
-target) as a secondary diagnostic, because that is what control_kit's own bench (REPORT
-§4) reported -- the two answer different questions and we give both.
-
-No privilege is required for anything here: ``clock_nanosleep``, ``mlockall`` (fits under
-the ~8 GB memlock ulimit on this box -- measured to succeed), ``sched_setaffinity`` and
-``nice`` all work as an unprivileged user. ``SCHED_FIFO`` needs an rtprio grant (``ulimit
--r`` is 0 here), so ``apply_scheduling('fifo')`` *attempts* it and records the denial
-rather than aborting -- the same call becomes a real FIFO run once the owner grants
-rtprio (Stage 1 of the report).
+The calls used here do not need privilege except for `SCHED_FIFO`, which requires an
+rtprio grant. The harness tries the requested policy and records any denial.
 """
 import ctypes
 import os
@@ -55,21 +36,23 @@ class _timespec(ctypes.Structure):
 
 
 def now_ns():
-    """The one clock: ``CLOCK_MONOTONIC`` in ns (== CPython's perf_counter clock)."""
+    """Return the current time in nanoseconds from `CLOCK_MONOTONIC`."""
     return time.clock_gettime_ns(time.CLOCK_MONOTONIC)
 
 
 def clock_nanosleep_abs(deadline_ns):
-    """Sleep until the absolute ``CLOCK_MONOTONIC`` deadline (ns). No privilege needed.
-    Returns the libc return code (0 == slept to the deadline; nonzero == error/EINTR)."""
+    """Sleep until an absolute `CLOCK_MONOTONIC` deadline.
+
+    Returns the libc return code: 0 on success, non-zero on error or interruption."""
     ts = _timespec(deadline_ns // 1_000_000_000, deadline_ns % 1_000_000_000)
     return _LIBC.clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, ctypes.byref(ts), None)
 
 
 def sleep_until_time_sleep(deadline_ns):
-    """The naive contrast: sleep the *remaining* time to ``deadline_ns`` with
-    ``time.sleep`` (deadline-corrected, so it does not drift -- it isolates the sleep
-    *mechanism* vs ``clock_nanosleep``). This is exactly control_kit's bench scheduling."""
+    """Sleep for the time remaining before `deadline_ns` using `time.sleep`.
+
+    Recomputing the remaining time avoids schedule drift and allows comparison with
+    `clock_nanosleep`."""
     remaining = deadline_ns - now_ns()
     if remaining > 0:
         time.sleep(remaining / 1e9)
@@ -84,8 +67,9 @@ SLEEPERS = {
 
 # --- real-time knobs (all best-effort, all record their outcome) ------------
 def try_mlockall():
-    """Lock current + future pages to RAM (no paging jitter). Returns ``(ok, detail)``.
-    Unprivileged on this box (memlock ulimit ~8 GB); a small process fits."""
+    """Lock current and future pages in RAM. Returns `(ok, detail)`.
+
+    This machine allows unprivileged locking under its approximately 8 GB memlock limit."""
     rc = _LIBC.mlockall(MCL_CURRENT | MCL_FUTURE)
     if rc == 0:
         return True, "mlockall(MCL_CURRENT|MCL_FUTURE) ok"
@@ -98,7 +82,7 @@ def try_munlockall():
 
 
 def apply_affinity(cpu):
-    """Pin this process to a single CPU. Returns ``(ok, detail)``. Unprivileged."""
+    """Pin this process to one CPU. Returns `(ok, detail)`."""
     if cpu is None:
         return False, "affinity not set (running on all %d cpus)" % len(os.sched_getaffinity(0))
     try:
@@ -109,13 +93,11 @@ def apply_affinity(cpu):
 
 
 def apply_scheduling(policy, priority=80):
-    """Set the scheduling policy: ``'other'`` (default CFS, always works), ``'fifo'`` or
-    ``'rr'`` (real-time, need an rtprio grant). Returns ``(ok, detail)``.
+    """Set the scheduling policy and return `(ok, detail)`.
 
-    ``SCHED_FIFO``/``SCHED_RR`` are *attempted* and the ``PermissionError`` (``ulimit -r``
-    == 0 on this box) is caught and reported -- so the harness carries the exact code path
-    the owner unlocks by granting rtprio, and a Stage-1 re-run is the same command with
-    ``--sched fifo``. ``nice`` is also lowered best-effort under SCHED_OTHER."""
+    `other` uses the default CFS policy. `fifo` and `rr` require an rtprio grant.
+    Permission errors are recorded. The `nice` value is adjusted when running under
+    SCHED_OTHER."""
     policy = (policy or "other").lower()
     if policy == "other":
         detail = "SCHED_OTHER (default CFS)"
@@ -147,7 +129,7 @@ def _rtprio_limit():
 
 
 def get_timerslack_ns():
-    """This thread's current timer slack (ns). Linux default is 50000 (50 µs)."""
+    """Return this thread's timer slack in nanoseconds. Linux defaults to 50,000 ns."""
     return _LIBC.prctl(PR_GET_TIMERSLACK, 0, 0, 0, 0)
 
 
@@ -173,11 +155,11 @@ def apply_timerslack(ns):
 
 # --- recorder: one preallocated buffer, no per-cycle allocation -------------
 class Recorder:
-    """A preallocated ``int64`` wake-timestamp buffer. Python variants call ``record()``
-    (one indexed store, no allocation); the C++ variant writes ``.buf`` in place through
-    its raw address. Sized to capture the full run; if a run overruns the capacity it
-    wraps (ring) and ``wrapped`` is set -- fixed-duration runs never wrap, so full-run
-    stats are honest (no window cherry-picking)."""
+    """Store wake timestamps in a preallocated `int64` buffer.
+
+    Python calls `record()` to store each value. The C++ loop writes to the buffer by
+    address. If the buffer fills, it wraps and sets `wrapped`. Fixed-duration runs are
+    sized to fit in the buffer."""
 
     def __init__(self, capacity):
         self.buf = np.zeros(int(capacity), dtype=np.int64)
@@ -194,7 +176,7 @@ class Recorder:
         self.count += 1
 
     def timestamps(self):
-        """The recorded wake timestamps in order (full capture for a non-wrapping run)."""
+        """Return recorded wake timestamps in order for a non-wrapping run."""
         if self.wrapped:
             return self.buf.copy()
         return self.buf[:self.count].copy()
@@ -205,13 +187,11 @@ _PCTS = (0, 50, 90, 99, 99.9, 100)
 
 
 def compute_stats(timestamps_ns, base_ns, period_ns, drop_warmup=0):
-    """Turn a run's wake timestamps into the jitter stats.
+    """Compute wakeup latency and period jitter from recorded timestamps.
 
-    ``base_ns`` is the loop's start reference (deadline[i] == base + (i+1)*period).
-    Returns a dict with wakeup-**latency** stats (µs, the headline) and period-**jitter**
-    stats (µs, secondary), plus late-cycle counts and the raw arrays for histogramming.
-    ``drop_warmup`` discards the first N cycles (first-use JIT / cache warmup) from the
-    stats -- reported separately so the drop is explicit, never silent."""
+    `base_ns` is the loop start time. Deadline `i` is `base + (i + 1) * period`.
+    Returns the latency and jitter statistics, late-cycle counts, and arrays used for
+    histograms. `drop_warmup` excludes the first N timestamps from the statistics."""
     ts = np.asarray(timestamps_ns, dtype=np.int64)
     n_total = ts.size
     if drop_warmup and n_total > drop_warmup:
@@ -266,8 +246,9 @@ _HIST_EDGES = [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000]
 
 
 def latency_histogram(latency_us, edges=_HIST_EDGES, width=40):
-    """A zero-dependency ASCII histogram of the wakeup latency (µs), with counts,
-    per-bucket bar, and cumulative %. Negatives (woke slightly early) fold into ``<0``."""
+    """Format an ASCII histogram of wakeup latency in µs.
+
+    Shows counts, bars, and cumulative percentages. Negative values appear in ``<0``."""
     lat = np.asarray(latency_us, dtype=np.float64)
     n = lat.size
     below = int(np.count_nonzero(lat < edges[0]))
@@ -293,11 +274,12 @@ def latency_histogram(latency_us, edges=_HIST_EDGES, width=40):
 # --- the fixed-rate loop (Python variants a1/a2 and the driver for c) -------
 def run_fixed_rate(rate_hz, duration_s, sleep_kind="clock_nanosleep",
                    body=None, recorder=None):
-    """Hold ``rate_hz`` for ``duration_s`` with absolute-deadline scheduling, recording
-    each wake time. ``sleep_kind`` picks the wait mechanism (``SLEEPERS``); ``body(i)`` is
-    the per-cycle work (the "control law"; None == pure timer). The wake timestamp is
-    taken **immediately after the sleep returns**, before ``body`` -- so the latency
-    isolates scheduling, not compute. Returns ``(recorder, base_ns, period_ns, n)``."""
+    """Run at ``rate_hz`` for ``duration_s`` using absolute deadlines and record wake times.
+
+    ``sleep_kind`` selects the wait function in ``SLEEPERS``. ``body(i)`` is the work
+    performed each cycle; omit it for a timer-only loop. Record wake time before running
+    the body so latency measures scheduling rather than computation. Returns
+    ``(recorder, base_ns, period_ns, n)``."""
     period_ns = int(round(1e9 / rate_hz))
     n = int(round(duration_s * rate_hz))
     sleeper = SLEEPERS[sleep_kind]
@@ -312,10 +294,10 @@ def run_fixed_rate(rate_hz, duration_s, sleep_kind="clock_nanosleep",
 
 
 def small_compute(iters):
-    """A tiny, allocation-free arithmetic 'control law' stand-in (a fixed polynomial fold),
-    matched by variant b's C++ body. Returns a closure ``body(i)`` and its result sink so
-    it is never optimized away. Kept well under the period so jitter reflects *scheduling*,
-    not compute (documented in the report)."""
+    """Return a closure that runs a fixed polynomial computation without allocating.
+
+    Variant b uses the same computation in C++. The returned sink prevents the result
+    from being optimized away. The work takes less than one loop period."""
     state = {"acc": 0.0}
 
     def body(i):

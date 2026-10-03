@@ -1,21 +1,17 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S5: a lifecycle node's own clock and
+"""Test PLAN-lifecycle.md S5: a lifecycle node's own clock and
 parameter surfaces work directly.
 
 create_lifecycle_node_clock is a thin lifecycle-node-typed twin of
 native_clock.create_native_node_clock (rclcpp_lifecycle::LifecycleNode does
 not inherit rclcpp::Node, so the base NativeNodeClock C++ implementation
-cannot bind it directly) -- LifecycleNode::get_clock() otherwise behaves
-exactly like Node::get_clock().
+cannot bind it directly). ``LifecycleNode::get_clock()`` behaves like
+``Node::get_clock()``.
 
-native_parameters.declare_parameter/get_parameter/set_parameters (and their
-siblings) needed NO suite-side change: they are plain passthroughs
-(node.declare_parameter(...), node.get_parameter(...), ...) that already
-work on any object exposing rclcpp::Node's parameter method names --
-rclcpp_lifecycle::LifecycleNode exposes the identical
-declare_parameter/get_parameter/set_parameters/has_parameter/
-undeclare_parameter surface (lifecycle_node.hpp), so this file is a proof,
-not a new implementation.
+The parameter methods need no changes because the lifecycle node exposes the
+same ``declare_parameter``, ``get_parameter``, ``set_parameters``,
+``has_parameter``, and ``undeclare_parameter`` methods as ``rclcpp::Node``
+(see ``lifecycle_node.hpp``). This test checks that API.
 """
 import time
 

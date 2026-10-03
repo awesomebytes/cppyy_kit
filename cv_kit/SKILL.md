@@ -1,35 +1,40 @@
-# cv_kit — SKILL (seed)
+# cv_kit
 
-> Seed cheat sheet. A full LLM-facing SKILL.md (when-to-use / copy-paste
-> patterns / gotchas) is a planned deliverable (tracked in the project plan:
-> "SKILL.md for every kit"). For now this points at the authoritative sources.
+Use OpenCV's C++ API from Python through cppyy. `cv_kit` is useful when a Python
+pipeline needs to keep image pixels and later results in C++, including a ROS 2
+image callback or a custom C++ vision operation. Ordinary `cv2` remains a good
+choice when NumPy and OpenCV's Python API fit the pipeline.
 
-**What:** drive OpenCV's C++ API (core / imgproc / features2d) from Python via
-cppyy, with a **zero-copy** bridge from a ROS 2 `sensor_msgs/Image` (C++
-message) into `cv::Mat`. Pairs with [`dbow_kit`](../dbow_kit/WHY.md) for loop
-closure.
+## Install and try the demo
 
-**Why (not cv2):** composition. A `cv::Mat` can alias a C++ message's `data`
-buffer with no copy, run C++ `cv::ORB`, and hand descriptors straight to DBoW2 —
-the whole vision front-end stays in one C++ address space, Python only
-orchestrates. See [`WHY.md`](WHY.md).
+The published Pixi package is `ros-jazzy-cv-kit`. For package setup and the
+supported Pixi environment, start with the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
-**Bring up:**
-```python
-import cv_kit
-cv = cv_kit.bringup_cv()          # JIT-includes opencv4, loads libopencv_*.so
-orb = cv_kit.create_orb(500)      # CUDA auto-detected; CPU cv::ORB otherwise
-mat = cv_kit.msg_to_mat(image)    # zero-copy view over the message's data buffer
+From this repository checkout, the existing feature demo needs the `vision`
+environment:
+
+```bash
+pixi install -e vision
+pixi run -e vision demo-vision-features
 ```
 
-**Footgun (dangling Mat):** `msg_to_mat` / `mat_to_numpy(copy=False)` return
-views that ALIAS C++/message storage — keep the backing object alive while you
-use the view (use the Mat inside the callback that owns the message).
+The demo reports `cv::ORB (CPU)` with the default OpenCV build, about 1,000
+keypoints per frame, and an `N x 32` descriptor matrix: one 32-byte binary ORB
+descriptor per row. It opens a Rerun
+viewer when a display is available; headless runs save a recording under
+`build/vision/`.
 
-**Evidence & CUDA:** [`REPORT.md`](REPORT.md) (probe matrix + benchmarks) and
-[`CUDA_OPENCV.md`](CUDA_OPENCV.md) (the conda-forge-has-no-CUDA verdict and the
-vendored Esri prebuilt route). The end-to-end story is the tutorial:
-[`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
+## API shapes
 
-**Demos:** `cv_kit/demos/` (`demo_spine`, `demo_features`, `demo_loop`,
-`demo_posegraph`, `bench_vision`). **CUDA build:** `cv_kit/cpp/build_opencv_cuda.py`.
+- `numpy_to_mat(frame)` takes an existing NumPy image frame, such as the frames
+  used by `demo-vision-features`, and returns a C++ `cv::Mat` view.
+- `msg_to_mat(msg)` takes a C++ `sensor_msgs::msg::Image` from an
+  `rclcpp_kit` subscription callback. It views the message's pixel buffer without
+  copying. Keep the Mat within the callback, while the message owns that buffer.
+- `create_orb(nfeatures)` creates the C++ ORB detector; its
+  `detect_and_compute(mat)` result contains keypoints and a descriptor Mat.
+
+The complete ROS-to-ORB-to-DBoW2 example is the [vision loop-closure
+tutorial](../docs/tutorials/vision_loop_closure.md). For GPU OpenCV, see
+[`CUDA_OPENCV.md`](CUDA_OPENCV.md). Probe and benchmark details are in
+[`REPORT.md`](REPORT.md).

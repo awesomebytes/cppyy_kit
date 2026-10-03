@@ -53,7 +53,7 @@ def interface_name(message_type: Any) -> str:
 def message_type_fields(message_type: Any) -> dict[str, str]:
     """The ``{field_name: ros_type_string}`` mapping for a message class.
 
-    Works for a stock generated Python class (it just calls the class's own
+    Works for a stock generated Python class (it calls the class's own
     ``get_fields_and_field_types``) or a C++ class previously registered via
     :func:`enable_pickling`. Anything else raises ``TypeError`` rather than
     guessing.

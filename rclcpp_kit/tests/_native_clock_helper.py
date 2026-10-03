@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live exact-node-clock and simulated-time proof."""
+"""Integration test for node clocks and simulated time."""
 
 import importlib
 import time

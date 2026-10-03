@@ -17,11 +17,11 @@ So an rviz2 with Fixed Frame "map" shows the map, the plan, and the commanded
 velocity live. The messages are real C++ messages published through rclcppyy. The
 loop is deadline-bounded and self-contained (no external data).
 
-The M6d lifecycle unlock (REPORT §Probe D/F, now resolved) makes both the Smac 2D
+The M6d lifecycle support (REPORT §Probe D/F) makes both the Smac 2D
 planner AND the real RPP controller drivable from Python: a real
 rclcpp_lifecycle::LifecycleNode is constructed in-process, and with it a plugin-free
-Costmap2DROS + Smac's collision checker + RPP's configure(). So the honest "controller
-half is Python because RPP is lifecycle-coupled" caveat is retired -- ``--controller
+Costmap2DROS, Smac's collision checker, and RPP's configure() methods work. The
+controller can use Nav2's RPP or the Python pure-pursuit implementation. ``--controller
 rpp`` runs Nav2's actual controller.
 
 Run: pixi run -e nav2 demo-nav2-stack
@@ -66,7 +66,7 @@ def world_to_cell(wx, wy):
     return int(wx / RES), int(wy / RES)
 
 
-# --- pure-pursuit controller (the honest ~30-line Python half) ----------------
+# --- pure-pursuit controller (Python implementation) -------------------------
 def pure_pursuit(pose, path_xy, idx, lookahead, max_v, max_w):
     """One control step. pose=(x,y,theta); path_xy=(N,2) world points; idx=current
     progress index. Returns (v, w, new_idx). Classic pure pursuit: aim at a lookahead

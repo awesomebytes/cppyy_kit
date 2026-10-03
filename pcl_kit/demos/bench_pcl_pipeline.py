@@ -5,11 +5,10 @@ Benchmark the pcl_kit ROS pipeline (d02) against the plain rclpy + NumPy baselin
 
 Each demo is a self-contained publisher + pipeline process (see d02 / d03). This
 runner spawns each for a short window, samples the process CPU% with psutil (same
-methodology as scripts/benchmarks/run_benchmarks.py -- sum the process's own CPU
+methodology as scripts/benchmarks/run_benchmarks.py. Sum the process's own CPU
 plus any children, primed then averaged, only while it is in steady state), and
 reads the demo's SUMMARY line for per-frame latency. It also counts the
-user-facing lines of code of each demo, so the "ease + performance" trade lands in
-one table.
+user-facing lines of code in each demo. The table reports code size and performance.
 
 CPU is measured at a fixed, realistic 10 Hz so the numbers show headroom: how much
 CPU each pipeline burns to keep up with the same sensor rate. "max sustained

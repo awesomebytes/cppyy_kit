@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live facade publish/take proof through exact stock rclpy entities."""
+"""Integration test for facade publish and take through stock rclpy entities."""
 
 import copy
 import os

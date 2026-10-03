@@ -1,44 +1,44 @@
-# retarget_pipeline — perception → humanoid retargeting capture rig
+# retarget_pipeline: perception and humanoid retargeting
 
-**Date:** 2026-07-12 · **Envs:** pixi `pipeline` (perception) = default robostack-jazzy
-ros-base + `cppyy 3.5` + `rerun-sdk 0.34.1` (conda) + `mediapipe 0.10.35` (pypi, brings
-`opencv-contrib-python`/cv2 5.0 + numpy 2.5.1); pixi `retarget-ros` (live retarget) = default
-ros-base + `pinocchio 4.1.0` + `example-robot-data` + `rerun-sdk 0.34.1` (solve-group default);
-pixi `wbc` (offline retarget) = standalone `pinocchio` + `rerun-sdk`, Python 3.12, linux-64.
-**Machine:** quiet laptop, `/dev/video0`, RTX PRO 2000 (GPU unused — MediaPipe ran on CPU here).
+**Date:** 2026-07-12. **Machine:** laptop with `/dev/video0` and an RTX PRO 2000. MediaPipe
+ran on the CPU.
 
-**The ask (locked with the owner):** a minimal-code human-demonstration capture rig —
-webcam → body + hand tracking → TF + live Rerun → whole-body retargeting onto a humanoid
-(Talos) → a recorded "policy-kickstart" dataset — that bootstraps humanoid policy training.
-Hybrid line: ML inference stays commodity Python (MediaPipe); cppyy_kit owns the genuinely
-hot glue. Record + replay from day one.
+**Environments:** `pipeline` uses the default robostack Jazzy ROS base, cppyy 3.5,
+rerun-sdk 0.34.1, and MediaPipe 0.10.35. MediaPipe comes from PyPI and provides
+OpenCV 5.0 and NumPy 2.5.1. `retarget-ros` adds pinocchio 4.1.0, example-robot-data,
+and rerun-sdk to the default ROS environment. `wbc` is a standalone environment with
+pinocchio and rerun-sdk for offline retargeting.
 
-**Verdict:**
-- **Phase 1 (perception): WORKS**, live at usable FPS, synthetic-headless fallback, stream
-  round-trips, TF via rclcpp_kit built in C++.
-- **Phase 2 (retarget): WORKS** (a precise partial — upper-body position retarget, fixed
-  base), Talos + **G1 stretch delivered as a zero-code URDF swap**, dataset artifact
-  written. The residual (~3–8 cm) is honest reachable-workspace limit, not solver error.
-- **The honest cppyy_kit wins are in the glue, measured:** /tf-message marshaling **265×**
-  (perception) and the retarget glue kernel **303.8×** (bit-identical). The IK **solve**
-  itself is a pinocchio-bindings job — cppyy is **blocked** there by a documented wall
-  (below), which is itself a useful finding.
-- **LIVE ROS-native transport + one viewer (added after the boost wall dissolved): WORKS.**
-  Retarget now runs in a ROS-capable env and consumes perception's `/tf` landmark frames via
-  rclcpp_kit's C++ TransformListener (`--source tf`, the default live mode) — measured
-  **end-to-end lag median 2.5 ms** (p90 3.5), *tighter* than the file-tail path. Both halves
-  log to **one shared Rerun viewer** (perception spawns, retarget connects; verified visually,
-  one window shows camera + human skeleton + retargeted robot + targets).
-- **Demo polish: the real robot model, run-until-Ctrl-C, and a presence gate.** The humanoid is
-  drawn as its **actual URDF link meshes** (`--robot-viz mesh`, default) — pinocchio's visual
-  `GeometryModel` + a static `rr.Asset3D` per link + a per-frame `Transform3D` from FK; ~0.55 ms/
-  frame over the skeleton, visually verified (the solid G1 model posed live in the one viewer).
-  Perception's `--duration` defaults to run-until-Ctrl-C (interactive), and a `--min-visibility`
-  presence gate stops the no-person phantom.
+This pipeline records webcam body and hand landmarks, publishes TF, visualizes the
+input and robot in Rerun, and maps the motion to a humanoid robot. It writes a
+"policy-kickstart" dataset for policy training. MediaPipe inference and the CLIK
+inverse-kinematics solve use their existing Python bindings; cppyy builds the `/tf`
+message and batch retarget kernel in C++. Recording and replay are supported.
+
+## Run this example
+
+From this checkout, follow the [run-book](#run-book-spot-check-live) to record a
+landmark stream and replay it through the humanoid retargeter.
+
+## Results
+
+- Perception runs at 26 to 30 fps from a live webcam. Synthetic input and stream
+  round-trips also work. rclcpp_kit publishes TF from C++.
+- Retargeting maps upper-body positions with a fixed base. Talos and G1 are supported.
+  The remaining end-effector error is about 3 to 8 cm because some targets exceed the
+  robot's reachable workspace.
+- The C++ TF message builder was 265 times faster than the Python field-by-field loop.
+  The C++ retarget glue kernel was 303.8 times faster than the Python loop, with a
+  maximum output difference of 7e-8 m.
+- In live ROS mode, median end-to-end lag was 2.5 ms and p90 was 3.5 ms. Both processes
+  can log to one Rerun viewer.
+- The default robot view uses URDF link meshes. On G1, mesh rendering adds about
+  0.55 ms per frame over the skeleton view. Perception runs until Ctrl-C by default.
+  The `--min-visibility` option suppresses frames when no person is visible.
 
 ---
 
-## Architecture as built (two processes, one stream seam)
+## Architecture: two processes and a landmark stream
 
 ```
 Process A  (pixi env: pipeline)                         Process B  (pixi env: wbc)
@@ -56,41 +56,35 @@ live Rerun (camera + 2D/3D skeleton + perf)                │
                                                           + dataset_<robot>.npz  (q, targets, ee_err)
 ```
 
-The two run in **separate pixi envs**. Originally this was forced: pinocchio's conda stack
-pinned libboost 1.86 while the ROS stack pinned 1.90.
+The offline workflow uses separate pixi environments because the package versions in
+`wbc` cannot share an environment with ROS. A ROS-capable retarget environment is also
+available. conda-forge rebuilt pinocchio 4.x against libboost 1.90, so pinocchio and
+example-robot-data now resolve with robostack in the default solve group. The
+`retarget-ros` environment runs the CLIK retarget process with ROS. By default,
+`retarget.py --source tf` receives frames from `/tf` through rclcpp_kit's C++
+TransformListener. The listener ingests data outside the GIL and Python reads it on
+lookup. `--replay` and `--follow` remain available in the ROS-free `wbc` environment.
+Cling still cannot parse the pinocchio model headers with Boost 1.90, so the IK solve
+uses pinocchio's Python bindings in either environment.
 
-> **Update (2026-07-12) — the boost wall dissolved, and retarget gained a ROS-native mode.**
-> conda-forge rebuilt pinocchio 4.x against libboost 1.90, so pinocchio + example-robot-data
-> now co-solve with the robostack ROS stack in one `solve-group`. A new `[feature.retarget-ros]`
-> env (solve-group `default`) runs the CLIK retarget **in a ROS-capable process**, and
-> `retarget.py --source tf` (the default live mode) consumes the landmark frames perception
-> broadcasts on `/tf` via **rclcpp_kit's C++ TransformListener** (ingest off the GIL; Python
-> only crosses on lookup) — no file hop. The file modes (`--replay` / `--follow`) are unchanged
-> for CI + the dataset, and still run in the ROS-free `wbc` env. What did **not** change: the
-> Cling header-parse wall on `pinocchio::Model` (the 25-type `boost::variant`) trips on boost
-> 1.90 too, so the IK *solve* remains a pinocchio-bindings job either way.
-
-The **landmark stream file remains the offline seam** — a tailable/replayable JSONL contract
-(`landmark_stream.py`, stdlib+numpy only, imports in both envs). Record/replay is not a mode
-bolted on later: A always can `--record`, B always reads a stream (`--replay`), so CI and
-rehearsal run the exact live code path headless. Streams identify themselves via a `format` tag
-(`cppyy_kit.retarget.landmarks`); recordings made before this tag was renamed carry the old
-`cppyy_kit.m6f.landmarks` value and are refused with an error naming both — re-record them. Streams identify themselves via a `format` tag
-(`cppyy_kit.retarget.landmarks`); recordings made before this tag was renamed carry the old
-`cppyy_kit.m6f.landmarks` value and are refused with an error naming both — re-record them.
+The landmark stream is the offline interface. It is JSONL, uses only the standard
+library and NumPy, and imports in both environments. Process A can record it and
+Process B can replay it, so tests can use the same path as a live run. New streams use
+the format tag `cppyy_kit.retarget.landmarks`. Older files tagged
+`cppyy_kit.m6f.landmarks` are rejected; record them again in the current format.
 
 ---
 
-## Phase 1 — perception (GO/NO-GO gate: PASSED)
+## Phase 1: perception
 
 | Path | Measured |
 |---|---|
 | **Live webcam + MediaPipe holistic** (640×480) | detect **27–31 ms/frame**, loop **33–39 ms/frame (~26–30 fps**, webcam-capped), **166 % CPU** (MediaPipe multithreads inference), **0 dropped frames** over 100–134-frame runs, person detected 100 % of frames, clean exit 0 |
-| **Synthetic headless** (no camera, no model) | **~5.1 ms/frame (~195 fps)** — the CI/rehearsal fallback |
+| **Synthetic headless** (no camera, no model) | **~5.1 ms/frame (~195 fps)**, the CI/rehearsal fallback |
 | **Stream round-trip** | 54 frames written → 54 replayed; JSONL, one meta line + one frame/line |
 | **/tf publish** | 75 landmark frames (pose 33 + hands 21×2) on `/tf`, message **built in C++** via a `cppyy.cppdef` broadcaster (rclcpp_kit) |
 
-**The cppyy_kit win here (perception glue): building the /tf message.** The broadcaster's
+The cppyy contribution in perception is construction of the `/tf` message. The broadcaster's
 `TFMessage` is constructed once in C++ (frame names fixed) and each video frame only its
 translations are refilled from one flat address (COMMON_PATTERNS §6). The naive baseline
 rebuilds the same message by constructing 75 `TransformStamped` proxies and setting their
@@ -98,13 +92,12 @@ fields in a Python loop.
 
 | /tf build (75 frames/msg) | ms/message |
 |---|--:|
-| **A — cppyy_kit C++ builder (refill persistent msg)** | **0.0005** |
-| **B — per-field Python loop (rebuild each frame)** | 0.1440 |
+| **A, cppyy_kit C++ builder (refill persistent msg)** | **0.0005** |
+| **B, per-field Python loop (rebuild each frame)** | 0.1440 |
 | **A speedup** | **265×** |
 
-Honest note: part of A's edge is that the message *structure* is reused — but that reuse is
-only possible because it lives in C++; a Python broadcaster typically rebuilds per frame. This
-is the realistic contrast and the reason to use the helper.
+The C++ builder reuses the message structure. A Python broadcaster typically rebuilds it
+for each frame. This reuse is part of the measured speed difference.
 
 Robustness: no webcam / no model → synthetic scene (prints why); webcam unplug mid-run → after
 5 failed reads it falls back to synthetic; `RCLCPPYY_RERUN_SPAWN=0` writes a `.rrd` (verified
@@ -112,7 +105,7 @@ Robustness: no webcam / no model → synthetic scene (prints why); webcam unplug
 
 ---
 
-## Phase 2 — retargeting (WORKS, precise partial)
+## Phase 2: retargeting
 
 Upper-body **position** retarget: human world landmarks → EE targets for the two grippers
 (scaled by arm-length ratio, clamped into 0.8× the robot's reachable sphere), solved per frame
@@ -120,194 +113,151 @@ by a damped **CLIK** (pinocchio bindings) with a posture regulariser, fixed free
 
 | Robot | frames | CLIK solve (median) | EE err median (L / R) | dataset |
 |---|--:|--:|--:|---|
-| **Talos** (nq 39) — webcam stream | 134 | **0.87 ms/frame** | **0.078 / 0.031 m** (mean 0.053) | `dataset_talos.npz` |
-| **Talos** — synthetic stream | 54 | 1.00 ms/frame | 0.059 / 0.058 m | — |
-| **G1** (nq 36, Unitree, **stretch**) — synthetic | 54 | **0.82 ms/frame** | **0.041 / 0.041 m** | `dataset_g1.npz` |
+| **Talos** (nq 39), webcam stream | 134 | **0.87 ms/frame** | **0.078 / 0.031 m** (mean 0.053) | `dataset_talos.npz` |
+| **Talos**, synthetic stream | 54 | 1.00 ms/frame | 0.059 / 0.058 m | N/A |
+| **G1** (nq 36, Unitree, configured with the stretch URDF), synthetic | 54 | **0.82 ms/frame** | **0.041 / 0.041 m** | `dataset_g1.npz` |
 
-**G1 stretch: delivered as a zero-code swap** — the retarget mapping is model-generic, so G1 is
-one `RobotConfig` (URDF path + frame names); `--robot g1` just works.
+The mapping also supports G1. It needs a `RobotConfig` with the URDF path and frame names;
+select it with `--robot g1`.
 
-**The residual is reachable-workspace limit, honestly.** A single human's arm poses map to
-targets at/beyond Talos's fixed-base reachable set; the ~3–8 cm residual is the CLIK reaching the
-*clamped* target's edge, not a convergence failure. (Solver bug found & fixed en route: locking
-the free-flyer by zeroing the base velocity *after* solving the full system discards the
-solution's dominant base component — the fix solves over the actuated columns only. Dropped EE
-error from ~27 cm to ~5 cm.)
+The remaining 3 to 8 cm error comes from the fixed-base robot's reachable workspace. Some
+human arm poses map to targets at or beyond Talos's reach. CLIK reaches the clamped target
+but cannot remove that residual. A solver bug was also fixed: the solve now uses actuated
+columns only instead of zeroing the free-flyer velocity afterward. This reduced EE error
+from about 27 cm to about 5 cm.
 
-**Dataset artifact ("policy-kickstart"):** `build/pipeline/dataset_<robot>.npz` with `q` (F×nq),
-`targets` (F×9), `t`, `ee_err`, `joint_names`, `source_stream` — a per-frame joint trajectory +
+**Dataset:** `build/pipeline/dataset_<robot>.npz` with `q` (F×nq),
+`targets` (F×9), `t`, `ee_err`, `joint_names`, `source_stream`, a per-frame joint trajectory +
 its Cartesian targets, ready to seed imitation/BC training.
 
-### The cppyy_kit win here (retarget glue), and the honest boundary on the solve
+### Retarget glue benchmark and IK limitation
 
-The natural "lower the CLIK to inline C++ calling pinocchio" move is **BLOCKED in this env**:
-instantiating `pinocchio::Model` from headers under Cling trips **boost 1.90's variant
-template-arity wall** — pinocchio's 25-type `JointModel` `boost::variant` exceeds
-`make_variant_list`'s limit. This is the *same* wall docs/wbc/REPORT.md hit for templated
-scalars, now confirmed for the **default-double `Model` + URDF parser** (probed out-of-process:
-clean compile error at `JointModelTpl<double>`, not a crash). So the IK **solve is a
-pinocchio-bindings job** — the precompiled library carries the variant; the bindings are the
-right tool (matching the REPORT's "bindings are fine" cases).
+Cling cannot instantiate `pinocchio::Model` from headers in this environment. The
+25-type `JointModel` `boost::variant` exceeds the `make_variant_list` template-arity
+limit in Boost 1.90. An out-of-process probe confirmed this for the default-double
+`Model` and URDF parser. The precompiled library works, so the IK solve uses pinocchio's
+Python bindings. The same error occurs when trying to instantiate other pinocchio model
+types from headers; see docs/wbc/REPORT.md.
 
-cppyy_kit's real contribution to Process B is the per-frame **glue kernel** — coordinate
-transform + target mapping + a **sequential One-Euro landmark filter** — authored in one
-`cppyy.cppdef` pass over the whole stream. The One-Euro filter is sequential across frames: the
-per-element Python-loop trap (§6/§26).
+The C++ glue kernel processes the stream in one `cppyy.cppdef` pass. It converts
+coordinates, maps targets, and applies the sequential One-Euro filter across frames
+(see COMMON_PATTERNS sections 6 and 26).
 
 | Retarget glue (134 frames: xform + target map + One-Euro) | total ms |
 |---|--:|
-| **A — cppyy_kit C++ kernel (one cppdef pass)** | **0.013** |
-| **B — Python per-frame loop** | 3.850 |
-| **A speedup** | **303.8×** (max \|A−B\| = 7e-8 m — bit-identical) |
+| **A, cppyy_kit C++ kernel (one cppdef pass)** | **0.013** |
+| **B, Python per-frame loop** | 3.850 |
+| **A speedup** | **303.8×** (max \|A−B\| = 7e-8 m) |
 
 ---
 
-## Motion-fidelity diagnosis + trunk-lean + hip-relative anchor (2026-07-12)
+## Motion mapping, trunk posture, and head tracking (2026-07-12)
 
-A live-teleop review reported the retargeting looked broken: hands don't follow, the
-target balls barely move, the head is static, and Talos's trunk leans back a lot.
-Diagnosed with a **known-motion** test (both wrists trace 0.3 m circles about the
-shoulders) measuring per-axis correlation + amplitude between the human wrist motion,
-the computed EE target, and the solved EE — the check the EE-error metric can't do (it
-scores solve-vs-clamped-target, not fidelity to human motion).
+A live review raised four issues: small hand motion, little target movement, no visible
+head movement, and a backward trunk lean. A test with known 0.3 m wrist circles measured
+correlation and amplitude from the human wrists to the target and solved end-effector.
+This measures motion transfer; end-effector error only measures the solve against its
+clamped target.
 
-- **"Hands don't follow / targets barely move" — NOT a code bug.** Input-wrist →
-  target correlation is **0.89–0.97** per axis and target → solved-EE is **~1.0**;
-  the Talos EE moves 13–26 cm for that input. **`--source tf` and `--replay` are
-  equivalent** (target std matches to ~1 mm; q std 0.587 vs 0.546) — so there is no
-  double/missing coordinate transform in the live path. The perceived staleness was
-  dominated by the trunk lean (below) contorting the arm, plus the mapping *amplitude*
-  (shoulder-anchored, arm-ratio-scaled, 0.8× clamp) which is modest — smallest on G1
-  (0.28 m arm → 5–12 cm hand motion). The amplitude/anchor scheme is a **design choice**
-  (see options) — the code faithfully maps whatever motion it is given.
-- **Talos trunk leans ~52° — FIXED.** With only two gripper position tasks and a weak
-  *uniform* posture regulariser, the CLIK freely pitched the torso/waist to reach
-  (measured: 52° for Talos, −17° for G1). Fix: a **per-joint posture weight**
-  (`Retargeter.posture_w`) that firmly pins the legs + torso/waist to the reference and
-  frees only the arm chain, so reaching is done by the arms with an upright trunk.
-  Measured after: torso pitch **0.0°** for both, and arm tracking is **unchanged**
-  (correlation still 0.89–0.97, EE amplitude 13–26 cm). Regression test
-  `test_trunk_stays_upright` asserts < 15°.
-- **Head doesn't move — half structural, half a wrong conclusion (CORRECTED below).**
-  G1 genuinely has **no neck joints** (its head is mechanically rigid — a hardware fact).
-  On Talos the diagnosis observed that driving the neck joints moves the `head_2_link`
-  *position* by **0.000 m** and concluded head tracking was "structural / a no-op." That
-  conclusion was **wrong**: the neck is *rotational*, so the link position stays put while
-  its **orientation** swings freely — a re-test shows **~28.6° / 0.5 rad** of head rotation
-  from the same neck joints. Talos's head is fully controllable; it just needs an
-  orientation mapping, not a position IK task. Implemented in the next lane (below).
+- Wrist-to-target correlation was **0.89–0.97** per axis. Target-to-solved end-effector
+  correlation was about **1.0**. Talos end-effectors moved 13–26 cm. Live TF and replay
+  produced similar targets (standard deviation within about 1 mm; q standard deviation
+  0.587 vs 0.546). The earlier shoulder-relative mapping used an arm-length scale that
+  changed as the arm bent. Its 0.8 reach clamp also limited motion, especially on G1,
+  where wrist motion was 5–12 cm for a 0.28 m arm.
+- With two gripper position tasks and a uniform posture regularizer, the trunk leaned
+  52 degrees on Talos and -17 degrees on G1. Per-joint posture weights now hold the legs
+  and torso near the reference and leave the arm joints free. Both robots then had 0.0
+  degree torso pitch. Wrist correlation and end-effector motion remained at 0.89–0.97
+  and 13–26 cm. `test_trunk_stays_upright` checks that pitch stays below 15 degrees.
+- Moving Talos's neck changed `head_2_link` position by 0.000 m. Position alone made the
+  head appear stationary, but the neck changes orientation. A retest measured about
+  28.6 degrees (0.5 rad) of rotation.
 
-**Hip-relative anchor — IMPLEMENTED (the owner's chosen chain).** A follow-up review
-specified the mapping precisely: *human wrist relative to the human hips → scale → robot
-EE relative to the robot hip/torso → world*. A frame audit confirmed the code deviated on
-both sides: (human) it used `wrist − shoulder` (shoulder-relative), and (robot) it
-anchored at the shoulder frame, with a **pose-dependent** scale (`arm / current
-shoulder-wrist distance`, which drifts as the arm bends). The map is now:
+The mapping now uses the human wrist position relative to the hip midpoint and maps it
+relative to the robot hip. It uses a fixed ratio of robot torso length to human torso
+length, then clamps the target to `reach_frac * arm` at the robot shoulder. Both the C++
+kernel and Python stepper use the same mapping. Replay, follow, and TF modes share it.
+Known-circle tests measured hip-relative correlation of **1.0** for Talos and **0.98–1.0**
+for G1. The free-flyer base remains at the hip origin. The end-effector frames are
+`gripper_*_base_link` on Talos and `*_wrist_yaw_link` on G1.
 
-  `target = robot_hip + (robot_torso / human_torso) · (human_wrist − human_hip_mid)`,
-  then clamped to `reach_frac · arm` of the robot shoulder for reachability,
-
-on **both** the C++ kernel and the Python stepper (the glue-match test keeps them
-identical), so all three input modes (replay, follow, tf) share it. The scale is now a
-**fixed body-proportion ratio** (robot shoulder-to-hip length / the same on the human,
-per frame) rather than pose-dependent. Measured on the known circle: hip-relative
-correlation (`wrist−hip` vs `target−hip`) is **1.0 / 0.98–1.0** per axis for Talos / G1,
-so the robot hand now tracks the operator's hand *position in body space*. Talos's zero
-was fine (free-flyer base is upright at the origin; `base_link`/G1 `pelvis` is the hip
-anchor). EE frames audited: `gripper_*_base_link` / G1 `*_wrist_yaw_link` are the correct
-hand frames.
-
-**Regression tests** (permanent): `test_retarget_tracks_wrist_motion` (now asserts the
-**hip-relative** correlation > 0.7/axis + non-trivial amplitude) and
-`test_trunk_stays_upright` (< 15°).
+`test_retarget_tracks_wrist_motion` checks hip-relative correlation above 0.7 per axis
+and non-zero amplitude. `test_trunk_stays_upright` checks trunk pitch below 15 degrees.
 
 ---
 
-## ~1:1 amplitude + Talos head tracking (2026-07-12)
+## Arm amplitude and Talos head tracking (2026-07-12)
 
-Two structural refinements once the hip-relative anchor was in: make gross arm sweeps
-feel close to 1:1, and make Talos's head follow the operator's head.
+The arm reach clamp changed from 0.8 to 0.95. The `--motion-scale` option, default 1.0,
+scales the body-proportion ratio. A 240-frame arm sweep measured the following solved
+gripper peak-to-peak travel:
 
-**Amplitude — now ~1:1, with a live feel knob.** The reach clamp was raised
-`REACH_FRAC 0.8 → 0.95` (the target may now use 95 % of the robot's arm before being
-capped for reachability), and a new **`--motion-scale`** CLI knob (default `1.0`)
-multiplies the body-proportion scale so the owner can exaggerate or damp sweeps live.
-Measured on a gross full-arm sweep (240 frames), the **solved gripper 3-D peak-to-peak
-excursion** is now:
-
-| Robot | `--motion-scale 1.0` | `1.5` | (old 0.8-clamp map, for reference) |
-|---|---|---|---|
+| Robot | Scale 1.0 | Scale 1.5 | Previous 0.8 clamp |
+|---|---:|---:|---:|
 | **Talos** | **0.75 m** per hand | 1.08 m (target grows; arm reach-clamped) | 13–26 cm |
-| **G1** | **0.50 m** per hand | ~0.48 m (already reach-clamped) | (shorter arms) |
+| **G1** | **0.50 m** per hand | ~0.48 m (already reach-clamped) | shorter arms |
 
-So a full human arm sweep now drives ~0.75 m of Talos hand travel — well beyond the
-earlier 13–26 cm. The map stays reach-clamped, so pushing `--motion-scale` higher grows
-the *target* but the hand saturates at the arm's reach (visible above as G1 not growing).
+At higher scale, G1 remains limited by arm reach. Talos hand travel increased from
+13–26 cm to about 0.75 m.
 
-**Talos head tracking — IMPLEMENTED (correcting the earlier "structural" claim).** The
-operator's head yaw/pitch is read from MediaPipe landmarks — the face-forward direction
-`ear-midpoint → nose` gives `yaw = atan2(fy, fx)`, `pitch = atan2(fz, hypot(fx, fy))` in
-the robot frame — and mapped **directly onto the neck joints** (Talos `head_2_joint` RZ =
-yaw, `head_1_joint` RY = pitch), clamped to their limits. It is applied **after** the arm
-CLIK loop (`_apply_head`), so it can never fight the arm tasks (soft by construction).
-Sign convention verified empirically: look-left → head-left, look-up → head-up. Measured
-correlation between operator and robot-head orientation over a yaw/pitch sweep: **yaw
-1.00, pitch 0.999**, amplitude near 1:1 (yaw 1.02 rad out for 1.00 in; pitch clamped at
-Talos's `head_1` up-look limit ≈0.26 rad, so extreme look-up saturates — a joint-range
-fact). Neck joints are pinned in the posture regulariser (driven directly, not by the
-arm CLIK), so the trunk stays upright. Regression: `test_head_tracks_operator_yaw_pitch`.
+Talos head yaw and pitch come from the ear-midpoint-to-nose direction in MediaPipe
+landmarks. Yaw maps to `head_2_joint` RZ; pitch maps to `head_1_joint` RY. The values are
+clamped to joint limits and applied after the arm CLIK loop. Tests confirmed the signs:
+look left moves the head left, and look up moves it up. Over a yaw/pitch sweep, measured
+correlation was **1.00** for yaw and **0.999** for pitch. Yaw output was 1.02 rad for
+1.00 rad input. Pitch is limited by `head_1` at about 0.26 rad. The neck joints are held
+by the posture regularizer and changed directly by `_apply_head`.
+`test_head_tracks_operator_yaw_pitch` checks this behavior.
 
-**G1 head is mechanically rigid — not a software limitation.** G1 has no neck joints;
-`_detect_neck` reports `has_neck = False`, `_apply_head` is a safe no-op, and the demo
-**prints this once at startup** ("… has NO neck joints — its head is mechanically rigid …")
-so it is never mistaken for a bug. Regression: `test_g1_head_is_rigid`.
+G1 has no neck joints. `_detect_neck` returns `has_neck = False`, and `_apply_head` does
+nothing. `test_g1_head_is_rigid` checks this behavior.
 
 **What tracks what (both robots):**
 
 | Human input | Talos | G1 |
 |---|---|---|
 | Left / right wrist (rel. to hips) | left / right gripper, hip-relative, ~1:1 amplitude | left / right wrist, hip-relative (~0.5 m sweep) |
-| Head yaw / pitch (nose vs ears) | **head yaw + pitch** (neck joints, corr ≥0.999) | — (no neck; rigid head) |
+| Head yaw / pitch (nose vs ears) | **head yaw + pitch** (neck joints, corr ≥0.999) | no neck joints; rigid head |
 | Trunk | pinned upright (posture regulariser) | pinned upright |
 | Free-flyer base | locked at hip origin | locked at hip origin |
 
 ---
 
-## Honest boundaries (library-primitive vs cppyy-won)
+## Scope and limitations
 
-- **ML inference is a library primitive** (MediaPipe, CPU ~30 ms/frame) — deliberately NOT
-  wrapped in cppyy (the live-webcam demo's honest-headline lesson). No cppyy claim is made on it.
-- **cppyy_kit wins are in the glue, and only where measured:** /tf marshaling **265×**,
-  retarget glue kernel **303.8×** — both Pattern 6/26 (build/refill in C++; keep the sequential
-  loop in C++), both with numeric agreement checks.
-- **The retarget solve is bindings, not cppyy** — an honest "no kit needed / kit blocked" cell,
-  documented with the exact wall.
-- **Retarget fidelity is a precise partial**: upper-body position-only, fixed base, ~3–8 cm
-  reachable-workspace residual. No biomechanical claim.
+- **ML inference is a library primitive** (MediaPipe, CPU ~30 ms/frame), deliberately NOT
+  wrapped in cppyy (the live-webcam demo's benchmark result). cppyy is not used for inference.
+- **Measured cppyy results:** /tf marshaling **265×**,
+  retarget glue kernel **303.8×**, both Pattern 6/26 (build/refill in C++; keep the sequential
+  loop in C++), both with numeric comparison tests.
+- **The retarget solve uses pinocchio bindings.** Cling cannot instantiate the required
+  pinocchio model from headers in this environment.
+- **Retarget fidelity is a partial implementation**: upper-body position-only with a fixed base and about 3 to 8 cm
+  reachable-workspace residual. The mapping does not model full-body biomechanics.
 
 ---
 
-## Generic-lesson candidates for COMMON_PATTERNS (for the lead — not added by me)
+## Notes for COMMON_PATTERNS
 
-1. **The boost-variant JIT wall applies to pinocchio's default-double `Model`, not just exotic
-   scalars (2nd instance, sharpens wbc §20).** Anything that instantiates `pinocchio::Model`
+1. **The Boost variant template-arity limit also affects to pinocchio's default-double `Model`, not just exotic
+   scalars (2nd instance, updates wbc §20).** Anything that instantiates `pinocchio::Model`
    from headers under Cling (URDF parse, FK on a real robot, a crocoddyl `StateMultibody`) hits
    boost 1.90's `make_variant_list` arity limit on the 25-type `JointModel` variant. Rule: drive
-   pinocchio's rigid-body core via its **Python bindings**; cppyy's win for this stack is the
+   pinocchio's rigid-body core via its **Python bindings**; cppyy's use in this stack is the
    abstract/custom-model path (crocoddyl action models; see docs/wbc/REPORT.md) and *non-pinocchio* glue kernels,
    not the multibody `Model`.
-2. **Build-once-in-C++, refill-per-frame for ROS messages (sharpens §6).** A persistent C++-side
+2. **Build-once-in-C++, refill-per-frame for ROS messages (updates §6).** A persistent C++-side
    message (`TFMessage`) whose data is refilled from a raw address each frame beats
    reconstructing the message's proxies field-by-field in Python (265× for 75 TF frames). The
    general "keep the container in C++" rule, applied to a repeatedly-published message.
 3. **Two-env pipeline coupled by a replayable stream file.** When a hard env boundary forces two
    processes (here ROS vs pinocchio/boost), a **tailable/replayable JSONL stream** is the seam:
    live coupling = tail; CI/rehearsal = replay; and a **coordinate-frame contract module** with
-   only stdlib+numpy imports cleanly in both envs. Record/replay-from-day-one is a design stance,
-   not a mode.
+   only stdlib+numpy imports without errors in both envs. Recording and replay are available.
 4. **First pip dependency in a conda/pixi repo (mediapipe).** Put it in a dedicated feature env
    with `[pypi-dependencies]`; **verify the pip deps' numpy equals the conda numpy** (here both
-   2.5.1 — no split) and **exclude any conda package the pip dep re-provides** (do NOT compose
+   2.5.1, no split) and **exclude any conda package the pip dep re-provides** (do NOT compose
    the `vision` feature's conda opencv with mediapipe's pip `opencv-contrib-python`). Compose with
    the ROS default via `solve-group="default"` so the shared stack stays one solve.
 5. **MediaPipe 0.10.x API shift (recon fact worth a note).** The legacy `mp.solutions` API is
@@ -317,7 +267,7 @@ so it is never mistaken for a bug. Regression: `test_g1_head_is_rigid`.
 
 ---
 
-## Env / lock changes (flag for the lead)
+## Environment and lock changes
 
 - **New `[feature.pipeline]` + `pipeline` env** (`solve-group="default"`): adds `rerun-sdk 0.34.*`
   (conda) and `mediapipe==0.10.35` (**the repo's first pip dependency**, in a
@@ -325,18 +275,18 @@ so it is never mistaken for a bug. Regression: `test_g1_head_is_rigid`.
   rerun + cppyy + rclcpp_kit all import together, numpy stays 2.5.1.
 - **Added `rerun-sdk 0.34.*` to `[feature.wbc]`** so Process B can log the retargeted humanoid.
   wbc is standalone, so this only re-locks the wbc env.
-- **`pixi.lock` re-locked — purely additive** (1783 insertions, 0 deletions; no existing pin
+- **`pixi.lock` re-locked, purely additive** (1783 insertions, 0 deletions; no existing pin
   moved), because the pipeline env is solve-group=default and wbc is standalone.
 - Tasks added: `fetch-models`, `demo-perceive`, `bench-perceive`, `test-pipeline` (pipeline env);
   `demo-retarget`, `bench-retarget`, `test-retarget` (wbc env). `retarget_pipeline` added to the
   `lint` task. The default `test` task is **unchanged**.
 - **New `[feature.retarget-ros]` + `retarget-ros` env** (`solve-group="default"`): the ROS-native
-  retarget home — `pinocchio` + `example-robot-data` + `rerun-sdk` on top of the default ros-base
+  retarget home, `pinocchio` + `example-robot-data` + `rerun-sdk` on top of the default ros-base
   (so rclcpp_kit's C++ TF listener and the pinocchio CLIK run in one process). Proven:
   `pixi install -e retarget-ros` solves; pinocchio 4.1.0 + rerun + cppyy + rclcpp_kit import and
-  coexist, Talos loads, the C++ TransformListener creates + shuts down cleanly. Tasks:
+  coexist, Talos loads, the C++ TransformListener creates + shuts down without errors. Tasks:
   `demo-retarget-ros` (`--source tf`), `test-retarget-ros`.
-- **Lock shift from adding pinocchio to the default solve-group — narrow and benign.** The only
+- **Lock shift from adding pinocchio to the default solve-group, narrow and benign.** The only
   shared-package change across the default-group envs (bt, control, ik, moveit, nav2, ompl, pcl,
   pipeline, rclcpp, vision, vision-cuda) is a **libopenblas threading-backend flip** (`0.3.33
   pthreads_` → `0.3.33 openmp_`, **same version**) with `+ llvm-openmp` / `_openmp_mutex` gnu→llvm.
@@ -347,16 +297,18 @@ so it is never mistaken for a bug. Regression: `test_g1_head_is_rigid`.
 **Pinned model bundle (supply-chain hygiene).** `fetch_models.py` pins each MediaPipe Tasks
 bundle's URL **and SHA-256**, verifies the hash after download, and refuses (and removes) a
 mismatch. The perception default uses `holistic` (`float16/latest`, downloaded 2026-07-12):
-`holistic_landmarker.task` — 13 683 609 bytes, sha256
+`holistic_landmarker.task`, 13 683 609 bytes, sha256
 `e2dab61191e2dcd0a15f943d8e3ed1dce13c82dfa597b9dd39f562975a50c3f8`. (Also pinned: `pose` =
 `4eaa5eb7…`, `hand` = `fbc2a300…`.) Caveat: the URL is Google's `.../latest/`, so a bundle
-rotation will change the hash and be refused — re-pin, or pass `--allow-hash-mismatch` /
+rotation will change the hash and be refused, re-pin, or pass `--allow-hash-mismatch` /
 `RETARGET_ALLOW_HASH_MISMATCH=1` to knowingly accept a new bundle. Verified: a cached bundle whose
 hash matches is not re-downloaded; a deliberately-wrong pin is refused and the `.part` cleaned.
 
 ---
 
 ## Gates
+
+Recorded gate results:
 
 - `pixi run lint` → **0**.
 - `pixi run test` (default env) → **56 passed, 130 skipped** (unchanged by this lane;
@@ -391,83 +343,80 @@ pixi run -e wbc demo-retarget --robot g1    --replay build/pipeline/demo.jsonl  
 pixi run -e wbc bench-retarget --replay build/pipeline/demo.jsonl                # glue 303.8x
 
 # tests
-pixi run -e pipeline test-pipeline    # 9 passed
-pixi run -e wbc test-retarget         # 6 passed
+pixi run -e pipeline test-pipeline
+pixi run -e wbc test-retarget
 ```
 
-### LIVE ROS-native teleop (two terminals, ONE viewer) — the primary live mode
+### Live ROS-native teleoperation (two terminals, one viewer)
 
-Perception broadcasts the ~75 landmark frames on `/tf`; retarget consumes them directly via
-rclcpp_kit's **C++ TransformListener** (ingest on its own thread, off the GIL — the 6.7–14×
-rclcpp_kit ingest win; Python crosses only on lookup). No file hop. Both halves log to **one
-shared Rerun viewer** (perception spawns it; retarget connects over gRPC with the same recording
-id), so one window shows the camera + landmark skeleton + the retargeted humanoid + targets.
+Perception broadcasts about 75 landmark transforms on `/tf`. Retargeting receives them through
+rclcpp_kit's C++ `TransformListener`, which ingests them on its own thread outside the GIL.
+The measured ingest speedup was 6.7–14×. Python reads the transforms during lookup. The processes
+do not exchange a stream file in this mode. Both log to one Rerun viewer. Perception starts the
+viewer, and retargeting connects over gRPC using the same recording id. The viewer shows the
+camera, landmark skeleton, retargeted humanoid, and targets.
 
 ```bash
-# terminal A — perception: publishes /tf AND opens the one shared viewer (start it first).
-# Runs until Ctrl-C (no --duration needed for interactive use):
+# Terminal A, perception: publish /tf and open the shared viewer.
+# Run until Ctrl-C. Interactive use does not need --duration.
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --shared-viewer
-# terminal B — retarget: consumes /tf via the C++ listener, connects to A's viewer, renders the
-# REAL G1 mesh model:
+# Terminal B, retarget: consume /tf with the C++ listener and connect to the shared viewer.
 ROS_DOMAIN_ID=62 pixi run -e retarget-ros demo-retarget-ros --robot g1 --shared-viewer
 ```
 
-The robot is drawn as its **actual URDF link meshes** by default (`--robot-viz mesh`) — pinocchio
+The robot is drawn with URDF link meshes by default (`--robot-viz mesh`), pinocchio
 loads the visual `GeometryModel`, each link's STL is logged once as a static `rr.Asset3D`, and per
 frame only a `rr.Transform3D` per link updates its pose from FK (`--robot-viz skeleton` falls back
-to the joint tree, and any link that is an inline primitive rather than a mesh file is skipped —
-e.g. Talos's wrist-FT/IMU). **Per-frame viz cost** (G1, 35 meshes): mesh **1.31 ms/frame** vs
-skeleton 0.76 ms (Δ ~0.55 ms — the geometry-placement update + 35 transform logs); negligible
+to the joint tree, and any link that is an inline primitive rather than a mesh file is skipped,
+for example Talos's wrist-FT/IMU). **Per-frame viz cost** (G1, 35 meshes): mesh **1.31 ms/frame** vs
+skeleton 0.76 ms (Δ ~0.55 ms, the geometry-placement update + 35 transform logs); negligible
 against the 33 ms frame budget.
 
 `--source tf` is the default when neither `--replay` nor `--follow` is given; it waits up to
 `--startup-timeout` (30 s) for the first `/tf` frames and exits when the stream goes idle
 (`--idle-timeout`) or on Ctrl-C, writing the dataset. Perception's `--duration` now defaults to
 **0 = run until Ctrl-C** (interactive); pass a positive value to cap it (tests / timed benches).
-Both processes shut down cleanly on SIGINT (stream closed, dataset written, viewer flushed).
+Both processes shut down without errors on SIGINT (stream closed, dataset written, viewer flushed).
 
-A **presence gate** (`--min-visibility`, default 0.5) means perception only broadcasts /tf +
-records a pose when the key landmarks' mean visibility clears the threshold — with a webcam but
-nobody in frame, no phantom robot is driven (retarget's tf mode simply sees no fresh frames). Set
+A **presence gate** (`--min-visibility`, default 0.5) means perception broadcasts /tf and
+records a pose only when the key landmarks' mean visibility is above the threshold. If no person
+is visible, retarget's tf mode receives no new frames and sends no robot output. Set
 `--min-visibility 0` to disable.
 
-**Measured** (synthetic perception at 30 fps publishing /tf, G1 consumer): **end-to-end
-publish→retarget lag median 2.5 ms (p90 3.5, max 3.8) headless**, i.e. *tighter* than the file-tail
-path below — the C++ listener ingests /tf off the GIL with no file-poll interval; CLIK ~1.2 ms/frame,
-EE ~4.6 cm. Verified end-to-end + visually: perception spawned one viewer, retarget connected to the
-same gRPC endpoint + recording id, and the **real G1 mesh model** posed live in that one window
-alongside the human skeleton. This is the demo the owner asked for: webcam → skeleton → humanoid in
-real time, one screen. The IK solve is pinocchio's Python bindings (the Cling `Model` wall is
-unchanged); the boost-1.90 rebuild is only what lets pinocchio share the ROS env.
+**Measured:** with synthetic perception at 30 fps publishing /tf and a G1 consumer, headless
+publish-to-retarget lag was 2.5 ms median, 3.5 ms p90, and 3.8 ms maximum. CLIK took about
+1.2 ms/frame, and end-effector error was about 4.6 cm. This was lower than the file-follow
+measurement below. In a visual check, perception started one viewer and retargeting connected
+to it using the same gRPC endpoint and recording id. The viewer showed the G1 URDF meshes and
+human skeleton together. The IK solve uses pinocchio's Python bindings because Cling cannot
+instantiate `Model`. The Boost 1.90 rebuild allows pinocchio to resolve in the ROS environment.
 
-### LIVE teleop via a stream file (`--follow`) — offline-capable fallback
+### Live teleoperation with a stream file (`--follow`)
 
-Run the perception and retarget halves **concurrently**, coupled by the growing stream file:
-`--follow` tails it and retargets each frame as it arrives (`landmark_stream.follow()` with the
-writer's per-frame flush). Works without a shared ROS graph (the retarget half can run in the
-ROS-free `wbc` env), and is what CI replays.
+Run perception and retargeting at the same time. The `--follow` option reads the growing stream
+file and retargets each frame after the writer flushes it (`landmark_stream.follow()`). This works
+without a shared ROS graph because the retarget process can run in the ROS-free `wbc` environment.
+CI also replays this file format.
 
 ```bash
-# terminal A (producer) — webcam if present, else synthetic; writes the stream live:
+# Terminal A (producer): use a webcam if available, otherwise synthetic input.
 ROS_DOMAIN_ID=62 pixi run -e pipeline demo-perceive --record build/pipeline/live.jsonl --duration 30
-# terminal B (consumer) — start it first; it waits (with a heartbeat) for the file AND the
-# first frame, then A comes up and it retargets live:
-pixi run -e wbc demo-retarget --robot g1 --follow build/pipeline/live.jsonl
+# Terminal B (consumer): start first. It waits for the file and first frame.
+pixi run -e wbc python retarget_pipeline/retarget.py --robot g1 --follow build/pipeline/live.jsonl
 ```
 
-`--follow` uses **two independent waits** so the cold "consumer first" flow works: a **startup
-grace** (`--startup-timeout`, default 30 s) for the file + the producer's *first* frame — a fresh
-`demo-perceive` takes several seconds to activate its env and load its model — and, once frames are
-flowing, the **idle timeout** (`--idle-timeout`, default 2 s after the last frame) to wrap up and
-write the dataset. It also exits cleanly on EOF or Ctrl-C. **Measured** (synthetic producer at 30 fps, G1 consumer, 300
+`--follow` has two timeouts. The startup timeout (`--startup-timeout`, default 30 s) allows time
+for the file and first frame to appear. Starting `demo-perceive` takes several seconds while its
+environment and model load. The idle timeout (`--idle-timeout`, default 2 s) starts after the last
+frame and controls when the dataset is written. The process also exits on EOF or Ctrl-C.
+**Measured** (synthetic producer at 30 fps, G1 consumer, 300
 frames consumed as produced): **end-to-end producer→consumer lag median 4.4 ms (p90 6.5, max
-10.1 ms)** — far under one 33 ms frame period, so the consumer tracks in real time rather than
-falling behind; CLIK ~1.3 ms/frame. The webcam source is the same plumbing (synthetic used here
-for a reproducible number). The live path computes each frame's target with the per-frame Python
-stepper (`_frame_target` + `_EuroState`, ~0.03 ms) rather than the batch C++ glue kernel — the
-kernel's whole-stream win is for offline replay/`--bench`; live, the per-frame glue cost is
-negligible against the CLIK solve.
+10.1 ms)**. This is below one 33 ms frame period. CLIK took about 1.3 ms/frame. The measurement
+used synthetic input; webcam input uses the same stream handling. In follow mode, each target is
+computed by the per-frame Python stepper (`_frame_target` + `_EuroState`, about 0.03 ms), not the
+batch C++ glue kernel. The batch kernel benchmark covers offline replay and `--bench`; per-frame
+glue time is small compared with the CLIK solve.
 
-The `--follow` file path logs to its own Rerun viewer (or a headless `.rrd`); the **shared single
-viewer is wired for the ROS-native path** above (`--shared-viewer` on both halves). Headless / no
-display / under pytest, both paths fall back to per-process `.rrd` files.
+The `--follow` path logs to its own Rerun viewer or a headless `.rrd` file. The shared viewer is
+available in ROS-native mode when both processes use `--shared-viewer`. Without a display or
+under pytest, each process writes its own `.rrd` file.

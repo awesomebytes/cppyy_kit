@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """
 BehaviorTree.CPP official tutorial 1 ("Your first behavior tree"), in Python via
-rclcppyy's bt_kit. This mirrors the C++ tutorial line-for-line -- same factory,
-same registerSimpleAction / registerSimpleCondition, same createTreeFromText /
-tickWhileRunning -- only the leaf callbacks are Python.
+bt_kit. It uses the same factory, registration functions, and tree methods as the
+C++ tutorial. The leaf callbacks are Python functions.
 
 Reference: https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree
 Run:       pixi run -e bt demo-bt-t01

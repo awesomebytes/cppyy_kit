@@ -1,8 +1,8 @@
 """Managed access to real ``rclcpp`` objects.
 
-The helpers in this module own lifecycle and smooth over cppyy constructor
-friction.  Nodes, executors, callback groups, options, publishers, and
-subscriptions remain the original C++ objects; callers can always use the raw
+The helpers in this module manage object lifetimes and provide constructors that
+cppyy can call. Nodes, executors, callback groups, options, publishers, and
+subscriptions remain the original C++ objects. Callers can use the raw
 ``rclcpp`` namespace through :attr:`NativeSession.rclcpp`.
 """
 
@@ -292,8 +292,8 @@ def qos_event_capabilities(requested_events: Iterable[str]) -> dict[str, Any]:
 
     Most events either bind at entity construction or make rclcpp raise
     ``UnsupportedEventTypeException`` synchronously (``event_handler.hpp``:
-    ``EventHandler``'s constructor throws on ``RCL_RET_UNSUPPORTED`` before the
-    entity is returned) -- so a live entity is proof they bound.
+    ``EventHandler`` constructor throws on ``RCL_RET_UNSUPPORTED`` before it
+    returns the entity. If construction succeeds, the handlers were bound.
 
     ``incompatible_type`` on ``rmw_cyclonedds_cpp`` is a verified exception to
     that rule: the rmw carries no DDS listener for it at all (no
@@ -320,11 +320,11 @@ def qos_event_capabilities(requested_events: Iterable[str]) -> dict[str, Any]:
 
 def content_filter_capabilities(
         subscription: Any, requested: bool) -> dict[str, Any]:
-    """Report whether content filtering is actually honored for one subscription.
+    """Report whether content filtering is enabled for one subscription.
 
-    Wraps ``subscription.is_cft_enabled()`` -- the only reliable, per-RMW-honest
-    signal (verified: ``rmw_cyclonedds_cpp``'s ``rmw_subscription_set_content_filter``
-    / ``rmw_subscription_get_content_filter`` are literal "unimplemented" stubs, so
+    Wraps ``subscription.is_cft_enabled()``. This reports the active status for the
+    current RMW. In ``rmw_cyclonedds_cpp``, ``rmw_subscription_set_content_filter``
+    / ``rmw_subscription_get_content_filter`` are "unimplemented" stubs, so
     creating a subscription with a non-empty filter does not error on Cyclone; the
     rmw silently creates an ordinary, unfiltered subscription instead).
     """

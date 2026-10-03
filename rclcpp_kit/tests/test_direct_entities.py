@@ -404,10 +404,10 @@ def test_python_message_types_are_rejected_before_resolution():
 
 class _FakeManagedCallbackEntity:
     """Stand-in for the real C++-owned ManagedSubscription (Slice 2.5a) in
-    pure-Python unit tests that mock out cppyy entirely -- these tests
+    pure-Python unit tests that mock cppyy. These tests
     exercise dispatch/owning-copy semantics, not the real C++ template
     instantiation, so the managed wrapper is mocked too rather than given a
-    fake cppyy type it cannot actually bracket-instantiate against."""
+    fake cppyy type it cannot instantiate with bracket syntax."""
 
     def __init__(self):
         self._closed = False

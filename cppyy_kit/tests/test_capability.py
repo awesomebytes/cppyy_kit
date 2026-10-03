@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.capability -- the detect/fallback/introspect registry.
+"""Tests for cppyy_kit.capability, which tracks feature availability and details.
 Pure Python; runs in any env."""
 import pytest
 

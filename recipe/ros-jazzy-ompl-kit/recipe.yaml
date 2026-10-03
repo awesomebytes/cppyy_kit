@@ -2,8 +2,8 @@ schema_version: 1
 
 context:
   name: ros-jazzy-ompl-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -28,7 +28,7 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.3.0
+    - cppyy-kit ==0.4.0
     - ros-jazzy-ompl
 
 tests:
@@ -42,10 +42,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Drive the Open Motion Planning Library from Python via cppyy"
+  summary: "Use the Open Motion Planning Library from Python through cppyy"
   description: |
-    ompl_kit drives the Open Motion Planning Library from Python via cppyy:
-    geometric planning with Python or JIT'd C++ validity checkers.
+    ompl_kit exposes the Open Motion Planning Library to Python through cppyy.
+    It supports geometric planning with Python or JIT-compiled C++ validity
+    checkers.
 
 extra:
   recipe-maintainers:

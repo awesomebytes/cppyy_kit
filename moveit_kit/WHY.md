@@ -1,39 +1,64 @@
-# Why moveit_kit — the full MoveIt 2 C++ API from Python via cppyy
+# moveit_kit: use MoveIt 2 from Python via cppyy
 
-`moveit_kit` lets you drive [MoveIt 2](https://moveit.ai) — the standard C++ motion-
-planning framework for robot arms — from Python: the real C++ code owns the robot
-model, the planning scene (FCL collision), the KDL kinematics solver and the OMPL
-planner, while your Python composes the problem and reads the result. It does this
-against the MoveIt that is already installed, with **no code generation and no build
-step**, using MoveIt's **own C++ API names** (`RobotModel`, `RobotState::setFromIK`,
-`PlanningScene::checkCollision`, a real OMPL `PlannerManager`).
+`moveit_kit` is for planning robot-arm motions with MoveIt 2 from Python. MoveIt's
+C++ code provides the robot model, FCL planning scene, KDL kinematics solver, and
+OMPL planner. Python sets the problem, can provide validity callbacks, and reads
+the resulting trajectory.
 
-The point isn't "MoveIt has no Python binding" — it does, `moveit_py`. The point is
-that `moveit_py` is an explicit, hand-curated **subset**, and cppyy gives you the
-**whole** C++ surface. For the API cheat sheet, see [SKILL.md](SKILL.md); for
-the feasibility evidence, the plugin/parameter bring-up mechanics, benchmarks, and gaps,
-see [REPORT.md](REPORT.md).
+cppyy exposes MoveIt's installed C++ classes and methods to Python. `moveit_kit`
+adds the setup needed to build a model and load the kinematics and planning plugins.
+
+For a first motion plan, run the Panda pose-goal demo from a source checkout, in
+the `cppyy_kit` directory:
+
+```bash
+pixi run -e moveit demo-moveit-plan
+```
+
+The demo prints a solved waypoint count, a trajectory duration of `0.00s`, and
+joint start/goal values, then publishes a `DisplayTrajectory` on
+`/display_planned_path` for RViz. The trajectory is geometric and has no time
+parameterization, so it is not ready for controller execution. These commands use
+the source checkout's Pixi environment.
+For installed use, see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+and the published package `ros-jazzy-moveit-kit`.
+
+For the API, see [SKILL.md](SKILL.md); for feasibility evidence and detailed
+limitations, see [REPORT.md](REPORT.md).
 
 ---
 
-## The thing moveit_py makes you do without
+## Plan the Panda arm with MoveIt's OMPL plugin
 
-`moveit_py` (the official pybind11 binding) wraps `MoveItPy` / `PlanningComponent` and a
-curated slice of core (`RobotState`, `PlanningScene`, `AllowedCollisionMatrix`, a few
-`construct_*` constraint helpers). It is a good high-level API — and a **fixed surface**:
-only the methods someone chose to bind, in the shapes they chose. When you need a C++
-method that wasn't wrapped, or a callback slot the binding omitted, you are stuck writing
-and compiling a C++ node.
+`moveit_kit/demos/d02_plan_pose_goal.py` plans the Panda arm to a Cartesian pose
+goal using MoveIt's real OMPL `PlannerManager` plugin, then publishes the result as
+a `moveit_msgs/DisplayTrajectory` on `/display_planned_path` for RViz. The full
+runnable command is above; this excerpt shows the API sequence:
 
-Concretely, and **verified in this spike** (REPORT.md §4): MoveIt C++
-`RobotState::setFromIK` has an overload that takes a *validity callback*
-(`GroupStateValidityCallbackFn`) which the solver invokes for every IK candidate — this
-is how you get **collision-aware IK**. moveit_py's binding is
-`set_from_ik(group_name, pose, timeout)`: **no callback parameter**. So moveit_py hands
-you back whatever the solver finds, in collision or not, with no way to reject it from
-Python.
+```python
+moveit_kit.bringup_moveit(with_kinematics=True, with_planning=True)
+node = moveit_kit.make_node("plan", moveit_kit.parameter_overrides(cfg.ompl, "ompl"))
+moveit_kit.load_kinematics_solver(node, model, "panda_arm")
+planner = moveit_kit.load_planner(node, model)                # OMPL, via pluginlib
+result = moveit_kit.plan_pose_goal(planner, scene, "panda_arm", "panda_link8", target)
+pub.publish(moveit_kit.display_trajectory(result, scene))     # rviz-compatible
+```
 
-With cppyy that overload is just *there*, because cppyy reads MoveIt's headers:
+The Panda config selects `geometric::RRTConnect`. The snippet shows the plan call;
+the complete model, scene, and publisher setup is in the runnable demo.
+
+---
+
+## A callback missing from moveit_py
+
+MoveIt's C++ `RobotState::setFromIK` has an overload that takes a validity callback
+(`GroupStateValidityCallbackFn`). The solver calls it for IK candidates so the
+application can reject collisions. The `moveit_py` API inspected in
+[the report](REPORT.md) exposes `set_from_ik(group_name, pose, timeout)` without
+that callback parameter.
+
+cppyy exposes the C++ overload from MoveIt's headers. The kit supplies a helper
+to pass a Python collision check to it:
 
 ```python
 cb = moveit_kit.state_validity_callback(
@@ -41,9 +66,8 @@ cb = moveit_kit.state_validity_callback(
 state.setFromIK(jmg, target_pose, 0.2, cb)   # the C++ KDL solver calls your Python
 ```
 
-In the spike the C++ solver called this Python collision check **70–122 times** inside a
-single `setFromIK`, rejecting in-collision candidates — a capability moveit_py's API
-cannot express regardless of how you set it up.
+In the recorded test, the C++ solver called this Python collision check
+**70–122 times** during one `setFromIK` call and rejected colliding candidates.
 
 ---
 
@@ -51,9 +75,9 @@ cannot express regardless of how you set it up.
 
 On the left, the shape of a MoveIt C++ program (RobotModelLoader + KDL IK) **and its
 build system**. On the right, the runnable file this repo ships,
-`scripts/moveit_kit_demos/d01_robot_state.py`.
+`moveit_kit/demos/d01_robot_state.py`.
 
-### C++ — `robot_state.cpp` + `CMakeLists.txt` (+ ament package)
+### C++, `robot_state.cpp` + `CMakeLists.txt` (+ ament package)
 
 ```cpp
 #include <moveit/robot_model_loader/robot_model_loader.h>
@@ -90,7 +114,7 @@ ament_target_dependencies(ik moveit_core moveit_ros_planning rclcpp)
 build`, a launch file that puts `robot_description` + `robot_description_kinematics` on
 the node's parameter server, and a rebuild on every edit.
 
-### Python — `d01_robot_state.py` (moveit_kit, shipped in this repo)
+### Python, `d01_robot_state.py` (moveit_kit, shipped in this repo)
 
 ```python
 import rclcpp_kit
@@ -113,68 +137,21 @@ print("IK", "solved" if state.setFromIK(jmg, target, 0.1) else "failed")   # IK
 ```
 
 Run it directly: `pixi run -e moveit demo-moveit-state`. `RobotState`, `setFromIK`,
-`getGlobalLinkTransform` are MoveIt's **own** C++ methods — the kit only assembles the
+`getGlobalLinkTransform` are MoveIt's **own** C++ methods, the kit only assembles the
 node parameters and loads the KDL plugin for you (the plugin/parameter bootstrap that
 would otherwise be a launch file; see REPORT.md §2).
 
-### What we gain
+### What this gives you
 
 - **No compile step, no CMake, no launch file.** `python x.py` is the workflow. The
   model comes from URDF+SRDF *strings*, and the kit boots MoveIt's plugin/parameter stack
   in-process (the bit that normally forces a launch file).
-- **The full C++ surface, header-following.** Anything in MoveIt's headers is reachable —
-  including the `setFromIK` validity-callback overload moveit_py omits. cppyy reads the
+- **C++ methods beyond moveit_py bindings.** The `setFromIK` validity-callback overload
+  omitted by moveit_py is available through the installed MoveIt headers. cppyy reads the
   installed 2.12.4 headers, so the kit tracks whatever MoveIt is installed.
-- **Python in the loop where it helps.** A collision check, a custom constraint, a
-  heuristic can be a plain Python function the C++ solver calls — with a breakpoint and
-  `print` in it. (See REPORT.md §3 for what that costs; collision checking itself runs at
-  moveit_py's own speed — ~129k checks/sec.)
-
-**What the C++ version buys that this one doesn't.** A compiled binary pays no JIT at
-startup and gets static type-checking; the full `PlanningPipeline` (with time-
-parameterization and the request/response adapters) is available in C++ but its header
-crashes cppyy's parser, so the kit uses the planner plugin directly (geometric trajectory,
-no timing — REPORT.md §5).
-
----
-
-## The showcase: plan the Panda with MoveIt's real OMPL pipeline, from Python
-
-`scripts/moveit_kit_demos/d02_plan_pose_goal.py` plans the Panda arm to a Cartesian pose
-goal using MoveIt's **real OMPL `PlannerManager` plugin** — the same `.so` `move_group`
-loads — configured from `ompl_planning.yaml`, then publishes the result as a
-`moveit_msgs/DisplayTrajectory` on `/display_planned_path` so RViz renders it:
-
-```python
-moveit_kit.bringup_moveit(with_kinematics=True, with_planning=True)
-node = moveit_kit.make_node("plan", moveit_kit.parameter_overrides(cfg.ompl, "ompl"))
-moveit_kit.load_kinematics_solver(node, model, "panda_arm")
-planner = moveit_kit.load_planner(node, model)                # OMPL, via pluginlib
-result = moveit_kit.plan_pose_goal(planner, scene, "panda_arm", "panda_link8", target)
-pub.publish(moveit_kit.display_trajectory(result, scene))     # rviz-compatible
-```
-
-The planner selects `geometric::RRTConnect` from the panda config and solves in a few
-milliseconds. `pixi run -e moveit demo-moveit-plan`. This is the full MoveIt planning
-stack — RobotModel + PlanningScene/FCL + KDL kinematics + OMPL — driven from ~30 lines of
-Python, no code generation.
-
----
-
-## Advantages of the cppyy approach
-
-Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
-
-- **The whole C++ API, not a curated subset.** The `setFromIK` validity-callback, direct
-  `PlanningScene`/ACM/world manipulation, the planner plugin — all reachable; moveit_py
-  binds a slice.
-- **No codegen, no build, header-following.** `pixi install -e moveit` and `python x.py`;
-  the kit tracks the installed MoveIt.
-- **In-process plugin/parameter bootstrap.** The kit boots MoveIt's pluginlib + node-
-  parameter stack from a Python-created node (REPORT.md §2) — the mechanic that normally
-  requires `move_group` + a launch file — and the *next* kit (ros2_control) reuses it.
-- **No speed tax on the hot path.** Collision checking runs at moveit_py's own throughput
-  (~129k checks/sec); the full API is reachable at the subset's speed.
+- **Python in the loop where it helps.** A collision check or custom constraint can be
+  a Python function called by the C++ solver. See [REPORT.md](REPORT.md) §3 for
+  measurements.
 
 ---
 
@@ -185,5 +162,5 @@ drive controllers (that is the ros2_control kit); the trajectory is geometric (n
 parameterization, because the full `PlanningPipeline` header crashes Cling and only the
 planner plugin is used); pose-goal planning needs the kinematics solver loaded; the
 config helper is panda-specific; and MoveItServo / CHOMP/STOMP/Pilz are reachable via the
-same pluginlib mechanic but not surfaced. The full, honest list is in
+same pluginlib method but are not surfaced. See the full list in
 [REPORT.md](REPORT.md) §5.

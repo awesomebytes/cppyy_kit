@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
-"""jitter_bench.control_loop -- variant (c): the real in-process ros2_control update
-loop, driven from Python at the target rate. This is the actual demo target.
+"""Variant c: run an in-process ros2_control loop at the target rate.
 
-A real ``controller_manager::ControllerManager`` runs in-process with mock hardware
-(control_kit's proven pattern, REPORT §2); a **Python** PD controller cross-inherited from
-the framework's ``ControllerInterface`` is injected; and the harness's absolute-deadline
-scheduler pumps ``rig.update()`` (the real ``read``->``update``->``write``, which calls the
-Python controller's ``update()``) once per cycle. The wakeup latency here therefore
-includes everything a Python-orchestrated control loop actually pays: the cross-language
-``update()`` call, the CM's read/write, and any interpreter/GC pause.
-
-Auto-skips (raises ``ControlUnavailable``) when ros2_control is not installed, so the
-matrix runner can note "unavailable" instead of crashing outside the ``control`` env.
+The harness calls `rig.update()` once per cycle. This executes the controller manager's
+read, update, and write steps and a Python PD controller that implements
+`ControllerInterface`. The measured wakeup latency includes the cross-language update
+call, controller-manager read and write work, and any interpreter or garbage-collection
+pause. Mock hardware is used. This variant raises `ControlUnavailable` when
+ros2_control is not installed.
 """
 import os
 
@@ -64,9 +59,8 @@ def _make_pd_class(ck):
 
 
 class ControlLoop:
-    """Owns a live ControllerManager + injected Python controller. Build with
-    ``setup()``; expose a ``body(i)`` that pumps one real control cycle; ``teardown()``
-    drops the CM cleanly (control_kit's ordered teardown)."""
+    """Own a ControllerManager and injected Python controller. Call ``setup()`` before
+    using ``body(i)`` to run one control cycle. Call ``teardown()`` to stop the manager."""
 
     def __init__(self, rate_hz, controller="python"):
         self.rate_hz = rate_hz

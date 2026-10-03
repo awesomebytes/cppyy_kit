@@ -1,34 +1,34 @@
-# rclcpp_kit — cheat sheet for a coding agent
+# rclcpp_kit usage guide for coding agents
 
 You are writing Python that drives **ROS 2 core (rclcpp + tf2 + rosbag2)** through
-`rclcpp_kit`, via cppyy. The kit **mirrors the C++ API** and hides only the cppyy
-friction (bringup, symbol resolution, message conversion, ordered teardown). It is
+`rclcpp_kit`, via cppyy. The kit **mirrors the C++ API** and handles header loading,
+symbol resolution, message conversion, and ordered teardown. It is
 the capability layer every ROS-touching kit builds on; it is **not** the rclcppyy
 drop-in accelerator (that's the separate `rclcppyy` product, which re-exports this).
 
-(For *why* this exists and the measured TF numbers, see [WHY.md](WHY.md) /
+(For the reasons for this package and the TF measurements, see [WHY.md](WHY.md) /
 [REPORT.md](REPORT.md).)
 
 **Requires** the ROS core, present in the default `ros-base` env. Its own env is
 `rclcpp`: `pixi run -e rclcpp python your_script.py`.
 
-**Golden rules**
-- Call `rclcpp = rclcpp_kit.bringup_rclcpp()` once; it returns the real `rclcpp`
+**Key rules**
+- Call `rclcpp = rclcpp_kit.bringup_rclcpp()` once. It returns the real `rclcpp`
   namespace and is idempotent. The first call JITs `rclcpp/rclcpp.hpp` (a few
-  seconds) — do it at startup, not on a hot path.
+  seconds). Call it at startup because it parses headers.
 - A plain `rclcpp.Node` accepts **both** calling conventions: rclpy-style
   (`node.create_publisher(String, "topic", 10)`, Python messages auto-converted to
   C++) and native rclcpp template syntax (`node.create_publisher[CppMsgT]("topic", 10)`,
   zero-overhead). Same for `create_subscription` / `create_timer`.
 - Message classes: hand either a Python message class (`std_msgs.msg.String`) or a
-  cppyy C++ class (`cppyy.gbl.std_msgs.msg.String`) — the kit resolves both.
+  cppyy C++ class (`cppyy.gbl.std_msgs.msg.String`). The kit resolves both.
 - Let teardown happen: `cppyy_kit.shutdown()` runs at interpreter exit and releases
   the rclcpp context in order (no `os._exit` needed). A normal `return`/`sys.exit`
   is clean.
 
 ---
 
-## Pattern 1 — bring up rclcpp, publish/subscribe the rclpy way
+## Pattern 1: bring up rclcpp and publish or subscribe using rclpy calls
 *Use for:* any node that needs the C++ backend with familiar rclpy calls.
 
 ```python
@@ -50,7 +50,7 @@ rclcpp.spin_some(node)
 Gotcha: the callback receives the **C++** message proxy (read `.data` directly). The
 Python callable is auto-pinned (via `cppyy_kit.keep_alive`) so it is not collected.
 
-## Pattern 2 — tf2 transforms, ingested entirely in C++
+## Pattern 2: receive tf2 transforms in C++
 *Use for:* looking up transforms without the stock rclpy listener's per-message
 Python cost. The C++ `tf2_ros::TransformListener` ingests `/tf` on its own thread.
 
@@ -66,10 +66,10 @@ x, y = ts.transform.translation.x, ts.transform.translation.y
 ok = listener.can_transform("world", "sensor")
 listener.set_transform(a_transform_stamped, is_static=True)   # seed directly
 ```
-`time=` accepts `None` (latest) / seconds / an rclpy·rclcpp `Time`. Missing frames or
+`time=` accepts `None` (latest), seconds, or an rclpy or rclcpp `Time`. Missing frames or
 a timeout raise `tf.TransformException`. `get_frame_names()` returns `str`s.
 
-## Pattern 3 — CDR serialization, byte-compatible with rclpy
+## Pattern 3: CDR serialization compatible with rclpy
 *Use for:* wire bytes / bag round-trips.
 
 ```python
@@ -82,7 +82,7 @@ blob = ser.serialized_message_to_bytes(ser.serialize_message(m))   # == rclpy by
 back = ser.deserialize_message(ser.serialized_message_from_bytes(blob), String)
 ```
 
-## Pattern 4 — rosbag2 from Python (C++ reader/writer)
+## Pattern 4: use the C++ rosbag2 reader and writer from Python
 *Use for:* reading/writing bags with the C++ `rosbag2_cpp` stack, or as a
 `rosbag2_py` drop-in.
 
@@ -97,7 +97,7 @@ for sbm in rosbag2_cpp.iter_messages(reader):            # C++ SerializedBagMess
 from rclcpp_kit import rosbag2_py_compat as rosbag2_py    # rosbag2_py-shaped API
 ```
 
-## Pattern 5 — typed async clients with C++-owned futures
+## Pattern 5: typed async clients with futures owned by C++
 *Use for:* calling a stock ROS service while keeping `rclcpp` template and future
 ownership out of Python.
 
@@ -135,7 +135,7 @@ use `ros.create_publisher_options(group)` and
 `ros.create_subscription_options(group)` because cppyy cannot assign the shared
 callback-group member directly.
 
-## Pattern 6 — real lifecycle nodes from Python
+## Pattern 6: use lifecycle nodes from Python
 *Use for:* lifecycle publishers, transitions, and other
 `rclcpp_lifecycle::LifecycleNode` facilities without a custom binding package.
 
@@ -156,7 +156,7 @@ The standard lifecycle services are enabled by default and become responsive aft
 executor attachment. Use `raw_node` for the actual lifecycle API; the adapter owns
 only construction, executor membership, and teardown.
 
-## Pattern 7 — typed action clients with C++-owned goal state
+## Pattern 7: typed action clients with goal state owned by C++
 *Use for:* action goals, feedback, results, and cancellation when the typed
 `rclcpp_action` state should remain in C++.
 
@@ -187,7 +187,7 @@ release local state. The feedback queue is bounded and drop-oldest; inspect
 `send_cpp_value()` for an existing generated C++ goal value. Generated Python
 goals are never converted.
 
-## Pattern 8 — load registered AOT components
+## Pattern 8: load registered AOT components
 *Use for:* standard ROS composition from Python while the container, loaded nodes,
 context, and executor remain C++ owned.
 
@@ -210,10 +210,10 @@ service protocol rather than mirroring it.
 
 ---
 
-## Gotchas (the cppyy friction this kit hides, so you know the boundary)
+## Limits and binding details
 - **Bringup is a header-parse cost, once.** `bringup_rclcpp()` JITs the rclcpp
   headers on the first call; subsequent calls are no-ops. Freeze (PCH) removes the
-  parse, not the per-signature JIT — see `docs/FREEZE.md`.
+  parse, not per-signature JIT compilation. See `docs/FREEZE.md`.
 - **`tf2_ros::Buffer` is deliberately avoided.** Its overloaded lookup/canTransform
   mis-resolve under cppyy and crash; the kit uses the plain `tf2::BufferCore` with
   unambiguous `cppdef` accessors. Use `tf.TransformListener`, not raw `tf2_ros::Buffer`.

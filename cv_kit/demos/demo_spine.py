@@ -1,18 +1,15 @@
 #!/usr/bin/env python
-"""
-vision demo M1 -- THE SPINE: the zero-copy image path, end to end.
+"""Vision demo M1: pass a ROS image to OpenCV without copying its pixels.
 
-One process, two rclcpp nodes (like the pcl showcase): a dataset publisher emits a
-sequence as ``sensor_msgs/Image``, and a subscriber node -- subscribing via
-rclcppyy, so its callback receives the **C++** message -- wraps each frame as a
-``cv::Mat`` with cv_kit.msg_to_mat (**no copy**: the Mat's storage IS the message's
-data buffer) and logs it to Rerun (with a plausible pinhole camera). Python never
-copies a pixel on the ingest path. Per-frame ingest latency is reported.
+One process runs a publisher and subscriber. The publisher sends a sequence as
+`sensor_msgs/Image`. The subscriber uses rclcppyy, receives the C++ message, and
+wraps its data buffer as a `cv::Mat` with `cv_kit.msg_to_mat`. The Mat and message
+share the same pixel buffer. The demo logs each frame to Rerun and reports ingest
+latency.
 
-Rerun is LIVE by default when you run this interactively: a viewer window opens
-and you watch the camera stream in real time. Under pytest/CI or with no display it
-is headless (writes a .rrd you open later with ``rerun <file>``). Force either way
-with RCLCPPYY_RERUN_SPAWN=1 (live) / =0 (headless). See cv_kit/demos/vision_viz.py.
+When a display is available, a Rerun viewer opens. Under pytest, CI, or without a
+display, the demo writes an `.rrd` recording. Set `RCLCPPYY_RERUN_SPAWN=1` for the
+viewer or `=0` for headless mode. See `cv_kit/demos/vision_viz.py`.
 
     pixi run -e vision demo-vision-spine
     RCLCPPYY_RERUN_SPAWN=1 pixi run -e vision demo-vision-spine --tum data/rgbd_dataset_freiburg3_long_office_household
@@ -85,7 +82,7 @@ def main():
     def on_image(msg):
         t0 = time.perf_counter()
         mat = cv_kit.msg_to_mat(msg)          # zero-copy wrap
-        gray = cv_kit.to_gray(mat)            # (spine just measures ingest+decode)
+        gray = cv_kit.to_gray(mat)            # Convert to grayscale for this ingest benchmark.
         _ = int(gray.rows)
         dt = (time.perf_counter() - t0) * 1e3
         log_frame("camera/image", mat, str(msg.encoding), stats["n"])

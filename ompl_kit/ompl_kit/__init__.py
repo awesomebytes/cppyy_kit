@@ -10,7 +10,7 @@ nanobind). This kit skips all of that -- it is a thin cppyy glue layer that
 C++ tutorials -- directly on the returned ``ompl`` namespace, against the OMPL
 that is already installed. Nothing is generated.
 
-The headline is **cross-language inheritance**: because OMPL's
+The main feature is **cross-language inheritance**: OMPL's
 ``StateValidityChecker::isValid`` and ``OptimizationObjective::stateCost`` are
 *plain* C++ virtuals (unlike BT.CPP's ``final`` ones, which blocked this), a
 Python class can derive the C++ base and override the virtual, and the C++ planner
@@ -37,7 +37,7 @@ A 2D plan with a Python validity checker, mirroring OMPL's first tutorial::
 Two ways to give OMPL a validity checker, both real and both shown in the demos:
     * ``ompl_kit.validity_checker(fn)`` -- a Python function wrapped as the
       ``std::function<bool(const State*)>`` overload (built on ``cppyy_kit.callback``,
-      so the signature is fixed and the lifetime pinned for you). Lowest ceremony.
+      so the signature is fixed and the callback lifetime is pinned for you).
     * a Python class deriving ``ob.StateValidityChecker`` (cross-inheritance): more
       OMPL-idiomatic, lets the checker hold state, and is what you subclass for an
       ``OptimizationObjective``. ``super().__init__(si)`` is required.
@@ -88,7 +88,7 @@ _GEOMETRIC_HEADERS = (
 # The std::function<bool(const State*)> signature OMPL's setStateValidityChecker
 # (Fn overload) wants. It is a *pointer* form; cppyy_kit.callback's type-hint
 # inference would produce a `State&` reference instead, so the kit pins this
-# explicitly (see REPORT -- callback() dogfood note).
+# explicitly (see REPORT, callback inference note).
 _VALIDITY_SIG = "bool(const ompl::base::State*)"
 
 _OMPL = None
@@ -166,8 +166,8 @@ def ompl():
 def validity_checker(fn, owner=None):
     """
     Wrap a Python ``fn(state) -> bool`` as OMPL's
-    ``std::function<bool(const State*)>`` state-validity checker -- the low-ceremony
-    alternative to subclassing ``ob.StateValidityChecker``.
+    ``std::function<bool(const State*)>`` state-validity checker. This requires less
+    setup than subclassing ``ob.StateValidityChecker``.
 
     Pass the result straight to ``SpaceInformation.setStateValidityChecker`` /
     ``SimpleSetup.setStateValidityChecker``. The ``const State*`` cppyy hands ``fn``
@@ -175,8 +175,8 @@ def validity_checker(fn, owner=None):
     ``state[0]`` / ``state[1]`` work directly.
 
     Built on ``cppyy_kit.callback``: the signature is fixed to the pointer form OMPL
-    wants and the wrapper + ``fn`` are pinned for you (the "callable was deleted"
-    footgun is gone). ``owner`` pins them on that object's lifetime; without it they
+    wants and the wrapper + ``fn`` are pinned for you, avoiding the "callable was
+    deleted" error. ``owner`` pins them on that object's lifetime; without it they
     live for the process (see cppyy_kit.callback).
     """
     return cppyy_kit.callback(fn, signature=_VALIDITY_SIG, owner=owner)

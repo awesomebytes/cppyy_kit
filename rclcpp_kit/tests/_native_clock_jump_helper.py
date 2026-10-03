@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live proof: native pre/post clock jump callbacks over simulated time."""
+"""Test native pre- and post-clock-jump callbacks with simulated time."""
 
 import importlib
 import time

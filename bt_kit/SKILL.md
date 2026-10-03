@@ -1,20 +1,20 @@
-# bt_kit — cheat sheet for a coding agent
+# bt_kit API reference
 
 You are writing Python that drives **BehaviorTree.CPP v4** (a C++ behavior-tree
-engine) through `bt_kit`. The kit **mirrors the C++ API** — the same
+engine) through `bt_kit`. The kit **mirrors the C++ API**, the same
 `BehaviorTreeFactory`, `registerSimpleAction`, `createTreeFromText`,
-`tickWhileRunning` you know from the official BT.CPP tutorials — so write it the way
+`tickWhileRunning` you know from the official BT.CPP tutorials, so write it the way
 you'd write the C++ tutorial, with the leaf callbacks in Python. You do **not** need
-to know cppyy; the kit removes that friction.
+to know cppyy; the kit handles cppyy setup.
 
 (For *why* this exists and the C++-vs-Python comparison, see [WHY.md](WHY.md).)
 
 **Requires** the `bt` pixi env: `pixi run -e bt python your_script.py`.
 
-**Golden rules**
+**Basic rules**
 - Call `bt = bt_kit.bringup_bt()` once; it returns the `BT` namespace.
 - A leaf is `def fn(node): ...; return status`. Status is `bt.NodeStatus.SUCCESS`
-  (exactly like C++) or the shortcut `bt_kit.SUCCESS` — also `FAILURE`, `RUNNING`.
+  (exactly like C++) or the shortcut `bt_kit.SUCCESS`, also `FAILURE`, `RUNNING`.
   Returning `None` means SUCCESS; a `bool` maps True→SUCCESS, False→FAILURE.
 - The **XML is the official BT.CPP XML, verbatim.** XML node tags must match the
   names you register.
@@ -23,8 +23,8 @@ to know cppyy; the kit removes that friction.
 
 ---
 
-## Pattern 1 — actions/conditions, build a tree, tick it  (tutorial 1)
-*Use for:* the common case — synchronous leaves that act and return a status.
+## Pattern 1: build and tick a tree (tutorial 1)
+*Use for:* the common case, synchronous leaves that act and return a status.
 
 ```python
 import bt_kit
@@ -35,7 +35,7 @@ def approach(node):
     return bt.NodeStatus.SUCCESS
 
 def check_battery(node):
-    return bt.NodeStatus.SUCCESS              # a condition is just a leaf too
+    return bt.NodeStatus.SUCCESS              # a condition is also a leaf
 
 XML = """
 <root BTCPP_format="4">
@@ -56,12 +56,12 @@ status = tree.tickWhileRunning()              # ticks until root stops RUNNING
 assert status == bt_kit.SUCCESS
 ```
 (`registerSimpleAction` / `register_simple_action` and `createTreeFromText` /
-`create_tree_from_text` both exist — camelCase mirrors C++, snake_case is there if
+`create_tree_from_text` both exist, camelCase mirrors C++, snake_case is there if
 you prefer it.)
 
 ---
 
-## Pattern 2 — ports and the blackboard  (tutorial 2)
+## Pattern 2: ports and the blackboard (tutorial 2)
 *Use for:* passing values into a leaf from the XML, or between leaves via a
 `{blackboard}` entry.
 
@@ -86,7 +86,7 @@ factory.registerSimpleAction("ThinkWhatToSay", think, ports=["text"])
 ```
 `node.get_input(key)` returns a `str` (or `None` if unset); `node.set_output(key,
 value)` writes `str(value)`. `node["key"]` / `node["key"] = v` and the camelCase
-`getInput`/`setOutput` work too. Ports are bidirectional — the same declared name
+`getInput`/`setOutput` work too. Ports are bidirectional, the same declared name
 serves both reading and writing.
 
 **Typed ports** (tutorial-3 style). Pass a dict to declare types, then read with a
@@ -107,9 +107,9 @@ Supported casts: `int`, `float` (double), `bool`, `str`, and `[int]`/`[float]`/
 
 ---
 
-## Pattern 3 — asynchronous / stateful leaf (returns RUNNING over many ticks)
+## Pattern 3: asynchronous and stateful leaves
 *Use for:* a long-running action not done in one tick (navigation, waiting,
-counting). A plain action may **not** return RUNNING — use `register_stateful` with
+counting). Use `register_stateful` for actions that return RUNNING, with
 a class exposing the C++ StatefulActionNode hooks.
 
 ```python
@@ -132,10 +132,10 @@ one tree keep independent state.
 
 ---
 
-## Pattern 4 — a fast leaf at C++ speed (no Python per tick)
+## Pattern 4: run a leaf in C++
 *Use for:* a hot leaf that must not pay the Python boundary cost (~0.3 µs/tick),
 e.g. a tight inner check ticked millions of times. Write it in C++ and JIT it.
-(Python leaves are plenty fast — ~630k ticks/s — so reach for this only if
+(Python leaves reached about 630k ticks/s in the benchmark. Use this pattern if
 profiling says so.)
 
 ```python
@@ -158,7 +158,7 @@ tree.tickWhileRunning()                         # returns a BT::NodeStatus
 
 ---
 
-## Pattern 5 — observability and errors
+## Pattern 5: logs and errors
 *Use for:* watching a tree run, recording a trace, live monitoring, or per-node
 tick counts; and for catching malformed-XML / unknown-node errors cleanly.
 
@@ -179,10 +179,10 @@ except bt_kit.BtXmlError as e:
 ```
 Loggers attach at construction and are pinned on the `tree`; keep the tree alive.
 
-## Pattern 6 — the first-use JIT is cached away for you (and warmup as fallback)
+## Pattern 6: compile cache and warmup
 *Use for:* any script/node where the **first** tree build must not stall. The first
 `registerSimpleAction` etc. would JIT-compile a cppyy call wrapper (~0.4 s; whole
-first tree ~0.7 s) — but bt_kit now **compile-caches** that crossing: registration
+first tree ~0.7 s). bt_kit **compile-caches** this call: registration
 routes through a trampoline compiled once into a `.so`, so the first-use register
 is ~60 ms and *persistent* (no per-run JIT). You do nothing; it happens at
 `bringup_bt()`. The first run on a machine pays a one-time ~2 s `.so` build.
@@ -202,13 +202,13 @@ def main():
 ```
 Composes with the Cling PCH: the header parse (~0.9 s) is cut automatically by the
 zero-config auto-PCH on the second run (nothing to set; `freeze-bt-run` is the
-explicit manual path), and the cache cuts the wrapper JIT — together the fastest cold
+explicit manual path), and the cache cuts the wrapper JIT, together the fastest cold
 start (~0.43 s end-to-end for t01; see docs/FREEZE.md §4, §8 and COMMON_PATTERNS §36).
 
-## Gotchas (short version)
+## Common errors
 - **Don't** subclass BT C++ node classes in Python (`class X(BT.StatefulActionNode)`)
-  — fails to compile (`final` virtuals). Use `register_stateful` (Pattern 3).
-- **Don't** build a `PortsList`/`std::map` in Python — it **segfaults** the
+ , fails to compile (`final` virtuals). Use `register_stateful` (Pattern 3).
+- **Don't** build a `PortsList`/`std::map` in Python, it **segfaults** the
   process. Use `ports=[...]` / `ports={...}`, or do container work in `cppyy.cppdef`.
 - Keep the `tree` (and `factory`) referenced while ticking; dropping them can free
   the callbacks and the loggers.

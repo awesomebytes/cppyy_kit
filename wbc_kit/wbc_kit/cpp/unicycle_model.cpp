@@ -1,7 +1,6 @@
-// A custom Crocoddyl action model authored in C++ and JIT-compiled by cppyy at
-// runtime -- NO build system, NO CMake project. This is the "lowered" endpoint of
-// the wbc_kit story: the DDP solver calls calc/calcDiff natively (no Python in the
-// hot loop). It reproduces Crocoddyl's canonical unicycle model so the result can
+// A custom Crocoddyl action model compiled by cppyy at runtime. It does not need
+// a separate CMake project. The DDP solver calls calc/calcDiff directly in C++.
+// It reproduces Crocoddyl's canonical unicycle model so the result can
 // be verified bit-for-bit against the compiled built-in crocoddyl::ActionModelUnicycle.
 //
 // Deliberately mirrors crocoddyl/core/actions/unicycle.hxx. The two clone overrides

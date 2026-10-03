@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
-"""Committed proof for Slice 2.5a4 (PLAN-mte-unlock.md Addendum v3.2):
+"""Test Slice 2.5a4 (PLAN-mte-unlock.md Addendum v3.2):
 on/pre/post-set-parameters callbacks are worker-dispatched (rclcpp invokes
-them synchronously inside set_parameters/set_parameters_atomically, from a
-worker thread calling node.set_parameters(...) directly or from the node's
-parameter service on a remote request) and, before this slice, were NOT
-covered by option (a) (the product's in-flight counter does not see
-parameter-callback dispatch at all) -- only the native-owned-callable-
-lifetime treatment (the reaper, Slice 2.5a2) protects them.
+them synchronously inside set_parameters/set_parameters_atomically, called
+from a worker thread or by a remote request through the node's parameter
+service. Before this slice, option (a) did not cover parameter-callback
+dispatch. The callable reaper from Slice 2.5a2 protects these callbacks.
 
-This closes the on-set-parameters bridge from WITHIN its own callback
-(a self-teardown, analogous to the subscription/timer/service self-destroy
-proofs), then drops every Python reference to the bridge and forces
-gc.collect() -- exercising exactly the premature-release window the
-reaper closes, on a worker thread genuinely dispatching through
-set_parameters.
+The test closes the on-set-parameters bridge from within its own callback,
+then drops every Python reference to the bridge and calls gc.collect(). This
+exercises the premature-release window the reaper closes. The callback runs
+on a worker thread calling set_parameters.
 """
 import faulthandler
 import gc

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live native guard-condition wake and wait-set proof."""
+"""Integration test for native guard-condition wake and wait-set behavior."""
 
 import time
 

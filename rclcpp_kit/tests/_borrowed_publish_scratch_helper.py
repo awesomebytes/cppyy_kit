@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated reuse, eviction, recovery, and thread-isolation proof."""
+"""Isolated test of reuse, eviction, recovery, and thread isolation."""
 
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor

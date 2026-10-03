@@ -1,18 +1,16 @@
 """
-cppyy_kit.pydantic_structs -- turn a Pydantic v2 model schema into a C++ struct.
+cppyy_kit.pydantic_structs converts a Pydantic v2 model schema to a C++ struct.
 
-The pipeline (design/pydantic_structs.md): **validate at the boundary (Pydantic)
--> compute compactly in C++ -> re-validate on exit (Pydantic)**. A model you
-already wrote for validation *is* a schema; this reads the schema and emits the
-equivalent C++ ``struct`` so the data can live as a ``std::vector<Struct>``
-instead of a Python ``list`` of model instances -- smaller, faster to iterate,
-and zero-copy-viewable as NumPy on its numeric columns. Hot loops become small
-C++ kernels statically typed against the schema (a misused field is a compile
-error naming it); ``to_model()`` rebuilds Pydantic instances, re-running the
-model's validators so the C++ excursion cannot emit an invalid model.
+The pipeline (design/pydantic_structs.md) validates data with Pydantic, computes
+in C++, then validates results with Pydantic. This module converts a Pydantic
+model schema to a C++ ``struct``. Data can then live in a ``std::vector<Struct>``,
+which uses less memory than a Python list of model instances and allows zero-copy
+NumPy views of numeric columns. C++ kernels compile against the generated struct,
+so references to missing fields fail to compile. ``to_model()`` rebuilds
+Pydantic instances and runs their validators again.
 
-Not the win: validation speed. ``pydantic-core`` is compiled Rust; we never touch
-the validation path. This sits after it.
+This module does not change validation speed or behavior. ``pydantic-core`` is
+compiled Rust; this module runs after validation.
 
     from cppyy_kit import pydantic_structs as pyd
     S   = pyd.cpp_struct(Detection)            # schema -> compiled C++ struct
@@ -213,7 +211,7 @@ class StructSpec:
         # Define the struct set in the live interpreter by INCLUDING the emitted
         # header (which has #pragma once): Cling tracks the included file globally,
         # so a later @cpp / cppdef_cached kernel that #includes the same header to
-        # compile against the struct does NOT redefine it (a raw cppdef of the
+        # compile against the struct does not redefine it (a raw cppdef of the
         # source would clash with that include). Cheap: ~7 ms header parse.
         cppyy.add_include_path(self.header_dir)
         cppyy.include(os.path.basename(self.header))
@@ -371,7 +369,7 @@ def column(vec, model, field):
 
 def _to_str(x):
     """cppyy returns a std::string as its own proxy (type 'string', repr b'...',
-    NOT a Python str/bytes); a vector<string> element can surface as real bytes.
+    not a Python str or bytes); a vector<string> element can be returned as bytes.
     Normalize any of these to a Python str so Pydantic accepts it."""
     if isinstance(x, str):
         return x
@@ -423,8 +421,8 @@ def _spec_cache():
 
 def to_model(struct_instance, model):
     """Convert one C++ struct instance back to a **validated** Pydantic model
-    instance -- this re-runs the model's validators/constraints, so a value the
-    C++ excursion produced that the model forbids raises ``ValidationError``."""
+    instance. This runs the model's validators and constraints again. If the C++
+    code produced a value the model forbids, this raises ``ValidationError``."""
     spec = cpp_struct(model)
     data = _extract(struct_instance, spec.fields, _spec_cache())
     return model(**data)
@@ -440,9 +438,9 @@ def to_models(vec, model):
 # --- the 'free' compile-time type check -------------------------------------
 
 def check_kernel(source, extra_headers=()):
-    """Type-check a C++ consumer ``source`` against the emitted struct(s) **out of
-    process** (a failed in-process ``cppdef`` contaminates the live interpreter --
-    COMMON_PATTERNS §9). Returns ``(ok, message)``; on failure ``message`` is the
+    """Type-check a C++ consumer ``source`` against the emitted structs in a
+    subprocess. A failed in-process ``cppdef`` can contaminate the interpreter
+    (COMMON_PATTERNS §9). Return ``(ok, message)``. On failure, ``message`` is the
     clang diagnostic (which names a misused field). Pass the struct header dir via
     the source's ``#include`` and ``extra_headers`` is forwarded to the probe."""
     ok, msg = cppyy_kit.probe_cppdef(source, include_paths=[cppyy_kit.cache_dir()],

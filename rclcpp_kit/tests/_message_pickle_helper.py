@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Direct proof of ``rclcpp_kit.message_pickle`` against raw cppyy messages.
+"""Test ``rclcpp_kit.message_pickle`` with raw cppyy messages.
 
 Uses ``load_message_type`` straight from ``rclcpp_kit.direct_message_types``
-(no ``rclcppyy`` involved) to confirm the module is a self-contained,
-reusable capability of the kit, not something that only works wired up
-through the ``direct_cpp`` product feature.
+(no ``rclcppyy`` involved). The test checks that the module works without
+the ``direct_cpp`` product feature.
 """
 
 import pickle

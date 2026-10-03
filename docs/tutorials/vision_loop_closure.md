@@ -1,67 +1,64 @@
-# Tutorial: a visual loop-closure front-end in short Python over C++ (via cppyy)
+# Tutorial: visual loop closure with Python and C++
 
-This tutorial rebuilds the **place-recognition / loop-closure front-end** of a
-visual SLAM system — the part that recognizes *"I have been here before"* — as a
-single short Python ROS 2 node, driving the **real C++ libraries** (OpenCV, DBoW2,
-GTSAM) through [cppyy](https://cppyy.readthedocs.io), with everything visualized
-live in [Rerun](https://rerun.io). No C++ to write, no Python bindings to install;
-the image data never leaves C++ between the ROS subscription and the place-recognition
-query.
+This tutorial shows how a Python ROS 2 node can use C++ OpenCV and DBoW2 for visual
+place recognition and loop closure. The example receives C++ ROS image messages
+through `rclcpp_kit`, keeps image data in C++ through ORB and the DBoW2 query, and
+shows results in Rerun.
 
-**What we build, and why.** The recipe is straight out of ORB-SLAM:
+The published Pixi packages are `ros-jazzy-cv-kit` and `ros-jazzy-dbow-kit`. For
+package setup and the supported Pixi environment, see the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
-1. **ORB features** on every frame (Mur-Artal & Tardós, *ORB-SLAM: a Versatile and
-   Accurate Monocular SLAM System*, IEEE T-RO 2015).
-2. **DBoW2** bag-of-binary-words place recognition — quantize each image's binary
-   descriptors into a vocabulary of "visual words" and compare images by their word
-   histograms (Gálvez-López & Tardós, *Bags of Binary Words for Fast Place Recognition
-   in Image Sequences*, IEEE T-RO 2012).
-3. A **temporal-consistency gate** so a loop is only confirmed once a candidate
-   persists over several frames (the DLoopDetector idea).
-4. **(stretch)** a **GTSAM pose graph** that uses the confirmed loop to correct a
-   drifting trajectory.
-
-None of OpenCV-C++, DBoW2, or GTSAM's C++ API has a drop-in Python story for this
-pipeline (OpenCV has `cv2`, but it copies at every hop; DBoW2 has *no* binding and
-*no* conda package; GTSAM's C++ is boost-heavy). cppyy lets us drive all three from
-Python while keeping the frame in one C++ address space.
-
-You need only this repo and [pixi](https://pixi.sh). Every step is a `pixi run`.
-
----
-
-## 0. Setup (once)
+## Start from this repository checkout
 
 ```bash
-pixi install -e vision          # OpenCV 4 (C++ + cv2), rerun-sdk, gtsam, cppyy, ROS 2
-pixi run -e vision build-dbow2  # clone + patch + compile DBoW2 -> build/vendor/libDBoW2.so
+pixi install -e vision
+pixi run -e vision build-dbow2
 ```
 
-`build-dbow2` prints the two patches it applies and finishes with
-`OK -> .../libDBoW2.so`. See [the DBoW2-from-source section](#dbow2-from-source) for
-what those patches are and why.
+`build-dbow2` finishes with `OK -> .../libDBoW2.so`. Run the synthetic loop demo:
 
-> **Rerun viewer — you watch it work.** Run any demo by hand and a **Rerun window
-> opens live**: you see the camera stream, the ORB keypoints tracking on it, a
-> per-frame processing-time plot ticking along (how fast it's going, made visible),
-> and — in stages 3–4 — loops popping into the score plot and event log as they're
-> confirmed, and the drifted trajectory snapping back onto ground truth when the
-> optimizer runs. The window is arranged into labelled panels by a small
-> [blueprint](https://rerun.io) so the entity tree is comprehensible from the first
-> frame. When there's no display (headless shell, CI) or under `pytest`, the demo
-> instead writes a `.rrd` recording under `build/vision/` you open later with
-> `rerun <file>` — same panels, same data. Force either mode with
-> `RCLCPPYY_RERUN_SPAWN=1` (live) or `=0` (headless). One shared helper decides,
-> `scripts/vision/vision_viz.py`.
+```bash
+pixi run -e vision demo-vision-loop
+```
 
-> **Data.** Everything runs on a **deterministic synthetic loop sequence with zero
-> download** by default. The real-data path (recommended once you've seen it work)
-> downloads a TUM RGB-D sequence and the real ORB vocabulary — see
-> [Real data](#real-data).
+The deterministic synthetic sequence needs no download. Expected result: the
+200-frame sequence reports **19 confirmed loops** as its last 20 frames revisit its
+first 20. With a display, Rerun opens a viewer. For a headless recording, run
+`RCLCPPYY_RERUN_SPAWN=0 pixi run -e vision demo-vision-loop`; it saves under
+`build/vision/`.
+
+For feature extraction alone, run `pixi run -e vision demo-vision-features`. The
+optional pose-graph stage is `pixi run -e vision demo-vision-posegraph`. The
+[real-data path](#real-data-tum-rgb-d-and-orbvoc) downloads a TUM sequence and the
+ORB vocabulary.
+
+The example detects recurring places and loop events. The later
+[limits section](#limits-and-follow-up-work) describes the remaining pose estimation
+and geometric verification work.
+
+> Run a demo with a display to open a live Rerun window. The window shows the camera
+> stream, ORB keypoints, and a processing-time plot. Stages 3 and 4 also show loop
+> scores, confirmed loop events, and the corrected trajectory. A
+> [blueprint](https://rerun.io) arranges the panels. Without a display, or under
+> `pytest`, the demo writes a `.rrd` recording to `build/vision/`. Open it with
+> `rerun <file>`. Set `RCLCPPYY_RERUN_SPAWN=1` to force the live viewer or `=0` to
+> force a recording. `cv_kit/demos/vision_viz.py` selects the mode.
+
+**Pipeline:**
+
+1. **ORB (Oriented FAST and Rotated BRIEF) features** on every frame (Mur-Artal & Tardós, *ORB-SLAM: a Versatile and
+   Accurate Monocular SLAM System*, IEEE T-RO 2015).
+2. **DBoW2 (bag of binary words)** place recognition: map binary descriptors to a vocabulary of
+   "visual words", then compare images by their word histograms (Gálvez-López & Tardós,
+   *Bags of Binary Words for Fast Place Recognition in Image Sequences*, IEEE T-RO 2012).
+3. A **temporal-consistency gate** confirms a loop after a candidate persists over
+   several frames (the DLoopDetector idea).
+4. An **optional GTSAM pose graph** uses confirmed loops to correct a drifting
+   trajectory.
 
 ---
 
-## Stage 1 — The spine: a zero-copy image path
+## Stage 1: Zero-copy image path
 
 ```bash
 pixi run -e vision demo-vision-spine
@@ -79,35 +76,34 @@ Rerun: live viewer opened -- watch it stream. (headless instead: RCLCPPYY_RERUN_
 stream; headless, that last line reads `Rerun recording saved: build/vision/spine.rrd`.)
 
 One process runs two ROS 2 nodes: a publisher emits the sequence as
-`sensor_msgs/Image`, and a subscriber — subscribing **via rclcpp_kit**, so its callback
-receives the **C++** `sensor_msgs::msg::Image` — logs each frame to Rerun.
+`sensor_msgs/Image`, and a subscriber, subscribing **via rclcpp_kit**, so its callback
+receives the **C++** `sensor_msgs::msg::Image`, logs each frame to Rerun.
 
 ### The zero-copy bridge
 
-The interesting line is `cv_kit.msg_to_mat(msg)`. It wraps the message's pixel buffer
+The key line is `cv_kit.msg_to_mat(msg)`. It wraps the message's pixel buffer
 as an OpenCV `cv::Mat` **without copying a single byte**:
 
 ```python
 mat = cv_kit.msg_to_mat(msg)     # cv::Mat whose .data IS msg.data.data()
 ```
 
-The `cv::Mat` *aliases* the message's `data` vector — the Mat's data pointer is
+The `cv::Mat` *aliases* the message's `data` vector, the Mat's data pointer is
 **byte-identical** to `msg.data.data()` (the test `test_msg_to_mat_zero_copy_pointer_identity`
 asserts exactly this). Compare with the standard rclpy path, where the whole `Image`
-message is deserialized into Python and you then `np.frombuffer(msg.data).reshape(...)`
-into a fresh array — a copy whose cost grows with every pixel.
+message is deserialized into Python then `np.frombuffer(msg.data).reshape(...)`
+creates an array copy whose size grows with the image.
 
-> **How much does it matter?** Be honest: at 640×480 the copy is cache-cheap and the
-> win is marginal (cppyy's per-call overhead is comparable). The zero-copy pointer
-> wrap is **flat** in image size, though, while the rclpy copy scales with pixels — at
-> 1920×1080 it is ~**150×** cheaper (`pixi run -e vision bench-vision`). And the real
-> payoff is *composition*: the frame stays a `cv::Mat` in C++ all the way through ORB
-> and the DBoW2 query, with no Python round-trip. **Lifetime rule:** the Mat aliases
-> the message, so use it while the message is alive (within the callback).
+> At 640×480, the copy is small and the measured difference is limited because cppyy
+> call overhead is similar in size. The zero-copy wrap time stays about the same as
+> image size increases, while the rclpy copy time grows with pixel count. At 1920×1080,
+> the wrap is about **150×** faster (`pixi run -e vision bench-vision`). The image also
+> stays in C++ through ORB and the DBoW2 query. The Mat refers to the message buffer,
+> so use it only while the message is alive, such as within its callback.
 
 ---
 
-## Stage 2 — Features: ORB on every frame
+## Stage 2: ORB features
 
 ```bash
 pixi run -e vision demo-vision-features
@@ -121,30 +117,29 @@ SUMMARY frames=200 orb_avg_ms=~3.7 orb_fps=~270 avg_keypoints=1000 backend=CPU
 
 Each zero-copy `cv::Mat` is grayed and run through **C++ `cv::ORB`**; keypoints are
 logged as a Rerun `Points2D` overlay on the image. The ORB descriptor is an **N×32
-`CV_8U`** matrix — N 256-bit binary descriptors — which is exactly what DBoW2 consumes
+`CV_8U`** matrix, N 256-bit binary descriptors, which is exactly what DBoW2 consumes
 next.
 
-> **Honest note:** `cv2.ORB` would give similar per-frame numbers. The point of doing
-> it in C++ here is not the detector call; it is that the frame never leaves C++
-> between the subscription, the Mat, ORB, and the DBoW2 query.
+> `cv2.ORB` has similar per-frame performance. This example uses the C++ API so the
+> image can stay in C++ from the ROS subscription through ORB and the DBoW2 query.
 
-### CUDA sidebar
+### CUDA
 
 The demo prints `cv::ORB (CPU)` because the conda-forge OpenCV has **no CUDA build**.
 `cv_kit` auto-detects this (`cuda_available()` probes for the `cudafeatures2d` module)
-and cleanly uses the CPU path — no error. The CPU/GPU choice is a **single branch
+and cleanly uses the CPU path, no error. The CPU/GPU choice is a **single branch
 point** in `cv_kit.create_orb`, so a CUDA-enabled OpenCV drops in with **no code
 change**: `create_orb` then constructs `cv::cuda::ORB` instead.
 
 A CUDA OpenCV build (matching this env's 4.13.0) is available and validated on this
-machine's GPU — see **[cv_kit/CUDA_OPENCV.md](../../cv_kit/CUDA_OPENCV.md)** for the
+machine's GPU, see **[cv_kit/CUDA_OPENCV.md](../../cv_kit/CUDA_OPENCV.md)** for the
 `pixi run -e cudabuild provision-cuda-opencv` steps and the `vision-cuda` env. Measured
-there: `cv::cuda::ORB` ~576 fps vs ~110 fps CPU — **~5.3× faster** through the same
+there: `cv::cuda::ORB` ~576 fps vs ~110 fps CPU, **~5.3× faster** through the same
 cppyy path (thanks to soname shadowing, `cv_kit` needs no change to use it).
 
 ---
 
-## Stage 3 — Place recognition and loop closure (the heart)
+## Stage 3: Place recognition and loop closure
 
 ```bash
 pixi run -e vision demo-vision-loop
@@ -162,67 +157,49 @@ SUMMARY frames=200 confirmed_loops=19
   synthetic loop segment (ground truth): frames [180,200) revisit [0,20)
 ```
 
-The full front-end, one node. A DBoW2 **vocabulary** (trained on this sequence by
-default; the real ORBvoc for real data — see below) backs an `OrbDatabase`. For each
+One node runs the front-end. By default, it trains a DBoW2 vocabulary on the sequence.
+For real data, it loads the ORBvoc vocabulary. Both are used with an `OrbDatabase`. For each
 frame we: wrap zero-copy → ORB → **add to the database** → **query** for the most
 similar earlier image → run it through the **temporal-consistency gate**.
 
 The synthetic sequence is a sliding window over a fixed textured canvas that travels a
-closed circuit whose **last 20 frames retrace the first 20** — a loop closure by
-construction. The detector confirms frame `180+j` revisiting frame `j`, exactly as
-designed.
+closed circuit whose **last 20 frames retrace the first 20**, a loop closure by construction. The detector reports frame `180+j` as a revisit
+of frame `j`.
 
-In the live window you watch this happen: the left panel is the camera stream with the
-ORB keypoints overlaid; the right side stacks a per-frame ORB-time plot, then — the
-moment a loop is confirmed — a **yellow point pops into the score plot**, the current
-and revisited frames appear side by side in the image-pair panel, and a line lands in
-the event log (`frame 181 revisits frame 1 …`). Nothing happens for the whole first
-lap; then the loops fire in a steady run as the camera retraces its path.
+The live viewer shows the camera stream and ORB keypoints on the left. On the right,
+it shows ORB time, loop scores, the current and matched frames, and loop events. The
+synthetic sequence produces no loop events during the first lap. It reports a loop
+when the sequence retraces its path.
 
 ### The temporal-consistency gate
 
-A single high-scoring BoW match is not trustworthy — textured scenes throw up
-transient false positives. Following DLoopDetector, `loop_detector.LoopDetector`
-confirms a loop only once the best candidate has **persisted, moving coherently, over
-`k` consecutive frames**, ignores the most-recent database entries (a frame always
-matches its neighbours), and requires a minimum BoW score. This is why the first
-`k−1` frames of a revisit are not reported — a deliberate confirmation delay.
+A high BoW score can be a false positive in a textured scene. Following
+DLoopDetector, `loop_detector.LoopDetector` confirms a loop when the best candidate persists and
+moves coherently over `k` consecutive frames. It ignores recent database entries,
+because adjacent frames often match, and requires a minimum BoW score. The detector
+does not report the first `k−1` frames of a revisit. This delay is required for
+confirmation.
 
-### The golden test
+### Regression test
 
 ```bash
 pixi run -e vision test-vision
 ```
 
-`test_vision_loop.py` runs this whole pipeline on the deterministic synthetic sequence
-and asserts the detected loop-pair set against a recorded baseline (**precision 1.0**;
-the vocabulary is `srand`-seeded so training is reproducible). This is the regression
-contract for the entire front-end — no download needed.
+`test_vision_loop.py` runs the pipeline on the deterministic synthetic sequence and
+compares detected loop pairs with a recorded baseline. Precision is 1.0. Vocabulary
+training uses `srand` so results are reproducible. The test needs no download.
 
 <a name="dbow2-from-source"></a>
-### DBoW2 from source
+### DBoW2 build details
 
-DBoW2 is **not on conda-forge and has no Python binding**, so `build-dbow2` vendors it:
-it clones `dorian3d/DBoW2` into `build/vendor/` (gitignored) and direct-compiles it
-with the env's C++ compiler — the same recipe as `scripts/freeze/build_l2_node.py`,
-sidestepping DBoW2's CMake (which pulls a DLib dependency the ORB path never needs).
-Two small, documented, idempotent patches (kept as a scripted in-place edit, never a
-fork):
-
-1. **Compile only the DLib-free ORB sources** (skip `FBrief`/`FSurf64`, which need
-   DVision/opencv-contrib); include the specific headers rather than the umbrella
-   `DBoW2.h` that would drag them in.
-2. **Add an ORB-SLAM2-style `loadFromTextFile` plus a raw binary cache** to
-   `TemplatedVocabulary.h`, so we can read the canonical `ORBvoc.txt` (which stock
-   DBoW2 can't) and cache it as a fast-loading binary.
-
-`dbow_kit` then mirrors DBoW2's own API (`train_vocabulary`, `make_database`,
-`add_image`, `query`), keeping only the fiddly N×32-Mat → `vector<cv::Mat>` descriptor
-split in C++.
+The one-time `build-dbow2` task vendors and compiles the DBoW2 sources required by
+this ORB pipeline. DBoW2 has no Python binding. The source selection, patches, and
+text-vocabulary cache are documented in the [capability report](../../cv_kit/REPORT.md#2-build-dbow2-from-source).
 
 ---
 
-## Stage 4 (stretch) — Correcting the trajectory with a pose graph
+## Stage 4 (optional): Pose-graph correction
 
 ```bash
 pixi run -e vision demo-vision-posegraph
@@ -235,46 +212,40 @@ mean position error vs ground truth:
   after pose-graph   : 0.143 m
 ```
 
-Detecting a loop is only half the story; the payoff is *correcting the map*. This demo
+The demo also shows how a loop closure can correct a map. It
 builds a 2D pose graph over the synthetic circuit: the odometry is the true circuit
 corrupted by an accumulating heading drift (so the open-loop trajectory spirals away),
 and each confirmed loop closure adds a `BetweenFactor` tying the revisiting pose back
 to the earlier one. **GTSAM's Levenberg-Marquardt** optimizer then pulls the drifted
-trajectory back onto itself — ~**15× less error**.
+trajectory toward the ground truth, reducing mean position error by about **15×**.
 
-**What the live window shows (the part worth watching).** On the `step` timeline the
+On the `step` timeline, the
 3D view plays back the drive: the **red** open-loop trajectory spiralling away from the
 **green** ground truth while the *mean-error* plot on the right climbs; **yellow** loop
-edges snapping in as each revisit is confirmed; then, on the final step, the optimizer
-runs and the **blue** corrected trajectory appears pulled right back onto the ground
-truth as the error plot drops ~15× — the correction *snapping* into place. Scrub the
-timeline back and forth to watch drift accumulate and then get erased. (Headless, the
-same is in `build/vision/posegraph.rrd`.)
+loop edges appear as each revisit is confirmed. On the final step, the optimizer runs.
+The blue corrected trajectory moves toward the ground truth, and mean error drops by
+about 15×. The recording is saved to `build/vision/posegraph.rrd` in headless mode.
 
-> **Why gtsam's Python binding and not cppyy here?** We genuinely retried cppyy once
-> `libboost-headers` was added to the env — the old `boost/optional.hpp` wall is gone,
-> and gtsam's headers now parse. But gtsam still does **not** JIT-and-run under cppyy
-> here, for two further reasons: (1) the conda gtsam build's `config.h` sets
+> **Why use GTSAM's Python binding?** A cppyy retry after adding
+> `libboost-headers` passed the `boost/optional.hpp` include. Two blockers remain: (1) the conda gtsam build's `config.h` sets
 > `GTSAM_USE_TBB`, so its headers `#include <tbb/…>`, and the env ships only the tbb
 > *runtime* (`libtbb.so`), not the tbb *headers*; and (2) even with tbb headers supplied
 > out-of-band, Cling's JIT fails to materialize the static initializer of gtsam's
 > namespace-scope `static const KeyFormatter DefaultKeyFormatter` in `Key.h` (an
 > internal-linkage `std::function` global). The second is a Cling limitation, not a
-> missing dependency. That's fine: pose-graph optimization is a one-shot *batch* step,
-> not a hot per-frame loop, so the "keep it in C++" argument doesn't apply and a cppyy
-> wrapper wouldn't earn its keep. The per-frame hot path (ORB → DBoW2) is where staying
-> in C++ matters, and that is all cppyy. Full probe evidence:
+> missing dependency. Pose-graph optimization is a batch step, so the demo uses the
+> Python binding. The per-frame path (ORB and DBoW2) runs through cppyy. Probe details:
 > [cv_kit/REPORT.md](../../cv_kit/REPORT.md) §GTSAM/cppyy.
 
 ---
 
-## Stage 5 — The numbers
+## Stage 5: Benchmarks
 
 ```bash
 pixi run -e vision bench-vision            # add --orbvoc for the real-vocab timing
 ```
 
-| Metric | Result (synthetic, CPU; shared machine — directional) |
+| Metric | Result (synthetic, CPU; shared machine, directional) |
 |---|---|
 | Ingest 640×480 | rclcpp_kit ~0.008 ms vs rclpy-copy ~0.010 ms (~1.3×) |
 | Ingest 1920×1080 | rclcpp_kit ~0.001 ms vs rclpy-copy ~0.167 ms (**~155×**) |
@@ -287,10 +258,9 @@ pixi run -e vision bench-vision            # add --orbvoc for the real-vocab tim
 ---
 
 <a name="real-data"></a>
-## Real data: TUM RGB-D + the real ORBvoc
+## Real data: TUM RGB-D and ORBvoc
 
-The synthetic sequence proves the pipeline with zero download; the real thing runs on
-a genuine SLAM dataset.
+The synthetic sequence runs without downloads. The real-data path uses a TUM SLAM dataset.
 
 ```bash
 pixi run -e vision dataset-tum         # freiburg3_long_office_household (~1.48 GB) -> data/
@@ -302,36 +272,35 @@ pixi run -e vision demo-vision-loop -- \
 
 `freiburg3_long_office_household` is the canonical loop-closure sequence: the handheld
 camera circles an office and returns to the start. With the real ORBvoc (971,814
-words, k=10 L=6) the front-end detects the **genuine** revisit — around frame 2207
-returning to the ~frame-78 start region — with BoW scores ~0.05–0.10 (the normal range
+words, k=10 L=6) the front-end detects a revisit around frame 2207
+returning to the ~frame-78 start region, with BoW scores ~0.05–0.10 (the normal range
 for a large vocabulary on real imagery). The first ORBvoc load parses the 145 MB text
-(~2–3 s) and caches a binary next to it; subsequent loads take ~0.3 s.
+(~2–3 s) and writes a binary cache next to it. Later loads take ~0.3 s.
 
 > Dataset: Sturm et al., *A Benchmark for the Evaluation of RGB-D SLAM Systems*, IROS
 > 2012 (TUM CVG), CC BY 4.0. Vocabulary: Gálvez-López & Tardós (via ORB-SLAM2).
 >
-> Real data needs its parameters tuned (a much larger `--ignore-recent` so "the same
-> place a moment ago" is not mistaken for a loop; a low `--min-score` because BoW
-> scores on real imagery are small). Robust real-world detection additionally wants
-> score normalization and geometric verification — see [Gaps](#gaps).
+> Tune these parameters for real data. Use a larger `--ignore-recent` to avoid
+> matching nearby frames and a lower `--min-score` because real-image BoW scores are
+> small. More robust detection also needs score normalization and geometric
+> verification. See [Limits and follow-up work](#limits-and-follow-up-work).
 
 ---
 
-## Graduation path (L0 → L1 → L2)
+## Startup options (L0 to L2)
 
-Everything above runs at **L0**: cppyy JIT-compiles the libraries' headers at bringup
-(a one-time ~0.2 s for OpenCV; DBoW2's headers are tiny). When startup latency matters,
-the cppyy_kit **freeze** machinery applies unchanged:
+The examples use **L0**: cppyy JIT-compiles the libraries' headers at bringup
+(a one-time ~0.2 s for OpenCV; DBoW2's headers are tiny). To reduce startup latency, use the cppyy_kit freeze tools:
 
-- **L1 (freeze):** bake the kit's headers into a Cling precompiled header so bringup
+- **L1 (freeze):** create a precompiled header from the kit's headers into a Cling precompiled header so bringup
   skips the header parse. See **[docs/FREEZE.md](../FREEZE.md)**.
 - **L2 (lowering):** if a per-frame Python hop ever dominates, emit that step as native
   C++ (the pattern in `scripts/freeze/build_l2_node.py`, which `build_dbow2.py` already
-  mirrors). Here the hot path (ORB, the DBoW2 query) is *already* all C++ — Python only
-  orchestrates — so there is little to lower.
+  mirrors). Here the hot path (ORB, the DBoW2 query) is *already* all C++, Python only
+  orchestrates, so there is little to lower.
 
 <a name="gaps"></a>
-## Gaps and what's next
+## Limits and follow-up work
 
 - **Robust real-world detection.** The temporal gate uses a raw BoW-score threshold;
   DLoopDetector normalizes by the expected (previous-frame) score, and a real system
@@ -342,7 +311,7 @@ the cppyy_kit **freeze** machinery applies unchanged:
   zero-copy here is subscription-callback → `cv::Mat`; a loaned-message intra-process
   path would also remove the DDS-level copy.
 - **The full ORB-SLAM back-end** (local mapping, bundle adjustment, relocalization) is
-  out of scope — this tutorial is the loop-closure *front-end*.
+  out of scope, this tutorial is the loop-closure *front-end*.
 
 ---
 
@@ -352,11 +321,11 @@ the cppyy_kit **freeze** machinery applies unchanged:
 |---|---|
 | `cv_kit/cv_kit/__init__.py` | OpenCV bringup, zero-copy `msg_to_mat`, ORB, CUDA auto-detect |
 | `dbow_kit/dbow_kit/__init__.py` | DBoW2 vocabulary + database (train/load/query) |
-| `scripts/vision/build_dbow2.py` | clone + patch + compile DBoW2 |
-| `scripts/vision/vision_viz.py` | shared Rerun setup: live-viewer-by-default decision + per-demo blueprints |
-| `scripts/vision/loop_detector.py` | temporal-consistency loop gate |
-| `scripts/vision/demo_spine.py` / `demo_features.py` / `demo_loop.py` / `demo_posegraph.py` | stage 1–4 demos |
-| `scripts/vision/train_vocab.py` / `bench_vision.py` | offline vocab trainer / stage 5 bench |
+| `dbow_kit/cpp/build_dbow2.py` | clone + patch + compile DBoW2 |
+| `cv_kit/demos/vision_viz.py` | shared Rerun setup: live-viewer-by-default decision + per-demo blueprints |
+| `cv_kit/demos/loop_detector.py` | temporal-consistency loop gate |
+| `cv_kit/demos/demo_spine.py` / `demo_features.py` / `demo_loop.py` / `demo_posegraph.py` | stage 1–4 demos |
+| `cv_kit/demos/train_vocab.py` / `bench_vision.py` | offline vocab trainer / stage 5 bench |
 | `scripts/datasets/synthetic_loop.py` / `dataset_publisher.py` / `download_tum_rgbd.py` / `download_orbvoc.py` | data tooling |
-| `test/test_vision_kits.py` / `test/test_vision_loop.py` | kit tests + the golden test |
-| `docs/vision/REPORT.md` | the spike report (probe matrix, evidence, generic lessons) |
+| `cv_kit/tests/test_vision_kits.py` / `cv_kit/tests/test_vision_loop.py` | kit tests + the golden test |
+| `cv_kit/REPORT.md` | capability results, measurements, and limitations |

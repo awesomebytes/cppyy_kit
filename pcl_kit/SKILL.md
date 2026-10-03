@@ -1,22 +1,22 @@
-# pcl_kit — cheat sheet for a coding agent
+# pcl_kit API reference
 
-You are writing Python that drives the **Point Cloud Library (PCL)** — a C++ point
-cloud library — through `pcl_kit`. The kit **mirrors PCL's C++ API**:
+You are writing Python that drives the **Point Cloud Library (PCL)**, a C++ point
+cloud library, through `pcl_kit`. The kit **mirrors PCL's C++ API**:
 `bringup_pcl()` returns the real `pcl` namespace and you use `pcl.PointCloud`,
 `pcl.VoxelGrid`, `setInputCloud`, `setLeafSize`, `filter` exactly as in the PCL
-tutorials. The kit only removes the cppyy friction (bringup, NumPy<->cloud copies,
+tutorials. The kit handles cppyy setup, NumPy<->cloud copies,
 the ROS message bridge). You do **not** need to know cppyy.
 
 (For *why* this exists and the C++-vs-Python comparison, see [WHY.md](WHY.md).)
 
 **Requires** the `pcl` pixi env: `pixi run -e pcl python your_script.py`.
 
-**Golden rules**
+**Basic rules**
 - Call `pcl = pcl_kit.bringup_pcl()` once; it returns the `pcl` namespace.
   Pass `with_ros=False` if you only need NumPy (skips the ~1.9 s pcl_conversions
   JIT). Bringup is idempotent.
 - Instantiate templates with subscript: `pcl.PointCloud[pcl.PointXYZ]`,
-  `pcl.VoxelGrid[pcl.PointXYZ]` — **any** point type works on demand
+  `pcl.VoxelGrid[pcl.PointXYZ]`, **any** point type works on demand
   (`pcl.PointXYZI`, `pcl.PointXYZRGB`, `pcl.PointNormal`, ...).
 - A filter needs a shared pointer as input: `vox.setInputCloud(cloud.makeShared())`.
 - Move bulk data with the kit's bridges, never a Python per-point loop.
@@ -24,7 +24,7 @@ the ROS message bridge). You do **not** need to know cppyy.
 
 ---
 
-## Pattern 1 — NumPy cloud -> VoxelGrid -> NumPy  (the minimal path)
+## Pattern 1: NumPy, VoxelGrid, and NumPy
 *Use for:* filtering/processing a cloud you have as a NumPy `(N,3)` float array.
 
 ```python
@@ -46,12 +46,12 @@ print(cloud.size(), "->", out.size())
 ```
 `cloud_from_numpy` accepts `(N,3)` (strided copy) or `(N,4)` (single memcpy; the
 4th column is the padding lane). `cloud_to_numpy(out, copy=False)` returns a
-near-free zero-copy view instead — but it aliases the cloud's storage, so keep
+near-free zero-copy view instead, but it aliases the cloud's storage, so keep
 `out` alive while you use the view.
 
 ---
 
-## Pattern 2 — ROS PointCloud2 pipeline, cloud stays in C++  (the money path)
+## Pattern 2: ROS PointCloud2 pipeline
 *Use for:* a ROS 2 node that filters `sensor_msgs/PointCloud2` without ever
 materializing points in Python. Subscribe via rclcpp_kit so the callback gets the
 **C++** message.
@@ -88,8 +88,8 @@ See `scripts/pcl_kit_demos/d02_ros_pipeline.py` for the full self-contained show
 
 ---
 
-## Pattern 3 — a point type no binding ever shipped  (on-demand templates)
-*Use for:* stock PCL point types beyond XYZ. Just subscript with the type; the ROS
+## Pattern 3: use other PCL point types
+*Use for:* stock PCL point types beyond XYZ. Subscript with the type; the ROS
 bridge takes a `point_type` argument.
 
 ```python
@@ -101,10 +101,10 @@ cloud_i = pcl_kit.cloud_from_msg(msg, point_type=pcl.PointXYZI)
 
 ---
 
-## Pattern 4 — a fully custom point type  (cppdef)
+## Pattern 4: define a custom point type
 *Use for:* a struct with your own fields (e.g. a LiDAR point with `ring`). Two
 rules the REPORT nailed down: use `struct alignas(16)` (**not** the trailing
-`} EIGEN_ALIGN16;` macro — Cling rejects it), and include the template *impl*
+`} EIGEN_ALIGN16;` macro, Cling rejects it), and include the template *impl*
 headers so the filter instantiates for your type.
 
 ```python
@@ -136,12 +136,11 @@ vox = pcl.VoxelGrid[MyPoint]()                    # works over the custom type
 
 ---
 
-## Pattern 5 — compile-cached VoxelGrid, and warmup for the rest
+## Pattern 5: cached VoxelGrid and warmup
 *Use for:* any node/loop whose **first** frame must not be a latency outlier. The
 dominant first-frame cost is cppyy JIT-instantiating PCL's `VoxelGrid<PointXYZ>`
 (~0.6 s). `pcl_kit.voxel_downsample(cloud, leaf)` runs a `VoxelGrid` **compiled once
-into the kit's `.so`** (`cppdef_cached`), so its first use is ~5 ms and persistent —
-prefer it over building `pcl.VoxelGrid[...]` by hand in a hot path. The showcase
+into the kit's `.so`** (`cppdef_cached`). Its first use takes ~5 ms. Prefer it over building `pcl.VoxelGrid[...]` by hand in a hot path. The showcase
 frame-0 drops ~681 ms → ~88 ms. First run on a machine pays a one-time ~3 s `.so`
 build; no compiler → it falls back to the Python VoxelGrid path (`pcl_kit._CACHED`).
 
@@ -153,23 +152,23 @@ cloud = pcl_kit.cloud_from_numpy(pts)
 out = pcl_kit.voxel_downsample(cloud, 0.05)  # compiled VoxelGrid; ~5 ms first use
 ```
 
-`warmup(with_ros=True)` still front-loads what the cache doesn't yet cover — the
+`warmup(with_ros=True)` still front-loads what the cache doesn't yet cover, the
 `pcl_conversions` `toROSMsg`/`fromROSMsg` round-trip (the same cacheable pattern, a
 compiled conversion helper, is the next step). Pass `with_ros=False` for the
-NumPy-only path. See docs/kits/COMMON_PATTERNS.md §23 (cache) and FREEZE.md §4.
+NumPy-only path. See docs/COMMON_PATTERNS.md §23 (cache) and FREEZE.md §4.
 
 ---
 
-## Gotchas (short version)
-- **Don't** convert clouds with a Python per-point loop — it is ~90x slower than
+## Limitations and errors
+- **Don't** convert clouds with a Python per-point loop, it is ~90x slower than
   the kit's C++ memcpy and building the aligned storage from Python can **segfault**
   the process. Use `cloud_from_numpy` / `cloud_to_numpy`.
-- **Don't** spell a custom point struct with `} EIGEN_ALIGN16;` — Cling parse-errors
+- **Don't** spell a custom point struct with `} EIGEN_ALIGN16;`, Cling parse-errors
   and a failed `cppdef` can crash on transaction revert. Use `struct alignas(16)`.
 - For a filter over a **novel** point type, include its `impl/*.hpp` (e.g.
   `pcl/filters/impl/voxel_grid.hpp`) or you get unresolved-symbol errors. VoxelGrid's
   is pre-included by the kit.
 - A filter's input is a shared pointer: `setInputCloud(cloud.makeShared())`.
-- `cloud_to_numpy(cloud, copy=False)` aliases PCL memory — keep the cloud alive.
+- `cloud_to_numpy(cloud, copy=False)` aliases PCL memory, keep the cloud alive.
 - Use `bringup_pcl(with_ros=False)` for NumPy-only work to skip the ROS JIT; the
   ROS bridges (`cloud_from_msg` / `msg_from_cloud`) require `with_ros=True`.

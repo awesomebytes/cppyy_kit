@@ -2,9 +2,9 @@
 nav2_kit -- compose your own Nav stack from Nav2's algorithm cores, in Python, via
 cppyy.
 
-Nav2's Python story is client-side only: ``nav2_simple_commander`` sends goals to
+Nav2's Python interface is client-side: ``nav2_simple_commander`` sends goals to
 the C++ lifecycle servers; every algorithm (planners, controllers, costmap layers)
-is a C++ class behind pluginlib. This kit takes the other road -- it drives Nav2's
+is a C++ class behind pluginlib. This kit calls Nav2's
 **algorithm cores directly** from Python, with **no lifecycle servers, no
 pluginlib, no tf**: Python owns the loop, C++ owns the math. It mirrors the
 libraries' own C++ API against the installed Nav2, JIT-including the headers; there
@@ -19,7 +19,7 @@ for the full probe matrix, including what is *not*):
     ~600-3600x slower at 512x512/1024x1024 -- the same bulk-data lesson as pcl_kit).
   * ``nav2_navfn_planner::NavFn`` -- the NavFn Dijkstra/A* planner *algorithm*, which
     operates on the costmap char array with no node at all. The kit wraps its real
-    friction: ``calcNavFnAstar`` only builds the potential field, so a plan needs a
+    detail: ``calcNavFnAstar`` only builds the potential field, so a plan needs a
     following ``calcPath``; start/goal cross as ``int*``; and the path comes back as
     raw ``float*`` X/Y arrays + a length.
 
@@ -41,7 +41,7 @@ a ``nav_msgs/OccupancyGrid`` (``data[y*W + x]``), so a plan lines up with a publ
 grid with no flip.
 
 Notes / limits (v0):
-    * This is the *algorithm-core* road, not a Nav2 stack: no lifecycle nodes, no
+    * This uses Nav2 algorithm cores. It does not start a Nav2 stack: no lifecycle nodes, no
       pluginlib, no tf, no dynamic obstacle/inflation layers, no recovery behaviors.
     * NavFn's ``setCostmap(..., isROS=True)`` rescales ROS cost values (0-254) into
       NavFn's internal band and adds an obstacle border, exactly as the Nav2 server
@@ -232,7 +232,7 @@ def plan_navfn(costmap, start, goal, allow_unknown=True):
     NumPy array of ``(x, y)`` cell coordinates (start..goal order), or ``None`` if no
     plan is found.
 
-    Wraps NavFn's real friction: it builds a ``NavFn`` sized to the costmap, feeds it
+    This helper builds a ``NavFn`` sized to the costmap, feeds it
     the costmap char array with ``setCostmap(..., isROS=True, allow_unknown)``, runs
     ``calcNavFnAstar`` to propagate the potential field, then ``calcPath`` to trace
     the path (``calcNavFnAstar`` alone does *not* populate a path), and copies the raw
@@ -282,8 +282,8 @@ def warmup():
 
 
 # ============================================================================
-# Lifecycle unlock (M6d): construct a real rclcpp_lifecycle::LifecycleNode
-# in-process from Python, and with it the two Nav2 cores the algorithm-core road
+# M6d: construct an rclcpp_lifecycle::LifecycleNode
+# in-process from Python, and with it the two Nav2 cores used by this package
 # left BLOCKED -- Smac 2D (AStarAlgorithm<Node2D>) and the RegulatedPurePursuit
 # controller. Both couplings the REPORT documented dissolve once you can build a
 # LifecycleNode from Python (the same move control_kit made for ControllerManager):
@@ -717,7 +717,7 @@ class RPPController:
     """
     Nav2's real ``RegulatedPurePursuitController`` (the C++ controller plugin), driven
     from Python. Construct it with a configured :func:`costmap_ros` and a parent
-    :func:`lifecycle_node`; the wrapper hides RPP's cppyy frictions -- the ``WeakPtr``
+    :func:`lifecycle_node`; the wrapper handles RPP's cppyy requirements: the ``WeakPtr``
     parent, the templated ``tf2_ros::Buffer`` ctor, the ``GoalChecker`` its body
     dereferences, and the ROS message building for the plan / pose.
 
@@ -806,7 +806,7 @@ class RPPController:
 
 
 def warmup_lifecycle():
-    """Front-load the lifecycle-unlock first-use JIT (LifecycleNode + Costmap2DROS
+    """Run the first-use JIT for LifecycleNode and Costmap2DROS during setup
     ctors, the Smac plan glue, the RPP configure/compute glue) on throwaway objects so
     the first live call does not stall. Requires rclcpp. Best-effort per available
     feature (Smac / RPP)."""

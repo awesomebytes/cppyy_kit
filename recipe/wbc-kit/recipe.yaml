@@ -2,8 +2,8 @@ schema_version: 1
 
 context:
   name: wbc-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -28,7 +28,7 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.3.0
+    - cppyy-kit ==0.4.0
     - crocoddyl
 
 tests:
@@ -42,16 +42,14 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Author custom Crocoddyl action models in inline C++ via cppyy (ROS-free)"
+  summary: "Define Crocoddyl action models in C++ through cppyy (ROS-free)"
   description: |
-    wbc_kit drives Crocoddyl (optimal control for whole-body / legged robots)
-    from Python via cppyy, with the one capability its own boost::python
-    bindings can't give you: a custom ActionModelAbstract subclass authored in
-    C++ inline, at native speed, with no build system. ROS-free: this kit only
-    needs cppyy-kit + Crocoddyl (pinocchio comes in transitively via
-    Crocoddyl's own dependency), so it does not join the ROS-touching kits'
-    environment (Crocoddyl/pinocchio pin a different libboost line than
-    robostack).
+    wbc_kit exposes Crocoddyl, an optimal-control library for whole-body and
+    legged robots, to Python through cppyy. It supports defining custom C++
+    ActionModelAbstract subclasses inline without a separate build system. This
+    kit is ROS-free and depends on cppyy-kit and Crocoddyl. Crocoddyl brings in
+    pinocchio as a dependency. It uses a separate environment because Crocoddyl
+    and pinocchio require a different libboost version than Robostack.
 
 extra:
   recipe-maintainers:

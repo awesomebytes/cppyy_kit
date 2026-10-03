@@ -123,7 +123,7 @@ def test_xml_error_is_readable(bt):
         factory.create_tree_from_text(bad)
     message = str(exc.value)
     assert "NoSuchNode" in message
-    assert "\n" not in message          # one clean line, not a C++ signature wall
+    assert "\n" not in message          # one line without C++ signature details
     assert "BehaviorTreeFactory::createTreeFromText" not in message
 
 
@@ -163,7 +163,7 @@ def test_warmup_marks_entry_points_seen_and_tree_runs(bt):
     # On the JIT path warmup marks the first-use labels seen (it front-loads the
     # wrapper JIT); on the compile-cache path there is no first-use JIT to front-load
     # (the trampoline .so already carries the wrappers), so warmup is a cheap no-op
-    # and the labels are not used -- both are correct, so assert per mode.
+    # The labels are not used. Both modes are correct, so assert each mode.
     bt_kit.warmup()
     if not bt_kit._CACHED:
         assert "bt_kit.register_simple_action" in cppyy_kit._FIRST_USE_SEEN

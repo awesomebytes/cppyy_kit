@@ -2,8 +2,8 @@ schema_version: 1
 
 context:
   name: cppyy-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -19,7 +19,7 @@ build:
   # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
   # -> noarch python wrapper; package compatibility follows cppyy's runtime deps.
   noarch: python
-  number: 2
+  number: 0
 
 requirements:
   host:
@@ -29,6 +29,7 @@ requirements:
   run:
     - python 3.12.*
     - cppyy >=3.5,<4
+    - numpy
 
   # The x86_64 conda-forge Cling 6.32.8 package segfaults at interpreter
   # startup with the currently selected GCC/G++ 15.3 and libgcc/libstdcxx 16.2.
@@ -54,13 +55,12 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "cppyy friction primitives + freeze/vendored-source tooling (ROS-free base)"
+  summary: "Shared cppyy utilities and build tools (ROS-free base)"
   description: |
-    cppyy_kit is the ROS-free base of the cppyy_kit suite: the friction
-    primitives shared by every kit (load / keep_alive / callback /
-    HandleRegistry / warmup / first_use / teardown / probe) plus the freeze
-    (Cling PCH + direct-compile + vendored-source) tooling. Everything else in
-    the suite depends on it.
+    cppyy_kit is the ROS-free base package for the suite. It provides shared
+    utilities for loading libraries, managing callbacks and object lifetimes,
+    warming up C++ code, and compiling code into libraries. Other kits depend
+    on this package.
 
 extra:
   recipe-maintainers:

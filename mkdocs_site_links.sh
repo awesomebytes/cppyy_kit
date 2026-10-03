@@ -1,7 +1,7 @@
 #!/bin/bash
 # Regenerate the mkdocs_site/ symlink mirror (M4 docs site).
 #
-# WHY symlinks that MIRROR the repo layout: the read-only kit/docs .md files use
+# Symlinks mirror the repository layout. The read-only kit/docs Markdown files use
 # relative links assuming the repo layout (kit dirs are siblings of docs/, e.g.
 # cv_kit/SKILL.md -> ../docs/tutorials/..., bt_kit/WHY.md -> REPORT.md). Rendering
 # them from a docs_dir that mirrors that layout makes those links resolve without
@@ -12,7 +12,7 @@ cd "$(dirname "$0")"
 SITE=mkdocs_site
 # Wipe only the generated symlinks/dirs, keep the authored pages (index.md, etc.).
 rm -rf "$SITE/docs" "$SITE/PLAN.md"
-for k in cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit; do
+for k in cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit; do
   rm -rf "$SITE/$k"
 done
 
@@ -21,7 +21,7 @@ ln -s ../docs "$SITE/docs"
 ln -s ../PLAN.md "$SITE/PLAN.md"
 
 # Per-kit trio (+ extras), mirrored under <kit>/ so intra-kit links resolve.
-for k in rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit; do
+for k in rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit; do
   mkdir -p "$SITE/$k"
   for f in "$k"/*.md; do
     [ -e "$f" ] || continue

@@ -39,9 +39,10 @@ ROS_DOMAIN_ID = "61"
 # A throwaway environment must not launch a detached cache build while its
 # directory is being removed. PCH behavior is covered by the source suite.
 CPPYY_KIT_NO_AUTOPCH = "1"
+PYTHONPATH = ""
 
 [dependencies]
-ros-jazzy-rclcpp-kit = "==0.3.0"
+ros-jazzy-rclcpp-kit = "==0.4.0"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
 EOF
 
@@ -53,6 +54,10 @@ from pathlib import Path
 import sys
 import time
 
+import numpy as np
+from numpy.typing import NDArray
+import cppyy_kit
+from cppyy_kit import cpp
 import rclpy
 from rcl_interfaces.msg import ParameterEvent
 from rclpy.context import Context
@@ -69,12 +74,36 @@ def package_record(name):
     assert len(matches) == 1, (name, matches)
     return matches[0]
 
-assert package_record("cppyy-kit")["build_number"] == 2
+assert package_record("cppyy-kit")["build_number"] == 0
 for package, version in (("gcc", "14.3.0"), ("gxx", "14.3.0"),
                          ("libgcc", "15.2.0"), ("libstdcxx", "15.2.0")):
     record = package_record(package)
     assert record["version"] == version, (package, record)
 
+installed_package = Path(cppyy_kit.__file__).resolve()
+assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_package
+
+@cpp(cached=False)
+def sum_sq(data: NDArray[np.float32]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
+assert sum_sq(np.array([1, 2, 3], dtype=np.float32)) == 14.0
+
+@cpp(cached=False)
+def total(values: list[float]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;"""
+assert total([1.25, 2.75]) == 4.0
+
+@cpp(cached=False)
+def inferred_total(values) -> float:
+    """double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;"""
+@cpp(cached=False)
+def inferred_size(values) -> int:
+    """return sizeof(values[0]);"""
+for dtype, size in ((np.float32, 4), (np.float64, 8)):
+    values = np.array([1.25, 2.75], dtype=dtype)
+    assert inferred_total(values) == 4.0
+    assert inferred_size(values) == size
+print("INSTALLED_NUMERIC_CPP_API_OK")
 
 native_module = importlib.import_module("rclcpp_kit.native")
 native_pipeline_module = importlib.import_module("rclcpp_kit.native_pipeline")

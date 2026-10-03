@@ -1,24 +1,21 @@
 # flake8: noqa: A005
-# (the module name `trace` is part of the M2a public API -- cppyy_kit.trace.start()
+# (the module name `trace` is part of the M2a public API: cppyy_kit.trace.start()
 #  / `python -m cppyy_kit.trace report`; as a submodule it does not shadow the
 #  stdlib `trace` for importers, so the flake8-builtins A005 warning is silenced.)
 """
-cppyy_kit.trace -- 8a boundary tracer for the Python<->C++ crossing.
+cppyy_kit.trace records calls across the Python-to-C++ boundary.
 
 cppyy_kit is the single place Python crosses into C++ (bringup/load_library,
-cppdef & the compile cache, callback/std_function wrapping, warmup). Instrumenting
-*that* layer -- rather than trying to trace Python -- yields a small, typed record
-of exactly what a kit app loaded, compiled and wrapped, with the C++ signatures,
-counts and timings. That manifest feeds three things (PLAN.md M8/8a): freeze
-manifests (which headers/signatures to bake into the PCH or compile cache),
-PGO-style evidence (where the boundary cost actually is), and the M5
-``cppyy-accelerate`` skill's hotspot analysis.
+cppdef and the compile cache, callback and std_function wrappers, and warmup). It
+records loaded libraries, compiled code, wrapped signatures, counts, and timings.
+The manifest supports freeze manifests, performance analysis, and the M5
+``cppyy-accelerate`` skill's hotspot analysis (PLAN.md M8/8a).
 
-Off by default and cheap when off: a crossing point asks ``trace.span(...)`` for a
-timer, which is a shared no-op singleton until tracing is started -- no timing
-syscall, no event is recorded. Turn it on with ``cppyy_kit.trace.start()`` (or set
-``CPPYY_KIT_TRACE=1`` / a path before import) and read the manifest with
-``stop()``; format a saved one with ``python -m cppyy_kit.trace report trace.json``.
+Tracing is disabled by default. While disabled, ``trace.span(...)`` returns a
+shared no-op object. It does not read a timer or record an event. Start tracing
+with ``cppyy_kit.trace.start()`` or set ``CPPYY_KIT_TRACE=1`` (or an output path)
+before import. Read the manifest with ``stop()``. To format a saved manifest, run
+``python -m cppyy_kit.trace report trace.json``.
 
     import cppyy_kit
     cppyy_kit.trace.start()
@@ -44,7 +41,8 @@ def enabled():
 
 def start(path=None):
     """Begin tracing: clear the buffer, mark t0. If ``path`` is given, ``stop()``
-    also writes the manifest there. Idempotent-ish (a second start restarts)."""
+    also writes the manifest there. Calling ``start()`` again clears the buffer
+    and starts a new trace."""
     global _ENABLED, _EVENTS, _T0, _SEQ, _AUTODUMP
     _ENABLED = True
     _EVENTS = []
@@ -54,9 +52,9 @@ def start(path=None):
 
 
 def record(kind, **fields):
-    """Append a typed event (``kind`` + arbitrary fields). No-op when tracing is
-    off, so instrumented code can call it unconditionally. Used for point events
-    (a load, a cache hit); use ``span()`` when you also want a duration."""
+    """Append an event with a ``kind`` and any fields. Does nothing when tracing
+    is off. Use for point events such as a library load or cache hit. Use
+    ``span()`` to record a duration."""
     if not _ENABLED:
         return
     global _SEQ
@@ -108,8 +106,7 @@ _OFF = _OffSpan()
 def span(kind, **fields):
     """Return a timer for a crossing: ``.done(**extra)`` (or use as a ``with``
     block) records the event with its duration. A shared no-op when tracing is off
-    -- the intended way to instrument a crossing point without paying for it when
-    disabled."""
+    This returns the same no-op object whenever tracing is disabled."""
     if not _ENABLED:
         return _OFF
     return _Span(kind, fields)
@@ -124,10 +121,9 @@ def _env_tag():
 
 
 def manifest():
-    """Build the manifest dict from the events recorded so far (does not stop
-    tracing). Includes an *instantiation manifest*: the distinct C++ signatures
-    that were wrapped/crossed, with counts and total time -- the list of things a
-    freeze PCH or compile cache should cover."""
+    """Build a manifest from the events recorded so far without stopping tracing.
+    It includes each distinct C++ signature, its count, and total time. Use this
+    list to choose signatures for a freeze PCH or compile cache."""
     by_kind = {}
     signatures = {}
     libraries = []

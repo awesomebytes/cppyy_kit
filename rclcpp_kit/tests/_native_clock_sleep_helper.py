@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live wall-time, identity, sim-time, and interrupt proof for clock sleep."""
+"""Integration test for clock sleep using wall time, sim time, and interrupts."""
 
 import time
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.trace -- the 8a boundary tracer.
+"""Tests for cppyy_kit.trace, which records Python-to-C++ calls.
 
 Pure-Python plus one cppyy crossing (a std::function wrap at the trivial
 ``int(int)`` signature, no domain library), so these run in the default env too.

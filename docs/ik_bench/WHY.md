@@ -1,22 +1,25 @@
-# Why ik_bench — one Python script benchmarks C++-only solvers
+# ik_bench: compare IK solvers from Python
 
-Inverse-kinematics solvers live in an awkward split. The best ones are **C++ MoveIt
-plugins**, and some of the most interesting — **bio_ik** (evolutionary/memetic) and
-**pick_ik** (gradient-descent + memetic global) — **are not packaged at all**: no
-`pip`, no `conda`, no apt. Others (KDL, TRAC-IK) are packaged C++. And there is always
-someone's pure-Python Jacobian solver. Benchmarking these against each other normally
-means standing up a C++ test harness, launch files and a parameter server per solver —
-enough friction that the comparison rarely gets done honestly.
+KDL and TRAC-IK are packaged MoveIt plugins in this environment. bio_ik and pick_ik
+are available here only as C++ source. Comparing these plugins with a Python solver
+usually requires separate C++ test programs and MoveIt configuration.
 
-**ik_bench does it in one Python file.** cppyy + `moveit_kit` load each C++ plugin
-*in-process* through MoveIt's own pluginlib mechanism and call `RobotState::setFromIK`;
-the two unpackaged solvers are built from source once and discovered by the *same*
-lookup-by-name path as the packaged ones — cppyy never parses a line of their headers,
-pluginlib just `dlopen`s the compiled `.so`. The pure-Python baseline is NumPy only.
-`python ik_bench/run_bench.py` runs all five on the same Panda, the same seeded targets
-and the same tolerances, and prints one table (solve-rate, verified success %, accuracy,
-near-limit behaviour). The punchline: the fastest solver in the table, **bio_ik, is one
-you cannot install** — it exists only as C++ source, yet here it is benchmarked,
-configured and beaten-or-beating its packaged peers from a single script. That is the
-new use case cppyy_kit unlocks: **cppyy as the harness that makes C++-only libraries
-first-class citizens of a Python benchmark.**
+`ik_bench/run_bench.py` loads the plugins through MoveIt pluginlib and calls
+`RobotState::setFromIK`. The bio_ik and pick_ik plugins are built from source and
+discovered by plugin lookup name. cppyy does not parse their headers. A NumPy solver
+provides the Python comparison.
+
+The script runs all five solvers on the same Panda model and seeded target set. It
+reports solve rate, success rate checked with forward kinematics, position and
+orientation error, and near-limit results. See [REPORT.md](REPORT.md) for the
+measurement setup and results.
+
+## Run this repository example
+
+The benchmark is a repository example, not a separately published package. From this
+checkout, run `pixi run -e ik bench-ik`; it prints a comparison of KDL, TRAC-IK,
+bio_ik, pick_ik, and NumPy DLS on seeded Panda targets. For the setup and limits of
+those results, see [REPORT.md](REPORT.md). The underlying MoveIt integration is
+published as [`ros-jazzy-moveit-kit`](https://repo.prefix.dev/awesomebytes); see
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/) for
+installation or source-development instructions.

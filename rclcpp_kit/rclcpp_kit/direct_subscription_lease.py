@@ -532,7 +532,7 @@ class DirectSubscriptionLease:
         """Release the native subscription; keep the callables referenced.
 
         ``_implementation.close()`` only ever drops the subscription entity
-        reference (``subscription_.reset()``) -- a plain finalize, proven
+        reference (``subscription_.reset()``), a plain finalize confirmed
         safe on its own (Slice 2.5a). ``_implementation``/``dispatch_
         callback``/``cpp_callback`` are deliberately NOT nulled here: they
         are pinned to ``_implementation``'s own lifetime via

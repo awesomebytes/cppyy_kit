@@ -1,34 +1,25 @@
 #!/usr/bin/env python
-"""
-Fetch, patch and compile DBoW2 (Galvez-Lopez & Tardos, "Bags of Binary Words")
-into ``build/vendor/libDBoW2.so`` + headers, for dbow_kit.
+"""Fetch, patch, and compile DBoW2 for `dbow_kit`.
 
-DBoW2 is not packaged on conda-forge, so we vendor it: clone the canonical
-dorian3d/DBoW2, apply two small **documented** patches, and compile the ORB path
-directly with ``$CXX`` against the vision env's OpenCV 4 -- the same direct-compile
-recipe as scripts/freeze/build_l2_node.py, avoiding DBoW2's CMake (which pulls an
-``ExternalProject``/DLib dependency we don't need for ORB). Everything lands in the
-gitignored ``build/vendor/`` dir. Idempotent: clone/patch/compile each skip if
-already done (``--force`` recompiles).
+The script builds `build/vendor/libDBoW2.so` and copies the headers needed by the
+ORB path. DBoW2 is not packaged on conda-forge. The script clones
+`dorian3d/DBoW2`, applies two documented patches, and compiles the ORB sources with
+`$CXX` against OpenCV 4 from the vision env. This avoids DBoW2's CMake path, which
+uses an `ExternalProject` dependency on DLib. Existing clone, patch, and build
+steps are skipped unless needed. Use `--force` to recompile.
 
     pixi run -e vision build-dbow2
 
-Patches applied (kept as a documented, idempotent in-place edit -- never a fork):
-  1. Compile only the **DLib-free** sources. DBoW2's ORB descriptor path (FORB,
-     TemplatedVocabulary, TemplatedDatabase, BowVector, FeatureVector,
-     QueryResults, ScoringObject) needs only OpenCV. FBrief.cpp (BRIEF) and
-     FSurf64.cpp (SURF) pull DVision/opencv-contrib and are skipped, so no DLib
-     clone is needed. dbow_kit includes the specific headers (FORB.h,
-     TemplatedVocabulary.h, TemplatedDatabase.h) rather than the umbrella DBoW2.h,
-     which would drag in FBrief.h.
-  2. Add ORB-SLAM2-style ``loadFromTextFile`` + a binary cache
-     (``saveToBinaryFile`` / ``loadFromBinaryFile``) to TemplatedVocabulary.h.
-     Stock DBoW2 only reads its own cv::FileStorage YAML/gz; the canonical
-     ORBvoc.txt (145 MB text, from the ORB-SLAM2 repo) is a different format that
-     ORB-SLAM2 added a text loader for. We add the same loader, plus a raw binary
-     format so the first (~tens-of-seconds) text parse can be cached to a ~40 MB
-     ``.dbow2`` that reloads in ~1 s (dbow_kit does this automatically).
-"""
+Patches:
+  1. Compile only the DLib-free ORB sources. The ORB descriptor path uses OpenCV.
+     `FBrief.cpp` and `FSurf64.cpp` require DVision and opencv-contrib, so they are
+     skipped. `dbow_kit` includes specific headers instead of `DBoW2.h`, which
+     includes `FBrief.h`.
+  2. Add ORB-SLAM2-style `loadFromTextFile`, `saveToBinaryFile`, and
+     `loadFromBinaryFile` methods to `TemplatedVocabulary.h`. Stock DBoW2 reads its
+     own `cv::FileStorage` YAML and gz formats. The ORB-SLAM2 vocabulary uses a
+     different text format. The binary cache reduces load time for the roughly
+     145 MB text vocabulary. `dbow_kit` writes and reads this cache automatically."""
 import argparse
 import os
 import subprocess

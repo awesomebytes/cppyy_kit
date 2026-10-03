@@ -1,21 +1,18 @@
-# dbow_kit — REPORT (seed)
+# dbow_kit report
 
-> Seed. dbow_kit and cv_kit are the **vision pair**; their shared evidence
-> (probe matrix, ingest/ORB/query benchmarks, loop precision/recall) currently
-> lives in [`cv_kit/REPORT.md`](../cv_kit/REPORT.md) and the tutorial
-> [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
-> A dbow-specific report is split out during a later documentation pass.
+Most DBoW2 measurements and probe results are documented in
+[`cv_kit/REPORT.md`](../cv_kit/REPORT.md) and the
+[vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md).
 
 ## Status
 
-- **DBoW2 via cppyy: works.** Vocabulary train/save/load and database add/query
-  are driven from Python; descriptors stay as C++ `cv::Mat`. Vendored + compiled
-  from source (no conda-forge package, no Python binding) via
-  `dbow_kit/cpp/build_dbow2.py` -> `build/vendor/libDBoW2.so`.
-- **Golden test:** `cv_kit/tests/test_vision_loop.py` trains a small vocabulary
-  on the deterministic synthetic sequence (zero download) and asserts the
-  recorded loop-closure baseline -- the differential contract for the pipeline.
-- **Real vocabulary:** the 145 MB ORBvoc.txt loads and is transparently cached to
-  a `.dbow2` binary (~1 s reloads thereafter).
+- DBoW2 vocabulary training, save/load, database insertion, and queries work from
+  Python through cppyy. Descriptor data stays in C++ `cv::Mat` objects.
+- `dbow_kit/cpp/build_dbow2.py` vendors and compiles DBoW2 from source into
+  `build/vendor/libDBoW2.so`. DBoW2 has no conda-forge package or Python binding.
+- `cv_kit/tests/test_vision_loop.py` trains a vocabulary on a deterministic
+  synthetic sequence and checks loop-closure results. The test needs no download.
+- The 145 MB ORBvoc text file loads and is cached as a `.dbow2` binary. Reloads
+  take about 0.4 seconds.
 
-See `cv_kit/REPORT.md` for the measured numbers.
+See [`cv_kit/REPORT.md`](../cv_kit/REPORT.md) for measured results.

@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 """
-The "after" for the cppyy-accelerate walkthrough: the naive voxel downsampler
-(slow_pointcloud_pipeline.py) accelerated with pcl_kit, produced by following
-skills/cppyy-accelerate/SKILL.md (PROFILE -> MAP -> APPLY -> VERIFY).
+This is the "after" case in the cppyy-accelerate walkthrough. It uses pcl_kit to
+speed up the voxel downsampler in slow_pointcloud_pipeline.py.
 
-The whole per-point Python loop collapses to three pcl_kit calls -- copy the array
-into a PCL cloud, run the compile-cached ``VoxelGrid`` (C++), copy the centroids
-back -- so the work happens in C++ and the Python side only orchestrates. Same
-voxel grouping and centroids as the naive version (test_pipeline.py is the
-contract), at a fraction of the time (WALKTHROUGH.md has the measured table).
+Three pcl_kit calls copy the array into a PCL cloud, run the compile-cached
+``VoxelGrid`` in C++, then copy the centroids back. The result uses the same voxel
+grouping and centroids as the naive version. test_pipeline.py checks the output.
+WALKTHROUGH.md reports the measured timings.
 
 Run:  pixi run -e pcl python examples/accelerate_demo/fast_pointcloud_pipeline.py
 """
@@ -21,8 +19,8 @@ from slow_pointcloud_pipeline import make_cloud
 
 
 def voxel_downsample_fast(points, leaf):
-    """Same contract as ``voxel_downsample_slow`` -- (N,3) in, (M,3) centroids out
-    -- but the voxel grid runs in C++ via pcl_kit (no per-point Python)."""
+    """Use the same input and output shapes as ``voxel_downsample_slow``. pcl_kit
+    runs the voxel grid in C++ without a Python loop over the points."""
     cloud = pcl_kit.cloud_from_numpy(points)              # one memcpy into the C++ cloud
     downsampled = pcl_kit.voxel_downsample(cloud, leaf)   # compile-cached VoxelGrid (C++)
     return pcl_kit.cloud_to_numpy(downsampled)            # centroids back to (M,3) NumPy

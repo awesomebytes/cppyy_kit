@@ -5,13 +5,14 @@ control_kit demo 1 (Stages 1-2): a real controller_manager in *this* Python proc
 Brings up a ``controller_manager::ControllerManager`` in-process with mock hardware
 (``mock_components/GenericSystem``) from a URDF string, then loads a **stock C++
 controller** (``forward_command_controller/ForwardCommandController``) the same way a
-real robot would -- via pluginlib, by type name -- configures and activates it, and
+real robot would: pluginlib loads it by type name, then the demo configures and
+activates it and
 drives the real read/update/write loop from Python. A command published on the
 controller's topic flows through the controller into the mock hardware; we read it back
 off the controller's command interface to prove the path.
 
 This is the ros2_control machinery (ResourceManager + ControllerManager + pluginlib +
-the RT update loop) running under cppyy with nothing mocked but the hardware -- the
+the RT update loop) running under cppyy. Only the hardware is mocked. This is the
 baseline the Python controller (d02) and the benchmark (bench_control_loop) build on.
 
 Run:  pixi run -e control demo-control-rig
@@ -42,7 +43,7 @@ def main():
     print("  update rate: %d Hz" % rig.cm.get_update_rate())
 
     # --- Stage 2: load + configure + activate a stock C++ controller ---
-    # NB: controllers must be loaded BEFORE the update() loop starts -- once update()
+    # Controllers must be loaded before the update() loop starts. Once update()
     # has run, the CM switches to real-time-safe controller-list swaps that block
     # load_controller until the (now-stopped) loop pumps again. This mirrors how
     # ros2_control_node works: configure the stack, then spin the RT loop.

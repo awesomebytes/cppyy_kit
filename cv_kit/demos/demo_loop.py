@@ -1,29 +1,23 @@
 #!/usr/bin/env python
-"""
-vision demo M3 -- PLACE RECOGNITION / LOOP CLOSURE: the heart.
+"""Vision demo M3: detect places revisited in a sequence.
 
-The full front-end as a single single-screen node. A vocabulary (trained on the
-sequence, or the real ORBvoc via --vocab PATH) backs a DBoW2 OrbDatabase. Each
-incoming C++ sensor_msgs/Image is wrapped zero-copy, ORB'd, added to the database,
-and queried for a revisit; a DLoopDetector-style temporal-consistency gate
-(loop_detector.py) confirms a loop only once a candidate persists over k frames.
-Confirmed loops are logged to Rerun (query frame, matched frame, score) and printed.
+One node runs the loop-closure front-end. A vocabulary trained on the sequence, or
+loaded from `--vocab PATH`, backs a DBoW2 `OrbDatabase`. For each C++
+`sensor_msgs/Image`, the demo wraps the data as a `cv::Mat`, extracts ORB features,
+adds descriptors to the database, and queries for a revisit. A temporal-consistency
+gate confirms a loop after the candidate persists for several frames. Confirmed
+loops are printed and logged to Rerun with the query frame, matched frame, and score.
 
-  * synthetic (default): detects the constructed revisit (frame ~180+j -> frame j).
-  * TUM (--tum DIR, ideally with the real --vocab data/ORBvoc.txt): qualitative
-    detection at the sequence's genuine revisit.
+The default synthetic sequence visits a known location again near frame 180. With a
+TUM sequence and its ORB vocabulary, the demo can detect a revisit in the data.
 
-Citable basis: Mur-Artal & Tardos (ORB-SLAM); Galvez-Lopez & Tardos (Bags of Binary
-Words / DLoopDetector).
-
-Rerun is LIVE by default when run interactively: a viewer opens and you watch the
-camera + ORB stream, the per-frame timing, and each loop pop into the score plot /
-event log / image-pair panel as it is confirmed. Headless (.rrd) under pytest/CI or
-no display; force with RCLCPPYY_RERUN_SPAWN=1/0. See cv_kit/demos/vision_viz.py.
+The Rerun viewer is enabled by default when a display is available. It shows the
+camera and ORB features, frame timing, loop scores, events, and image pairs. Headless
+runs write an `.rrd` file. Set `RCLCPPYY_RERUN_SPAWN=1` or `=0` to force a mode.
+See `cv_kit/demos/vision_viz.py`.
 
     pixi run -e vision demo-vision-loop
-    pixi run -e vision demo-vision-loop --tum data/<seq> --vocab data/ORBvoc.txt
-"""
+    pixi run -e vision demo-vision-loop --tum data/<seq> --vocab data/ORBvoc.txt"""
 import argparse
 import os
 import sys

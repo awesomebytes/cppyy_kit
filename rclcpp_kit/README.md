@@ -1,14 +1,27 @@
 # rclcpp_kit
 
-`rclcpp_kit` is the kit **for rclcpp** (ROS 2 core), following the same naming
-rule as every other kit. It is the rclcpp core **capability layer** that every
-ROS-touching kit — and the [rclcppyy](https://github.com/awesomebytes/rclcppyy)
-product — builds on. It was carved out of rclcppyy's core **with git history**
-(`git log --follow` traces any module back into rclcppyy).
+`rclcpp_kit` lets Python use ROS 2's real C++ objects and APIs through cppyy. It
+provides the `rclcpp` namespace, C++ message proxies, familiar node and pub/sub
+calls, and access to C++ libraries such as tf2 and rosbag2. Use it when you want
+to work with ROS 2 C++ APIs directly from Python. The separate
+[`rclcppyy`](https://github.com/awesomebytes/rclcppyy) product is a drop-in
+`rclpy` accelerator that re-exports `rclcpp_kit`.
 
-It sits between the ROS-free [`cppyy_kit`](../kits/cppyy_kit.md) base
-(load_libraries / keep_alive / register_teardown / pretty_cpp_error) and the domain
-kits.
+## Getting started
+
+For published package use or development from a checkout, follow the
+[Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+The published package is named `ros-jazzy-rclcpp-kit`.
+
+From this repository checkout, run the existing TF example with:
+
+```bash
+pixi run -e rclcpp demo-tf-lookup
+```
+
+For a verified rclpy-style pub/sub round-trip that publishes Python messages and
+receives C++ message proxies in the subscription callback, see the
+[example used by the tests](https://github.com/awesomebytes/cppyy_kit/blob/main/rclcpp_kit/tests/_pubsub_plain_helper.py).
 
 ## What's here
 
@@ -63,8 +76,8 @@ best-available policies map to their exact Jazzy rclcpp counterparts; unknown
 policies are rejected. The stock `qos_profile_sensor_data` and
 `qos_profile_system_default` presets are supported directly.
 
-Managed clients keep only the template and future-lifetime friction behind a
-small adapter. They accept only owning generated C++ requests, return opaque call
+Managed clients keep template use and future lifetime in a small adapter. They
+accept only owning generated C++ requests, return opaque call
 tokens, and leave the original typed client exposed:
 
 ```python
@@ -168,10 +181,9 @@ from rclcpp_kit import serialization as ser
 blob = ser.serialized_message_to_bytes(ser.serialize_message(cpp_msg))
 ```
 
-The surface mirrors the names the rclcppyy product exposed, so that product can keep
-thin re-export shims over this package. Whether a C++ route improves a workload is a
-separate measurement question; the TF report retains shared-host characterization
-without promoting it as a portable performance claim.
+The surface keeps the names used by the rclcppyy product, which can re-export this
+package. The TF report records one shared-host run. Measure the target workload on
+its deployment host before choosing a backend for performance.
 
 ## Running it
 
@@ -188,14 +200,14 @@ pixi run -e rclcpp bench-native-choices-smoke  # verified eight-case raw smoke
 pixi run -e rclcpp bench-native-choices        # repeated raw characterization
 ```
 
-Unlike the domain kits, `rclcpp_kit`'s tests genuinely bring up rclcpp + DDS (they
+Unlike the domain kits, `rclcpp_kit`'s tests bring up rclcpp + DDS (they
 do not auto-skip in the default env), so they run in the `rclcpp` env rather than
 the default `pixi run test` collect-and-skip smoke.
 
 ## Docs
 
-- [`SKILL.md`](SKILL.md) — LLM-facing: when to use, copy-paste patterns, gotchas.
-- [`WHY.md`](WHY.md) — the pitch (why drive rclcpp/tf from Python via cppyy).
-- [`REPORT.md`](REPORT.md) — the tf spike evidence (mechanism + benchmark).
-- [`NATIVE_CHOICES_BENCHMARK.md`](NATIVE_CHOICES_BENCHMARK.md) — correctness
+- [`SKILL.md`](SKILL.md): usage patterns and notes for coding agents.
+- [`WHY.md`](WHY.md): reasons to use rclcpp_kit.
+- [`REPORT.md`](REPORT.md): TF implementation details and benchmark results.
+- [`NATIVE_CHOICES_BENCHMARK.md`](NATIVE_CHOICES_BENCHMARK.md): correctness
   contract, reproduction commands, raw native-choice measurements, and limits.

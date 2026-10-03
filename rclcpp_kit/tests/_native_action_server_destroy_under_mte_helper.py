@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Committed confirm test for Slice 2.5a (PLAN-mte-unlock.md Addendum
-v2-completion): action server/client entities are PROVEN-SAFE-BY-DISPATCH-MODEL
-under a live MultiThreadedExecutor, so they get no ManagedCallbackEntityImpl
-lifetime fix -- only this confirm test.
+"""Test the action server lifetime behavior from Slice 2.5a
+(PLAN-mte-unlock.md Addendum v2-completion). The dispatch model keeps these
+entities safe under a live MultiThreadedExecutor, so they do not use the
+ManagedCallbackEntityImpl lifetime fix.
 
 Two mechanisms already make this safe, independent of Slice 2.5a:
 
@@ -17,8 +17,8 @@ Two mechanisms already make this safe, independent of Slice 2.5a:
     executor, never the native wait set -- finishes the close once the
     in-flight callback has returned.
 
-This proves that story end to end: destroy (``close()``) an action server
-from a second thread while its goal_callback is genuinely sleeping in flight,
+This test destroys (``close()``) an action server from a second thread while
+its goal_callback is waiting,
 under a real ``multi_threaded`` executor. It must defer rather than crash,
 and the deferred close must flush cleanly once the callback completes.
 """

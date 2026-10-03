@@ -1,15 +1,12 @@
-"""Slice 2.5a2 (PLAN-mte-unlock.md Addendum v3): the callable-lifetime
-reaper. ``ManagedCallbackEntityImpl`` (Slice 2.5a) ties the native *entity*'s
-lifetime to C++, but left the *callable* pinned only via
-``cppyy_kit.keep_alive`` on a Python wrapper object -- whose GC timing is
-not bound to the native entity at all (proven exploitable: a destroyer
-closing a peer's subscription mid-flight, then forcing an immediate
-``gc.collect()``, reproduced the original crash 11/60). ``_pinned_std_function``
-fixes this unconditionally: every copy of the returned ``std::function``
-value owns its own ``Py_INCREF``'d reference, released only when that
-specific copy is destroyed -- via a thread-safe queue a GIL-holding reaper
-drains, never a direct ``Py_DECREF`` from whatever thread happens to run the
-destructor.
+"""Tests for Slice 2.5a2's callable-lifetime reaper
+(PLAN-mte-unlock.md Addendum v3).
+
+Slice 2.5a ties the native entity's lifetime to C++. The Python callable was
+still pinned to a Python wrapper with ``cppyy_kit.keep_alive``. Destroying a
+peer subscription during a callback and collecting the wrapper reproduced the
+original crash in 11 of 60 runs. ``_pinned_std_function`` stores a Python
+reference in each ``std::function`` copy. Its destructor queues that reference
+for release on a thread holding the GIL.
 """
 import gc
 import sys
@@ -102,9 +99,9 @@ def test_destroying_a_copy_on_a_native_thread_defers_instead_of_crashing():
     """The core safety property: a std::function copy's destructor must
     never touch the Python C API directly when it runs on a thread with no
     GIL held (a native worker dropping the entity's last reference during a
-    wait-set rebuild). This constructs a copy, destroys it on a genuinely
-    separate ``std::thread`` (no GIL), and asserts that does not crash --
-    and that the release only actually lands once drained on a GIL thread.
+    wait-set rebuild). This constructs a copy and destroys it on a separate
+    ``std::thread`` (no GIL), and asserts that does not crash.
+    The release occurs only after it is drained on a GIL thread.
     """
     _install_test_helpers()
     helpers = getattr(cppyy.gbl, _TEST_HELPERS_NAMESPACE)
@@ -146,11 +143,9 @@ def test_drain_is_idempotent_and_safe_with_nothing_pending():
 
 
 def test_undrained_release_leaks_by_design_instead_of_crashing_at_exit():
-    """Leak-safety semantics: a queued release that is never drained must
-    not crash the process -- it leaks the Python object, which is the
-    documented, accepted tradeoff (leak-safe beats crash-safe). Runs in a
-    subprocess so an actually-undrained, still-pending release at
-    interpreter exit is a real, observed condition, not just asserted.
+    """A queued release that is never drained must not crash the process.
+    It leaks the Python object. The subprocess checks that the release is
+    still pending at interpreter exit.
     """
     import os
     import subprocess
@@ -202,10 +197,9 @@ sys.stdout.flush()
 
 
 def test_gc_after_close_of_an_in_flight_peer_does_not_crash():
-    """The probe that found Slice 2.5a incomplete (11/60 crashes pre-2.5a2):
-    a destroyer closes a peer's subscription while that peer's callback is
-    genuinely mid-flight, then drops all Python refs + forces gc.collect().
-    Must now stay crash-free across every one of 60 iterations."""
+    """Regression test for Slice 2.5a2 (11/60 crashes before the change):
+    close a peer's subscription while its callback is running, then drop all
+    Python references and call gc.collect(). The test runs 60 iterations."""
     # Outer timeout must clear the helper's own WATCHDOG_SECONDS (120s) with
     # margin, so a real hang surfaces as a stack dump, not a blind kill.
     # Outer timeout must clear the helper's own WATCHDOG_SECONDS (350s) with
@@ -213,7 +207,7 @@ def test_gc_after_close_of_an_in_flight_peer_does_not_crash():
     # taking longer than that under sustained system memory pressure --
     # confirmed via `free`/`/proc/swaps` showing swap fully committed, not a
     # hang: the watchdog fired mid-time.sleep(), an unconditional call that
-    # always returns, meaning the whole run was simply slower than the
+    # always returns, meaning the run was slower than the
     # window, not stuck).
     process = run_helper("_gc_after_close_helper.py", timeout=420)
     assert process.returncode == 0, format_output(process)
@@ -221,9 +215,8 @@ def test_gc_after_close_of_an_in_flight_peer_does_not_crash():
 
 
 def test_gc_after_quiescent_close_stays_clean():
-    """Regression guard: closing (and aggressively GC'ing) only after the
-    peer callback has already genuinely returned was clean even before
-    Slice 2.5a2; it must stay clean after."""
+    """Check that closing and collecting after the peer callback returns
+    remains clean. This was also clean before Slice 2.5a2."""
     # ARM64 needed 121s for 59 iterations here; keep the hang watchdog
     # separate from realistic full-loop runtime.
     process = run_helper("_gc_after_quiescent_close_helper.py", timeout=420)
@@ -232,39 +225,29 @@ def test_gc_after_quiescent_close_stays_clean():
 
 
 def test_gc_during_rcl_wait_does_not_crash():
-    """Extra coverage (superseded as the primary discriminator by the
-    marshal-window stress below, per PLAN-mte-unlock.md Addendum v3.1 --
-    Python cannot reliably hit the true marshal window on its own, but this
-    parked-rcl_wait/idle-subscription scenario is still worth keeping):
-    dropping an idle subscription's only Python reference and forcing
-    gc.collect() while a live MultiThreadedExecutor worker may be parked in
-    rcl_wait, holding a wait-set-local strong copy of the entity -- no
-    callback ever dispatched. Must stay crash-free across every iteration."""
+    """Check garbage collection of an idle subscription during ``rcl_wait``.
+
+    A MultiThreadedExecutor worker may hold a wait-set-local reference to the
+    subscription without dispatching a callback. The test drops the Python
+    reference and calls ``gc.collect()`` while the worker is waiting. The
+    marshal-window test below covers the interval Python cannot control.
+    """
     process = run_helper("_gc_during_rclwait_helper.py", timeout=200)
     assert process.returncode == 0, format_output(process)
     assert "GC_DURING_RCLWAIT_ALL_OK" in process.stdout, format_output(process)
 
 
 def test_marshal_window_stress_does_not_crash():
-    """The discriminating proof for the reaper (PLAN-mte-unlock.md Addendum
-    v3.1): a worker that has obtained the executable and committed to
-    dispatch, mid-marshal (cppyy converting the message into Python args,
-    the shim not yet entered), is invisible to any callback-quiescence
-    counter by construction -- it increments only once the shim is
-    entered. Using set_marshal_window_hook to widen that window on demand
-    (not reliably reachable from pure Python otherwise), this closes the
-    subscription -- dropping every Python reference and forcing
-    gc.collect() -- while a worker is parked exactly inside that window,
-    then lets it proceed to actually invoke the callable.
+    """Check the reaper while cppyy converts callback arguments.
 
-    Confirmed genuinely discriminating: an isolated experiment with a
-    naive (unprotected, no-reaper) callable wrapper reproduced the crash
-    immediately on iteration 0 with the classic 'terminate called without
-    an active exception' signature. With the reaper (this suite's
-    production code), this must stay crash-free across every iteration --
-    the entity's own stored callback member (which a mid-marshal worker's
-    AnyExecutable keeps alive regardless of any Python wrapper's fate) now
-    itself owns the Python callable's reference, unconditionally.
+    The quiescence counter starts after the containment shim runs, so it cannot
+    see a worker that has obtained the executable but is still converting
+    arguments. The test hook pauses the worker there, closes the subscription,
+    collects Python references, then lets the callback run.
+
+    A wrapper without the reaper crashed on the first iteration of an isolated
+    experiment. With the reaper, the stored ``std::function`` owns the Python
+    reference while the worker holds the executable.
     """
     process = run_helper("_marshal_window_stress_helper.py", timeout=200)
     assert process.returncode == 0, format_output(process)
@@ -278,7 +261,7 @@ def test_parameter_bridge_teardown_under_worker_dispatch_does_not_crash():
     a remote request) and were not covered by the product's in-flight
     counter at all -- only the reaper protects them. Self-closes the
     bridge from within its own callback, dropping every reference and
-    forcing gc.collect(), on a worker thread genuinely dispatching through
+    calling gc.collect() on a worker thread dispatching through
     set_parameters. Must stay crash-free across every iteration."""
     process = run_helper(
         "_native_parameter_teardown_under_dispatch_helper.py", timeout=150)

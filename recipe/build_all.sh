@@ -10,7 +10,7 @@
 #     bt/ompl    : need cppyy-kit          pcl/nav2/moveit/control: + rclcpp-kit
 #     dbow-kit   : needs cppyy-kit + cv-kit (last of the ROS-jazzy chain)
 #     wbc-kit    : needs cppyy-kit + crocoddyl (conda-forge; ROS-free, no
-#                  rclcpp-kit dep -- pinocchio comes in transitively via
+#                  rclcpp-kit dependency. pinocchio comes in transitively via
 #                  crocoddyl). Built last since it is the standalone outlier.
 set -euo pipefail
 cd "$(dirname "$0")/.."

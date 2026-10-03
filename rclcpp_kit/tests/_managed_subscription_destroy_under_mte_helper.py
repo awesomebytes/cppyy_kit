@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Committed proof for Slice 2.5a (PLAN-mte-unlock.md Addendum v2-completion):
+"""Test Slice 2.5a (PLAN-mte-unlock.md Addendum v2-completion):
 a subscription's entity is destroyed (node removed from the executor, then
-close()d) while a peer subscription's callback is genuinely in flight on
+close()d) while a peer subscription's callback is running on
 another native MultiThreadedExecutor worker thread. Pre-fix, this crashed
 ('callable was deleted' / 'terminate called without an active exception');
-post-fix (ManagedSubscription), teardown is a plain strong-ref drop that
-never severs the callable while the entity may still be referenced, so this
-must be crash-free across every iteration.
+post-fix (ManagedSubscription), teardown drops a strong reference but keeps
+the callable alive while the entity may still be referenced. The process
+must exit without a crash on every iteration.
 
 Not every iteration is guaranteed to deliver the "slow" peer's message
 before its owning node is removed from the executor -- a racing node
 removal can legitimately abandon a not-yet-collected message, which is a
-separate, non-crash teardown behavior, not the UAF this proves. The
-invariant under test is exclusively: no signal, no hang, clean exit.
+separate teardown behavior from the use-after-free error under test. The
+test requires the process to exit without a signal or hang.
 """
 import faulthandler
 import os

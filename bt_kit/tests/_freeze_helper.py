@@ -3,8 +3,8 @@
 
 Run with CLING_STANDARD_PCH pointed at the frozen bt_kit PCH (the caller sets it
 before this process starts, so the interpreter binds the frozen PCH at the first
-cppyy import). Times the header include -- which the freeze must collapse from
-~0.83 s to a few ms -- and exercises the typed-port glue that depends on the
+cppyy import). Times the header include, which freeze should reduce from
+~0.83 s to a few ms, and exercises the typed-port glue that depends on the
 frozen force-symbol fix, then prints one JSON line the test parses.
 """
 import json
@@ -26,7 +26,7 @@ include_ms = (time.perf_counter() - _t) * 1e3
 
 bt = bt_kit.bringup_bt()
 
-# Typed-port roundtrip -- getInput<int>/setOutput<int> + makePorts all JIT-compile
+# Typed-port roundtrip: getInput<int>/setOutput<int> and makePorts all JIT-compile
 # in their own modules and each ODR-uses BT::UndefinedAnyType, so this fails on the
 # frozen path unless the force-symbol glue resolved it.
 seen = {}

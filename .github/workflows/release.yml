@@ -4,7 +4,7 @@ name: Release
 # architecture-scoped cppyy 3.5.0 ARM64 bridge, prove each from an isolated
 # channel, then upload them to the prefix.dev channel `awesomebytes`.
 #
-# A prior OIDC upload from this repository succeeded. The 0.3.0 workflow is
+# A prior OIDC upload from this repository succeeded. The 0.4.0 workflow is
 # untested; if upload fails, check prefix.dev authorization for this repo and
 # workflow (`awesomebytes/cppyy_kit`, `release.yml`).
 #
@@ -112,10 +112,10 @@ jobs:
       - name: Build all packages (dependency-ordered)
         run: pixi run -e pkg pkg-build-all
 
-      # The release discipline: for each artifact, a throwaway pixi workspace
-      # with [file://output, robostack-jazzy, conda-forge] and the single package
-      # as its only dep must import cleanly (+ cppdef for cppyy-kit, bringup for
-      # rclcpp-kit) — no repo on PYTHONPATH.
+      # For each artifact, a temporary pixi workspace with
+      # [file://output, robostack-jazzy, conda-forge] and only that package must
+      # import cleanly (including cppdef for cppyy-kit and bringup for
+      # rclcpp-kit). The repository must not be on PYTHONPATH.
       - name: Prove artifacts install + import from the channel
         run: |
           set -o pipefail
@@ -238,40 +238,40 @@ jobs:
               python cpycppyy cppyy-backend cppyy-cling libstdcxx libgcc
               python_abi
           - name: cppyy-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
-            build: pyh4616a5c_2
-            dependencies: python cppyy
+            build: pyh4616a5c_0
+            dependencies: python cppyy numpy
           - name: ros-jazzy-bt-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-behaviortree-cpp
           - name: ros-jazzy-control-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control
           - name: ros-jazzy-cv-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit opencv
           - name: ros-jazzy-dbow-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-cv-kit opencv
           - name: ros-jazzy-moveit-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-moveit
               ros-jazzy-ament-index-python
           - name: ros-jazzy-nav2-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
@@ -281,21 +281,21 @@ jobs:
               ros-jazzy-nav2-regulated-pure-pursuit-controller
               ros-jazzy-nav2-msgs
           - name: ros-jazzy-ompl-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-ompl
           - name: ros-jazzy-pcl-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit pcl
               ros-jazzy-pcl-conversions
           - name: ros-jazzy-rclcpp-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
-            build: pyh4616a5c_1
+            build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp ros-jazzy-rclcpp-action
               ros-jazzy-rclcpp-components ros-jazzy-rclcpp-lifecycle
@@ -303,7 +303,7 @@ jobs:
               ros-jazzy-composition-interfaces ros-jazzy-lifecycle-msgs
               ros-jazzy-ament-index-python
           - name: wbc-kit
-            version: "0.3.0"
+            version: "0.4.0"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit crocoddyl

@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S4: create_lifecycle_service and
-create_lifecycle_client -- concrete wrappers over
-rclcpp_lifecycle::LifecycleNode::create_service<>()/create_client<>() --
-round-trip between two lifecycle nodes.
+"""Test PLAN-lifecycle.md S4: create_lifecycle_service and
+create_lifecycle_client wrap
+rclcpp_lifecycle::LifecycleNode::create_service<>()/create_client<>(). The
+test sends a request between two lifecycle nodes.
 
 Both factories go through the suite's AOT compile-cache path
 (cppyy_kit.prebuild()/cppdef_cached(), via _compile_native_glue) rather than
-a bare cppyy.cppdef: a plain Cling JIT of a full rclcpp_lifecycle +
+a bare cppyy.cppdef. A plain Cling JIT of a full rclcpp_lifecycle and
 service/client template body hits a known Cling
-__emutls_v...std::call_once failure that is NOT lifecycle-specific --
+__emutls_v...std::call_once failure that is not lifecycle-specific.
 native_service.py/native_client.py already route the plain-rclcpp::Node
 service/client helpers around the identical failure the same way.
 
-create_lifecycle_service reuses python_service.PythonService's
-Invocation-pointer callback shape and facade unchanged; create_lifecycle_client
-reuses native_client.NativeClient's C++-owned async-future facade unchanged --
-only each factory's constructor node-parameter type and create_service/
-create_client call target the lifecycle node's own template methods.
+The service reuses python_service.PythonService's invocation-pointer callback
+and facade. The client reuses native_client.NativeClient's C++-owned async
+future facade. Each factory passes the lifecycle node type and calls that
+node's own ``create_service`` or ``create_client`` template method.
 """
 import time
 

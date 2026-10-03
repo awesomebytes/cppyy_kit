@@ -1,30 +1,21 @@
 #!/usr/bin/env python
-"""
-retarget.py (Process B) -- the retargeting half of the capture rig.
+"""Retarget landmark frames to humanoid joint configurations.
 
-    landmark stream -> whole-body targets -> a humanoid configuration per frame
-    (pinocchio CLIK) -> Rerun (robot + human) + a "policy-kickstart" dataset.
+The input is a landmark stream written by `perceive.py`. The output is a per-frame
+robot configuration, a Rerun visualization, and a policy-kickstart dataset.
+The CLIK solve uses pinocchio bindings in the standalone `wbc` pixi environment.
+The file modes are `--replay FILE` for a recorded stream and `--follow FILE` for a
+stream that another process is still writing.
 
-Runs in the standalone ``wbc`` pixi env (pinocchio's conda stack pins libboost 1.86
-vs the ROS stack's 1.90 -- they cannot share a process; docs/wbc/REPORT.md). It
-consumes the landmark stream that ``perceive.py`` writes -- ``--replay FILE`` reads
-a recorded stream (CI/headless), ``--follow FILE`` tails one a live perceive is
-still writing.
+Cling cannot instantiate `pinocchio::Model` from the headers in this environment.
+Pinocchio's 25-type `JointModel` variant exceeds the template-arity limit in Boost
+1.90. The precompiled library and its Python bindings work, so the IK solve uses
+those bindings.
 
-**Where cppyy_kit wins here, honestly.** The natural "lower the CLIK to inline C++
-calling pinocchio" move is BLOCKED in this env: instantiating ``pinocchio::Model``
-from headers under Cling trips boost 1.90's variant template-arity wall (pinocchio's
-25-type ``JointModel`` boost::variant -- the same wall docs/wbc/REPORT.md hit for
-templated scalars, confirmed here for the default-double Model + URDF parser). So the
-IK solve is a **pinocchio-bindings** job (the precompiled library carries the variant
--- the bindings are the right tool, matching the REPORT's "bindings are fine" cases).
-The measured cppyy_kit win in this pipeline is the perception side's TF-message
-marshaling (perceive.py --bench). Process B's own honest cppyy_kit contribution is
-the per-frame retarget **glue kernel** -- coordinate transform + target mapping +
-a sequential One-Euro landmark filter -- authored in one ``cppyy.cppdef`` C++ pass
-over the whole stream (COMMON_PATTERNS s6/s26: the sequential per-frame filter is
-exactly the Python-loop trap), measured against the identical Python loop
-(``--bench``).
+cppyy builds the retarget glue kernel in C++. The kernel converts coordinates, maps
+targets, and applies the sequential One-Euro filter in one pass over the stream.
+`--bench` compares it with the Python per-frame loop. The perception process also
+uses a cppyy C++ builder for its `/tf` messages; see `perceive.py --bench`.
 """
 import argparse
 import os
@@ -75,10 +66,9 @@ def urdf_path(cfg):
 
 
 # --------------------------------------------------------------------------- #
-# The cppyy_kit glue kernel (plain C++, no pinocchio -> not blocked by the variant
-# wall): batch-retarget a landmark stream to smoothed EE targets in one C++ pass.
-# The One-Euro filter is sequential across frames -- the per-element Python-loop
-# trap (COMMON_PATTERNS s6/s26) -- so doing it in C++ is a genuine win.
+# The cppyy_kit glue kernel uses plain C++ and does not instantiate pinocchio types.
+# It retargets a landmark stream to smoothed EE targets in one pass. The One-Euro
+# filter carries state across frames; the kernel processes that loop in C++.
 # --------------------------------------------------------------------------- #
 _GLUE = r"""
 #include <cmath>
@@ -181,12 +171,11 @@ MOTION_SCALE = 1.0
 
 
 def _frame_target(r, hip_w, sh, robot_torso, arm, reach_frac):
-    """One frame of the HIP-RELATIVE retarget map (the owner's chain): robot-frame
-    landmarks ``r`` (33,3) -> EE targets (3,3) = [left gripper, right gripper, head].
-    Each human point is taken RELATIVE TO the human hip midpoint, scaled by
-    ``robot_torso / human_torso`` (per frame), and anchored at the robot hip frame
-    ``hip_w``; the two gripper targets are then clamped to ``reach_frac*arm`` of the
-    corresponding robot shoulder ``sh`` (=[L,R]) for reachability."""
+    """Map one frame of robot-frame landmarks ``r`` (33,3) to three end-effector
+    targets (left gripper, right gripper, and head). The two gripper targets use
+    human wrist positions relative to the hip midpoint, scaled by
+    ``robot_torso / human_torso`` and anchored at robot hip frame ``hip_w``. Clamp
+    them to ``reach_frac*arm`` of the matching robot shoulders ``sh`` for reachability."""
     hipc = 0.5 * (r[ls.LEFT_HIP] + r[ls.RIGHT_HIP])
     shc = 0.5 * (r[ls.LEFT_SHOULDER] + r[ls.RIGHT_SHOULDER])
     s = robot_torso / (np.linalg.norm(shc - hipc) + 1e-6)
@@ -212,7 +201,7 @@ def head_yaw_pitch(r):
 class _EuroState:
     """A One-Euro low-pass filter over the (3,3) target, carrying state across frames
     (per-coordinate cutoff = mincut + beta*|velocity|). The sequential dependence is
-    exactly why the *batch* form lives in the C++ kernel; this drives the *live* path
+    why the batch form lives in the C++ kernel; this drives the live path
     one frame at a time with the identical formula, so replay and follow agree."""
 
     def __init__(self, dt, mincut=MINCUT, beta=BETA):
@@ -244,7 +233,7 @@ class _EuroState:
 
 def map_stream_python(pw_all, hip_w, sh, robot_torso, arm, dt, mincut, beta, reach_frac):
     """The naive baseline for --bench: the identical hip-relative retarget glue as a
-    Python per-frame loop (the sequential One-Euro filter is the per-element trap).
+    Python per-frame loop (the sequential One-Euro filter depends on the previous frame).
     Same ``_frame_target`` + ``_EuroState`` steppers the live --follow/tf paths use."""
     hip_w = np.asarray(hip_w, dtype=np.float64)
     sh = np.asarray(sh, dtype=np.float64).reshape(2, 3)
@@ -328,13 +317,13 @@ class Retargeter:
 
     def _load_visual_geometry(self):
         """Load the URDF's VISUAL geometry (the link meshes) so Rerun can show the
-        real robot, not just the joint skeleton. Best-effort: if the meshes can't be
+        URDF meshes, not just the joint skeleton. Best-effort: if the meshes cannot be
         loaded (missing files / no geometry backend), ``has_meshes`` stays False and
         the caller falls back to the skeleton."""
         pin = self._pin
         self.has_meshes = False
         self.geom_model = None
-        self._mesh_geoms = []       # indices of geoms backed by a real mesh file
+        self._mesh_geoms = []       # indices of geoms backed by a mesh file
         try:
             import warnings
             share = os.path.join(os.environ["CONDA_PREFIX"], "share")
@@ -470,9 +459,10 @@ def load_pose_world(stream_path):
 
 def compute_targets(rt, pw_all, dt, use_cpp=True, mincut=MINCUT, beta=BETA,
                     reach_frac=REACH_FRAC, motion_scale=MOTION_SCALE):
-    """Retarget glue: (F,99) landmarks -> (F,9) smoothed HIP-RELATIVE targets. Uses
-    the C++ kernel (cppyy_kit) by default, else the Python loop. ``motion_scale``
-    multiplies the body-proportion scale (feel knob)."""
+    """Convert (F,99) landmarks to (F,9) smoothed hip-relative targets.
+
+    Uses the cppyy C++ kernel by default and the Python loop otherwise.
+    ``motion_scale`` scales the body-proportion ratio."""
     hip = np.asarray(rt.hip, dtype=np.float64)
     sh = np.stack([rt.anchor_L, rt.anchor_R]).astype(np.float64)
     torso = rt.robot_torso * motion_scale
@@ -500,8 +490,8 @@ def _no_stream_msg(path):
 
 
 def _announce_head(rt):
-    """Print (once, at startup) whether the robot's head tracks the operator. G1 has no
-    neck joints -- its head is mechanically rigid, NOT a software limitation."""
+    """Print whether the robot has neck joints for head tracking. G1 has no neck joints;
+    its head is mechanically rigid."""
     if rt.has_neck:
         axes = [n for n, v in (("yaw", rt.neck_yaw), ("pitch", rt.neck_pitch)) if v]
         print("Head: tracking operator %s (neck joints)." % "/".join(axes), flush=True)
@@ -573,10 +563,10 @@ def run_retarget(args):
 
 
 def _log_retarget(rr, rt, i, q, targets9, human_robot, viz_mode="mesh"):
-    """Log one retarget frame. ``human_robot`` is the (33,3) human skeleton already in
-    the robot frame (callers convert from MediaPipe world; the TF path reads it
-    pre-converted off /tf). ``viz_mode``: 'mesh' places the real URDF link meshes (the
-    nice-looking robot); 'skeleton' draws the joint tree (the fallback)."""
+    """Log one retarget frame. ``human_robot`` is the (33,3) human skeleton in the
+    robot frame. Callers convert from MediaPipe world coordinates; the TF path reads
+    robot-frame coordinates from ``/tf``. ``viz_mode`` selects URDF link meshes or the
+    joint-tree skeleton."""
     from retarget_pipeline import viz
     rr.set_time("frame", sequence=i)
     if viz_mode == "mesh" and rt.has_meshes:
@@ -624,11 +614,9 @@ def _write_dataset(args, cfg, rt, Q, targets, ts, ee_err, source):
 
 
 def run_follow(args):
-    """Live teleop: tail a landmark stream a perceive process is still writing and
-    retarget each frame as it arrives -- no offline record/replay step. Exits cleanly
-    on stream idle-timeout / EOF / Ctrl-C, writing the dataset gathered so far. The
-    Rerun robot updates per frame (that is the point). Per-frame targets use the same
-    ``_frame_target`` + ``_EuroState`` steppers as replay, so the two paths agree."""
+    """Follow a landmark stream while another process writes it. Retarget each frame
+    as it arrives. On idle timeout, EOF, or Ctrl-C, write the dataset collected so far.
+    Per-frame targets use the same ``_frame_target`` and ``_EuroState`` functions as replay."""
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
     print("Robot %s: nq=%d nv=%d, arm reach %.3f m. Following %s (startup grace %.0fs, "
@@ -654,7 +642,7 @@ def run_follow(args):
     Q, targets_log, ts_log, ee_log, lag = [], [], [], [], []
     solve_ms = []
 
-    # Heartbeat while waiting for the producer's first frame (a cold perceive takes
+    # Report progress while waiting for the producer's first frame (perceive takes
     # a few seconds to activate its env + load its model); throttled to ~5 s.
     hb = {"last": 0.0}
 
@@ -847,8 +835,9 @@ def run_tf(args):
 
 
 def run_bench(args):
-    """A-vs-B: the retarget glue (coord transform + target map + One-Euro filter)
-    over the whole stream, cppyy_kit C++ kernel vs the Python per-frame loop."""
+    """Compare the C++ and Python implementations of retarget glue over the input stream.
+
+    The glue transforms coordinates, maps targets, and applies the One-Euro filter."""
     cfg = ROBOTS[args.robot]
     rt = Retargeter(cfg)
     if args.replay and os.path.exists(args.replay):

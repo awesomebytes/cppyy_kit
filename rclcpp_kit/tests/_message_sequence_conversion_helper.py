@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated semantic and native-retention proof for message sequences."""
+"""Isolated test of message-sequence semantics and native object retention."""
 
 import ctypes
 import gc

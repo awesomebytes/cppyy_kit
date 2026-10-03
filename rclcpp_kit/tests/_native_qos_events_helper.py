@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Live QoS-event proof: every supported event fires from a real DDS condition.
+"""Integration test that supported QoS events fire from DDS conditions.
 
 Runs under the default RMW (rmw_cyclonedds_cpp) at ROS_DISTRO=jazzy. Drives the
 publisher/subscription event callbacks added by direct_entities.py's
-``event_callbacks=`` parameter (exercised directly for the incompatible_type
-fail-closed proof and the destruction-ordering/UAF guard) and the lower-level
-``_native_qos_events_probe`` (mirroring the entity-options proof's cached
-pub/sub, used for the plain per-event fire report so the ~2.8s template JIT is
-paid once).
+``event_callbacks=`` parameter. The test checks rejection of unsupported
+``incompatible_type`` events, destruction ordering, and event delivery. It also
+uses ``_native_qos_events_probe`` to reuse cached publisher and subscription
+types, avoiding a second ~2.8s template JIT.
 """
 
 import gc
@@ -276,8 +275,8 @@ def main():
             "last": sub_liveliness.last, "proof_level": "fires",
         }
 
-        # --- message_lost: registration-level proof only (not reliably
-        # triggerable on a loopback localhost run; honestly labeled either way). -
+        # --- message_lost: registration check only. A loopback localhost run
+        # cannot reliably trigger this event. ---
         topic = "/native_qos_events/run_%s/message_lost" % suffix
         pub_node = node("message_lost_publisher")
         sub_node = node("message_lost_subscriber")

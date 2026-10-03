@@ -667,12 +667,12 @@ def _install_lifecycle_publisher_helpers() -> None:
     spelling ``rclcpp_lifecycle::LifecyclePublisher<MessageT>`` directly in
     real C++ source. A hand-built type-name string (e.g.
     ``"rclcpp_lifecycle::LifecyclePublisher<%s>"``) would NOT match the type
-    ``LifecycleNode::create_publisher<MessageT>()`` actually returns --
+    ``LifecycleNode::create_publisher<MessageT>()`` returns.
     ``LifecyclePublisher``'s defaulted ``Alloc`` template parameter is the
     same class of cppyy mismatch already documented for
     ``rclcpp::Subscription`` and the wall/clock timers (direct_entities.py):
-    genuine C++ template instantiation, substituting the identical default,
-    is what makes the two resolve to the same type.
+    Instantiating the C++ template with the same default makes both calls resolve
+    to the same type.
     """
     if hasattr(cppyy.gbl, _LIFECYCLE_PUBLISHER_NAMESPACE):
         return

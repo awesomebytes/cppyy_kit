@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live exact-C++ action-server proof on Jazzy with Cyclone DDS."""
+"""Jazzy and Cyclone DDS integration test for a C++ action server."""
 
 import gc
 import importlib

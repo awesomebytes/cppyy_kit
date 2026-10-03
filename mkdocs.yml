@@ -1,16 +1,17 @@
 site_name: cppyy_kit
 site_description: >-
-  Drive C++ robotics libraries from Python via cppyy — prototype at Python speed,
-  run at C++ speed, graduate to AOT.
+  Use Python to call C++ robotics libraries through cppyy's JIT. Compile the
+  application ahead of time if needed.
 site_url: https://awesomebytes.github.io/cppyy_kit/
 repo_url: https://github.com/awesomebytes/cppyy_kit
 repo_name: awesomebytes/cppyy_kit
 edit_uri: ""
 
-# The site source is a symlink mirror of the repo (see mkdocs_site_links.sh):
-# the read-only kit/docs .md files use relative links that assume the repo layout
-# (kit dirs siblings of docs/), so we render them from a docs_dir that mirrors it
-# — symlinking the .md files we nav (not whole kit dirs, to skip *.py/demos/tests).
+# The site source mirrors the repository through symlinks (see mkdocs_site_links.sh).
+# The read-only kit and docs files use relative links based on the repository layout,
+# where kit directories are siblings of docs/. The docs directory mirrors that layout.
+# We symlink the Markdown files in the navigation, not whole kit directories,
+# so the site does not include Python files, demos, or tests.
 docs_dir: mkdocs_site
 site_dir: site
 
@@ -68,12 +69,10 @@ markdown_extensions:
 plugins:
   - search
 
-# Strict build (docs-build = mkdocs build --strict) enforces links: the M1a-era
-# stale content links (BT.CPP_KIT.md-style cheat-sheet names, ../kits/ and
-# ../vision/ paths from the docs/kits -> docs and vision -> cv_kit moves) were
-# fixed in the content pass (task #48), so `links.not_found` is now `warn` (fails
-# under --strict). `unrecognized_links` stays `info` for references to source
-# directories or assets that are not rendered as documentation pages.
+# The strict docs build runs `mkdocs build --strict`. Broken links from the earlier
+# docs layout have been fixed, so `links.not_found` is set to `warn` and fails under
+# `--strict`. `unrecognized_links` stays `info` for source directories or assets that
+# are not rendered as documentation pages.
 validation:
   nav:
     omitted_files: warn
@@ -88,8 +87,9 @@ validation:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
-  - The Patterns: docs/COMMON_PATTERNS.md
-  - Freeze & Cache: docs/FREEZE.md
+  - Tutorials:
+    - RoboPlan vs OMPL on UR5: docs/tutorials/roboplan_ompl_ur5.md
+    - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - Kits:
     - cppyy_kit (base): kits/cppyy_kit.md
     - rclcpp_kit:
@@ -136,15 +136,19 @@ nav:
   - IK Benchmark:
     - Why: docs/ik_bench/WHY.md
     - Report: docs/ik_bench/REPORT.md
-  - Tutorials:
-    - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
-  - WBC (Crocoddyl): docs/wbc/REPORT.md
+  - WBC (Crocoddyl):
+    - Usage: wbc_kit/WHY.md
+    - API reference: wbc_kit/SKILL.md
+    - Report: docs/wbc/REPORT.md
   - Retargeting Pipeline: docs/retarget_pipeline/REPORT.md
   - Jitter Bench: docs/jitter_bench/REPORT.md
   - Benchmarks: docs/benchmarks.md
   - Accelerate (LLM skill):
     - Skill: skills/cppyy-accelerate/SKILL.md
     - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
-  - Architecture:
+  - Reference:
+    - The Patterns: docs/COMMON_PATTERNS.md
+    - Startup cache: docs/FREEZE.md
+  - Maintainers and design:
     - Kit Architecture (V2): docs/ARCHITECTURE_V2.md
     - Project Plan: PLAN.md

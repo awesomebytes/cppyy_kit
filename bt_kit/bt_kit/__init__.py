@@ -1,14 +1,11 @@
 """
-bt_kit -- drive BehaviorTree.CPP v4 from Python via cppyy.
+bt_kit provides access to BehaviorTree.CPP v4 from Python through cppyy.
 
-BehaviorTree.CPP has no official Python binding. This kit is a thin cppyy glue
-layer that **mirrors the C++ API**: you use `BehaviorTreeFactory`,
-`registerSimpleAction`, `createTreeFromText`, `tickWhileRunning` -- the same
-names and shapes as the official C++ tutorials -- and write the leaf callbacks in
-Python. The kit's only job is to remove the cppyy friction (bringing the library
-up, wrapping Python callables in `std::function`, keeping them alive, building
-port lists, and unwrapping `getInput`/`Expected<T>`), so code you already know
-from the C++ docs transfers almost verbatim.
+BehaviorTree.CPP has no official Python binding. This kit exposes the C++ API
+through cppyy. Use `BehaviorTreeFactory`, `registerSimpleAction`,
+`createTreeFromText`, and `tickWhileRunning`, and write leaf callbacks in Python.
+The kit sets up cppyy, wraps Python callables in `std::function` and keeps them
+alive, builds port lists, and unwraps `getInput`/`Expected<T>`.
 
 Tutorial 1, in Python::
 
@@ -54,7 +51,7 @@ _MISSING = object()
 
 # NodeStatus enum values. Exposed as plain ints for convenience, so user code can
 # `return bt_kit.SUCCESS`. `bt.NodeStatus.SUCCESS` (the real enum, mirroring C++)
-# works identically -- the two compare equal.
+# They compare equal.
 IDLE = 0
 RUNNING = 1
 SUCCESS = 2
@@ -70,13 +67,13 @@ _CACHED = False
 
 
 class BtXmlError(ValueError):
-    """Raised for malformed XML or an unregistered node ID, with just the
-    BehaviorTree.CPP message (not the cppyy C++ signature wrapper)."""
+    """Raised for malformed XML or an unregistered node ID. Includes the
+    BehaviorTree.CPP error message without cppyy signature details."""
 
 # C++ glue compiled once at bringup. makePorts keeps the (segfault-prone in
 # cppyy) unordered_map<string, PortInfo> construction on the C++ side.
 # PyStatefulShim exposes the pure-virtual StatefulActionNode hooks as
-# std::function slots -- Python cannot subclass StatefulActionNode directly
+# std::function slots. Python cannot subclass StatefulActionNode directly
 # (its tick()/halt() are `final`, which cppyy's override dispatcher cannot
 # regenerate), so asynchronous nodes route through this shim.
 _CPP_GLUE = r"""
@@ -248,7 +245,7 @@ namespace rclcppyy_btkit {
 class _Node:
     """The object handed to a leaf callback (wraps a C++ BT::TreeNode).
 
-    Mirrors the C++ node's port access with the cppyy friction removed:
+    Provides C++ node port access to Python:
     `get_input(key)` returns a string (C++: `getInput<std::string>(key)` +
     `Expected<T>` unwrap); `set_output(key, value)` writes an output port. The
     camelCase `getInput`/`setOutput` names work too (no template argument
@@ -319,7 +316,7 @@ def _resolve_type(spec):
 
 
 def _infer_tag(value):
-    """C++ tag to setOutput a Python value with (bool before int -- bool is an int)."""
+    """C++ tag to setOutput a Python value, checking bool before int."""
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, int):
@@ -355,7 +352,7 @@ def _tick_functor(fn, owner):
 def _cached_tick(fn):
     """The Python callable the compile-cache trampoline invokes: it receives the raw
     cppyy ``BT::TreeNode`` proxy and returns an int status. Wraps the node in
-    ``_Node`` and coerces the leaf's return exactly like the JIT path -- so leaves
+    ``_Node`` and coerces the leaf's return like the JIT path, so leaves
     behave identically whether registered through the cache or through cppyy."""
     def tick(cpp_node):
         return int(_coerce_status(fn(_Node(cpp_node))))
@@ -364,7 +361,7 @@ def _cached_tick(fn):
 
 def _adapt_factory(BT):
     """Patch BehaviorTreeFactory so the C++-named registration/creation methods
-    accept plain Python callables and list-of-string ports (friction removed),
+    accept Python callables and lists of string ports,
     while keeping the exact C++ method names. Idempotent."""
     Factory = BT.BehaviorTreeFactory
     if getattr(Factory, "_bt_kit_adapted", False):
@@ -403,7 +400,7 @@ def _adapt_factory(BT):
         same registered ID in one tree keep independent state. `node_class` should
         be a class (a factory callable also works)."""
         # C++ builds each node and calls back with an int handle; the per-instance
-        # Python object lives in a registry, dispatched by handle -- ownership never
+        # The Python object lives in a registry and is dispatched by handle. Ownership never
         # crosses into Python (see cppyy_kit.HandleRegistry).
         registry = cppyy_kit.HandleRegistry()
 
@@ -576,7 +573,7 @@ def bringup_bt():
 
 
 def frozen():
-    """True if bringup ran (or will run) on the frozen PCH path -- i.e. a bt_kit
+    """True if bringup ran (or will run) on the frozen PCH path. A bt_kit
     frozen PCH is the interpreter's active std PCH (see rclcppyy.kits.freeze)."""
     return freeze.active("bt")
 
@@ -591,10 +588,10 @@ def warmup():
     throwaway factory + tree, so the wrappers are compiled and cached
     process-globally before your real tree is built. Idempotent in effect (cheap
     after the first call, since the wrappers are then cached). A freeze/PCH does
-    not remove this cost -- warmup and freeze compose (freeze cuts the header
+    not remove this cost. Warmup and freeze compose: freeze cuts the header
     parse, warmup moves the wrapper JIT off the first live call).
 
-    When the compile cache is active (``bt_kit._CACHED`` -- the default when a
+    When the compile cache is active (``bt_kit._CACHED``, the default when a
     compiler is present), registration routes through the cached trampoline ``.so``
     which *already* carries the wrappers, so there is no first-use JIT to move:
     warmup is then a cheap no-op kept for API compatibility. It stays useful on the

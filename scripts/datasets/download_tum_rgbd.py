@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """
-download_tum_rgbd -- fetch + verify a TUM RGB-D SLAM sequence with a REAL loop
-closure into ``data/`` (gitignored), for the tutorial's real-data path.
+download_tum_rgbd downloads and verifies a TUM RGB-D SLAM sequence with a loop
+closure. It stores the data in the gitignored ``data/`` directory for the tutorial.
 
-Default: ``freiburg3_long_office_household`` -- the canonical loop-closure sequence
-(the handheld camera circles a desk/office and returns to the start; used
-throughout the ORB-SLAM papers). ~1.48 GB. Skips if already extracted; verifies the
-download by byte size and successful extraction; prints the citation + license.
+The default is ``freiburg3_long_office_household``, a loop-closure sequence in which
+the handheld camera circles a desk or office and returns to the start. It appears in
+ORB-SLAM papers and is about 1.48 GB. The script skips an extracted sequence,
+verifies the download size and extraction, then prints the citation and license.
 
     python scripts/datasets/download_tum_rgbd.py                 # default sequence
     python scripts/datasets/download_tum_rgbd.py --list          # show choices
