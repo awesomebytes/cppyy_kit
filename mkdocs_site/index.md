@@ -19,7 +19,7 @@ domain kit or its native library.
 
 The suite includes options to reduce repeated header parsing and wrapper compilation,
 and to write selected hot paths in C++. Results below link to the corresponding
-benchmarks; measurements depend on the machine, environment, and workload.
+benchmarks.
 
 <p align="center">
   <img src="docs/media/cppyy_kit_logo.jpg" alt="cppyy_kit logo" width="420">
@@ -59,9 +59,6 @@ def sum_sq(data: cpp.arr("float")) -> float:      # numpy -> (float* data, size_
 sum_sq(np.array([1, 2, 3], np.float32))            # 14.0 — no manual ctypes conversion
 ```
 
-This example requires NumPy in the environment; NumPy is not a dependency of the
-base `cppyy-kit` package.
-
 **Run independent kernels concurrently.** `@cpp(nogil=True)` releases the GIL around
 the C++ body, allowing other Python threads to run during that work. On the 16-core
 test machine, the eight-job CPU-bound example took about **150 ms with the GIL held
@@ -83,10 +80,10 @@ for t in threads: t.start()
 for t in threads: t.join()                                          # wait for all 8 jobs
 ```
 
-`@cpp(nogil=True)` releases the interpreter lock around the compiled body, so only
-cppyy's argument/result marshaling stays under the lock. The C++ shim restores the
-lock on normal return and when a C++ exception unwinds. The jobs are independent and
-write into distinct C++ slots, so none needs the GIL while computing.
+`@cpp(nogil=True)` releases the GIL (Python's interpreter lock) while the C++ function
+runs. Python converts arguments before the call and results after it; the C++
+computations can run concurrently. These eight jobs are independent and write to
+separate output slots.
 
 `cppyy_kit` provides shared utilities for library loading, callback lifetimes, C++
 templates, and ownership. Domain kits build on these utilities and document the native
@@ -101,10 +98,10 @@ below names its benchmark and links to it.
 | Lever | Result |
 |---|---|
 | **Accelerate** — PCL cloud stays in C++ end to end | [**15.1× latency / 7.4× CPU**](docs/benchmarks.md#pcl-showcase-cloud-stays-in-c-end-to-end) at 74-LOC parity, in the PCL pipeline benchmark |
-| **Freeze** — Cling PCH of library headers | rclcpp bringup [**~1.73 s cold → 0.064 s warm (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) in one shared-host measurement; not a portable startup claim |
+| **Freeze** — Cling PCH of library headers | rclcpp bringup: [**~1.73 s cold → 0.064 s warm (~27×)**](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup) |
 | **Compile cache** — content-hashed `@cpp`/`cppdef` artifacts | PCL VoxelGrid [**632 ms JIT / 91 ms cache miss / 89–94 ms cache hits**](docs/benchmarks.md#pcl-compile-cache-frame-0-first-use-jit-vs-cached) in the benchmark |
 | **Lower (L2)** — hot leaf authored as native C++ | inline Crocoddyl model [**22.9×**](docs/benchmarks.md#wbc-custom-crocoddyl-action-model-python-derived-vs-inline-c) on the WBC action model, bit-identical |
-| **TF ingest** — C++ `tf2` listener vs Python callback | [**7.4–16.9×**](docs/benchmarks.md#tf-ingest-c-tf2-listener-vs-python-callback) lower ingest CPU, in the TF ingest benchmark |
+| **TF ingest** — C++ `tf2` listener vs Python callback | Python callback used [**7.4–16.9× the CPU**](docs/benchmarks.md#tf-ingest-c-tf2-listener-vs-python-callback) of the C++ listener |
 
 ## The kits
 
@@ -141,23 +138,18 @@ Every headline links to the exact row that produced it in
 | [Jitter bench](docs/jitter_bench/REPORT.md) | a ~1 kHz control loop orchestrated from Python on a *stock* kernel | [**~2 µs median**](docs/benchmarks.md#jitter-bench-reduced-reference-set-a1-b-c-idle-60-s-each) period, unprivileged |
 | [cppyy-accelerate skill](skills/cppyy-accelerate/SKILL.md) | point a coding agent at slow Python; it moves the hot path to a kit | [**16.3×**](docs/benchmarks.md#accelerate-the-llm-skill-worked-example) (49.6 → 3.04 ms), bit-identical |
 
-### Where the speedups apply — and where they don't
+### Choosing what to accelerate
 
-The webcam gap is large because the hot per-frame stage is a hand-written per-pixel
-NCC tracker with no OpenCV one-liner. When the per-frame work is only
-library-provided ops (ORB, RANSAC — `cv2` is already C++), the same A-vs-B comparison
-narrows to ~1.1–1.2×
+You are most likely to see a speedup when Python spends time in loops, callbacks, or
+copying data. Work already handled by optimized C++ operations, such as OpenCV's ORB
+and RANSAC, has less room to improve: in the linked webcam comparison, the hand-written
+NCC patch-tracking kernel was **16.18×** faster than the equivalent NumPy loop at 640×480,
+while the ORB/RANSAC comparison was about **1.1–1.2×**
 ([webcam report](docs/webcam_demo/REPORT.md#the-a-vs-b-table)).
 
-In the retargeting rig, the measured cppyy wins are the `/tf` message marshaling and
-the transform/retarget kernel. The IK solve runs on pinocchio's own Python bindings:
-instantiating `pinocchio::Model` from headers under Cling trips boost 1.90's variant
-template-arity limit (pinocchio's 25-type joint `boost::variant`), so that path cannot
-be JIT-parsed
+In the retargeting demo, the measured C++ work covers `/tf` message marshaling and the
+transform/retarget kernel; IK uses Pinocchio's existing Python bindings
 ([retarget report](docs/retarget_pipeline/REPORT.md#the-cppyy_kit-win-here-retarget-glue-and-the-honest-boundary-on-the-solve)).
-
-The benchmarks ran on a shared development machine, so the ratios are more repeatable
-than the absolute times.
 
 ## The optimization ladder
 
@@ -170,9 +162,8 @@ Available options include reducing startup work and moving selected hot paths to
   [PCL pipeline benchmark](docs/benchmarks.md#pcl-showcase-cloud-stays-in-c-end-to-end),
   where the cloud stays in C++ end to end.
 - **Freeze.** With the auto-PCH hook installed and a matching PCH available, Cling
-  loads cached headers at startup instead of parsing them again. In one shared-host
-  rclcpp measurement, bringup took ~1.73 s cold and 0.064 s warm (~27×); this is not a
-  portable startup claim. See the
+  loads cached headers at startup instead of parsing them again. In the linked rclcpp
+  bringup benchmark, rclcpp initialization took ~1.73 s cold and 0.064 s warm (~27×):
   [auto-PCH measurement](docs/benchmarks.md#auto-pch-zero-config-cold-vs-warm-bringup).
   The compile cache can reuse compatible `@cpp`/`cppdef` artifacts. For the PCL
   VoxelGrid benchmark, JIT took 632 ms, a cache miss took 91 ms, and cache hits took
