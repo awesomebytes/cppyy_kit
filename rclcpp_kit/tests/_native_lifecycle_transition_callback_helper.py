@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S1: the transition-callback bridge
+"""Test PLAN-lifecycle.md S1: the transition-callback bridge
 (register_transition_callback) and the Python state-machine accessors
 (current_state/available_states/available_transitions/transition_graph/
 get_transition_by_label/trigger_transition_by_id/trigger_transition_by_label/
 initialized) on NativeLifecycleNode.
 
 Drives a Python on_configure/on_activate/on_deactivate/on_cleanup both via a
-stock rclpy client on /change_state (the native service-handler dispatch
-funnel, on an executor worker thread) and via trigger_transition_by_id/label
-(the synchronous, caller-thread dispatch funnel) -- both are described as
-funneling through the same shim (PLAN-lifecycle.md S3.2). A second node
-proves the ERROR path: a raising-equivalent (CALLBACK_RETURN_ERROR-returning)
-on_configure drives native error-processing (on_error), recovering to
-unconfigured -- mirroring stock rclpy's swallowed-transition-exception
+stock rclpy client on /change_state (dispatch on an executor worker thread)
+and via trigger_transition_by_id/label
+(synchronous dispatch on the caller thread). Both use the same shim
+(PLAN-lifecycle.md S3.2). A second node checks error handling. Its
+``on_configure`` callback returns ``CALLBACK_RETURN_ERROR``, which invokes
+``on_error`` and returns the node to the unconfigured state. This matches
+stock rclpy's swallowed-transition-exception
 contract (node.py's __execute_callback).
 
-Every accessor's shape/values are asserted against the actual, live Jazzy
-default rcl_lifecycle state/transition graph (verified once interactively
-before writing these constants; this is the wave's disclosed source of
-truth, not a guess).
+The test checks each accessor against the Jazzy default lifecycle state and
+transition graph. The expected values were read from a live node.
 """
 import time
 

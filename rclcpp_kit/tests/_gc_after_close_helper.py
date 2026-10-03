@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-"""Committed proof for Slice 2.5a2 (PLAN-mte-unlock.md Addendum v3): does
-explicitly dropping ALL Python references to a subscription (and its
-``managed`` wrapper) and forcing ``gc.collect()`` IMMEDIATELY after
-``close()``, while a peer callback is genuinely in flight, reproduce the
-UAF that ``ManagedCallbackEntityImpl`` (Slice 2.5a) alone did not fully
-close?
+"""Test whether Slice 2.5a2 fixes the close-time use-after-free
+(PLAN-mte-unlock.md Addendum v3). The test drops all Python references to a
+subscription and its ``managed`` wrapper, calls ``gc.collect()`` after
+``close()``, and does this while a peer callback is running.
 
-This is exactly the probe that found Slice 2.5a incomplete: pre-2.5a2 this
-crashed 11/60 with the original ``callable was deleted`` signature, because
+This test found that Slice 2.5a2 was needed: before the change, it crashed
+11 of 60 runs with the original ``callable was deleted`` error because
 ``cppyy_kit.keep_alive`` pinned the callable only on a Python wrapper
 object whose GC timing is not bound to the native entity. Post-2.5a2 (the
 callable-lifetime reaper, ``_pinned_std_function``), the callable's
-lifetime is bound to the ``std::function`` value itself -- unconditionally,
-regardless of the wrapper's GC timing -- so this must now stay crash-free.
+lifetime is bound to the ``std::function`` value itself, regardless of the
+wrapper's GC timing. The test checks that this remains crash-free.
 """
 import faulthandler
 import gc
@@ -53,10 +51,10 @@ def run_iteration(session, cpp_type, index, pid):
         slow_done.set()
 
     def destroyer_callback(_message):
-        # Close the slow peer's subscription, then AGGRESSIVELY drop every
+        # Close the slow peer's subscription, then drop every
         # Python-level reference to it (including the node's own list entry)
         # and force a GC pass -- immediately, while the slow callback is
-        # genuinely still asleep inside Python on the other worker.
+        # still waiting inside Python on the other worker.
         nonlocal slow_sub
         slow_sub.close()
         slow_sub = None
@@ -107,8 +105,8 @@ def run_iteration(session, cpp_type, index, pid):
     assert destroyer_done.wait(timeout=15.0), "destroyer callback never completed"
 
     # Give the (already-severed-from-Python, GC'd) slow subscription's
-    # in-flight rclcpp-side dispatch every chance to actually happen: sleep
-    # past when the slow callback would have returned and a worker would
+    # in-flight rclcpp-side dispatch time to finish: sleep past when the slow
+    # callback would have returned and the worker would
     # loop back to collect/redispatch.
     time.sleep(SLOW_SLEEP_S + 0.5)
 

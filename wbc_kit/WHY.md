@@ -1,45 +1,39 @@
-# wbc_kit — why
+# wbc_kit rationale
 
 ## The problem
 
-Whole-body / legged-robot control leans on **Crocoddyl** (optimal control via DDP),
-**pinocchio** (rigid-body dynamics), and **tsid** (task-space inverse dynamics). All
-three ship on conda-forge **with** good Python bindings — so, unlike OMPL (no easy
-bindings) or PCL (templated bulk data), the bar for a cppyy kit is high: it has to do
-something the bindings genuinely can't.
+Crocoddyl provides optimal control through DDP. pinocchio provides rigid-body
+computations, and tsid provides task-space inverse dynamics. All three have Python
+bindings on conda-forge. A cppyy kit is useful only when it adds a capability that
+these bindings do not provide.
 
-For Crocoddyl there is exactly such a thing, and it is central to the library's own
-workflow. Crocoddyl tells you to **prototype your custom dynamics/cost ("action")
-model in Python, then rewrite the hot model in C++ for production.** The Python
-prototype is easy but slow — the DDP solver calls the model's `calc`/`calcDiff`
-thousands of times per solve, each crossing the Python boundary. The C++ rewrite is
-fast but heavy: a CMake project that links `libcrocoddyl` and rebuilds every time you
-tweak a cost weight.
+Crocoddyl supports custom action models in Python and C++. A Python model is called
+many times by the DDP solver, through `calc` and `calcDiff`, so those calls add
+interpreter and NumPy overhead. A C++ model avoids that overhead, but normally needs
+a CMake project linked to `libcrocoddyl` and a rebuild after changes.
 
 ## What cppyy adds
 
-cppyy collapses that rewrite. You write the C++ action model in a `cppyy.cppdef`
-string **in the same Python script**, it is JIT-compiled at runtime, and the DDP
-solver calls its `calc`/`calcDiff` **natively** — no Python in the hot loop, no build
-system. You get the fast path with the prototype's convenience.
+With cppyy, users can write a C++ action model in a `cppyy.cppdef` string in a Python
+script. cppyy compiles it at runtime. The DDP solver calls the C++ methods directly,
+without Python calls in the solve loop or a separate build system.
 
-Measured on Crocoddyl's canonical unicycle problem (see REPORT.md): the inline-C++
-model solves at the **exact speed of Crocoddyl's compiled built-in model** and
-**~21x faster** than the Python-derived model — converging to a **bit-identical**
-cost. That last point is the contract: the lowered model is not an approximation, it
-is the same math at C++ speed.
+On Crocoddyl's unicycle problem (see REPORT.md), the inline C++ model ran in 0.32 ms.
+The compiled built-in model ran in 0.34 ms. The Python-derived model ran in 6.84 ms.
+All three reached the same cost, 250.039320. The benchmark used the best of seven
+runs after warm-up on a shared machine, so the timings are provisional.
 
-This is the same "prototype in Python, lower the hot virtual to C++ in one script"
-pattern ompl_kit proved for OMPL validity checkers and control_kit for ros2_control
-controllers — here applied to a new domain, trajectory optimization, where the hot
-virtual genuinely dominates the solve.
+This use case follows the same approach as the OMPL validity checker and the
+ros2_control controller examples: write a prototype, then move a frequently called
+virtual method to C++.
 
-## What it is not
+## Scope
 
-- **Not a re-wrap of the bindings.** Use Crocoddyl's own binding to prototype; wbc_kit
-  is for the lowering step. Both live in one script (they share `libcrocoddyl.so`).
-- **Not a pinocchio-scalar kit.** pinocchio's templated-scalar surface (the other
-  candidate cppyy angle) is env-blocked here by a boost `variant` arity wall, and its
-  main autodiff scalar (casadi) is already a shipped binding. REPORT.md S4.
-- **Not for mixing with ROS in one env.** conda-forge WBC libs and the robostack ROS
-  stack pin incompatible boost; the `wbc` env is standalone.
+- Use Crocoddyl's binding to prototype a model. Use wbc_kit to compile its C++ version.
+  Both can load `libcrocoddyl.so` in one process, but their proxy objects cannot be
+  passed between runtimes.
+- This kit does not instantiate pinocchio models with new scalar types. That attempt
+  is blocked by the Boost variant arity limit in this environment. pinocchio already
+  provides a binding for the CasADi scalar. See REPORT.md, section 4.
+- Use a separate environment from ROS. The conda-forge whole-body-control packages
+  and the robostack ROS packages require incompatible Boost versions.

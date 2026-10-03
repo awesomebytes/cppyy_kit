@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live proof: as_array() zero-copy views over real ROS message vector fields.
+"""Integration test for as_array() views over ROS message vector fields.
 
 Needs a real NativeSession bringup (to resolve sensor_msgs' generated C++
 headers), so -- like every other NativeSession-based test in this suite --

@@ -1,27 +1,18 @@
 #!/usr/bin/env python3
-"""Committed discriminating proof for Slice 2.5a2's reaper mechanism
-(PLAN-mte-unlock.md Addendum v3.1): the marshal window.
+"""Stress test the callable reaper during cppyy argument conversion.
 
-A callback-quiescence counter (the product's ``_quiesce_or_raise``/
-in-flight counter) only increments once a callback has actually entered
-the containment shim. A worker that has already obtained the executable
-and committed to dispatch -- cppyy mid-marshal, converting the C++
-message into Python arguments, the shim not yet entered -- is invisible
-to that counter by construction. It reads ``in_flight == 0`` and a
-concurrent destroy proceeds to sever the entity, racing a worker that is
-about to invoke the callable. This window is not stress-testable from
-pure Python (there is no Python-level vantage point on cppyy's own
-marshaling step), so this uses ``direct_entities.set_marshal_window_hook``
--- a test-only, default-off suite hook -- to widen it on demand and land a
-concurrent destroy reliably inside it.
+The callback-quiescence counter increments after a callback enters the
+containment shim. A worker may already hold the executable and be converting
+C++ arguments to Python values before the shim runs. The counter cannot see
+that interval, so a concurrent destroy could release the callable while the
+worker is preparing to call it.
 
-Before Slice 2.5a2 (the callable-lifetime reaper), this window would sever
-the Python callable while a worker holds the ``AnyExecutable`` pinning the
-entity and its stored ``std::function`` -- exactly the "callable was
-deleted" class. The reaper ties the callable's lifetime to the
-``std::function`` copy itself (independent of any Python wrapper's GC
-timing), so this must stay crash-free regardless of when, relative to the
-marshal window, the destroy happens.
+Pure Python cannot reliably pause cppyy during this conversion. The test uses
+``direct_entities.set_marshal_window_hook`` to pause the worker in that interval
+and run a concurrent destroy. Before Slice 2.5a2
+(PLAN-mte-unlock.md Addendum v3.1), this caused a "callable was deleted"
+failure. The reaper ties the callable's lifetime to the ``std::function``
+copy, not the Python wrapper, and the test checks that destroy remains safe.
 """
 import faulthandler
 import gc
@@ -90,7 +81,7 @@ def run_iteration(session, cpp_type, index, pid):
         message.data = 1
         publisher.publish(message)
 
-        # Wait until a worker is genuinely parked inside the marshal
+        # Wait until a worker is parked inside the marshal
         # window (mid-dispatch, pre-shim) before striking.
         assert entered_marshal.wait(timeout=15.0), (
             "worker never entered the marshal window -- the hook did not "
@@ -103,7 +94,7 @@ def run_iteration(session, cpp_type, index, pid):
         # that the reaper alone must make this safe regardless. Also drop
         # every Python-level reference to the subscription facade (hence
         # to `managed`) and force a GC pass -- matching gc_after_close's
-        # pattern -- so this actually exercises "the wrapper's own
+        # pattern, so this exercises "the wrapper's own
         # keep-alive protection is gone" rather than accidentally staying
         # safe only because a still-live local variable happens to keep
         # `managed` referenced throughout.
@@ -111,11 +102,11 @@ def run_iteration(session, cpp_type, index, pid):
         subscription = None
         gc.collect()
 
-        # Let the parked worker continue: it will now actually attempt the
+        # Let the parked worker continue. It will attempt the
         # marshal + invoke the callback of the just-closed subscription.
         proceed.set()
 
-        # Give it every chance to actually happen before tearing down.
+        # Wait for the invocation before tearing down.
         time.sleep(HOOK_SLEEP_S + 0.5)
 
         executor.cancel()

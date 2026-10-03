@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-pcl_kit demo 1 -- the minimal path: a NumPy point cloud goes into a PCL
+pcl_kit demo 1: a NumPy point cloud goes into a PCL
 VoxelGrid and comes back out as NumPy, with the PCL C++ API used verbatim.
 
-No ROS here -- just NumPy in, NumPy out. The only kit calls are the bringup and
-the two NumPy bridges; ``VoxelGrid`` / ``setInputCloud`` / ``setLeafSize`` /
+This demo uses NumPy input and output without ROS. The kit calls are the bringup
+and two NumPy conversion functions; ``VoxelGrid`` / ``setInputCloud`` / ``setLeafSize`` /
 ``filter`` are PCL's own names, called directly on the returned namespace.
 
 Run: pixi run -e pcl demo-pcl-voxel

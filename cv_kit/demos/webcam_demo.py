@@ -1,53 +1,19 @@
 #!/usr/bin/env python
-"""
-webcam_demo (M6b) -- LIVE webcam visual-odometry front-end, two ways, side by side.
+"""Vision demo M6b: compare webcam visual odometry in C++ and Python.
 
-The stage story, in one sentence: **you write the whole per-frame pipeline in
-Python, and with the kits it runs as C++ -- fast enough to sail while the naive
-Python version, doing the identical work, struggles on the very same frames.**
+Both pipelines process the same captured frames and report processing time, FPS,
+and process CPU use in Rerun. Pipeline A wraps the capture buffer as a `cv::Mat`,
+extracts C++ ORB keypoints, then runs a custom NCC patch tracker and a 2D similarity
+motion estimate in one `cppyy.cppdef` C++ kernel. Pipeline B uses `cv2.ORB` and a
+NumPy loop over keypoints for the same NCC tracker. Both implement the same
+optical-flow algorithm. NCC ties can produce different results for a small number
+of points. The tracker is the main source of the measured speed difference. OpenCV
+operations such as ORB, matching, and RANSAC have similar performance in both
+pipelines.
 
-Two pipelines run over each captured frame and their per-frame processing time,
-achievable FPS and process CPU% are plotted head-to-head in Rerun:
-
-  * **Pipeline A ("all in Python", the cppyy_kit way).** camera -> ``cv::Mat``
-    (zero-copy alias of the capture buffer via ``cv_kit.numpy_to_mat``) -> C++
-    ``cv::ORB`` keypoints (``cv_kit``; the ``cv::cuda::ORB`` branch activates
-    automatically if a CUDA OpenCV build is provisioned, see cv_kit/CUDA_OPENCV.md)
-    -> a **hand-written per-keypoint NCC patch tracker** (the expensive stage) and
-    a 2D similarity motion estimate, **all in one C++ address space** (a
-    ``cppyy.cppdef`` kernel; features/descriptors/patches never cross into Python)
-    -> a TF transform + an image topic published via ``rclcpp_kit`` -> Rerun.
-
-  * **Pipeline B (naive Python baseline).** The identical algorithm written the way
-    a roboticist prototypes in Python: ``cv2.ORB`` keypoints materialized as Python
-    objects, and the NCC patch tracker as a **NumPy-per-keypoint loop** in Python.
-
-**What actually differs, honestly.** ``cv2``'s calls are C++ too, so ORB, matching
-and RANSAC take about the same time in both -- for those, A is only ~1.1-1.2x faster
-(the per-frame Python orchestration/copies). The *dramatic* gap is the NCC patch
-tracker: it is a **custom numerical kernel with no OpenCV/NumPy one-liner**, so the
-naive baseline must loop in Python (~5-100x slower, measured), while A expresses the
-same math as C++ and runs it natively. That is exactly the cppyy_kit thesis
-(COMMON_PATTERNS s6/s26: a per-element Python loop is the trap; keep the loop in
-C++). Both pipelines compute the same NCC flow (identical except at the odd
-keypoint where two search offsets have near-equal correlation and the C++
-running-sum vs NumPy summation break the tie differently) -- checked in the tests.
-
-Rerun is LIVE by default when run interactively (a viewer opens and the plots
-diverge in real time); headless (.rrd) under pytest/CI or no display. Force with
-RCLCPPYY_RERUN_SPAWN=1/0. See cv_kit/demos/vision_viz.py.
-
-Robust for stage use: never crashes on a dropped frame / unplugged camera (it prints
-a notice and falls back to the synthetic moving scene), warms up so frame 0 does not
-stutter, and tears down cleanly.
-
-    # live, auto source (webcam if present, else synthetic):
-    pixi run -e vision demo-webcam
-    # force the synthetic moving scene (no camera needed), 20 s:
-    pixi run -e vision demo-webcam --source synthetic --duration 20
-    # print the A-vs-B table at 640x480 and 1280x720 (no viewer, no ROS):
-    pixi run -e vision demo-webcam --bench
-"""
+The Rerun viewer is enabled by default when a display is available. Headless runs
+write an `.rrd` file. Set `RCLCPPYY_RERUN_SPAWN=1` or `=0` to force a mode.
+See `cv_kit/demos/vision_viz.py`."""
 import argparse
 import math
 import os
@@ -70,17 +36,17 @@ IMAGE_TOPIC = "vision/webcam"
 
 
 # --------------------------------------------------------------------------- #
-# The expensive C++ kernel (pipeline A): a hand-written NCC patch tracker + a 2D
-# similarity motion estimate, held together in one cppyy.cppdef translation unit so
-# the whole per-frame computation stays in C++. ORB keypoints, the grayscale
-# patches, and the correspondence arrays never cross back into Python; only the
-# small per-keypoint flow output and the six motion scalars do.
+# Pipeline A uses a C++ kernel for NCC patch tracking and motion estimation.
+# The kernel keeps per-frame feature tracking and motion estimation in C++.
+# ORB keypoints, grayscale patches, and correspondence arrays stay in C++.
+# Only flow results and six motion values return to Python.
+
 #
-# Why this is the honest showcase: there is no single cv2 call for "NCC-search each
-# keypoint's patch over a window and return the refined flow", so the naive Python
-# baseline (VoTrackerPy) must loop -- which is exactly the per-element Python trap
-# cppyy_kit exists to avoid. estimateAffinePartial2D lives in calib3d, which cv_kit
-# does not load by default, so the kernel's bringup adds it.
+# OpenCV has no single call for NCC patch search and flow refinement.
+# Pipeline B therefore loops over keypoints in Python.
+
+# The kernel loads calib3d for estimateAffinePartial2D, which cv_kit does not load
+# by default.
 # --------------------------------------------------------------------------- #
 _VO_GLUE = r"""
 namespace rclcppyy_webcam {
@@ -193,10 +159,8 @@ _VO_READY = False
 
 
 def bringup_vo():
-    """JIT-compile the pipeline-A C++ kernel (once). Brings up cv_kit's OpenCV, adds
-    the ``calib3d`` module (``estimateAffinePartial2D``) that cv_kit does not load by
-    default, and defines the ``VoTracker`` class. Returns the ``rclcppyy_webcam``
-    cppyy namespace."""
+    """Compile the Pipeline A C++ kernel once. Initialize OpenCV and load `calib3d` for
+`estimateAffinePartial2D`."""
     global _VO_READY
     import cppyy
     import cppyy_kit
@@ -215,9 +179,7 @@ def bringup_vo():
 # Pipeline A -- the kits path. Thin Python wrapper over the C++ VoTracker.
 # --------------------------------------------------------------------------- #
 class VoTrackerCpp:
-    """Pipeline A: ORB + NCC patch track + similarity motion, entirely in C++
-    (cv_kit's ``cv::ORB`` + the ``VoTracker`` kernel). Python only orchestrates and
-    reads back the small flow/motion results for the overlay."""
+    """Pipeline A runs ORB, the NCC patch tracker, and motion estimation in C++."""
 
     name = "A (cppyy_kit -> C++)"
 
@@ -245,10 +207,8 @@ class VoTrackerCpp:
 # Pipeline B -- the naive Python baseline. Same algorithm, cv2 + NumPy-per-keypoint.
 # --------------------------------------------------------------------------- #
 class VoTrackerPy:
-    """Pipeline B: the identical patch-tracking VO, written the naive way -- cv2 ORB
-    (keypoints as Python objects) and the NCC patch tracker as a **NumPy-per-keypoint
-    Python loop**. Correct and readable; the per-keypoint Python iteration is exactly
-    what makes it slow relative to the C++ kernel."""
+    """Pipeline B runs the same patch-tracking algorithm with `cv2` and a NumPy loop
+for each keypoint."""
 
     name = "B (naive Python)"
 
@@ -326,9 +286,9 @@ def _affine_to_motion(M, n_inliers, n_tracked):
 # frame is BGR (H,W,3), a synthetic frame is grayscale (H,W).
 # --------------------------------------------------------------------------- #
 class SyntheticSource:
-    """The deterministic moving textured scene (scripts/datasets/synthetic_loop.py):
-    a window panning a fixed canvas -> real, repeatable inter-frame motion. Needs no
-    camera, so it is the CI/rehearsal source and the webcam-unplug fallback."""
+    """Generate frames from the deterministic moving textured scene in
+`scripts/datasets/synthetic_loop.py`. Use this source for tests, rehearsals, or when
+no webcam is available."""
 
     kind = "synthetic"
     is_color = False
@@ -348,9 +308,9 @@ class SyntheticSource:
 
 
 class WebcamSource:
-    """A V4L2 webcam via ``cv2.VideoCapture``. ``read()`` returns ``(ok, frame_bgr)``;
-    a failed read (unplug, dropped frame) returns ``(False, None)`` so the caller can
-    fall back to synthetic without crashing."""
+    """Read frames from a V4L2 camera through `cv2.VideoCapture`. `read()` returns
+`(ok, frame_bgr)`. Failed reads return `None`; the automatic source mode can then
+switch to synthetic frames."""
 
     kind = "webcam"
     is_color = True
@@ -384,8 +344,8 @@ class WebcamSource:
 
 
 def open_source(kind, device, width, height, synth_n):
-    """Open the requested source. ``kind='auto'`` prefers the webcam and falls back to
-    synthetic (printing why). Returns ``(source, note)``."""
+    """Open the selected source. `kind='auto'` tries the webcam first and switches to
+the synthetic source if the camera cannot be opened. Return `(source, note)`."""
     if kind in ("webcam", "auto"):
         try:
             src = WebcamSource(device, width, height)
@@ -399,7 +359,7 @@ def open_source(kind, device, width, height, synth_n):
 
 
 # --------------------------------------------------------------------------- #
-# Timing: wall ms + process CPU% per pipeline call (dependency-free, honest).
+# Measure wall time and process CPU percent for each pipeline call.
 # process_time() is this process's user+system CPU seconds (all threads), so
 # cpu% = 100 * cpu_delta / wall_delta is the average number of CPU cores busy during
 # the call -- >100% when OpenCV parallelises ORB internally (real, not a bug).
@@ -421,9 +381,8 @@ def _to_gray_np(frame, is_color):
 # Bench mode: the A-vs-B table at fixed resolutions on the synthetic scene.
 # --------------------------------------------------------------------------- #
 def _synth_frames(width, height, n):
-    """n grayscale frames at (width,height) with genuine inter-frame motion, by
-    panning a crop window across a large deterministic canvas (then resizing to the
-    exact resolution). Reuses the tutorial's canvas so it is reproducible."""
+    """Generate `n` grayscale frames at `(width, height)` from the deterministic scene.
+The scene is scaled to the requested resolution."""
     import cv2
     canvas = synthetic_loop.canvas(size=max(width, height) + 500)
     out = []
@@ -436,9 +395,8 @@ def _synth_frames(width, height, n):
 
 def run_bench(resolutions, nfeatures, track_points, patch_r, search_s, min_score,
               n=80, warm=5):
-    """Measure both pipelines at each resolution and return a list of row dicts.
-    ``track_points`` caps how many of the strongest keypoints the NCC stage tracks
-    (bounds the expensive stage; ORB still detects ``nfeatures``)."""
+    """Benchmark both pipelines at each resolution and return one results dictionary
+per resolution. `track_points` limits the NCC work; ORB still detects `nfeatures`."""
     rows = []
     for (w, h) in resolutions:
         frames = _synth_frames(w, h, n + warm)
@@ -686,8 +644,8 @@ def _log_frame(rr, stats, frame, is_color, prev_xy, flow, traj,
 
 
 def _warmup(a, b, w, h):
-    """Run both pipelines twice on throwaway frames so the first live frame is
-    steady-state (JIT of the C++ track() wrapper done, OpenCV warm)."""
+    """Run both pipelines on throwaway frames to compile the C++ wrapper and initialize
+OpenCV before the live loop."""
     import cv_kit
     cv_kit.warmup()
     frames = _synth_frames(w, h, 3)

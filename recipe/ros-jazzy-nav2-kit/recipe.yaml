@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: ros-jazzy-nav2-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
   version: "0.3.0"
 
 package:
@@ -47,10 +47,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Compose a Nav2 stack from its algorithm cores in Python via cppyy"
+  summary: "Use Nav2 algorithm components from Python through cppyy"
   description: |
-    nav2_kit composes Nav2's algorithm cores (Costmap2D, NavFn, Smac, RPP) from
-    Python via cppyy — a miniature nav stack with no lifecycle servers.
+    nav2_kit exposes Nav2's Costmap2D, NavFn, Smac, and Regulated Pure Pursuit
+    components to Python through cppyy. Applications can combine these
+    components without using Nav2 lifecycle servers.
 
 extra:
   recipe-maintainers:

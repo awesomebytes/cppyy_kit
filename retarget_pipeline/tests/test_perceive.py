@@ -26,8 +26,8 @@ from retarget_pipeline import perceive               # noqa: E402
 
 
 def test_synthetic_record_headless_roundtrips(tmp_path):
-    """Synthetic live run with no camera/model/ROS/viz writes a stream that
-    round-trips -- the record+replay-from-day-one guarantee, headless."""
+    """Runs synthetic input without a camera, model, ROS, or visualization. Checks that the
+    written stream can be read back."""
     path = str(tmp_path / "rec.jsonl")
     perceive.main(["--source", "synthetic", "--duration", "0.4", "--fps", "30",
                    "--no-ros", "--no-viz", "--record", path])
@@ -37,8 +37,8 @@ def test_synthetic_record_headless_roundtrips(tmp_path):
 
 
 def test_presence_gate():
-    """Job 3: the presence gate. A high-visibility pose is present; no pose, or a
-    below-threshold pose, is absent (so no phantom /tf); threshold 0 disables it."""
+    """Checks the presence gate: high visibility counts as present, while missing or low
+    visibility counts as absent. A threshold of 0 disables the gate."""
     pw = np.zeros((ls.N_POSE, 3), dtype=np.float32)
     hi = np.ones((ls.N_POSE, 4), dtype=np.float32)          # visibility col (3) = 1.0
     lo = np.ones((ls.N_POSE, 4), dtype=np.float32)
@@ -60,8 +60,8 @@ def test_landmarks_to_xyz_maps_pose_and_hands():
 
 
 def test_tf_build_bench_cpp_beats_python(tmp_path, capsys):
-    """The cppyy_kit glue win: building the /tf message in C++ beats the per-field
-    Python loop. Brings up rclcpp + the cppdef broadcaster (needs cppyy/ROS)."""
+    """Compares the C++ `/tf` message builder with the Python per-field loop. Requires
+    cppyy and ROS to load the rclcpp broadcaster."""
     pytest.importorskip("cppyy")
     try:
         import rclcpp_kit  # noqa: F401

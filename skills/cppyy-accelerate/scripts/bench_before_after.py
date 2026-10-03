@@ -1,23 +1,21 @@
 #!/usr/bin/env python
 """
-VERIFY step helper for the cppyy-accelerate skill: a small timing harness for the
-before/after table. Use it two ways.
+Timing helper for the cppyy-accelerate skill. It can time a function or a command.
 
-As a library (per-operation timing, warmed -- what the walkthrough uses)::
+As a library, it times a warmed operation, as in the walkthrough::
 
     from bench_before_after import compare
     compare([("naive Python", lambda: slow(pts, 0.05)),
              ("pcl_kit (C++)", lambda: fast(pts, 0.05))])
 
-As a CLI (whole-script wall time, cold per run -- includes bringup)::
+As a CLI, it measures whole-script wall time, including startup, on each run::
 
     python bench_before_after.py -n 5 \
         --before "python examples/accelerate_demo/slow_pointcloud_pipeline.py" \
         --after  "python examples/accelerate_demo/fast_pointcloud_pipeline.py"
 
-Report the median; the first row is the baseline and later rows show the speedup
-against it. Always pair the number with the correctness gate (the target's tests) --
-a faster result that fails the differential test is not an acceleration.
+The report uses the median. The first row is the baseline; later rows show speedup
+against it. Check the target's tests as well as timing. The output must still match.
 """
 import argparse
 import shlex
@@ -28,8 +26,8 @@ import time
 
 
 def time_callable(fn, n=5, warmup=1):
-    """Median wall time (ms) of ``fn()`` over ``n`` runs after ``warmup`` untimed
-    runs (so a first-use JIT / cache miss doesn't skew the median)."""
+    """Return the median wall time in milliseconds over ``n`` runs, after ``warmup``
+    untimed runs. This keeps first-use JIT and cache costs out of the median."""
     for _ in range(warmup):
         fn()
     samples = []
@@ -41,8 +39,8 @@ def time_callable(fn, n=5, warmup=1):
 
 
 def compare(rows, n=5, warmup=1):
-    """``rows`` = list of ``(label, callable)``; time each and print a table with the
-    speedup vs the first (baseline) row. Returns ``[(label, median_ms), ...]``."""
+    """Time each ``(label, callable)`` row and print its median and speedup against
+    the first row. Return ``[(label, median_ms), ...]``."""
     results = [(label, time_callable(fn, n=n, warmup=warmup)) for label, fn in rows]
     base = results[0][1]
     width = max(len(label) for label, _ in results)

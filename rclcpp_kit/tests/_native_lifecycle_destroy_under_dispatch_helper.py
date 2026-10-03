@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S1 (risk 2/3 in the wave plan): a
-transition callback is dispatched -- synchronously, on the caller's thread --
+"""Test PLAN-lifecycle.md S1 (risk 2/3 in the wave plan): a transition
+callback is dispatched synchronously on the caller's thread
 from inside trigger_transition_by_id, which itself runs on a worker thread
 here. Closing (destroying) the owning NativeLifecycleNode from a second
-thread while that callback is genuinely in flight must not crash or hang.
+thread while that callback is running must not crash or hang.
 
 Mirrors the suite's established destroy-under-dispatch proofs
 (_native_parameter_teardown_under_dispatch_helper.py; 6d60a85/cc70d1b/
@@ -11,8 +11,8 @@ Mirrors the suite's established destroy-under-dispatch proofs
 value itself (the reaper), independent of NativeLifecycleNode.close()
 concurrently dropping this wrapper's own node_ reference. Communication
 interfaces are disabled (enable_communication_interface=False) since this
-proof only exercises register_transition_callback + trigger_transition_by_id
-+ close() -- no DDS services needed, keeping 50 iterations fast.
+test only exercises register_transition_callback, trigger_transition_by_id,
+and close(). It does not need DDS services, which keeps 50 iterations fast.
 """
 import faulthandler
 import os
@@ -57,7 +57,7 @@ def run_iteration(session, index, pid):
     worker_thread.start()
     assert entered.wait(timeout=10.0), "on_configure never entered"
 
-    # Close the node while the transition callback above is genuinely
+    # Close the node while the transition callback above is still
     # mid-dispatch on the worker thread.
     lifecycle.close()
     assert lifecycle.closed is True

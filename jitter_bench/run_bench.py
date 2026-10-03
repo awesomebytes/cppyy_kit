@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-"""jitter_bench matrix runner -- variant x condition, one command.
+"""Run jitter_bench variants under idle or CPU-load conditions.
 
-Runs the requested loop variants under the requested conditions (idle / load), applies the
-real-time knobs once up front (mlockall / CPU affinity / scheduling policy), and prints the
-jitter table + a latency histogram per cell. ``--json`` also dumps the full stats.
+The runner applies memory locking, CPU affinity, and scheduling settings once, then
+prints latency statistics and histograms. The `--json` option writes the full results.
 
-Examples
---------
-  # The reference matrix (all variants, idle + load), 60 s each:
+Examples:
+
+  # Run the reference matrix for 60 seconds per variant and condition:
   ROS_DOMAIN_ID=63 python jitter_bench/run_bench.py --duration 60 --mlock --cpu 2
 
-  # One cell, re-runnable in a single command (Stage-1 rerun shape):
+  # Run one cell:
   python jitter_bench/run_bench.py --variant a1 --condition idle --duration 60 \
       --sched fifo --mlock --cpu 2 --preempt-label full
 
-  # Fast smoke (what the CI test drives):
+  # Run a short smoke check:
   python jitter_bench/run_bench.py --variant a1,b --duration 1 --smoke
 """
 import argparse
@@ -70,7 +69,7 @@ class CppVariant:
 
 
 class ControlVariant:
-    """c: the real in-process ros2_control loop driven from Python (control_kit)."""
+    """c: the in-process ros2_control loop driven from Python (control_kit)."""
 
     def __init__(self, controller="python"):
         self.controller = controller

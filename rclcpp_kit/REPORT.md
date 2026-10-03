@@ -1,43 +1,41 @@
-# TF via rclcpp_kit — shared-host characterization against the stock Python path
+# TF through rclcpp_kit: comparison with the Python implementation
 
-**Date:** 2026-07-11 · **Env:** pixi `default` (robostack-jazzy `ros-base` + conda-forge),
+**Date:** 2026-07-11. **Environment:** pixi `default` (robostack-jazzy `ros-base` + conda-forge),
 `cppyy 3.5.0`, Python 3.12.13, `tf2`/`tf2_ros` 0.36.x, cyclonedds, linux-64.
-`ROS_DOMAIN_ID=51`. This was one pass per variant on a shared machine during
-measurement (a parallel vision job ran on domain 52). The values below are retained
-as reproducible characterization only. They do not establish a portable performance
-claim, a regression budget, or a winner; controlled repetitions on a dedicated
-machine are required for any such conclusion.
+`ROS_DOMAIN_ID=51`. Each variant ran once on a shared machine. A parallel vision
+job used domain 52 during measurement. The table records the results from that setup.
+Repeated runs on a dedicated machine are needed to estimate results for a target
+workload.
 
-**Hypothesis:** TF ingest via the C++ `TransformListener` (driven through cppyy)
-should be significantly more efficient than the stock Python path.
+**Hypothesis:** The C++ `TransformListener`, called through cppyy, will use less
+CPU for TF ingestion than the Python implementation.
 
-**Result:** the C++ ownership mechanism and numeric behavior were confirmed. In this
-shared-host pass, the raw Python/C++ CPU ratios ranged from 6.7 to 14 under the TF
-storm, and the idle lookup medians were 7.5 µs and 1.4 µs. Those observations are
-inputs to a future controlled comparison, not an accepted speedup claim. Delivered as
-`rclcpp_kit/tf.py` (surfaced as `rclcpp_kit.tf` — the rclcpp core capability layer,
-since tf2 is core ROS 2), a `TransformListener` helper whose lookups return the real
-`geometry_msgs::msg::TransformStamped`. Tests run in the `rclcpp` env (8 tests, ~4 s,
-including a real network-ingest test); demos + bench are pixi tasks with clean exit 0.
+**Result:** The C++ listener ingested and decoded transforms on its own thread, and
+the numeric results matched the expected values. In this shared-host run, the raw
+Python/C++ CPU ratios ranged from 6.7 to 14 during the TF storm. Idle lookup medians
+were 7.5 µs and 1.4 µs. The helper is available as `rclcpp_kit.tf`; it returns the
+`geometry_msgs::msg::TransformStamped`. The `rclcpp` environment has 8 tests, which
+took about 4 seconds in this run and include a network-ingest test. Demos and the
+benchmark are available as pixi tasks.
 
-> **Provenance note.** This spike was originally delivered inside the rclcppyy product as
-> `rclcppyy.tf`. It was carved (with its bringup/serialization/rosbag2 siblings) into
-> `rclcpp_kit` **with git history**; the mechanism, numbers and reasoning below are
-> unchanged, only the import path is now `rclcpp_kit.tf`. Run it with
+> The TF code was first part of the rclcppyy product as `rclcppyy.tf`. It was moved
+> to `rclcpp_kit` with its bringup, serialization, and rosbag2 modules. The mechanism,
+> measurements, and analysis below are unchanged. The import path is now
+> `rclcpp_kit.tf`. Run it with
 > `pixi run -e rclcpp test-tf`.
 
 ---
 
-## Job 1 — how TF-in-Python actually works (from the installed sources)
+## TF ingestion in the Python implementation
 
 The stock **Python** listener/buffer path, cited to the site-packages sources:
 
-**`tf2_ros/transform_listener.py`** — `TransformListener.__init__` creates two **rclpy**
+**`tf2_ros/transform_listener.py`:** `TransformListener.__init__` creates two **rclpy**
 subscriptions, on `/tf` (QoS depth 100, volatile) and `/tf_static` (depth 100,
 transient-local), whose callbacks are **Python methods** `self.callback` /
-`self.static_callback` (lines 85–88); with `spin_thread=True` it spins its own
-`SingleThreadedExecutor` in a Python `threading.Thread` (lines 90–99). The callback
-(lines 114–118) is the hot path:
+`self.static_callback` (lines 85-88). With `spin_thread=True`, it spins its own
+`SingleThreadedExecutor` in a Python `threading.Thread` (lines 90-99). The callback
+(lines 114-118) processes each message:
 
 ```python
 def callback(self, data: TFMessage) -> None:
@@ -47,17 +45,17 @@ def callback(self, data: TFMessage) -> None:
 ```
 
 By the time this runs, rclpy has already **deserialized the whole `TFMessage` into
-Python objects** — a Python list of Python `TransformStamped`, each a tree of Python
+Python objects:** a Python list of Python `TransformStamped`, each containing Python
 `Header`/`Transform`/`Vector3`/`Quaternion`. Then a **Python loop** hands each
 transform, **one at a time**, into the buffer.
 
-**`tf2_ros/buffer.py`** — `Buffer` subclasses `tf2_py.BufferCore` (a C extension,
+**`tf2_ros/buffer.py`:** `Buffer` subclasses `tf2_py.BufferCore` (a C extension,
 `tf2_py/_tf2_py.so`, wrapping the C++ `tf2::BufferCore`) and `BufferInterface`
-(line 56). `set_transform` (lines 111–117) calls `super().set_transform(...)` —
-crossing each Python `TransformStamped` into the C extension, which converts it to a
-C++ `geometry_msgs::msg::TransformStamped` and inserts it — and then runs
+(line 56). `set_transform` (lines 111-117) calls `super().set_transform(...)`.
+This passes each Python `TransformStamped` to the C extension, which converts it to a
+C++ `geometry_msgs::msg::TransformStamped` and inserts it. The method then runs
 `_call_new_data_callbacks()` (a Python `RLock` + list iterate) **on every insert**.
-`lookup_transform` (lines 133–150) calls `can_transform` (which, with the default
+`lookup_transform` (lines 133-150) calls `can_transform` (which, with the default
 zero timeout, immediately calls the C-extension `can_transform_core`) and then
 `lookup_transform_core` (C extension); the TF math is C++, but every call marshals
 the string/`Time`/`Duration` args in and **builds a fresh Python `TransformStamped`
@@ -75,20 +73,21 @@ and interpolation are C++ (in `tf2_py`), but *feeding* the cache is entirely Pyt
 `spin_thread=true` it builds its **own `SingleThreadedExecutor` on a dedicated
 `std::thread`** and sets `buffer_.setUsingDedicatedThread(true)`. Ingest is therefore
 wholly in C++, off the GIL; Python only crosses the boundary when it calls
-`lookup_transform`. That is exactly the asymmetry the benchmark measures.
+`lookup_transform`. The benchmark measures this difference.
 
 ---
 
-## Job 2 — TF via rclcppyy (the probe)
+## TF through rclcppyy
 
-**Coupling triage first (per nav2 REPORT §2 — check the ctor signatures before
-investing).** `tf2_ros::TransformListener` has three ctors, all *plain*: `(tf2::BufferCore&,
+First, check the constructor signatures, as described in nav2 REPORT §2.
+`tf2_ros::TransformListener` has three constructors: `(tf2::BufferCore&,
 bool spin_thread=true)` (makes its own node), `(BufferCore&, NodeT&& node, ...)`
-(templated on the node), and a node-interfaces form. It takes a **`tf2::BufferCore&`** —
-not a `LifecycleNode`, not a pluginlib base — so it is drivable. `tf2::BufferCore`
-itself is a plain class (the cache + math, no node).
+templated on the node, and a node-interfaces form. It takes a
+**`tf2::BufferCore&`**, so Python can construct it without a lifecycle node or a
+pluginlib base. `tf2::BufferCore` contains the cache and transform operations; it
+does not own a node.
 
-Proven, in order (scratch probes; evidence in the commit's scratch history):
+The following checks were completed (scratch probes; see the commit's scratch history):
 
 | # | Capability | Result | Evidence |
 |---|---|:--:|---|
@@ -98,7 +97,7 @@ Proven, in order (scratch probes; evidence in the commit's scratch history):
 | D | **canTransform / timeouts** | **WORKS** | a C++ `can_wait` poll helper (steady-clock deadline, the listener's dedicated thread keeps ingesting) returns on availability or times out; missing-frame lookups raise a clean `TransformException` |
 | E | **Clean teardown** | **WORKS** | releasing the listener (dtor cancels its executor + joins its thread) before `rclcpp::shutdown()` via `register_teardown` → exit 0 |
 
-**Two friction points hit and hidden (both known cppyy patterns):**
+**Two cppyy binding issues required workarounds:**
 
 1. **`tf2_ros::Buffer` mis-resolves under cppyy and crashes.** Its `lookupTransform`/
    `canTransform` are heavily overloaded (a `tf2::TimePoint` form via `using`, plus
@@ -111,9 +110,8 @@ Proven, in order (scratch probes; evidence in the commit's scratch history):
    listener accepts `BufferCore&` directly) whose single `TimePoint` overloads resolve
    cleanly, and route lookups through **unambiguous `cppdef` free functions**.
 2. **Build the listener in a `cppdef` factory.** `make_shared<TransformListener>(buf,
-   node, spin)` compiles in C++ but doesn't resolve when driven from Python — the
-   recurring "construct the object in C++" pattern (control_kit `make_shared`, nav2
-   glue). A one-line factory in the glue does it.
+   node, spin)` compiles in C++ but does not resolve from Python. As in control_kit
+   and nav2, a C++ factory constructs the object. The glue contains a one-line factory.
 
 The kit is small: `rclcppyy/tf.py` is **~120 lines of Python + ~35 lines of embedded
 C++ glue** (a factory, a `TimePoint`-from-nanos converter, and `can`/`lookup`/
@@ -121,11 +119,12 @@ C++ glue** (a factory, a `TimePoint`-from-nanos converter, and `can`/`lookup`/
 
 ---
 
-## Job 3 — the benchmark
+## Benchmark method and results
 
-Same synthetic TF storm (a chain `world -> link_0 -> ... -> link_{N-1}` published as one
-`TFMessage` at rate R, so aggregate load = N·R transforms/s), same machine, one variant
-process at a time (`scripts/tf_demos/bench_tf.py`; run it with `pixi run bench-tf`):
+The benchmark uses the same synthetic TF storm: a chain
+`world -> link_0 -> ... -> link_{N-1}` is published as one `TFMessage` at rate R.
+The aggregate load is N times R transforms/s. It runs one variant at a time on the
+same machine (`scripts/tf_demos/bench_tf.py`; run it with `pixi run bench-tf`):
 
 * **(a) py** = stock rclpy path: `tf2_ros.Buffer` + `tf2_ros.TransformListener`.
 * **(b) cpp** = rclcppyy: `tf2::BufferCore` + C++ `tf2_ros::TransformListener`.
@@ -133,8 +132,7 @@ process at a time (`scripts/tf_demos/bench_tf.py`; run it with `pixi run bench-t
 
 **ingest CPU%** = process-wide CPU (all threads, `time.process_time`) to keep the buffer
 fed over a 3 s window with the main thread idle. **lookup** rows in the storm scenarios
-are measured **under ingest load**. Each table row is a single shared-host observation;
-the table intentionally reports no winner or performance conclusion.
+are measured **under ingest load**. Each table row is one observation from this host.
 
 | scenario | ingest CPU% py / cpp | lookup µs median py / cpp | lookups/s py / cpp | observed py/cpp ratios |
 |---|---:|---:|---:|---:|
@@ -143,9 +141,9 @@ the table intentionally reports no winner or performance conclusion.
 | 5 k tf/s | 12.1 / 1.1 | 9.4 / 2.5 | 93 330 / 326 391 | ingest 11×; lookup 3.8× |
 | 10 k tf/s | 19.3 / 1.4 | 13.5 / 4.5 | 59 194 / 192 204 | ingest 14×; lookup 3.0× |
 
-(p99 lookup tracks the median: e.g. idle py 9.5 µs / cpp 1.6 µs.)
+(For example, idle p99 lookup was 9.5 µs for Python and 1.6 µs for C++.)
 
-**Interpretation boundary:**
+**What the measurements show:**
 
 - The raw ingest separation increased across the 1 k, 5 k, and 10 k tf/s rows. That
   is consistent with the verified ownership difference: the Python path deserializes
@@ -160,12 +158,12 @@ the table intentionally reports no winner or performance conclusion.
 
 ---
 
-## Job 4 — deliverable shape
+## Implementation
 
-**`rclcpp_kit/tf.py`, surfaced as `rclcpp_kit.tf` — the rclcpp core layer, not a
-domain "kit".** Every domain kit (bt/pcl/ompl/nav2/moveit/control/cv/dbow) wraps a
-**third-party or opt-in** library living in its own pixi feature-env. tf2 is **core
-ROS 2**, shipped in the default `ros-base` env exactly like rclcpp — so it belongs in
+The TF module is available as `rclcpp_kit.tf`. Domain kits (bt/pcl/ompl/nav2/moveit/
+control/cv/dbow) wrap third-party or opt-in libraries in separate pixi feature
+environments. tf2 is part of ROS 2 core and is included in the default `ros-base`
+environment with rclcpp, so the module belongs in
 `rclcpp_kit` alongside `bringup_rclcpp` / `serialization` / `rosbag2_cpp`, not behind
 an opt-in env. Surface:
 
@@ -181,13 +179,14 @@ x = ts.transform.translation.x                     # the real geometry_msgs mess
 ok = listener.can_transform("world", "sensor")
 ```
 
-- `tf.bringup_tf()` — idempotent headers/libs/glue bringup, returns `(tf2, glue)`.
-- `tf.TransformListener(node=None, *, spin_thread=True, cache_time_sec=None)` —
+- `tf.bringup_tf()`: loads headers, libraries, and glue once; returns `(tf2, glue)`.
+- `tf.TransformListener(node=None, *, spin_thread=True, cache_time_sec=None)`:
   `lookup_transform`, `can_transform` (both with an optional `timeout=`),
   `set_transform` (seed the buffer directly), `get_frame_names`, `all_frames_as_string`/
-  `_yaml`, `close`. `time=` accepts `None` (latest) / seconds / an rclpy·rclcpp `Time`.
+  `_yaml`, and `close`. `time=` accepts `None` (latest), seconds, or an rclpy or
+  rclcpp `Time`.
 - `tf.time_from_sec` / `tf.duration_from_sec`; `tf.TransformException`.
-- Mirror-don't-sugar: `lookup_transform` returns the real
+- `lookup_transform` returns the
   `geometry_msgs::msg::TransformStamped` (the same cppyy proxy the rest of rclcpp_kit
   uses); the raw `tf2` namespace is available for advanced use.
 
@@ -196,52 +195,50 @@ lookup example), `demo-tf-storm` (the storm publisher), `bench-tf` (the table ab
 Tests (`rclcpp_kit/tests/test_tf.py`, 8 tests, `pixi run -e rclcpp test-tf`): numeric
 composition, can/timeout, chain, time helpers, and a real network-ingest test.
 
-*Not done (candidates):* `node.tf_listener()` sugar on a node wrapper (additive, easy
-follow-up); a `TransformBroadcaster` helper (the publish side); `lookup_transform_full`
+**Not implemented:** `node.tf_listener()` on a node wrapper; a
+`TransformBroadcaster` helper for publishing; `lookup_transform_full`
 (fixed-frame/advanced API); `transform()` of a stamped datatype (needs
 `tf2_geometry_msgs` converters).
 
 ---
 
-## Generic-lesson candidates for COMMON_PATTERNS (for the lead — not edited here)
+## Possible additions to COMMON_PATTERNS
 
-1. **Overloaded C++ methods can mis-resolve under cppyy to a *compilable but wrong*
-   overload that crashes at runtime (extends §9/§17).** `tf2_ros::Buffer`'s
+1. **Cppyy can select a wrong C++ overload that compiles but crashes at runtime
+   (see §9/§17).** `tf2_ros::Buffer`'s
    `lookupTransform(target, source, TimePoint)` resolved into the `rclcpp::Time`+timeout
-   `canTransform`, which called `rclcpp::Clock::now()` and bus-errored. Lesson: when a
-   class has a thicket of overloads (a `using`-imported base form + timeout/clock forms),
+   `canTransform`, which called `rclcpp::Clock::now()` and raised a bus error. When a
+   class has many overloads (a `using`-imported base form and timeout/clock forms),
    prefer the base class with the single unambiguous signature (here `tf2::BufferCore`),
    or wrap the exact call in a `cppdef` free function. A wrong-overload crash has no
-   Python traceback — probe it.
-2. **A template ctor with a universal-reference default (`NodeT&& node = NodeT()`)
-   doesn't resolve from Python** ("class has no public constructors") — third instance of
+   Python traceback. Test overload resolution directly.
+2. **A template constructor with a universal-reference default (`NodeT&& node = NodeT()`)
+   does not resolve from Python** ("class has no public constructors"). This is another case of
    "build the object in a small C++ factory" (§6 make_shared, control_kit, nav2). Add it
    to the make_shared bullet.
-3. **A library that already spins its own C++ thread is a useful cppyy target
-   (sharpens §13).** `tf2_ros::TransformListener(spin_thread=true)` ingests `/tf` on its
-   own `std::thread`, entirely off the GIL; Python only crosses on `lookup`. Measured
-   raw Python/C++ ingest CPU ratios of 6.7–14 in this single shared-host pass. That is
-   characterization, not a portable speedup claim. "Let C++ own the loop/thread; cross
-   into Python only on demand" remains an ownership pattern worth evaluating, not a
-   guaranteed performance result.
+3. **A library that already spins its own C++ thread may suit cppyy use
+   (see §13).** `tf2_ros::TransformListener(spin_thread=true)` ingests `/tf` on its
+   own `std::thread`, without using the GIL; Python crosses on `lookup`. Measured
+   raw Python/C++ ingest CPU ratios ranged from 6.7 to 14 in this shared-host pass.
+   To estimate the effect on another workload, repeat the measurements on its target
+   host and with representative TF rates and tree sizes.
 4. **Teardown: a C++ object owning an executor + `std::thread` must be released before
    `rclcpp::shutdown()` (third instance of §14/§19).** `register_teardown` a callback
    that drops the listener (its dtor cancels the executor + joins the thread); it runs
    LIFO-before `shutdown_rclcpp`, the correct order. Exit 0 confirmed.
-5. **`std::string` inside a returned `std::vector<std::string>` can surface as Python
-   `bytes`, not `str` (minor, neighbour of §11).** `getAllFrameNames()` came back as a
+5. **`std::string` inside a returned `std::vector<std::string>` can appear as Python
+   `bytes`, not `str` (see §11).** `getAllFrameNames()` returned a
    list of `bytes`; decode at the kit boundary.
 
 ---
 
-## Recommendation — mechanism validated, performance unpromoted
+## Conclusion
 
 The ownership hypothesis is confirmed: the stock rclpy TransformListener feeds its
 buffer through Python, while the C++ listener does that work on its own C++ thread.
-The retained shared-host measurements observed Python/C++ ingest CPU ratios of
-6.7–14 and lower raw lookup medians for the C++ path, but they do not establish a
-portable performance advantage. It is delivered as
-`rclcpp_kit.tf` — a thin, mirror-don't-sugar helper in the rclcpp core capability
-layer — with demos, a reproducible benchmark, and a fast test suite that includes the
-real network-ingest path. The friction was two familiar cppyy walls (overload mis-resolution,
-ctor-in-C++), both hidden behind ~35 lines of glue.
+The retained shared-host measurements showed Python/C++ ingest CPU ratios from
+6.7 to 14 and lower raw lookup medians for the C++ path. To estimate the effect on
+another workload, repeat the measurements on its target host. The module is available as
+`rclcpp_kit.tf` provides a small wrapper around the C++ API, with demos, a reproducible
+benchmark, and tests that include network ingestion. The wrapper uses about 35 lines
+of C++ glue to handle overloaded methods and construction from Python.

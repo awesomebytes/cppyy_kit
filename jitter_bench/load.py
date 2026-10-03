@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-"""jitter_bench.load -- a controllable background CPU load for the 'under load' condition.
+"""Start background CPU load for jitter_bench.
 
-Spins N busy-loop worker processes, each pinned to a specific CPU with ``taskset`` (no
-privilege needed), so the measurement can run on a *different* core and we observe the
-jitter a loaded machine induces through shared caches / memory bus / timer IRQs / global
-scheduler decisions -- not raw core oversubscription. The core topology used is recorded
-and printed into the report so the condition is reproducible.
-
-``taskset``/``nice`` are unprivileged; this never touches system state. Workers are plain
-``python -c 'while True: pass'`` children, killed on ``stop()`` / context exit.
+Starts busy-loop worker processes pinned to selected CPUs. This lets the benchmark run
+on a different core and measures effects from shared caches, memory, timer interrupts,
+and scheduler activity. The selected CPUs are included in the report. The workers use
+`taskset` and `nice` without changing system configuration, and stop when the context
+manager exits or `stop()` is called.
 """
 import atexit
 import os

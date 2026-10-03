@@ -1,38 +1,18 @@
-"""
-cv_kit -- drive OpenCV's C++ API (core / imgproc / features2d) from Python via
-cppyy, with a **zero-copy** bridge to ROS 2 ``sensor_msgs/Image`` messages.
+"""Use OpenCV's C++ API from Python through cppyy.
 
-OpenCV ships a mature Python binding (``cv2``), so unlike pcl_kit this kit is not
-about "impossible -> possible". Its reason to exist is **composition**: it lets an
-rclcppyy subscription hand its **C++** ``sensor_msgs::msg::Image`` straight into
-``cv::Mat`` with no copy (the message's ``data`` buffer *is* the Mat's storage),
-run C++ ``cv::ORB`` on it, and pass the resulting ``cv::Mat`` descriptors on to
-DBoW2 (dbow_kit) -- the whole vision front-end stays in one C++ address space,
-with Python only orchestrating. cv2 would force a serialize/copy at every hop.
+`cv_kit` wraps C++ ROS `sensor_msgs::msg::Image` buffers as `cv::Mat` objects,
+extracts ORB features, and converts between Mats and NumPy arrays. It can use CUDA
+OpenCV when the required module is available. Use it with `dbow_kit` to keep the
+image and descriptor data in C++ through a DBoW2 query.
 
-The kit mirrors OpenCV's own API (``cv.ORB.create()``, ``detectAndCompute``,
-``cv.cvtColor`` ...) on the returned ``cv`` namespace and adds only the glue cppyy
-needs:
-  * bringup -- add the ``include/opencv4`` path, JIT-include core/imgproc(/features2d),
-    ``load_library`` the ``libopencv_*.so`` set so symbols resolve at call time;
-  * the Mat<->buffer bridge -- ``cv::Mat`` cannot be constructed from a raw Python
-    integer address (cppyy rejects the ``void*`` argument), and OpenCV's type
-    constants (``CV_8UC1`` ...) are C **macros** invisible to cppyy, so both live in
-    a tiny ``cppdef`` helper addressed via ``uintptr_t``;
-  * ``msg_to_mat`` -- wrap a C++ ``sensor_msgs::msg::Image``'s ``data`` vector as a
-    ``cv::Mat`` with **no copy** (pointer-identical to ``msg.data.data()``). The Mat
-    aliases the message's storage, so it must not outlive the message (see below);
-  * CUDA auto-detect -- ``cuda_available()`` probes for the ``cudafeatures2d`` module
-    at bringup; absent (the conda-forge build has no CUDA), the CPU ``cv::ORB`` path
-    is used with a one-time notice. A CUDA-enabled ``libopencv`` drops in with no
-    code change: ``create_orb`` switches on the single ``use_cuda`` branch point.
+The kit exposes OpenCV through the `cv` namespace returned by `bringup_cv()` and
+adds helpers for bringup, image buffers, ORB, and CUDA detection. `cv::Mat` cannot
+be constructed from a Python integer address through cppyy, and OpenCV's `CV_8U`
+type constants are preprocessor macros. Small `cppdef` helpers handle these cases.
 
-Lifetime rule (the "dangling Mat" footgun): ``msg_to_mat`` and
-``mat_to_numpy(copy=False)`` return views that ALIAS C++ / message storage. Keep
-the backing object (the ``Image`` message, or the ``Mat``) alive for as long as you
-use the view. ``msg_to_mat`` pins the message on the Mat best-effort, but the
-contract is "use the Mat within the callback that owns the message".
-"""
+Lifetime: `msg_to_mat()` and `mat_to_numpy(copy=False)` return views into existing
+storage. Keep the message or Mat that owns the storage alive while using the view.
+For ROS messages, use the Mat inside the owning callback."""
 import ctypes
 import os
 
@@ -184,17 +164,11 @@ def _glue():
 
 
 def msg_to_mat(image_msg):
-    """Wrap a C++ ``sensor_msgs::msg::Image``'s ``data`` buffer as a ``cv::Mat``
-    with **NO copy**.
+    """Wrap a C++ ROS Image data buffer as a `cv::Mat` without copying it.
 
-    The returned Mat's storage *is* the message's ``data`` vector (pointer-identical
-    to ``msg.data.data()``), so this is genuinely zero-copy -- the alternative
-    (rclpy delivering ``msg.data`` as bytes, then ``np.frombuffer(...).reshape(...)``)
-    copies the whole frame into Python on every message. The Mat aliases the
-    message; **keep the message alive while you use the Mat** (this is pinned
-    best-effort, but the contract is "use it within the owning callback").
-    Unknown encodings raise. Returns the Mat.
-    """
+The Mat refers to the message's data vector, so keep the message alive while using
+the Mat. Use it within the callback that owns the message. Unsupported encodings
+raise `ValueError`."""
     bringup_cv()
     glue = _glue()
     enc = str(image_msg.encoding)
@@ -328,9 +302,8 @@ def mat_to_numpy(mat, copy=True):
 
 
 def to_gray(mat):
-    """Return a single-channel 8-bit Mat: the input if already gray, else a
-    ``cv::cvtColor`` conversion (BGR assumed for 3-channel, the ROS/OpenCV default).
-    ORB needs a grayscale image."""
+    """Return a single-channel 8-bit Mat. Return the input when it is already grayscale;
+otherwise convert it to grayscale. ORB requires a grayscale image."""
     cv = bringup_cv()
     if int(mat.channels()) == 1:
         return mat
@@ -377,10 +350,8 @@ class OrbDetector:
 
 
 def create_orb(nfeatures=1000, use_cuda=None):
-    """Create an :class:`OrbDetector`. ``use_cuda=None`` auto-selects the GPU path
-    iff :func:`cuda_available` (here: always CPU). Pass ``use_cuda=False`` to force
-    CPU. ``nfeatures`` is the max features per frame (``cv::ORB::create`` default is
-    500; loop closure benefits from more)."""
+    """Create an `OrbDetector`. With `use_cuda=None`, select CUDA when available.
+`nfeatures` sets the target feature count. The default is 500."""
     cv = bringup_cv()
     want_cuda = cuda_available() if use_cuda is None else use_cuda
     if want_cuda:
@@ -420,9 +391,8 @@ def keypoints_to_numpy(kps):
 
 
 def warmup(nfeatures=1000):
-    """Front-load cv_kit's one-time first-use JIT (the first ``cv::ORB::create`` +
-    ``detectAndCompute`` call-wrapper codegen) on a throwaway synthetic frame, so
-    the first live frame is steady-state. Call once during init."""
+    """Run the first-use OpenCV JIT and ORB setup before processing live frames.
+Call this once during initialization."""
     import numpy as np
     bringup_cv()
 

@@ -4,7 +4,7 @@ Compile the L2 native ApproachObject node into a BehaviorTree.CPP plugin .so.
 
 This is the L2 rung of the lowering cycle: a leaf that was Python (L0) is emitted
 as native C++ (l2_approach_object.cpp) and built into a plugin the engine loads
-with registerFromPlugin() -- no cppyy/JIT in the hot path. Output goes to the
+with registerFromPlugin(). The hot path does not use cppyy or JIT. Output goes to the
 gitignored build/freeze/ dir. Run inside the bt env::
 
     pixi run -e bt freeze-l2-build

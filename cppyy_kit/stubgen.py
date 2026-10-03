@@ -1,21 +1,19 @@
 """
-cppyy_kit.stubgen -- generate a ``.pyi`` stub for a kit's public Python surface.
+``cppyy_kit.stubgen`` generates a ``.pyi`` stub for a kit's public Python API.
 
-A kit *mirrors* a C++ API, but the mirror is assembled at runtime (functions,
-constants, patched classes), so an IDE / mypy sees nothing useful. This emits a
-static ``.pyi`` for the kit **module's public surface** -- its functions, classes
-(with methods) and constants -- so editors get name + arity completion and mypy a
-corridor.
+A kit builds its Python API at runtime from functions, constants, and patched
+classes. This makes the API hard for IDEs and mypy to inspect. This module emits a
+static ``.pyi`` for the kit's public functions, classes, methods, and constants.
+Editors can then complete names and arguments, and mypy can check calls.
 
     python -m cppyy_kit stubgen bt_kit -o bt_kit/__init__.pyi
 
-Honest scope (documented in the generated header): this stubs the *kit's Python
-API*, the part that is statically knowable. It does NOT stub the C++ namespace a
-bringup returns (``cppyy.gbl.BT.*`` etc.) -- those are dynamic cppyy proxies with no
-static signatures, so a bringup's return type is ``Any``. Signatures are emitted as
-names + arity with ``Any`` types (always-valid, loose) rather than guessed C++
-types, which is the reliable corridor; tighten by hand where a kit wants richer
-hints. Regenerate when the kit's surface changes (a test can diff it)."""
+The generated stub covers the kit's Python API. It does not cover the C++
+namespace returned by bringup (such as ``cppyy.gbl.BT.*``). Those are dynamic
+cppyy proxies without static signatures, so the bringup return type is ``Any``.
+The stub includes parameter names and argument counts, with ``Any`` types. This
+avoids guessing C++ types. Add more specific types by hand when needed. Regenerate
+the stub when the kit API changes; tests can compare it with the checked-in file."""
 import inspect
 import sys
 
@@ -62,8 +60,8 @@ def _class_stub(name, cls):
 
 
 def stub_module(module):
-    """Return ``.pyi`` text for ``module``'s public surface (names not starting with
-    ``_``, defined in the module -- functions, classes, and scalar constants)."""
+    """Return ``.pyi`` text for public functions, classes, and scalar constants
+    defined in ``module``. Names starting with ``_`` are excluded."""
     name = module.__name__
 
     def _ours(obj):

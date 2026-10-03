@@ -44,7 +44,7 @@ def orb():
 
 
 def _synthetic_frame(seed):
-    """A textured gray frame ORB finds plenty of corners in."""
+    """Create a textured grayscale frame with corners for ORB to detect."""
     rng = np.random.default_rng(seed)
     return rng.integers(0, 256, (240, 320), dtype=np.uint8)
 
@@ -92,8 +92,7 @@ def test_orb_descriptor_shape(orb):
 
 
 def test_msg_to_mat_zero_copy_pointer_identity(cv):
-    """The headline zero-copy evidence: a C++ sensor_msgs/Image's data buffer and
-    the wrapping cv::Mat share ONE pointer (no per-frame copy into Python)."""
+    """Check that a C++ ROS Image and its wrapping cv::Mat use the same data pointer."""
     import cppyy
     from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()

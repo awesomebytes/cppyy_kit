@@ -189,7 +189,7 @@ def main():
           f"radius={obstacle[2]:g}; seed={args.seed}; cap={args.time_limit:g}s each")
     print("Times are solve() time only. RRTstar spends the budget improving its path.")
     for result in results:
-        length = f'{result["length"]:.4f}' if result["length"] is not None else "—"
+        length = f'{result["length"]:.4f}' if result["length"] is not None else "n/a"
         status = "valid" if result["valid"] else (
             "invalid path" if result["solved"] else "no solution")
         print(f'{result["planner"]:9} {status:12} '

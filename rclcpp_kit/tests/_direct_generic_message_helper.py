@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live exact-C++ pub/sub proof for a nested installed message."""
+"""Integration test for C++ pub/sub with a nested installed message."""
 
 import gc
 import importlib

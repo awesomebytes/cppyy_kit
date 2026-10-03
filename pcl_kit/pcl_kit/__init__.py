@@ -1,23 +1,23 @@
 """
-pcl_kit -- drive the Point Cloud Library (PCL) from Python via cppyy.
+pcl_kit provides access to the Point Cloud Library (PCL) from Python through cppyy.
 
 PCL is a large templated C++ library with no maintained Python binding (the old
-python-pcl shipped a fixed handful of point types and is unmaintained). This kit
-is a thin cppyy glue layer that **mirrors the C++ API**: you construct
+python-pcl supported a fixed set of point types and is no longer maintained). This kit
+exposes the C++ API through cppyy. You construct
 ``pcl.PointCloud[pcl.PointXYZ]``, ``pcl.VoxelGrid[pcl.PointXYZ]``, call
-``setInputCloud`` / ``setLeafSize`` / ``filter`` -- the same names and shapes as
-the official PCL tutorials -- directly on the returned ``pcl`` namespace. Because
+``setInputCloud`` / ``setLeafSize`` / ``filter`` on the returned ``pcl`` namespace.
+These names also appear in the official PCL tutorials. Because
 cppyy instantiates templates on demand from PCL's own headers, **any** point type
-works, including ones no binding ever shipped (see the REPORT).
+works, including point types not provided by the old python-pcl binding (see REPORT).
 
-The kit's only job is to remove the cppyy friction that PCL has:
-  * bringup -- locate the install, add the include paths (PCL, Eigen, and the ROS
+The kit handles cppyy setup and data conversion:
+  * bringup: locate the install, add the include paths (PCL, Eigen, and the ROS
     message headers), JIT-include the core + impl headers, and ``load_library``
     the ``libpcl_*.so`` set so symbols resolve without ``LD_LIBRARY_PATH``;
-  * NumPy bridging -- the fast path copies an ``(N,3)``/``(N,4)`` float32 array
+  * NumPy bridging: the fast path copies an ``(N,3)``/``(N,4)`` float32 array
     into a ``PointCloud<PointXYZ>`` with a single ``std::memcpy`` in C++ (doing
-    the per-point copy in a Python loop is ~90x slower -- see the REPORT);
-  * the ROS bridge -- ``cloud_from_msg`` / ``msg_from_cloud`` wrap
+    the per-point copy in a Python loop is about 90 times slower (see REPORT);
+  * the ROS bridge: ``cloud_from_msg`` / ``msg_from_cloud`` wrap
     ``pcl::fromROSMsg`` / ``pcl::toROSMsg`` (pcl_conversions), so a C++
     ``sensor_msgs::msg::PointCloud2`` (e.g. straight off an rclcppyy subscription)
     goes into a PCL cloud and back with no Python-side per-point touch.
@@ -35,7 +35,7 @@ Minimal NumPy pipeline::
     vox.filter(out)
     down = pcl_kit.cloud_to_numpy(out)                 # cloud -> (M,3) float32
 
-ROS money path (all data stays in C++)::
+ROS pipeline (all data stays in C++)::
 
     pcl = pcl_kit.bringup_pcl()                        # with_ros=True (default)
     cloud = pcl_kit.cloud_from_msg(cpp_pointcloud2)    # fromROSMsg, no Python touch
@@ -45,10 +45,10 @@ ROS money path (all data stays in C++)::
 Notes / limits (v0):
     * The NumPy bridge is PointXYZ-only (the x,y,z float path). Other point types
       round-trip through ROS messages, or via your own ``cppyy.cppdef`` helper.
-    * ``cloud_to_numpy(cloud, copy=False)`` returns a zero-copy view that *aliases*
-      the cloud's storage -- keep the cloud alive while you use the view.
+    * ``cloud_to_numpy(cloud, copy=False)`` returns a zero-copy view that refers to
+      the cloud's storage. Keep the cloud alive while you use the view.
     * Custom point types work but must be declared with ``struct alignas(16)``
-      (Cling rejects the trailing ``EIGEN_ALIGN16`` macro) -- see the REPORT.
+      Cling rejects the trailing ``EIGEN_ALIGN16`` macro (see REPORT).
 """
 import ctypes
 import glob
@@ -73,7 +73,7 @@ _PCL_LIBS = (
 
 # Core PCL headers + the template impl headers. Including the impls lets Cling
 # instantiate PointCloud<T> / VoxelGrid<T> / PCLBase<T> for point types that were
-# never precompiled into any .so (the on-demand claim -- custom types work).
+# never precompiled into any .so. Custom types are instantiated on demand.
 _PCL_HEADERS = (
     "pcl/point_types.h",
     "pcl/point_cloud.h",
@@ -86,7 +86,7 @@ _PCL_HEADERS = (
 # C++ side: PointXYZ is a 16-byte aligned struct (x,y,z at offsets 0/4/8, 4 bytes
 # padding), so an (N,4) float32 array maps 1:1 to the point storage (one memcpy),
 # while (N,3) needs a strided per-point copy. Doing this in a Python loop is ~90x
-# slower and building the storage from Python risks a cppyy SIGSEGV -- so it stays
+# slower, and building the storage from Python risks a cppyy SIGSEGV. Keep it
 # in C++, addressed via raw pointers passed as uintptr_t.
 _CPP_GLUE = r"""
 namespace rclcppyy_pclkit {
@@ -247,7 +247,7 @@ def _ensure_ros():
     if _ROS_DONE:
         return
     # Reuse rclcppyy's ROS include-path machinery (adds every ament package's
-    # include dir; cheap -- it registers paths, it does not JIT rclcpp).
+    # include dir. It registers paths and does not JIT rclcpp.
     from rclcpp_kit.bringup_rclcpp import add_ros2_include_paths
     add_ros2_include_paths()
     cppyy.include("pcl_conversions/pcl_conversions.h")
@@ -264,7 +264,7 @@ def bringup_pcl(with_ros=True):
     With ``with_ros=True`` (default) it also pulls in pcl_conversions so
     ``cloud_from_msg`` / ``msg_from_cloud`` work.
 
-    Returns ``cppyy.gbl.pcl`` -- use PCL's own API on it directly
+    Returns ``cppyy.gbl.pcl``. Use PCL's API on it directly.
     (``pcl.PointCloud``, ``pcl.VoxelGrid``, ...).
     """
     _ensure_core()
@@ -294,7 +294,7 @@ def warmup(with_ros=False):
         points = np.zeros((8, 3), dtype=np.float32)
         cloud = cloud_from_numpy(points)
         # Exercise the actual downsample path (cached helper, or the Python VoxelGrid
-        # on the fallback path -- warmup front-loads whichever this env uses).
+        # on the fallback path. Warmup runs whichever path this environment uses.
         out = voxel_downsample(cloud, 0.1)
         cloud_to_numpy(out)
         if with_ros:
@@ -315,10 +315,10 @@ def cloud_from_numpy(array):
     Build a ``pcl::PointCloud<pcl::PointXYZ>`` from an ``(N,3)`` or ``(N,4)``
     array (any dtype; coerced to float32).
 
-    Copy semantics: exactly **one** copy into PCL's aligned storage -- an ``(N,4)``
+    Copy semantics: exactly **one** copy into PCL's aligned storage. An ``(N,4)``
     float32 input is a single ``std::memcpy``; an ``(N,3)`` input is a strided
-    per-point copy in C++. True zero-copy in is impossible: NumPy owns its buffer
-    and PCL owns 16-byte-aligned point storage. Both paths are ~0.5 ms at N=100k
+    per-point copy in C++. This API copies the input because the cloud owns its
+    point storage separately from NumPy. Both paths are ~0.5 ms at N=100k
     (vs ~46 ms for a naive Python loop). Returns the cloud.
     """
     pcl = bringup_pcl(with_ros=False)
@@ -368,12 +368,12 @@ def cloud_to_numpy(cloud, copy=True):
 
 
 def voxel_downsample(cloud, leaf, out=None):
-    """Voxel-grid downsample a ``PointCloud<PointXYZ>`` -- the compile-cached fast
+    """Voxel-grid downsample a ``PointCloud<PointXYZ>`` using the compile cache.
     path for the pcl_kit showcase's core op. ``leaf`` is a float (cubic voxel) or an
     ``(lx, ly, lz)`` triple; ``out`` is filled if given, else a fresh cloud is made.
 
     When the compile cache is active this runs a ``VoxelGrid<PointXYZ>`` compiled
-    into the kit's ``.so`` -- the ~0.6 s first-use JIT of the filter's template
+    into the kit's ``.so``. The filter template's first-use JIT takes ~0.6 s
     methods is gone (measured ~594 ms -> ~5 ms). Without the cache it falls back to
     the Python-driven mirror path (``pcl.VoxelGrid[pcl.PointXYZ]`` directly), which
     is exactly what a user would write by hand and what ``warmup()`` front-loads.
@@ -397,7 +397,7 @@ def voxel_downsample(cloud, leaf, out=None):
 def cloud_from_msg(msg, point_type=None):
     """
     Convert a C++ ``sensor_msgs::msg::PointCloud2`` into a
-    ``pcl::PointCloud<point_type>`` via ``pcl::fromROSMsg`` -- no Python-side
+    ``pcl::PointCloud<point_type>`` via ``pcl::fromROSMsg``. There is no Python-side
     per-point touch. ``point_type`` defaults to ``pcl.PointXYZ``; pass any PCL
     point type (e.g. ``pcl.PointXYZI``) to instantiate that specialization on
     demand. Returns the cloud.

@@ -2,11 +2,11 @@
 """
 Run a Python command with a kit's frozen PCH active (L0->L1 freeze launcher).
 
-``CLING_STANDARD_PCH`` must be set before the interpreter's first ``import cppyy``
-(which ``import rclcppyy`` triggers). This wrapper resolves the frozen artifact
-*without* importing rclcppyy/cppyy, sets the environment, and then ``exec``'s the
-requested command in the SAME process image -- so the very first cppyy import in
-the target already sees the frozen PCH.
+Set ``CLING_STANDARD_PCH`` before the interpreter first imports ``cppyy``. The
+``import rclcppyy`` call triggers that import. This wrapper finds the frozen
+artifact without importing rclcppyy or cppyy, sets the environment, and then runs
+the requested command in the same process. The target's first cppyy import sees
+the frozen PCH.
 
 Usage::
 
@@ -15,7 +15,7 @@ Usage::
 
 The kit defaults to ``bt`` (override with ``RCLCPPYY_FREEZE_KIT``). If the artifact
 is missing it prints how to build it and runs unfrozen (JIT), so the command still
-works -- just without the speedup.
+works, but without the speedup.
 """
 import importlib.util
 import os

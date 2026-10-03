@@ -1,4 +1,4 @@
-"""Jazzy/Cyclone proof for callback groups on direct C++ entities."""
+"""Jazzy and Cyclone DDS integration test for callback groups on direct C++ entities."""
 
 from _run_helper import format_output, run_helper
 

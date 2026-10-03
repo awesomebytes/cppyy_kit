@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-"""The differential contract for the accelerate walkthrough: the pcl_kit-accelerated
-voxel downsampler must produce the *same* result as the naive pure-Python one.
+"""Check that the pcl_kit voxel downsampler matches the Python implementation.
 
-This is the "tests-as-contract" gate the cppyy-accelerate skill's VERIFY step runs:
-the acceleration is only valid if it preserves behaviour. The naive and PCL grids
-group points identically (``floor(p / leaf)`` per axis), so we key both outputs by
-voxel index and assert (a) the exact same occupied voxels and (b) matching centroids
-(to float-summation precision). Gated on pcl (the pcl feature env)."""
+Both implementations group points by ``floor(p / leaf)`` on each axis. This test
+compares the occupied voxel indices and their centroids. It runs in the pcl feature
+environment."""
 import os
 import sys
 

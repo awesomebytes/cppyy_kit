@@ -1,29 +1,28 @@
-# Why bt_kit — BehaviorTree.CPP from Python via cppyy
+# Why bt_kit: BehaviorTree.CPP from Python via cppyy
 
 `bt_kit` lets you build and run [BehaviorTree.CPP](https://www.behaviortree.dev)
 v4 trees from Python: the real C++ engine parses the XML, owns the tree, and
 ticks it, while the leaf nodes are ordinary Python functions. There is no
 official Python binding for BehaviorTree.CPP (py_trees is a separate, incompatible
-library), so this capability does not otherwise exist — and because it is the
+library), so this capability does not otherwise exist, and because it is the
 *same* C++ library reading the *same* XML, everything in the BT.CPP ecosystem
 (Groot2, the Nav2 behavior trees, plugins) stays compatible.
 
-This doc explains what that gives you over the C++ workflow, and the two distinct
-ways to use it. For the API, see [SKILL.md](SKILL.md); for the
-feasibility evidence, gaps, and benchmarks, see [REPORT.md](REPORT.md).
+This document compares the Python and C++ workflows and describes two ways to use
+the kit. See [SKILL.md](SKILL.md) for the API and [REPORT.md](REPORT.md) for test
+results, limits, and benchmarks.
 
 ---
 
-## Side by side: the complete tutorial-1 program, C++ vs Python
+## Compare the complete tutorial program in C++ and Python
 
-These are the **complete programs**, not fragments. On the left, the official
+These are complete programs. The left side shows the official
 ["first tree" tutorial](https://www.behaviortree.dev/docs/tutorial-basics/tutorial_01_first_tree)
-from behaviortree.dev. On the right, the complete runnable file this repo ships,
-`scripts/bt_kit_demos/t01_first_tree.py`. Read them together: with the thin
-C++-mirror API, the Python is almost a line-for-line transliteration of the C++
-`main()` — minus the build system and the class boilerplate.
+from behaviortree.dev. The right side shows the runnable file
+`scripts/bt_kit_demos/t01_first_tree.py`. The Python code uses the same API names
+as the C++ tutorial and omits the C++ build files and class definition.
 
-### C++ — `first_tree.cpp` (official tutorial)
+### C++, `first_tree.cpp` (official tutorial)
 
 ```cpp
 #include "behaviortree_cpp/bt_factory.h"
@@ -102,21 +101,20 @@ int main()
 }
 ```
 
-…and this does not run yet. It needs a `CMakeLists.txt`
+This C++ example still needs a `CMakeLists.txt`
 (`find_package(behaviortree_cpp REQUIRED)`, `add_executable(first_tree ...)`,
-`target_link_libraries(first_tree BT::behaviortree_cpp)`) and a build —
-`colcon build` (or `cmake . && make`) — to compile and link a binary before you
+`target_link_libraries(first_tree BT::behaviortree_cpp)`) and a build. Run
+`colcon build` (or `cmake . && make`), to compile and link a binary before you
 can execute it.
 
-### Python — `t01_first_tree.py` (bt_kit, shipped in this repo)
+### Python, `t01_first_tree.py` (bt_kit, shipped in this repo)
 
 ```python
 #!/usr/bin/env python
 """
 BehaviorTree.CPP official tutorial 1 ("Your first behavior tree"), in Python via
-bt_kit. This mirrors the C++ tutorial line-for-line -- same factory,
-same registerSimpleAction / registerSimpleCondition, same createTreeFromText /
-tickWhileRunning -- only the leaf callbacks are Python.
+bt_kit. It uses the same factory, registration functions, and tree methods as the
+C++ tutorial. The leaf callbacks are Python functions.
 """
 import bt_kit
 
@@ -175,25 +173,25 @@ Run it directly: `pixi run -e bt demo-bt-t01`. Same output as the C++ program
 (`[ Battery: OK ] / GripperInterface::open / ApproachObject: approach_object /
 GripperInterface::close`).
 
-### What we gain (right here, from the comparison above)
+### Differences shown in the examples
 
-- **No compile step.** The C++ program needs a CMakeLists and a `colcon build`
-  before it can run; the Python file runs the instant you invoke it. The only
+- **No compile step for the Python demo.** The C++ program needs a CMakeLists and a `colcon build`
+  before it can run. The Python file can run directly. Its one-time
   startup cost is a one-time **~0.85 s** cppyy bringup (JIT-including the header +
   loading the `.so`), and only what you touch is JIT-compiled.
-- **No wrapper, no codegen.** Nothing is generated. `factory`,
+- **No wrapper or code generation.** Nothing is generated. `factory`,
   `registerSimpleAction`, `registerSimpleCondition`, `createTreeFromText`,
-  `tickWhileRunning` are the library's own names — the Python reads like the C++.
+  `tickWhileRunning` are the library's own names. The Python uses those names.
 - **Same XML, same engine.** The tree text is identical and is parsed and ticked
   by the same `libbehaviortree_cpp.so`, so Groot2 / Nav2 ecosystem compatibility
   is unchanged.
 - **Mixed C++/Python leaves in one tree.** You can keep some leaves in Python and
-  drop others to C++ (JIT'd, or existing libraries) in the *same* tree — see
+  move other leaves to C++ (JIT-compiled or in existing libraries) in the same tree. See
   Mode B and `t03_mixed_tree.py` below.
 
 **What the C++ version buys that this one doesn't.**
 `registerNodeType<ApproachObject>` uses a *compile-time* C++ type, which gives
-static type checking and a full node *manifest* — the metadata Groot2 uses to
+static type checking and a full node *manifest*, the metadata Groot2 uses to
 populate its editor palette and that BT.CPP writes into a `TreeNodesModel`. From
 Python you register via functors / `register_stateful` instead (a Python class
 can't be a C++ template argument), so Python-defined nodes don't yet contribute a
@@ -204,33 +202,27 @@ C++. See [REPORT.md](REPORT.md) §5 for the full list.
 
 ## Two ways to use it
 
-### Mode A — use BehaviorTree.CPP from Python
+### Mode A: use BehaviorTree.CPP from Python
 Prototype whole trees, with the leaves in Python, at Python speed of iteration.
-This is the capability that simply doesn't exist otherwise: a maintained C++ BT
-engine, driven entirely from a Python script, with the official XML. Tutorials
-1 and 2 (`t01_first_tree.py`, `t02_ports.py`) are this mode. Good for bringing up
-a tree, wiring behavior logic, experimenting with structure, and testing — where
-edit-run cycles in seconds matter more than raw tick throughput.
+This mode runs the maintained C++ engine and official XML from a Python script.
+Tutorials 1 and 2 (`t01_first_tree.py`, `t02_ports.py`) use this mode. It supports
+tree setup, behavior changes, and tests with short edit-run cycles.
 
-### Mode B — orchestrate existing C++ from a Python-driven tree
+### Mode B: call existing C++ from a Python tree
 Because cppyy can call *any* C++ in the environment, a leaf can drive real,
 already-installed C++ software while Python only wires the tree together. Leaves
 of different languages coexist in one tree: some Python, some JIT'd C++, some
 calling into existing shared libraries. `scripts/bt_kit_demos/t03_mixed_tree.py`
 demonstrates the full spectrum in a single `Sequence`:
 
-1. `CheckSensors` — a **Python** leaf;
-2. `ComputePlan` — a **JIT-compiled C++** functor (no Python on that tick);
-3. `PublishStatus` — a leaf that drives **existing C++**: it publishes a ROS 2
+1. `CheckSensors`, a **Python** leaf;
+2. `ComputePlan`, a **JIT-compiled C++** functor (no Python on that tick);
+3. `PublishStatus`, a leaf that drives **existing C++**: it publishes a ROS 2
    `std_msgs/String` through **rclcpp** (via rclcppyy) from inside the tick.
 
-That third leaf is the repo's thesis in one line: *a C++ behavior-tree engine,
-orchestrated from Python, calling into a real installed C++ stack (rclcpp), with
-no wrapper code generated and no build step.* The demo runs a subscriber in the
-same process and confirms all three messages actually flowed (`RESULT: OK`). This
-is how you reuse existing robotics C++ — controllers, planners, drivers — but
-compose and sequence it from Python, which is far faster to change than a
-recompiled C++ tree.
+The third leaf calls rclcpp from a behavior-tree tick. The demo runs a subscriber
+in the same process and confirms that all three messages arrived (`RESULT: OK`).
+This lets Python combine existing C++ controllers, planners, and drivers in a tree.
 
 ---
 
@@ -243,38 +235,35 @@ Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md) §3–4):
   is the whole workflow. Bringup is a one-time ~0.85 s JIT.
 - **Header-following, so it tracks the installed version.** cppyy reads the
   library's own headers at runtime, so bt_kit automatically matches whatever
-  BehaviorTree.CPP is installed (4.9.0 here) — no hand-maintained binding to drift
-  out of sync when the library updates.
+  BehaviorTree.CPP is installed (4.9.0 here). No separate binding needs to track
+  library updates.
 - **On-demand template instantiation.** Templated members like
-  `getInput<std::string>` are instantiated the moment you use them, from Python —
-  no need to pre-declare which specializations a binding exposes.
+  `getInput<std::string>` are instantiated when called from Python. No need to pre-declare which specializations a binding exposes.
 - **Same XML + full ecosystem compatibility.** The trees are ordinary BT.CPP XML,
   so they open in Groot2 and interoperate with the Nav2 / ROS behavior-tree
   ecosystem unchanged. You are not forking the format or the engine.
 - **Mixed-language leaves in one tree.** Python, JIT'd C++, and calls into
   existing `.so`s coexist in a single tree (Mode B). You pay a language boundary
-  only where you actually put a Python leaf — ~0.3 µs per leaf-tick (~2× a C++
+  only for Python leaves, about 0.3 µs per leaf tick (~2x a C++
   leaf), i.e. ~630k Python-leaf ticks/s, far above any robot control rate.
 - **A prototype-to-native lowering path.** The kit is the L0 rung of a
-  progressive-lowering idea: **L0** — prototype with cppyy JIT (what runs today:
-  Python leaves, JIT'd, ~0.85 s bringup); **L1** — *freeze*: ship a precompiled
-  cppyy dictionary (`.pcm`/`.so`) so startup pays no JIT; **L2** — *lower*: emit
-  native C++ for the hot leaves (or the whole tree) compiled ahead of time — same
+  staged implementation: **L0**, prototype with cppyy JIT (what runs today:
+  Python leaves, JIT'd, ~0.85 s bringup); **L1**, *freeze*: ship a precompiled
+  cppyy dictionary (`.pcm`/`.so`) so startup pays no JIT; **L2**, *lower*: emit
+  native C++ for the hot leaves (or the whole tree) compiled ahead of time, same
   XML, same structure, the Python leaves become C++. You prototype in Python and
-  progressively harden toward native without rewriting the tree. (L1/L2 are the
-  research direction, not yet built — see PLAN.md's Experiments section.)
+  later compile selected leaves or the full tree. L1/L2 are planned work; see
+  PLAN.md's Experiments section.
 
 ---
 
 ## Limits
 
-A 2026-07-11 deep pass closed most of the v0 limits: typed ports
+A 2026-07-11 follow-up review addressed several v0 limits: typed ports
 (int/float/bool/vectors), per-node stateful instances, loggers + Groot2 publishing
 + a tick observer, readable XML errors, and subtrees/scripting all work now (see
-[REPORT.md](REPORT.md) §5, with a skip-safe test suite). What remains: Python
-leaves run under the GIL on the tree thread (so `ParallelNode` gives no true
-parallelism — fine for orchestration), custom node *types* (control/decorator)
-still need C++, directioned and struct/JSON ports aren't modelled, and startup
-pays a one-time ~0.85 s header JIT (the AOT "freeze" needs a Cling C++ module, not
-just a dictionary — §5 Gap 8). Raw cppyy still has segfault edges, which is exactly
-why the kit keeps it behind a curated surface.
+[REPORT.md](REPORT.md) §5). Python leaves run under the GIL on the tree thread, so
+`ParallelNode` does not run them concurrently. Custom control and decorator node
+types still need C++. Direction-specific and struct/JSON ports are not supported.
+Startup includes about 0.85 s of header parsing. The PCH work and raw cppyy limits
+are described in §5. The kit handles the cppyy operations tested here.

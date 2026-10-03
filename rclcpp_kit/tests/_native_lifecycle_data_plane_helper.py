@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S3: create_lifecycle_subscription and
-create_lifecycle_wall_timer -- concrete wrappers over
+"""Test PLAN-lifecycle.md S3: create_lifecycle_subscription and
+create_lifecycle_wall_timer wrap
 rclcpp_lifecycle::LifecycleNode::create_subscription<>()/create_wall_timer()
--- work on an active lifecycle node. Both factories call the lifecycle node's
+and work on an active lifecycle node. Both factories call the lifecycle node's
 own template methods directly (LifecycleNode does not inherit rclcpp::Node,
 so bringup_rclcpp's rclpy-style pub/sub adapter does not apply here), and
-both reuse direct_entities' existing managed-entity wrappers unchanged: the
+both reuse the managed-entity wrappers from direct_entities: the
 resolved C++ entity types (rclcpp::Subscription<MessageT>,
 rclcpp::WallTimer<std::function<void()>>) are identical to what the plain
 rclcpp::Node factories produce.
 
 The node is driven to active via the S1 trigger_transition_by_label
-accessor before either entity is created, matching the wave's "subscription
-receives messages on an active lifecycle node; timer fires on an active
-lifecycle node" requirement. Subscription delivery is observed from a stock
-rclpy publisher peer; the timer's own fire count is the proof for the timer.
+accessor before either entity is created. The test checks that a subscription
+receives messages on an active lifecycle node and that a timer fires on an
+active lifecycle node. Subscription delivery is observed from a stock
+rclpy publisher peer; the timer's fire count confirms timer execution.
 """
 import time
 

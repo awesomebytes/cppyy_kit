@@ -6,14 +6,14 @@ header JIT-parse becomes a few-ms PCH load. These tests run a worker subprocess
 with the frozen PCH active (CLING_STANDARD_PCH must be set before the interpreter
 starts, hence a subprocess) and assert two things:
 
-  * the header parse is eliminated -- include(bt_factory.h) is well under the
+  * the header parse is eliminated. include(bt_factory.h) is well under the
     ~0.83 s JIT cost (a large margin keeps it non-flaky on a shared machine);
   * the frozen path is behaviourally correct, including the typed-port glue that
     only links once the frozen force-symbol fix resolves BT::UndefinedAnyType.
 
 Skips cleanly when behaviortree_cpp is absent (default env) or the artifact has
 not been built (`pixi run -e bt freeze-bt-build`). The rest of the suite proves
-the SAME 16 tests pass frozen -- see `pixi run -e bt test-bt-frozen`.
+the same 16 tests pass frozen. See `pixi run -e bt test-bt-frozen`.
 """
 import json
 import os

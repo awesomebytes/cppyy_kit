@@ -1,15 +1,15 @@
 # Getting Started
 
-Two paths: **install** the published conda packages to use a kit in your own
-project, or **develop** from the repo to hack on the suite.
+Choose one of two options: **install** the published conda packages to use a kit
+in your project, or **develop** the suite from the repository.
 
 ## Install (use a kit)
 
-> **Published.** All 11 packages are live on the prefix.dev `awesomebytes` channel
-> (browse: <https://repo.prefix.dev/awesomebytes>). The install example below targets
-> Linux x86_64; use the *Develop* path to hack on the suite from the repo.
+> **Published packages:** 11 packages are available on the prefix.dev `awesomebytes`
+> channel at <https://repo.prefix.dev/awesomebytes>. This install example targets
+> Linux x86_64. To develop the suite from source, see [Develop](#develop-from-source).
 
-The packages are pure-Python (`noarch`) wrappers; the solver installs their native
+The packages are pure-Python (`noarch`) wrappers. Pixi installs their native
 dependencies. The published recipes currently target Python 3.12 on Linux x86_64
 and ARM64. This manifest targets Linux x86_64; for ARM64, change `platforms` to
 `["linux-aarch64"]`. ARM64 also needs the architecture-specific cppyy bridge noted
@@ -36,9 +36,9 @@ platforms = ["linux-64"]
 
 [dependencies]
 cppyy-kit = "*"              # ROS-free base (cppyy only)
-ros-jazzy-bt-kit = "*"       # a kit — pulls cppyy-kit + behaviortree-cpp
-# ros-jazzy-rclcpp-kit, -pcl-kit, -ompl-kit, -nav2-kit, -moveit-kit,
-# -control-kit, -cv-kit, -dbow-kit  — install only what you need
+ros-jazzy-bt-kit = "*"       # installs cppyy-kit and behaviortree-cpp
+# Add other kits as needed: ros-jazzy-rclcpp-kit, -pcl-kit, -ompl-kit,
+# -nav2-kit, -moveit-kit, -control-kit, -cv-kit, and -dbow-kit.
 ```
 
 Create `example.py` in the same directory with this complete BehaviorTree.CPP
@@ -69,24 +69,25 @@ pixi run python example.py
 On first use, cppyy may take longer while it prepares its compilation cache; later
 runs can reuse the cache.
 
-Install only what you need — every kit pulls `cppyy-kit`, and the ROS-touching
-kits pull `ros-jazzy-rclcpp-kit`, transitively.
+Every kit depends on `cppyy-kit`. ROS kits also depend on
+`ros-jazzy-rclcpp-kit`.
 
-## Develop (hack on the suite)
+## Develop from source
 
-Requires [pixi](https://pixi.sh). Clone and use the workspace envs — the default
-env is the ROS/cppyy stack; each kit's C++ dependency is an additive feature env.
+Install [Pixi](https://pixi.sh). Clone the repository and use its workspace
+environments. The default environment contains the ROS and cppyy dependencies.
+Each kit's environment adds its C++ dependencies.
 
 ```bash
 git clone https://github.com/awesomebytes/cppyy_kit
 cd cppyy_kit
 
-# lint + the default (auto-skipping) test suite — the CI gate
+# Run lint and the default test suite. Tests without available dependencies are skipped.
 pixi run lint
 pixi run test
 
 # a kit: its demo + test suite run in the kit's feature env
-pixi run -e bt   demo-bt-t01     # BehaviorTree.CPP first tree, in short Python
+pixi run -e bt   demo-bt-t01     # Run the first BehaviorTree.CPP tree
 pixi run -e bt   test-bt         # bt_kit + base cppyy_kit tests
 pixi run -e ompl demo-ompl-plan  # OMPL 2D plan
 pixi run -e nav2 test-nav2       # Nav2 cores from Python
@@ -105,7 +106,7 @@ pixi run -e docs docs-build    # strict build into ./site
 
 ## Where next
 
-- **[The Patterns](docs/COMMON_PATTERNS.md)** — the canonical cppyy playbook (36 patterns).
-- **[Freeze & Cache](docs/FREEZE.md)** — the L0→L1→L2 + compile-cache ladder.
-- **[Tutorials](docs/tutorials/vision_loop_closure.md)** — end-to-end walkthroughs.
-- Per kit: its **Why** (the pitch), **Report** (the evidence), **Skill** (LLM cheat sheet).
+- **[The Patterns](docs/COMMON_PATTERNS.md)**: 36 cppyy usage patterns.
+- **[Freeze & Cache](docs/FREEZE.md)**: L0→L1→L2 options and the compile cache.
+- **[Tutorials](docs/tutorials/vision_loop_closure.md)**: end-to-end walkthroughs.
+- Each kit has a purpose page, an evidence report, and an API guide for coding agents.

@@ -1,24 +1,15 @@
-"""
-fetch_models -- download the MediaPipe Tasks ``.task`` model bundles once, pinned.
+"""Download and verify MediaPipe Tasks model bundles.
 
-MediaPipe 0.10.x dropped the legacy ``mp.solutions`` API (whose models shipped in
-the wheel); the Tasks API needs the model bundle downloaded separately. This grabs
-the official Google-hosted bundles into a gitignored cache under ``build/pipeline/
-models/`` (same lifecycle as the dataset downloaders in ``scripts/datasets/``).
+The MediaPipe 0.10 Tasks API requires separate `.task` model files. This module stores
+them in the ignored cache under `build/pipeline/models/`. Each model URL and SHA-256
+hash is recorded below. A file with a different hash is removed and rejected.
 
-**Pinned + checksum-verified.** Each bundle's URL and its SHA-256 are pinned below
-(the exact bytes fetched on 2026-07-12); a download whose hash does not match is
-rejected and the partial file removed -- supply-chain hygiene for anything fetched
-at runtime. Idempotent: an already-present bundle whose hash matches is left alone.
+The URLs use Google's `.../latest/` path. If Google replaces a bundle, its hash will
+change. Update the pinned hash or pass `--allow-hash-mismatch` or
+`RETARGET_ALLOW_HASH_MISMATCH=1` to accept the new file.
 
-Caveat: the URLs point at Google's ``.../latest/`` path, so if Google rotates a
-bundle its hash will change and the check will (correctly) refuse it. Re-pin the new
-SHA-256 here, or pass ``--allow-hash-mismatch`` / ``RETARGET_ALLOW_HASH_MISMATCH=1`` to
-knowingly accept the new bundle.
-
-The perception demo calls :func:`ensure` and falls back to the synthetic scene if a
-model is absent and cannot be fetched (offline), so this is a convenience, not a hard
-dependency.
+The perception demo calls `ensure`. If the model is missing and the download fails,
+the demo uses synthetic input.
 """
 import argparse
 import hashlib

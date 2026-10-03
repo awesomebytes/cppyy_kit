@@ -8,9 +8,9 @@ unaffected. Run the real thing with ``pixi run -e vision test-vision``.
 Everything here uses the **synthetic** source (a deterministic moving scene, no
 camera) and runs **headless** (RCLCPPYY_RERUN_SPAWN=0), and is deadline-bounded, so
 it is safe in CI / on a rehearsal laptop with no webcam. Covered:
-  * the two pipelines (A = cppyy_kit C++ kernel, B = naive Python) compute the same
-    NCC flow and the same motion on the same frames (correctness parity);
-  * A is faster than B (the whole point) via the bench path;
+  * both pipelines use the same NCC tracker; at least 90% of flow vectors match
+    bit for bit, and motion error stays below 0.5 px;
+  * the bench path measures pipeline A against pipeline B;
   * the live loop runs synthetic + headless within a deadline and writes its .rrd;
   * the source fallback (bad webcam device under ``--source auto`` -> synthetic).
 """
@@ -43,13 +43,14 @@ if _HAVE_CV and _HAVE_CV2 and _HAVE_RERUN:
 
 @pytest.fixture(scope="module")
 def frames():
-    # 8 small frames with genuine inter-frame motion (panning crop of the canvas).
+    # Eight small frames with camera motion (a panning crop of the canvas).
     return WD._synth_frames(320, 240, 8)
 
 
 def test_pipelines_agree_on_flow_and_motion(frames):
-    """A (C++ kernel) and B (naive Python) must compute the same tracker output on
-    the same frames -- the honesty contract behind the A-vs-B comparison."""
+    """Check that both implementations return similar flow and motion on the same frames.
+At least 90% of NCC flow results must be bit-identical; estimated motion must differ
+by less than 0.5 pixels."""
     a = WD.VoTrackerCpp(120, 3, 5, 0.3)
     b = WD.VoTrackerPy(120, 3, 5, 0.3)
     compared = 0

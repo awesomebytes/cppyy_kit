@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """
-pcl_kit demo 2 -- THE SHOWCASE: a self-contained ROS 2 point-cloud pipeline where
-the data stays in C++ end to end and Python only orchestrates.
+pcl_kit demo 2: a self-contained ROS 2 point-cloud pipeline. The data stays in C++
+end to end. Python runs the pipeline.
 
 One process, two rclcpp nodes (no external bag):
-  * a synthetic publisher -- one 100k-point ``sensor_msgs/PointCloud2`` built once
+  * a synthetic publisher: one 100k-point ``sensor_msgs/PointCloud2`` built once
     (NumPy -> PCL -> ROS msg) and republished at ``--rate`` Hz;
-  * a pipeline node -- subscribes via rclcppyy (the callback gets the **C++**
+  * a pipeline node: subscribes via rclcppyy (the callback gets the **C++**
     message, not a Python copy), runs a pcl_kit VoxelGrid (0.05 m leaf),
     republishes the filtered cloud, and reports per-frame processing latency and
     input/output point counts.
@@ -65,7 +65,7 @@ def main():
 
     def process(msg):
         """The pipeline: C++ msg -> PCL cloud -> VoxelGrid -> C++ msg. No Python
-        per-point touch; the timer is just to measure the work."""
+        per-point touch. The timer measures processing time."""
         t0 = time.perf_counter()
         cloud = pcl_kit.cloud_from_msg(msg)
         vox = pcl.VoxelGrid[pcl.PointXYZ]()

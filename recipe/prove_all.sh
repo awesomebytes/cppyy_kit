@@ -1,6 +1,6 @@
 #!/bin/bash
 # Fresh-env artifact proof per package (the discipline that gated rclcppyy 0.1.0):
-# for each built artifact, a THROWAWAY pixi workspace whose channels are
+# for each built artifact, a temporary pixi workspace whose channels are
 # [file://output, robostack-jazzy, conda-forge] with the single package as its
 # only dependency must import cleanly with no repo checkout / no PYTHONPATH.
 #   - cppyy-kit : import + a cppdef roundtrip (JIT a C++ fn, call it)
@@ -35,7 +35,7 @@ prove() {
   local wd; wd="$(mktemp -d)"
   local chan_list
   if [ "$channel_set" = "conda-forge" ]; then
-    # wbc-kit: standalone, ROS-free -- crocoddyl/pinocchio pin a libboost line
+    # wbc-kit is standalone and ROS-free. crocoddyl/pinocchio pin a libboost line
     # robostack-jazzy doesn't carry, so no robostack channel here.
     chan_list="\"file://${OUT}\", \"conda-forge\""
   else

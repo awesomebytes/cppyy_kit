@@ -1,4 +1,4 @@
-# Packaging — rattler-build recipes + release matrix
+# Packaging: rattler-build recipes and release matrix
 
 Eleven `noarch: python` conda packages for the cppyy_kit suite, one recipe dir each.
 Every kit wrapper is pure Python and JITs C++ at *runtime* via cppyy, so no C++ is
@@ -37,41 +37,39 @@ vendored/user-built (`build-dbow2`), not a conda dep.
 
 `wbc_kit` is the one ROS-free kit: `wbc_kit/wbc_kit/__init__.py` only ever
 `import cppyy` / `import cppyy_kit` at module level, then reaches Crocoddyl
-through `cppyy.include`/`load_libraries` against `$CONDA_PREFIX` (headers +
-`libcrocoddyl.so`/`libpinocchio_default.so`) — no `import crocoddyl` or
-`import pinocchio`. So the only conda run dep beyond `cppyy-kit` is
-`crocoddyl`; pinocchio isn't pinned directly because the conda-forge
+through `cppyy.include`/`load_libraries` against `$CONDA_PREFIX`. It uses the
+headers and libraries `libcrocoddyl.so` and `libpinocchio_default.so`. The package
+does not import `crocoddyl` or `pinocchio`, so its only conda run dependency beyond
+`cppyy-kit` is `crocoddyl`. Pinocchio is not pinned directly because conda-forge's
 `crocoddyl` package already depends on `pinocchio-python`/`libpinocchio`
 (verified against `pixi.lock`). The pixi `wbc` feature env additionally
 carries `tsid`/`example-robot-data`/`casadi` for demos and future work, but
 nothing in `wbc_kit` itself imports them, so they're intentionally **not** in
 the recipe's run deps. Because Crocoddyl/pinocchio pin a different libboost
 line than robostack-jazzy, `wbc-kit`'s prove step (below) resolves from
-`[file://output, conda-forge]` only — no `robostack-jazzy` channel, unlike
-every other package in this table.
+`[file://output, conda-forge]` only. It does not use the `robostack-jazzy` channel,
+unlike the other packages in this table.
 
-## What's intentionally *not* packaged
+## Not packaged
 
-- **`ik_bench`** is a benchmark/comparison harness (IK solver shootout across
-  vendored `pick_ik`/`bio_ik` builds), not a library other kits import — no
-  recipe references it and none should. It stays pixi-only
+- **`ik_bench`** compares inverse-kinematics solvers, including vendored
+  `pick_ik`/`bio_ik` builds. Other kits do not import it, and no recipe depends on
+  it. It stays pixi-only
   (`pixi run bench-ik`, `pixi run test-ik`).
-- **`cppyy_kit/pydantic_structs.py`** ships *inside* the `cppyy-kit` package
-  (it's a plain module under `cppyy_kit/`, so setuptools' `packages.find`
-  picks it up as part of the `cppyy_kit`/`cppyy_kit.*` package tree — no
-  separate recipe needed, verified in the built `.conda` artifact). `pydantic`
-  itself is an optional, lazily-imported dependency (`import pydantic` only
-  inside the functions that need it, per the module docstring): `cppyy-kit`'s
-  recipe carries no `pydantic` run dep, and `import cppyy_kit` never requires
-  it.
+- **`cppyy_kit/pydantic_structs.py`** is part of the `cppyy-kit` package. It is
+  under `cppyy_kit/`, so setuptools' `packages.find` includes it in the package
+  tree. The built `.conda` artifact confirms this. It does not need a separate
+  recipe. `pydantic` is optional and imported only by functions that need it, so
+  the recipe has no `pydantic` run dependency and `import cppyy_kit` does not
+  require it.
 
 ## How the build works
 
 Each package has no committed `setup.py`/`pyproject.toml` (in-repo the kits
 resolve via PYTHONPATH). `build.sh` sets `PKG_NAME/PKG_IMPORT/PKG_WHERE` and calls
 the shared [`_build_kit.sh`](_build_kit.sh), which writes a minimal
-`pyproject.toml` into the *throwaway build tree* (never the repo) and
-`pip install`s just that one package. `source: path: ../..` + `use_gitignore`
+`pyproject.toml` into a temporary build directory, not the repository, and installs
+that package with pip. `source: path: ../..` + `use_gitignore`
 keeps `.pixi/`, `build/`, `output/` out of the copy.
 
 ## Build all + prove (local)
@@ -94,17 +92,16 @@ isolated runtime-log hash in `output/cppyy-arm-package-proof.json`.
 
 Dependency build order: `cppyy-kit → rclcpp-kit → cv-kit → {bt,ompl,pcl,nav2,
 moveit,control} → dbow-kit → wbc-kit`. `wbc-kit` only needs `cppyy-kit` +
-`crocoddyl` (conda-forge), so it builds last as the standalone outlier —
-nothing downstream of it. `./output` is gitignored.
+`crocoddyl` (conda-forge), so it builds last as a standalone package. No other
+package depends on it. `./output` is gitignored.
 
 ## Version
 
-The suite ships lockstep at one version. It lives in root workspace metadata and
-per-recipe (`context.version`)
-plus the `cppyy-kit ==X` / `ros-jazzy-*-kit ==X` pins in dependent recipes —
-rattler-build has no clean cross-recipe single-source for per-dir recipes without
-collapsing to a single multi-output recipe (which the per-package layout here
-deliberately keeps). Bump every occurrence in one step:
+The suite uses one version, set in the root workspace and each recipe's
+`context.version`. Dependent recipes also pin `cppyy-kit ==X` or
+`ros-jazzy-*-kit ==X`. rattler-build does not provide a shared version source for
+separate recipes. The project keeps one recipe per package, so update every version
+when bumping the suite:
 
 ```bash
 recipe/bump_version.sh 0.3.0

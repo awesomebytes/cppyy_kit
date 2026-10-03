@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Regression-guard companion to ``_gc_after_close_helper.py`` (Slice 2.5a2,
-PLAN-mte-unlock.md Addendum v3): the same aggressive early-GC pattern, but
-``close()`` is only called AFTER the slow callback has ALREADY returned
-(``slow_done.wait()`` completes first) -- i.e. after genuine quiescence,
-the condition the product's ``_quiesce_or_raise``/in-flight-counter
-machinery guarantees before it ever calls ``close()``. This stayed clean
-even before Slice 2.5a2 (the callable-lifetime reaper); it must stay clean
-after, too -- a pure regression guard for the already-safe ordering.
+"""Test close and garbage collection after the callback returns.
+
+This is a companion to ``_gc_after_close_helper.py`` (Slice 2.5a2,
+PLAN-mte-unlock.md Addendum v3). It waits for ``slow_done.wait()`` before
+calling ``close()``, matching the quiescence check used by
+``_quiesce_or_raise``. This ordering worked before Slice 2.5a2 and must
+continue to work.
 """
 import faulthandler
 import gc

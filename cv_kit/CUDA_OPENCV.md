@@ -1,45 +1,43 @@
 # CUDA-enabled OpenCV (`cv::cuda::ORB`) for the vision tutorial
 
-This documents how the vision tutorial gets a GPU-accelerated `cv::cuda::ORB`
-(the `cudafeatures2d` module), whether a trustworthy prebuilt exists, and how it
-coexists with the CPU OpenCV in the `vision` env without crashing.
-
-TL;DR: **conda-forge ships no CUDA OpenCV, but a trustworthy prebuilt does exist**
-(Esri channel, exact same 4.13.0), and it is **validated working on this machine's
-RTX PRO 2000 Blackwell (sm_120)**. Provision + validate it with two pixi commands.
+This guide covers GPU-enabled `cv::cuda::ORB` for the vision tutorial. It describes
+the Esri OpenCV package, how it works with the CPU OpenCV package, and how to
+provision and validate it. Testing used OpenCV 4.13.0 on an RTX PRO 2000 Blackwell
+GPU (sm_120).
 
 ---
 
-## Job 1 verdict: does a trustworthy prebuilt exist?
+## Package availability
 
-**Yes for a prebuilt; No on conda-forge.** Evidence, not vibes:
+The package search found no CUDA builds on conda-forge. It found a CUDA-enabled
+OpenCV 4.13.0 package in the Esri channel.
 
-### conda-forge ships NO CUDA OpenCV (proven)
-- **The recipe disables it.** conda-forge/opencv-feedstock `recipe/build.sh` sets
+### conda-forge builds OpenCV without CUDA
+- The recipe sets these build options: conda-forge/opencv-feedstock `recipe/build.sh` sets
   `-DWITH_CUDA=0 -DWITH_CUBLAS=0 -DWITH_OPENCL=0`.
-- **No CUDA variant.** `recipe/conda_build_config.yaml` has only `qt_version`
-  (`none`/`6`) and an macOS SDK key -- no `cuda`, `cuda_compiler`, or
+- The build configuration has no CUDA variant: `recipe/conda_build_config.yaml` has only `qt_version`
+  (`none`/`6`) and an macOS SDK key, with no `cuda`, `cuda_compiler`, or
   `cuda_compiler_version`.
-- **The binaries confirm it.** The anaconda.org API lists **6357** `conda-forge/libopencv`
+- The package listings show: The anaconda.org API lists **6357** `conda-forge/libopencv`
   files across every version/platform; **0** carry a `cuda` build string. Same for
   `conda-forge/opencv`. (Latest is 4.13.0 `qt6_py312..._610`, which is what
   `feature.vision` pins.)
-- **It's deliberate and long-standing.** Feedstock issues
+- The package configuration has remained CPU-only: Feedstock issues
   [#74](https://github.com/conda-forge/opencv-feedstock/issues/74) (2017) and
   [#109](https://github.com/conda-forge/opencv-feedstock/issues/109) (2018) request
   CUDA builds; they were declined (CI/binary-size/licensing). Builds remain CPU-only.
 
-### A trustworthy prebuilt DOES exist elsewhere
+### CUDA-enabled OpenCV package in the Esri channel
 A cross-channel sweep (anaconda.org `search` API over every channel shipping
 `opencv`/`libopencv`, then a per-channel scan of build strings for `cuda`/`gpu`)
 found CUDA builds on: `ab-geo` (4.8.0, CUDA 11.8, old), `edj.david` (4.6.0, old),
-`rocketce` (ppc64le only), `sdy623` (win-64 only), and **`Esri`**. The winner:
+`rocketce` (ppc64le only), `sdy623` (win-64 only), and `Esri`. The selected package:
 
 | Field | Value |
 |---|---|
 | Package | **`Esri::libopencv`** |
 | Version / build | **`4.13.0` / `cuda129_py313_4`** (linux-64) |
-| Matches vision env? | **Yes -- identical OpenCV 4.13.0** (conda-forge pins the same) |
+| Matches vision env? | **Yes, OpenCV 4.13.0** (conda-forge pins the same) |
 | CUDA | 12.9 (cudart/cublas/cufft/npp 12.9; cudnn 9.10). CUDA >=12.8 supports Blackwell sm_120 |
 | License | **Apache-2.0** (OpenCV's own license) |
 | Public? | **Yes** (`public: true`); uploaded 2026-03-17 |
@@ -47,19 +45,19 @@ found CUDA builds on: `ab-geo` (4.8.0, CUDA 11.8, old), `edj.david` (4.6.0, old)
 | Modules | Full contrib CUDA set incl. `libopencv_cudafeatures2d.so` (`cv::cuda::ORB`), `cudaarithm`, `cudawarping`, `cudafilters`, `cudaimgproc`, `cudaoptflow`, `cudastereo`, ... |
 | GPU code | SASS `sm_50..sm_90` + **`compute_50` PTX** (no native sm_120 -- see below) |
 
-**Why we don't `conda install` it directly:** the package's dependency pins
+**Why not install it directly with conda:** the package's dependency pins
 (`gstreamer >=1.24.12,<1.25`, plus `ffmpeg 8`, `hdf5 1.14.5`, `cudnn`, `cusparselt`,
 `cudss`, `cufile`) no longer co-solve against *current* conda-forge, and
 `cv::cuda::ORB` needs none of them (those are `videoio`/`highgui`/`hdf`/`dnn`
-modules). We therefore **extract just the C++ `.so`s + headers** and supply the
+modules). The setup extracts the C++ shared libraries and headers and supplies the
 CUDA 12.9 runtime the ORB path actually links (`cudart`, `cublas`, `cufft`, `npp`)
 from conda-forge. This is what the `cudabuild` pixi feature + provisioning script do.
 
 ---
 
-## Consume it (the exact steps for the tutorial)
+## Install and validate
 
-Everything lands in `build/vendor/opencv-cuda/` (gitignored). Two commands:
+The files are written to `build/vendor/opencv-cuda/` (gitignored). Run these commands:
 
 ```bash
 # 1. download + verify(sha256) + extract the prebuilt's libs & headers
@@ -78,7 +76,7 @@ export OPENCV_CUDA_ROOT="$PWD/build/vendor/opencv-cuda"
 # CUDA OpenCV FIRST so every libopencv_*.so.413 soname resolves to the CUDA build:
 export LD_LIBRARY_PATH="$OPENCV_CUDA_ROOT/lib:$LD_LIBRARY_PATH"
 export CPLUS_INCLUDE_PATH="$OPENCV_CUDA_ROOT/include/opencv4:$CPLUS_INCLUDE_PATH"
-pixi run -e vision-cuda python <the vision tutorial>
+pixi run -e vision-cuda demo-vision-features
 ```
 
 cv_kit auto-detects at bringup: with the CUDA libs first on the path and the runtime
@@ -87,24 +85,25 @@ path; otherwise it falls back to CPU `cv::ORB` unchanged. To confirm detection
 through the exact cppyy path cv_kit uses:
 
 ```bash
-pixi run -e vision-cuda python scripts/vision/build_opencv_cuda.py validate-cppyy
+pixi run -e vision-cuda python cv_kit/cpp/build_opencv_cuda.py validate-cppyy
 ```
 
 ---
 
-## Coexistence: the same-soname hazard (read this)
+## Use one OpenCV build per process
 
 The `vision`/`vision-cuda` env's conda-forge OpenCV and the vendored CUDA OpenCV are
-**both 4.13.0 and share every soname** (`libopencv_core.so.413`, `..._features2d.so.413`,
-etc.). **Loading both `libopencv_core` variants in one process corrupts the process**
+**both version 4.13.0 and share their sonames** (`libopencv_core.so.413`, `..._features2d.so.413`,
+etc.). **Loading both `libopencv_core` variants in one process can cause a crash or other incorrect behavior**
 (duplicate globals/registries -> segfault or silent misbehaviour).
 
-Safe pattern -- pick ONE consistent set by ordering, never mix:
+Use one OpenCV build per process. Set library search paths so every OpenCV library
+comes from the same build:
 
 - **Put `build/vendor/opencv-cuda/lib` FIRST on `LD_LIBRARY_PATH`.** cppyy resolves
   C++ symbols by scanning `LD_LIBRARY_PATH` for the owning `.so`, so with the CUDA dir
   first, every `libopencv_*.so.413` binds to the CUDA build and the env's CPU OpenCV
-  is simply shadowed. This is one coherent 4.13.0 set (same headers, same ABI), so
+  is hidden by the CUDA build. This is one coherent 4.13.0 set (same headers, same ABI), so
   `core`/`imgproc`/`features2d` calls stay correct while `cuda*` modules become available.
 - **Also put the CUDA headers first** (`CPLUS_INCLUDE_PATH`), so cling finds
   `opencv2/cudafeatures2d.hpp` (absent from the CPU package) and parses the *matching*
@@ -140,27 +139,27 @@ SPEEDUP = 4.67x
 **cppyy** (`validate-cppyy`, the cv_kit path): `getCudaEnabledDeviceCount()=1`,
 descriptors `1965x32 CV_8U`, `526.9 fps`. PASS.
 
-Result: descriptors are the expected **Nx32 `CV_8U`** and the GPU path is ~4.7-4.9x
+The test produced **Nx32 `CV_8U`** and the GPU path is ~4.7-4.9x
 the CPU path here.
 
-### Blackwell / sm_120 note (important)
+### Blackwell (sm_120)
 The prebuilt has **no native sm_120 SASS** (top SASS is sm_90) but **does embed
 `compute_50` PTX**. PTX is forward-compatible: the driver (CUDA 13.0, sm_120-aware)
 **JIT-compiles the PTX to sm_120 at first kernel launch**. Cost: a one-time ~2.3 s
 warmup per fresh machine, then cached in `~/.nv/ComputeCache` (subsequent starts
-~19 ms). It works and is correct; it is not tuned for Blackwell-specific ISA. If you
+~19 ms). The tested kernels ran correctly. The package is not tuned for Blackwell-specific instructions. If you
 want native sm_120 SASS (no JIT warmup, potentially faster), use the source build.
 
 ---
 
-## Fallback: build from source (only if you must)
+## Build from source
 
 Use this if the prebuilt is unavailable, you need native sm_120 SASS, or you distrust
 a third-party channel. Needs the CUDA *toolchain* (`cuda-nvcc`, `cuda-cudart-dev`,
 `libcublas-dev`, `libnpp-dev`, `libcufft-dev` @ 12.9) plus `cmake`/`ninja`:
 
 ```bash
-python scripts/vision/build_opencv_cuda.py build-from-source
+pixi run -e cudabuild python cv_kit/cpp/build_opencv_cuda.py build-from-source
 ```
 
 It fetches OpenCV + opencv_contrib **4.13.0** (matching the env), configures with
@@ -172,7 +171,7 @@ Expect ~30-90 min on 16 cores. (Not exercised here because the prebuilt validate
 
 ---
 
-## Reproduce the Job-1 evidence
+## Reproduce the package search
 
 ```bash
 # conda-forge has 0 cuda libopencv builds (of thousands):

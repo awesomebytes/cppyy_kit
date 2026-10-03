@@ -12,12 +12,13 @@ call ``RobotState::setFromIK`` / ``checkSelfCollision`` / a real OMPL
 ``PlannerManager`` -- the same names and shapes as the MoveIt C++ tutorials,
 against the MoveIt that is already installed. Nothing is generated.
 
-The novel pattern (see docs/moveit_kit/REPORT.md): MoveIt's C++ stack is
+MoveIt's C++ stack is
 **parameter- and plugin-driven**. Kinematics (the KDL plugin) and planning (the
 OMPL plugin) load via ``pluginlib`` and read their configuration from ROS node
 parameters. This kit boots that from a Python-created ``rclcpp::Node`` whose
 parameter overrides are assembled from the panda config YAMLs, and loads the
-plugins in-process via ``pluginlib::ClassLoader``. Two frictions shape the design:
+plugins in-process through ``pluginlib::ClassLoader``. The convenience headers listed
+below cause a parser failure:
 
   * MoveIt's ``generate_parameter_library``-generated headers (``*_parameters.hpp``,
     pulled by ``robot_model_loader.hpp`` / ``planning_pipeline.hpp`` /
@@ -378,8 +379,8 @@ class PandaConfig:
 
 def panda_config():
     """Locate and read the panda test model's config: URDF + SRDF strings and the
-    kinematics / OMPL / joint-limit YAMLs (parsed to dicts). This is real friction,
-    not sugar -- MoveIt's plugins are configured entirely from these, and the paths
+    kinematics / OMPL / joint-limit YAMLs (parsed to dicts). MoveIt's plugins read
+    these files for configuration, and the paths
     live in two different ament packages."""
     import yaml
     from ament_index_python.packages import get_package_share_directory
@@ -464,8 +465,7 @@ def parameter_overrides(tree, prefix=""):
     library convention (``ompl_planning.yaml`` becomes ``ompl.panda_arm.
     planner_configs`` etc.).
 
-    This is the param-assembly friction the plugin-driven stack forces: MoveIt's
-    kinematics and OMPL plugins read their whole configuration from node parameters,
+    MoveIt's kinematics and OMPL plugins read their configuration from node parameters,
     so a Python-created node must carry the config the launch files would otherwise
     inject. Pass the result to ``make_node`` (or ``NodeOptions.parameter_overrides``).
     """

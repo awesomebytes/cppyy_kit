@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: ros-jazzy-rclcpp-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
   version: "0.3.0"
 
 package:
@@ -50,13 +50,12 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Drive rclcpp (ROS 2 core) from Python via cppyy: bringup, messages, tf, rosbag2"
+  summary: "Use rclcpp and ROS 2 core features from Python through cppyy"
   description: |
-    rclcpp_kit is the kit for rclcpp (ROS 2 core): rclcpp bringup, C++ message
-    resolution/conversion, serialization, rosbag2_cpp, tf, and executor/node
-    helpers, managed native services, clients, action clients, component
-    containers, and lifecycle nodes, all driven from Python via cppyy.
-    The ROS-touching kits build on it.
+    rclcpp_kit exposes ROS 2 core features to Python through cppyy. It supports
+    rclcpp startup, C++ message conversion and serialization, rosbag2_cpp, tf,
+    executors, nodes, native services and clients, action clients, component
+    containers, and lifecycle nodes. Other ROS-based kits depend on it.
 
 extra:
   recipe-maintainers:

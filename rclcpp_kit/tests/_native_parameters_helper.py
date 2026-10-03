@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live proof for owning C++ parameters and native node operations."""
+"""Integration test for C++-owned parameters and native node operations."""
 
 import gc
 import importlib

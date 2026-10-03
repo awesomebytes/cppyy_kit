@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 """
-PROFILE step of the cppyy-accelerate skill: run a target script under BOTH a Python
-profiler (cProfile) and the cppyy_kit boundary tracer, and print one combined
-hotspot report -- where Python time goes, and what crossed the Python<->C++ boundary
-(with the C++ signatures and their cost). That report is the input to the MAP step.
+Run a target script under cProfile and the cppyy_kit boundary tracer. The report
+shows each function's own time and cumulative time, plus the C++ signatures that
+crossed the boundary and their total cost. Use high own time to find work performed
+in a function. Use high cumulative time to find work performed by that function or
+by functions it calls. Boundary cost can include JIT compilation and repeated calls.
 
     python skills/cppyy-accelerate/scripts/profile_target.py \
         examples/accelerate_demo/slow_pointcloud_pipeline.py -- -n 100000
 
-Everything after ``--`` is passed to the target as its argv. The target runs in this
-process so cProfile sees its calls and the tracer (if the target uses cppyy_kit)
-records its crossings. Read the two tables together: a fat pure-Python function that
-dominates tottime is a MAP candidate; a boundary line with high total_ms is a
-first-use JIT / crossing cost the cache or a bulk pattern addresses.
+Arguments after ``--`` are passed to the target. The target runs in this process so
+cProfile can record its calls. If it uses cppyy_kit, the tracer records its boundary
+crossings. Use both tables: high ``tottime`` points to Python work, while high
+``total_ms`` can point to first-use JIT or repeated boundary costs.
 """
 import argparse
 import cProfile
@@ -43,8 +43,8 @@ def main():
     if not os.path.isfile(target):
         sys.exit("no such target script: %s" % target)
 
-    # Best-effort boundary trace: only if cppyy_kit is importable (the target may be
-    # plain Python that we're about to accelerate -- then there's simply no trace).
+    # Start the boundary tracer when cppyy_kit is importable. A plain Python target
+    # may have no crossings to report.
     trace = None
     try:
         from cppyy_kit import trace as _trace
@@ -111,19 +111,19 @@ def _print_trace(manifest):
 
 
 def _print_verdict(pr, manifest):
-    print("\nVERDICT (feed to the MAP step):")
+    print("\nSuggested next steps:")
     rows = _stats_rows(pr, "tottime", 1)
     if rows:
         tt, ct, nc, name = rows[0]
-        print("  * hottest pure-Python frame: %s -- %.3f s own time over %d calls."
+        print("  * function with highest own time: %s (%.3f s own time over %d calls)."
               % (name, tt, nc))
-        print("    If it loops over C++-backed / array data, that is your MAP target.")
+        print("    If this function processes array data in a loop, consider moving the loop to C++.")
     if manifest and manifest.get("instantiations"):
         top = manifest["instantiations"][0]
-        print("  * costliest crossing: %s (%.0f ms). If it is a first-use spike, the"
+        print("  * costliest crossing: %s (%.0f ms). A first-use spike can be reduced with"
               % (top["signature"], top["total_ms"]))
         print("    compile cache / warmup applies (COMMON_PATTERNS §23, §15).")
-    print("  See skills/cppyy-accelerate/SKILL.md 'MAP' for the decision tree.")
+    print("  See skills/cppyy-accelerate/SKILL.md 'Choose a remedy' for the decision table.")
     print("=" * 74 + "\n")
 
 

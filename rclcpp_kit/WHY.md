@@ -1,32 +1,31 @@
 # Why rclcpp_kit
 
-**The one-liner:** run ROS 2's *C++* core — rclcpp, tf2, rosbag2, CDR
-serialization — from Python, so selected per-message work happens in C++
-(off the GIL) while your orchestration stays in short Python. `rclcpp_kit` is the
-capability layer that makes that ergonomic; every ROS-touching kit (and the
-rclcppyy drop-in accelerator) is built on it.
+Run ROS 2 C++ libraries such as rclcpp, tf2, rosbag2, and CDR serialization from
+Python. Selected message work can then run in C++, outside the GIL, while Python
+handles orchestration. Domain kits and the rclcppyy accelerator use
+`rclcpp_kit` for ROS support.
 
-## The problem it removes
+## Python work in the default path
 
-The stock rclpy path pays Python for work that is fundamentally C++:
+The stock rclpy path uses Python for these operations:
 
-- **TF ingest is entirely Python.** `tf2_ros`' Python `TransformListener`
+- **TF ingest uses Python.** `tf2_ros`' Python `TransformListener`
   subscribes to `/tf` with a **Python** callback, so every `TFMessage` is
   deserialized into Python objects and fed **one transform at a time** across the
-  Python→C boundary into the buffer — all on a Python thread holding the GIL.
+  Python-to-C boundary into the buffer. This runs on a Python thread that holds
+  the GIL.
 - **Every publish/subscribe** crosses a Python message object; **every**
   `lookup_transform` builds a fresh Python message out.
 
-`rclcpp_kit` runs the real C++ machinery instead: the tf2 **C++**
-`TransformListener` ingests `/tf` wholly in C++ on its own dedicated thread;
-publishers/subscribers move the C++ message; serialization is rclcpp's own CDR.
+`rclcpp_kit` uses tf2's **C++** `TransformListener` to ingest `/tf` on a dedicated
+thread. Publishers and subscribers pass C++ messages, and serialization uses
+rclcpp's CDR implementation.
 
 ## TF characterization
 
 The following raw values came from one pass per variant on a shared development
-machine. They characterize that run only: they are not a portable performance
-claim, regression budget, or declaration of a winner. The full environment,
-method, reproduction command, and limitations are in [REPORT.md](REPORT.md).
+machine. The host, software versions, and method are listed in [REPORT.md](REPORT.md).
+Use the reproduction command there to measure the target host and workload.
 
 | scenario | ingest CPU% py / cpp | lookup µs median py / cpp | observed py/cpp ratio |
 |---|---|---|---|
@@ -34,24 +33,23 @@ method, reproduction command, and limitations are in [REPORT.md](REPORT.md).
 | 1 k tf/s | 4.0 / 0.6 | 7.0 / 1.4 | ingest 6.7×; lookup 5.0× |
 | 10 k tf/s | 19.3 / 1.4 | 13.5 / 4.5 | ingest 14×; lookup 3.0× |
 
-The C++ listener decodes and inserts wholly in C++, while the Python path crosses
-each transform under the GIL. That mechanism is verified independently of timing.
-The raw separation above is consistent with the hypothesis that this matters for
-busy trees and frequent lookups, but this single shared-host pass does not establish
-the size, stability, or portability of an improvement.
+The C++ listener decodes and inserts transforms in C++. The Python path crosses the
+language boundary for each transform while holding the GIL. This difference does not
+depend on the timing measurements. The measurements are consistent with a possible
+benefit for busy trees and frequent lookups. Repeat the measurements with the target
+host, TF rates, and tree sizes to estimate the effect for that workload.
 
-## What you get, and the honest boundary
+## Features and limits
 
-- **Mirror-don't-sugar.** `lookup_transform` returns the real
+- `lookup_transform` returns the real
   `geometry_msgs::msg::TransformStamped`; a subscription callback gets the real C++
-  message. You use the C++ API, minus the cppyy friction.
+  message. You can use the C++ API from Python through cppyy.
 - **Byte-for-byte serialization parity** with `rclpy.serialization` (tested), so
   bags and wire bytes interoperate.
-- **Clean teardown** — the rclcpp context and DDS layer are released in a defined
-  order at exit (via `cppyy_kit`'s ordered teardown), no `os._exit` hacks.
-- **Where the raw run was close in absolute CPU:** the idle row recorded 0.0% for
-  both variants. Workload-specific repeated measurement is required before choosing
-  a path for performance.
+- At interpreter exit, `cppyy_kit` releases the rclcpp context and DDS layer in
+  order. The process exits normally without `os._exit`.
+- In the idle case, both variants recorded 0.0% CPU. Measure representative
+  workloads repeatedly before choosing a path for performance.
 
 For copy-paste patterns see [SKILL.md](SKILL.md); for the base primitives it builds
-on, [`cppyy_kit`](../kits/cppyy_kit.md).
+on, [`cppyy_kit`](../docs/COMMON_PATTERNS.md).

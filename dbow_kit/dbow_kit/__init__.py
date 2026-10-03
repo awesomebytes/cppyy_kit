@@ -32,14 +32,14 @@ import cppyy
 
 import cppyy_kit
 
-# The vendored DBoW2 headers we actually use. We deliberately include these three
-# rather than the umbrella DBoW2.h, which pulls FBrief.h (BRIEF -> DVision/DLib);
-# the ORB path needs none of that.
+# Include the DBoW2 headers required by the ORB path.
+# `DBoW2.h` also includes `FBrief.h`, which pulls in unused DVision/DLib code.
+
 _DBOW_HEADERS = ("FORB.h", "TemplatedVocabulary.h", "TemplatedDatabase.h")
 
-# The OrbVocabulary / OrbDatabase typedefs (FORB descriptors) and the Nx32-Mat ->
-# vector<1x32 Mat> split, kept in C++ (building the nested std::vector from a
-# Python loop is both slow and a cppyy container-construction hazard).
+# Keep the OrbVocabulary and OrbDatabase typedefs, and the descriptor conversion,
+# in C++; constructing the nested vector from a Python loop is slow and error-prone.
+
 _CPP_GLUE = r"""
 namespace rclcppyy_dbow {
   typedef DBoW2::TemplatedVocabulary<DBoW2::FORB::TDescriptor, DBoW2::FORB> OrbVocabulary;
@@ -77,10 +77,8 @@ def _vendor():
 
 
 def bringup_dbow():
-    """Bring up DBoW2 (ORB path) under cppyy and return the ``rclcppyy_dbow``
-    namespace (``OrbVocabulary``, ``OrbDatabase``, ``descriptors_from_mat``).
-    Idempotent. Requires ``build/vendor/libDBoW2.so`` -- build it once with
-    ``pixi run -e vision build-dbow2``."""
+    """Initialize the DBoW2 ORB API through cppyy and return the `rclcppyy_dbow`
+namespace. Build the shared library first with `pixi run -e vision build-dbow2`."""
     global _NS, _DONE
     if _DONE:
         return _NS
@@ -107,16 +105,14 @@ def bringup_dbow():
 
 
 def descriptors_from_mat(desc_mat):
-    """Turn an ``Nx32 CV_8U`` ORB descriptor Mat into the ``std::vector<cv::Mat>``
-    (one 1x32 row per feature) DBoW2 wants."""
+    """Convert an `Nx32 CV_8U` ORB descriptor Mat to a `std::vector<cv::Mat>` with
+one `1x32` row per feature."""
     return bringup_dbow().descriptors_from_mat(desc_mat)
 
 
 def make_vocabulary(k=9, L=3, scoring=None, weighting=None):
-    """Construct an empty ``OrbVocabulary`` with branching factor ``k`` and depth
-    ``L`` (defaults k=9, L=3 -> up to 9^3 = 729 words, right for a small sequence;
-    the real ORBvoc is k=10, L=6 -> ~1M words). Scoring/weighting default to
-    DBoW2's L1_NORM / TF_IDF."""
+    """Create an empty `OrbVocabulary` with branching factor `k` and depth `L`.
+`scoring` and `weighting` select DBoW2 scoring and weighting modes."""
     ns = bringup_dbow()
     if scoring is None or weighting is None:
         return ns.OrbVocabulary(k, L)
@@ -124,14 +120,9 @@ def make_vocabulary(k=9, L=3, scoring=None, weighting=None):
 
 
 def train_vocabulary(descriptor_mats, k=9, L=3, seed=0):
-    """Train an ``OrbVocabulary`` on a list of per-image ``Nx32 CV_8U`` descriptor
-    Mats. Builds the ``std::vector<std::vector<cv::Mat>>`` training set in C++ and
-    calls ``voc.create(...)``. Returns the vocabulary. This is the zero-download
-    path (used by the golden test).
-
-    DBoW2's kmeans++ seeding uses C ``rand()``; we ``srand(seed)`` first so a given
-    descriptor set + params yields a **reproducible** vocabulary run to run (the
-    golden test relies on this). Pass ``seed=None`` to leave ``rand()`` untouched."""
+    """Train an `OrbVocabulary` from a list of per-image `Nx32 CV_8U` descriptor
+Mats. Set `seed` to make training repeatable. Pass `seed=None` to leave C `rand()`
+unchanged."""
     ns = bringup_dbow()
     features = cppyy.gbl.std.vector["std::vector<cv::Mat>"]()
     for m in descriptor_mats:
@@ -145,9 +136,8 @@ def train_vocabulary(descriptor_mats, k=9, L=3, seed=0):
 
 
 def save_vocabulary(voc, path):
-    """Save a vocabulary. ``.dbow2`` -> raw binary (fast, via the build_dbow2
-    patch); ``.txt`` -> ORB-SLAM2 text is not written (load-only); anything else ->
-    DBoW2's native ``cv::FileStorage`` (``.yml`` / ``.yml.gz`` / ``.xml``)."""
+    """Save a vocabulary. Use `.dbow2` for the raw binary format. Other suffixes use
+DBoW2 `cv::FileStorage` formats such as `.yml`, `.yml.gz`, or `.xml`."""
     if path.endswith(".dbow2"):
         voc.saveToBinaryFile(path)
     else:
@@ -155,17 +145,11 @@ def save_vocabulary(voc, path):
 
 
 def load_vocabulary(path, use_binary_cache=True):
-    """Load an ORB vocabulary, auto-detecting the format:
+    """Load a vocabulary from a supported format:
 
-    * ``.txt`` (ORBvoc.txt): parse the ORB-SLAM2 text format. Slow (~tens of s) --
-      so if ``use_binary_cache`` (default) we transparently write/reuse a
-      ``<path>.dbow2`` binary next to it: present-and-newer -> load that in ~1 s;
-      else parse the text once and write the cache.
-    * ``.dbow2``: raw binary (fast).
-    * otherwise: DBoW2's ``cv::FileStorage`` load (``.yml`` / ``.yml.gz``).
-
-    Returns the vocabulary.
-    """
+- `.txt`: ORB-SLAM text format; write a `.dbow2` cache next to the file.
+- `.dbow2`: raw binary format.
+- Other suffixes: DBoW2 `cv::FileStorage` format."""
     ns = bringup_dbow()
     voc = ns.OrbVocabulary()
     if path.endswith(".dbow2"):
@@ -194,9 +178,8 @@ def load_vocabulary(path, use_binary_cache=True):
 
 
 def make_database(voc, use_direct_index=False, di_levels=0):
-    """Create an ``OrbDatabase`` backed by ``voc``. ``use_direct_index`` enables the
-    direct index (feature->node map) DBoW2 uses to speed up geometric
-    verification; not needed for plain BoW scoring."""
+    """Create an `OrbDatabase` backed by `voc`. Set `use_direct_index=True` to build
+the feature vector used for geometric verification. It is not needed for BoW scores."""
     return bringup_dbow().OrbDatabase(voc, use_direct_index, di_levels)
 
 
@@ -207,10 +190,10 @@ def add_image(db, desc_mat):
 
 
 def query(db, desc_mat, max_results=4, max_id=-1):
-    """Query the database with one image's descriptor Mat. Returns a list of
-    ``(entry_id, score)`` tuples, best first. ``max_id`` (>=0) restricts results to
-    entries with id < max_id -- use it to ignore the just-added current frame and
-    a temporal window around it. Scores are DBoW2 L1 similarity in [0, 1]."""
+    """Query the database with one image's descriptor Mat. Return `(entry_id, score)`
+pairs sorted by score, highest first. `max_id` limits results to entries with a
+smaller id. Use it to exclude the current frame and nearby frames. Scores are DBoW2
+L1 similarity values in `[0, 1]`."""
     bringup_dbow()
     results = cppyy.gbl.DBoW2.QueryResults()
     feats = descriptors_from_mat(desc_mat)
@@ -219,9 +202,8 @@ def query(db, desc_mat, max_results=4, max_id=-1):
 
 
 def warmup():
-    """Front-load dbow_kit's first-use JIT (template instantiation of vocab create
-    / db query call wrappers) by training a tiny throwaway vocabulary. Call once
-    during init so the first live query is steady-state."""
+    """Instantiate the vocabulary templates before live queries. Call this during
+initialization so the first query does not include JIT time."""
     import numpy as np
     import cv_kit
     bringup_dbow()

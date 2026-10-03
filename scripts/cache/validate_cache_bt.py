@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 """
-Validate + measure the cppyy_kit compile cache on the bt tick path (the headline
-first-use JIT the PCH cannot touch, per docs/FREEZE.md).
+Measure and check the cppyy_kit compile cache on the BehaviorTree.CPP tick path.
+The PCH does not cache this first-use JIT (see docs/FREEZE.md).
 
 Two ways to hand a Python leaf to BehaviorTree.CPP:
-  * BASELINE -- ``factory.registerSimpleAction(id, leaf)`` (what bt_kit does today):
-    cppyy JIT-compiles the ``std::function<NodeStatus(TreeNode&)>`` thunk AND the
+  * Without the cache: ``factory.registerSimpleAction(id, leaf)`` (used by bt_kit):
+    cppyy JIT-compiles the ``std::function<NodeStatus(TreeNode&)>`` thunk and the
     register call wrapper on first use (~0.4 s, every process).
-  * CACHED -- route the crossing through a **trampoline** built by
+  * With the cache: route the crossing through a **trampoline** built by
     ``cppyy_kit.cppdef_cached(..., trampoline=True)``: the std::function and the
-    registration are compiled ONCE into a ``.so`` (using CPyCppyy's public API to
+    registration are compiled once into a ``.so`` (using CPyCppyy's public API to
     turn the C++ ``TreeNode&`` into the Python node proxy), and every later run
-    ``load_library``'s it -- the first live call is a ~ms symbol call.
+    ``load_library``'s it. The first call loads the symbol from the library.
 
-This script is also the **bt_kit adoption reference** (bt_kit/ is out of the M2a
-lane): TRAMP_CODE/TRAMP_DECLS + register_cached_action() are what a kit drops in.
+This script also shows how bt_kit can use the cache. The implementation is in
+TRAMP_CODE, TRAMP_DECLS, and register_cached_action().
 
     pixi run -e bt python scripts/cache/validate_cache_bt.py            # cold table
     RCLCPPYY_FROZEN=1 python scripts/freeze/run_frozen.py \
@@ -144,7 +144,7 @@ def main():
     label = "L1 frozen + cache" if frozen else "L0 + cache"
     print("bt tick-path cache validation  (%s, %d runs)\n" % (label, args.runs))
 
-    # BASELINE (no cache) for reference -- median of the runs.
+    # No-cache baseline. Use the median of the runs.
     base = [_run_worker("baseline") for _ in range(args.runs)]
     b = base[-1]
     print("BASELINE (cppyy JIT, no cache): register %.0f ms | first_tick %.0f ms | "

@@ -7,11 +7,11 @@ Fixed tree: a Sequence of 3 leaves that each return SUCCESS immediately (no
 sleeping / waiting). One "tick" = one full traversal of the tree.
 
 Variants:
-  (a) C++ JIT leaves   -- leaves are C++ functors; the engine + leaves run at
+  (a) C++ JIT leaves: leaves are C++ functors; the engine and leaves run at
                           C++ speed (only the per-tick tickOnce call is Python).
-  (b) Python leaves    -- leaves are Python callables through bt_kit; measures
+  (b) Python leaves: leaves are Python callables through bt_kit; measures
                           the Python<->C++ boundary cost per leaf.
-  (c) pure-Python BT   -- a hand-rolled Python sequence executor, i.e. no C++
+  (c) pure-Python BT: a Python sequence executor with no C++
                           engine at all. (py_trees, the natural contrast, is not
                           packaged for robostack-jazzy/conda-forge, so this
                           stands in for "what you'd write without the kit".)
@@ -76,7 +76,7 @@ def build_kit_tree(bt):
 
 
 def build_pure_python():
-    """Variant (c): no C++ engine -- a Python list of leaves ticked in order."""
+    """Variant (c): a Python list ticks the leaves in order without a C++ engine."""
     def leaf():
         return bt_kit.SUCCESS
 

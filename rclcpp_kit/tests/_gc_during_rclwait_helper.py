@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Committed discriminating proof for Slice 2.5a2 (PLAN-mte-unlock.md
+"""Test Slice 2.5a2 (PLAN-mte-unlock.md
 Addendum v3): the window callback-quiescence (``in_flight == 0``) cannot
-observe or gate on -- a worker parked in ``rcl_wait``, holding a
+observe or gate on a worker parked in ``rcl_wait``, holding a
 wait-set-local strong copy of an entity (``dynamic_storage.hpp``), with NO
 callback ever dispatched for it at all.
 
@@ -9,13 +9,12 @@ Unlike ``_gc_after_close_helper.py`` (which closes an in-flight peer's
 subscription), this never publishes anything and never calls ``close()``
 or ``destroy_subscription()`` explicitly: it creates an idle subscription,
 lets a live ``MultiThreadedExecutor`` spin around it, then drops the ONLY
-Python reference to the subscription facade and forces ``gc.collect()`` --
-an implicit-GC teardown reachable without ANY gated destroy path. Before
-Slice 2.5a2 this is exactly the residual gap the quiescence gate (option
-(a) alone) could narrow but not close; the callable-lifetime reaper
-(``_pinned_std_function``) ties the callable's lifetime to the
-``std::function`` value itself, independent of a worker's collect timing,
-so this must stay crash-free.
+Python reference to the subscription facade and calls ``gc.collect()``. This
+exercises implicit-GC teardown without a gated destroy path. Before
+Slice 2.5a2, option (a) could narrow this window but could not cover this
+case. The callable-lifetime reaper (``_pinned_std_function``) ties the
+callable's lifetime to the ``std::function`` value, independent of when the
+worker collects the entity.
 """
 import faulthandler
 import gc
@@ -61,7 +60,7 @@ def run_iteration(session, cpp_type, index, pid):
         target=_spin_target, name="gc-during-rclwait-spin")
     spin_thread.start()
 
-    # Give workers a moment to actually start cycling through
+    # Give workers time to start cycling through
     # wait_for_work/rcl_wait before striking -- no message ever arrives, so
     # every collect for this subscription upgrades its weak_ptr, finds
     # nothing to dispatch, and loops back, repeatedly, the whole time.

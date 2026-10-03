@@ -1,10 +1,9 @@
 """
-cppyy_kit.capability -- codify the detect -> fallback -> introspect pattern.
+cppyy_kit.capability tracks available features and why some features are unavailable.
 
-Kits repeatedly do the same three-step dance: **detect** whether an optional
-capability is present (a CUDA build of OpenCV, a working compiler for the compile
-cache, a frozen PCH), **fall back** to a slower-but-correct path when it isn't, and
-ideally let a user **introspect** why. This registry makes that uniform:
+Kits check whether optional features are available, select a fallback when they
+are not, and may report why. Examples include an OpenCV CUDA build, a compiler
+for the compile cache, or a frozen PCH. This registry provides a shared API:
 
     capability.register("cuda", _probe_cuda, "OpenCV built with CUDA")
     ...
@@ -14,11 +13,11 @@ ideally let a user **introspect** why. This registry makes that uniform:
         run_on_cpu()                   # fallback
     print(capability.report())         # introspect: what's available, and why not
 
-A detect callable returns ``bool`` (or ``(bool, detail)`` to explain a negative; a
-raise is caught and recorded as unavailable-with-reason). Results are cached
-(``recheck=True`` to re-probe). ``set_state`` records a capability decided by an
-adoption attempt rather than a standalone probe (e.g. "did bt_kit actually adopt the
-cache this run"). ``report()`` / ``python -m cppyy_kit status`` prints the table.
+A detect callable returns ``bool`` or ``(bool, detail)``. Exceptions are caught
+and recorded as unavailable. Results are cached; pass ``recheck=True`` to probe
+again. ``set_state`` records a result from an adoption attempt, such as whether
+bt_kit used the cache during this run. ``report()`` and ``python -m cppyy_kit
+status`` print the capability table.
 """
 
 
@@ -71,7 +70,7 @@ def detail(name):
 
 
 def set_state(name, ok, detail="", description=""):
-    """Record a capability's state directly -- for one decided by an adoption attempt
+    """Record a capability's state directly when an adoption attempt decides it,
     (e.g. whether a kit's compile-cache path succeeded this run) rather than a
     standalone probe. Registers ``name`` if new."""
     cap = _REGISTRY.get(name)

@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
-download_orbvoc -- fetch the real ORB vocabulary (ORBvoc.txt, ~145 MB) into
+download_orbvoc downloads the ORB vocabulary (ORBvoc.txt, about 145 MB) into
 ``data/`` (gitignored), for the tutorial's real place-recognition path.
 
 This is the vocabulary shipped with ORB-SLAM2 (Galvez-Lopez & Tardos DBoW2, trained
 on a large image corpus): a k=10, L=6, ~1M-word tree. ~42.5 MB compressed. Skips if
 already present; verifies by extraction.
 
-Parsing the 145 MB text is slow (tens of seconds), so dbow_kit caches a binary
-``ORBvoc.txt.dbow2`` next to it on first load and reuses it (~1 s) thereafter --
-handled automatically by ``dbow_kit.load_vocabulary``; nothing to do here.
+Parsing the 145 MB text takes tens of seconds. On first load, dbow_kit writes a
+binary cache named ``ORBvoc.txt.dbow2`` beside it. Later loads use that cache and
+take about one second. ``dbow_kit.load_vocabulary`` handles this automatically.
 
     python scripts/datasets/download_orbvoc.py
     pixi run -e vision demo-vision-loop --tum data/<seq> --vocab data/ORBvoc.txt

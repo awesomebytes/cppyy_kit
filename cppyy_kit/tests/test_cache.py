@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.cache -- the content-hash compile cache (cppdef -> .so).
+"""Tests for cppyy_kit.cache, which caches compiled cppdef code in .so files.
 
 These need only cppyy + a C++ compiler (no domain library), so they run in the
 default env under ``pixi run test`` as well as ``pixi run -e bt test-bt``. Each
@@ -15,7 +15,7 @@ import cppyy
 import cppyy_kit
 from cppyy_kit import cache
 
-# A compiler is required to build the cached .so; skip cleanly if the env has none.
+# A compiler is required to build the cached .so. Skip if the environment has none.
 try:
     from cppyy_kit import _compile
     _compile.cppyy_toolchain()
@@ -46,7 +46,7 @@ def test_miss_then_hit(tmp_path):
     code, decls = _snippet(ns)
     d = str(tmp_path)
 
-    # First call: a miss -- cppdef now (works this run) AND build the .so.
+    # First call is a miss. cppdef runs now and the .so is built.
     r1 = cppyy_kit.cppdef_cached(code, decls=decls, name="triple", directory=d)
     assert r1["cached"] is False and r1["reason"] == "miss-built"
     assert os.path.exists(r1["so"])
@@ -144,7 +144,7 @@ def test_cache_info_and_clear(tmp_path):
     assert cache.cache_info(directory=d) == []
 
 
-# --- Escape hatches: turning the .so cache off (debugging) ----------------
+# --- Debugging options: bypassing the .so cache ---------------------------
 def test_cached_false_bypasses_cache(tmp_path):
     # Per-call cached=False: plain in-memory cppdef, no .so read or write.
     ns = _unique()

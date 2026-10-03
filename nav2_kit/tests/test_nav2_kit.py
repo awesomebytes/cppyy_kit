@@ -2,13 +2,13 @@
 """Tests for rclcppyy.kits.nav2_kit (Nav2 algorithm cores via cppyy).
 
 Nav2 is an optional dependency (the pixi `nav2` env), absent from the default env.
-The whole module therefore auto-skips when the Nav2 headers are not installed, so
+The module auto-skips when the Nav2 headers are not installed, so
 the default `pixi run test` is unaffected. Run the real thing with
 `pixi run -e nav2 test-nav2`.
 
 All tests share one process; bringup_nav2() is idempotent and each test builds its
 own Costmap2D / NavFn, so they stay independent. The pure-core tests use no rclcpp;
-the lifecycle-unlock tests (LifecycleNode / Costmap2DROS / Smac 2D / RPP -- M6d) bring
+the lifecycle component tests (LifecycleNode / Costmap2DROS / Smac 2D / RPP, M6d) bring
 rclcpp up in-process and rely on the ordered teardown (cppyy_kit.register_teardown ->
 before rclcpp shutdown) for a clean exit.
 """
@@ -121,7 +121,7 @@ def test_warmup_callable(nav2):
 
 
 # ---------------------------------------------------------------------------
-# Lifecycle unlock (M6d): LifecycleNode / Costmap2DROS / Smac 2D / RPP.
+# Lifecycle support (M6d): LifecycleNode / Costmap2DROS / Smac 2D / RPP.
 # These bring rclcpp up in-process; kept after the pure-core tests so the plain
 # cores are exercised first. Each uses local objects (dropped at function exit).
 # ---------------------------------------------------------------------------

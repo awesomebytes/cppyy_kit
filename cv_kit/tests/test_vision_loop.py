@@ -1,19 +1,5 @@
 #!/usr/bin/env python3
-"""GOLDEN TEST for the visual loop-closure front-end (the ATO contract).
-
-On the DETERMINISTIC synthetic loop sequence (scripts/datasets/synthetic_loop.py --
-seeded, byte-identical every run, ZERO download), run the full front-end -- C++ ORB
--> DBoW2 vocabulary (trained in-process, kmeans++ seeded) -> OrbDatabase query ->
-temporal-consistency gate (loop_detector.py) -- and assert the detected loop-pair
-set matches a recorded baseline (tolerant matching). This is the regression contract
-for the whole pipeline: if ORB, the DBoW2 build, the marshaling, or the detection
-logic drifts, the detected pairs change and this fails.
-
-Auto-skips when the vision env / vendored DBoW2 is absent, so the default
-`pixi run test` is unaffected. Run with `pixi run -e vision test-vision`.
-
-NO download: the sequence and the vocabulary are both generated on the fly.
-"""
+"""Regression tests for the visual loop-closure front-end."""
 import glob
 import os
 import sys
@@ -79,7 +65,7 @@ def _pairs_match(detected, baseline, qtol=1, mtol=3):
 
 
 def test_golden_loop_pairs(descriptors):
-    """The detected loop-pair set matches the recorded baseline (tolerant)."""
+    """Check that detected loop pairs match the recorded baseline within the configured tolerance."""
     detected = _detect(descriptors)
     assert detected, "no loops detected on the synthetic sequence"
     assert _pairs_match(detected, BASELINE), \
@@ -87,8 +73,7 @@ def test_golden_loop_pairs(descriptors):
 
 
 def test_precision_is_one_by_construction(descriptors):
-    """Every confirmed loop is a TRUE revisit (query in the revisit segment,
-    matching frame == query - segment_start). Synthetic precision = 1.0."""
+    """Check that each reported pair matches the known revisit in the synthetic sequence."""
     seg_start, seg_end = synthetic_loop.loop_segment(N_FRAMES)
     detected = _detect(descriptors)
     for q, m in detected:
@@ -97,14 +82,12 @@ def test_precision_is_one_by_construction(descriptors):
 
 
 def test_training_is_deterministic(descriptors):
-    """Seeded vocabulary training -> identical detections run to run (the property
-    the golden baseline relies on)."""
+    """Check that seeded vocabulary training produces the same loop detections on each run."""
     assert _detect(descriptors) == _detect(descriptors)
 
 
 def test_no_false_loops_before_revisit(descriptors):
-    """No loop is confirmed before the camera nears the start again (the whole
-    first lap has no true revisit)."""
+    """Check that the detector reports no loop before the sequence revisits its start."""
     detected = _detect(descriptors)
     seg_start, _ = synthetic_loop.loop_segment(N_FRAMES)
     early = [q for q, _ in detected if q < seg_start - IGNORE_RECENT]

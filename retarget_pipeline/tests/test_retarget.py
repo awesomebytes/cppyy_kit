@@ -38,14 +38,14 @@ def test_talos_retargeter_builds():
 
 
 def test_g1_config_loads():
-    """G1 stretch: the retarget mapping is model-generic, so G1 is a URDF swap."""
+    """Checks that the same retarget mapping works with G1 by changing the URDF."""
     rt = R.Retargeter(R.ROBOTS["g1"])
     assert rt.model.nq > 20                               # 29-DOF humanoid + base
 
 
 def test_glue_kernel_matches_python(tmp_path):
-    """The cppyy_kit C++ glue kernel and the Python loop agree to ~float epsilon --
-    the tests-as-contract gate on the lowered kernel (COMMON_PATTERNS s23 discipline)."""
+    """Compares the C++ glue kernel with the Python loop. Their outputs must agree within
+    float precision (COMMON_PATTERNS section 23)."""
     rt = R.Retargeter(R.ROBOTS["talos"])
     pw = np.array([p.reshape(99) for (_, p, _, _, _, _, _)
                    in ls.synthetic_frames(50)], dtype=np.float64)
@@ -56,8 +56,8 @@ def test_glue_kernel_matches_python(tmp_path):
 
 
 def test_retarget_synthetic_bounded(tmp_path):
-    """End-to-end: retarget a synthetic stream headless -> a bounded-error Talos
-    trajectory + a policy-kickstart dataset that loads."""
+    """Retargets a synthetic stream without a display. Checks the Talos trajectory error
+    and loads the generated policy-kickstart dataset."""
     stream = str(tmp_path / "s.jsonl")
     ds = str(tmp_path / "ds.npz")
     _write_stream(stream, n=40)
@@ -72,9 +72,8 @@ def test_retarget_synthetic_bounded(tmp_path):
 
 
 def test_follow_mode_consumes_live_stream(tmp_path):
-    """Live teleop: --follow tails a stream a *concurrent* writer is still producing,
-    retargets each frame as it arrives, and writes the dataset on stream-idle exit.
-    A background thread plays the writer (perceive's role)."""
+    """Checks that `--follow` reads frames while another thread writes the stream, retargets
+    each frame, and writes the dataset after the stream is idle."""
     stream = str(tmp_path / "live.jsonl")
     ds = str(tmp_path / "live_ds.npz")
 
@@ -97,10 +96,9 @@ def test_follow_mode_consumes_live_stream(tmp_path):
 
 
 def test_follow_survives_cold_start(tmp_path):
-    """Cold start: the producer takes longer than --idle-timeout to write its FIRST
-    frame (a fresh perceive's env activation + model load is several seconds). The
-    consumer must wait through the startup grace, not give up -- the exact run-book
-    flow ("start the consumer first"). Regression for the idle-vs-startup split."""
+    """Checks that the consumer waits for the first frame when producer startup exceeds
+    `--idle-timeout`. The startup grace period covers environment activation and model
+    loading when the consumer starts first."""
     stream = str(tmp_path / "cold.jsonl")
     ds = str(tmp_path / "cold_ds.npz")
 
@@ -128,8 +126,8 @@ def test_replay_and_follow_are_mutually_exclusive():
 
 
 def _circle_motion(n, fps=30.0):
-    """Known motion: both wrists trace 0.3 m circles about a point below each shoulder
-    (raw MediaPipe world frame). The retarget target MUST follow this."""
+    """Both wrists trace 0.3 m circles below the shoulders in the MediaPipe world frame.
+    Checks that the retarget target follows the motion."""
     base = ls._BASE_POSE.copy()
     out = []
     for i in range(n):
@@ -144,9 +142,9 @@ def _circle_motion(n, fps=30.0):
 
 
 def test_retarget_tracks_wrist_motion():
-    """MOTION FIDELITY (the regression that would have caught 'hands don't follow'):
-    a known wrist circle must drive the EE target with high per-axis correlation and
-    non-trivial amplitude. EE-error alone can't catch a static/wrong target map."""
+    """Checks motion fidelity: a wrist circle must produce an end-effector target with high
+    per-axis correlation and non-zero amplitude. End-effector error alone does not catch
+    a static or incorrect target map."""
     n = 200
     pw = _circle_motion(n)
     for robot in ("talos", "g1"):
@@ -167,8 +165,8 @@ def test_retarget_tracks_wrist_motion():
 
 
 def _full_sweep(n, fps=30.0):
-    """Gross arm sweep: each wrist swings through a wide diagonal arc (the 'raise your
-    arms' motion) relative to the shoulder -- for the ~1:1 amplitude regression."""
+    """Each wrist moves through a wide diagonal arc relative to the shoulder. Checks the
+    approximately 1:1 amplitude mapping."""
     base = ls._BASE_POSE.copy()
     out = []
     for i in range(n):
@@ -183,10 +181,9 @@ def _full_sweep(n, fps=30.0):
 
 
 def test_full_sweep_amplitude_near_one_to_one():
-    """AMPLITUDE (the ~1:1 mapping the owner tuned to, REACH_FRAC=0.95): a gross human
-    arm sweep must drive a *large* solved-gripper excursion -- well beyond the earlier
-    conservative 13-26 cm map. Talos ~0.75 m, G1 ~0.50 m (shorter arms) at scale 1.0;
-    a higher --motion-scale must not shrink it. Guards against amplitude regressions."""
+    """Checks the approximately 1:1 mapping at `REACH_FRAC=0.95`. A wide arm sweep should
+    move the grippers beyond the earlier 13-26 cm range. At scale 1.0, Talos moves about
+    0.75 m and G1 about 0.50 m. Increasing `--motion-scale` must not reduce travel."""
     n = 240
     pw = _full_sweep(n).reshape(n, 99).astype(np.float64)
     bounds = {"talos": 0.55, "g1": 0.38}                  # solved-gripper 3D p2p floor
@@ -219,9 +216,8 @@ def _head_r(yaw, pitch):
 
 
 def test_head_tracks_operator_yaw_pitch():
-    """HEAD TRACKING (Talos): the robot head must follow the operator's head yaw/pitch
-    with high correlation and the correct sign (look left -> head left, look up -> head
-    up), softly so it never fights the arms. Talos has a neck (RY pitch + RZ yaw)."""
+    """Checks Talos head tracking. Head yaw and pitch must follow the operator with the
+    correct sign. Talos uses RY for pitch and RZ for yaw."""
     import pinocchio as pin
     rt = R.Retargeter(R.ROBOTS["talos"])
     assert rt.has_neck and rt.neck_yaw is not None and rt.neck_pitch is not None
@@ -244,8 +240,8 @@ def test_head_tracks_operator_yaw_pitch():
 
 
 def test_g1_head_is_rigid():
-    """G1 has no neck joints -- its head is mechanically rigid (not a software limit).
-    _detect_neck must report has_neck False, and _apply_head must be a safe no-op."""
+    """G1 has no neck joints and its head is mechanically rigid. `_detect_neck` must return
+    `has_neck=False`, and `_apply_head` must do nothing."""
     rt = R.Retargeter(R.ROBOTS["g1"])
     assert not rt.has_neck
     q = rt.q0.copy()
@@ -254,8 +250,8 @@ def test_g1_head_is_rigid():
 
 
 def test_trunk_stays_upright():
-    """The trunk must NOT pitch to reach (the ~52 deg lean bug). Reach both grippers
-    forward; the torso link stays near upright thanks to the per-joint posture pin."""
+    """Checks that the trunk stays near upright when both grippers reach forward. The posture
+    weights should prevent the roughly 52 degree lean seen before."""
     torso = {"talos": "torso_2_link", "g1": "torso_link"}
     for robot in ("talos", "g1"):
         rt = R.Retargeter(R.ROBOTS[robot])
@@ -272,8 +268,8 @@ def test_trunk_stays_upright():
 
 
 def test_visual_meshes_load(tmp_path):
-    """Job 1: the real URDF link meshes load for Rerun (Asset3D-able STL paths) and
-    every visual geom gets a world placement from FK -- for both Talos and G1."""
+    """Checks that Talos and G1 URDF meshes load for Rerun and receive world placements
+    from forward kinematics."""
     for robot, min_n in (("talos", 20), ("g1", 20)):
         rt = R.Retargeter(R.ROBOTS[robot])
         assert rt.has_meshes, "%s meshes should load" % robot
@@ -288,8 +284,8 @@ def test_visual_meshes_load(tmp_path):
 
 
 def test_source_dispatch(monkeypatch, tmp_path):
-    """Mode routing: bare (no file mode) -> live tf; --replay -> replay; --follow ->
-    follow. Guards that tf is the default source without needing a live ROS graph."""
+    """Checks that live TF is the default when no file mode is set, and that `--replay` and
+    `--follow` select their respective modes. No live ROS graph is required."""
     calls = []
     monkeypatch.setattr(R, "run_tf", lambda a: calls.append("tf"))
     monkeypatch.setattr(R, "run_retarget", lambda a: calls.append("replay"))

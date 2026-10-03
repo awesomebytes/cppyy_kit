@@ -69,8 +69,7 @@ _NUMERIC_VALUE_TYPES = frozenset({
 })
 
 # Defense in depth: even for an allow-listed value_type, require the NumPy
-# dtype actually inferred from the buffer to be numeric. Catches the (not
-# currently known to happen, but cheap to guard) case of a future cppyy
+# dtype inferred from the buffer to be numeric. This also guards against a future cppyy
 # resolving some spelling to a non-numeric buffer format code.
 _NUMERIC_DTYPE_KINDS = frozenset("iuf")
 

@@ -1,27 +1,11 @@
 #!/usr/bin/env python3
-"""jitter_bench.cpp_loop -- variant (b): the fixed-rate wait+compute loop **in C++**,
-driven from Python through cppyy_kit (compile-cached + GIL-released).
+"""Variant b: run the fixed-rate wait and compute loop in C++ through cppyy.
 
-The whole hot path -- ``clock_nanosleep(TIMER_ABSTIME)`` + a small compute + timestamp
-record -- runs in one C++ function. Python calls it exactly once. Two cppyy_kit patterns
-carry it:
-
-* **``cppdef_cached`` (COMMON_PATTERNS §23)**: the loop body is compiled once into a
-  cached ``.so`` and ``load_library``'d thereafter, so there is **no first-use call-wrapper
-  JIT** stalling cycle 0 (the ~0.4-0.7 s trampoline JIT that a bare ``cppdef`` pays every
-  process). The loop enters C++ at full speed on the first run after the machine's first
-  build.
-* **``nogil`` (COMMON_PATTERNS §27)**: the loop is invoked through the GIL-releasing shim,
-  so while C++ owns the loop the interpreter is free -- a Python monitor/telemetry thread
-  runs concurrently, and no GIL churn or interpreter bookkeeping sits between a wake and
-  the next sleep. (For a single-threaded loop the wakeup jitter is the same with or without
-  nogil; nogil is what makes a *concurrent* Python thread non-disruptive -- the honest
-  reading is in the report.)
-
-Timestamps are written straight into a caller-owned NumPy ``int64`` buffer by raw address
-(the §6 "pass raw addresses" pattern), so there is **zero Python involvement per cycle** --
-the point of the acceleration. Everything is ``CLOCK_MONOTONIC``, matching the Python
-variants and ``clock_nanosleep``.
+The C++ function sleeps until each absolute `CLOCK_MONOTONIC` deadline, performs a
+small computation, and writes the wake time to a NumPy `int64` buffer. Python calls
+the function once per run. `cppdef_cached` avoids compiling the call wrapper on each
+run. The `nogil` shim releases the GIL while the function runs, so other Python
+threads can run. See the report for single-thread and concurrent-thread results.
 """
 import cppyy
 
@@ -91,18 +75,18 @@ void jitter_run();
 """
 
 def ensure_built():
-    """Compile-cache the C++ loop (§23) so the first run pays no call-wrapper JIT.
-    Idempotent (cppdef_cached is one-cppdef-per-process). The nogil shim's own cached
-    ``.so`` (§27) is built on the first ``nogil()`` call and reused thereafter. Returns
-    the cppdef_cached result dict for the loop (``{"cached": bool, "so": ...}``)."""
+    """Compile-cache the C++ loop so later runs do not JIT its call wrapper.
+    The operation is idempotent within a process. The nogil shim builds and caches its
+    own shared library on its first call. Returns the cppdef_cached result dictionary."""
     return cppyy_kit.cppdef_cached(_CODE, decls=_DECLS, name="jitter_cpp_loop")
 
 
 def run_cpp_loop(rate_hz, duration_s, compute_iters=50, use_nogil=True):
-    """Run the C++ fixed-rate loop for ``duration_s`` at ``rate_hz`` and return
-    ``(recorder, base_ns, period_ns, n)`` -- the same shape the Python driver returns, so
-    the shared ``compute_stats`` reads it identically. ``use_nogil`` invokes the loop
-    through the GIL-releasing shim (the documented pattern); False calls it directly."""
+    """Run the C++ loop for ``duration_s`` at ``rate_hz``.
+
+    Returns ``(recorder, base_ns, period_ns, n)``, which is also returned by the Python
+    driver and accepted by ``compute_stats``. If ``use_nogil`` is true, call through the
+    GIL-releasing shim. Otherwise, call the function directly."""
     period_ns = int(round(1e9 / rate_hz))
     n = int(round(duration_s * rate_hz))
     ensure_built()

@@ -1,22 +1,21 @@
 """
-rclcpp_kit.tf -- drive the tf2 C++ transform stack from Python via cppyy.
+rclcpp_kit.tf: use the tf2 C++ transform stack from Python through cppyy.
 
 tf2 is core ROS 2 (it ships in the default ``ros-base`` env, like rclcpp), so this
-lives in rclcpp_kit (the rclcpp core capability layer) alongside ``bringup_rclcpp`` /
-``serialization`` / ``rosbag2_cpp``, not behind an opt-in domain ``kit``. The point
-is efficiency:
+lives in rclcpp_kit alongside ``bringup_rclcpp`` / ``serialization`` /
+``rosbag2_cpp``. It can reduce Python work during message ingestion:
 the stock ``tf2_ros`` **Python** ``TransformListener`` subscribes to ``/tf`` /
 ``/tf_static`` with **Python** callbacks, so every incoming ``TFMessage`` is
 deserialized into Python objects and then fed **one TransformStamped at a time**
-across the Python->C boundary into the ``tf2_py`` C-extension buffer -- all on a
-Python thread holding the GIL (see ``tf2_ros/transform_listener.py`` ::``callback``
+across the Python-to-C boundary into the ``tf2_py`` C-extension buffer. This runs on a
+Python thread that holds the GIL (see ``tf2_ros/transform_listener.py`` ::``callback``
 and ``tf2_ros/buffer.py`` ::``set_transform``). Under a busy tf tree that ingest cost
 is entirely Python.
 
 This module instead runs tf2's **C++** ``tf2_ros::TransformListener`` on its own
-dedicated C++ thread against a ``tf2::BufferCore``: transforms are ingested wholly in
-C++ (no per-message Python crossing, no GIL), and Python only reaches across when it
-actually calls ``lookup_transform``. See ``rclcpp_kit/REPORT.md`` for the mechanism
+dedicated C++ thread against a ``tf2::BufferCore``. It ingests transforms in C++
+without a per-message Python callback or GIL use. Python crosses the boundary when it
+calls ``lookup_transform``. See ``rclcpp_kit/REPORT.md`` for the mechanism
 and the benchmark.
 
 Usage::
@@ -29,16 +28,15 @@ Usage::
     ts = listener.lookup_transform("world", "sensor", timeout=1.0)
     print(ts.transform.translation.x, ts.transform.translation.y)
 
-Design notes / friction hidden (mirror-don't-sugar otherwise):
+Implementation notes:
     * The buffer is a plain ``tf2::BufferCore`` -- ``tf2_ros::Buffer``'s heavily
       overloaded ``lookupTransform``/``canTransform`` (rclcpp::Time + timeout forms)
       mis-resolve under cppyy and crash (a ``NodeT&&``-defaulted template ctor and an
       rclcpp::Clock dependency); BufferCore's single ``TimePoint`` overloads resolve
       cleanly. Timeouts are provided by a small C++ poll helper instead.
     * The ``Buffer`` and ``TransformListener`` are built in a ``cppdef`` factory, not
-      constructed from Python: the listener's node-templated ctor + ``make_shared``
-      don't resolve from Python (the recurring cppyy pattern -- build the object in
-      C++).
+      constructed from Python: the listener's node-templated constructor and
+      ``make_shared`` do not resolve from Python. A C++ factory constructs the object.
     * ``lookup_transform`` returns the real ``geometry_msgs::msg::TransformStamped``
       (the same cppyy proxy the rest of rclcpp_kit uses); read ``.transform.translation``
       / ``.transform.rotation`` exactly as in C++.

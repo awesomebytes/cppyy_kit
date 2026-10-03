@@ -1,35 +1,31 @@
 """
-cppyy_kit.cache -- content-hash compile cache: cppdef -> .so, dlopen thereafter.
+cppyy_kit.cache compiles C++ definitions into shared libraries and loads those
+libraries in later runs. A Cling PCH avoids parsing headers, but it does not avoid
+the call-wrapper JIT that cppyy runs the first time it crosses a C++ signature.
+The ``registerSimpleAction`` path in bt_kit takes about 0.4 to 0.7 seconds at
+first use with or without a PCH (see docs/FREEZE.md). ``warmup()`` moves that cost
+to initialization, but the cost returns in each process.
 
-The measured problem (docs/FREEZE.md): a Cling PCH removes the header *parse*, but
-NOT the per-signature call-wrapper JIT that cppyy runs the first time a C++
-signature is crossed (~0.4-0.7 s for bt's ``registerSimpleAction`` path,
-identical L0/L1). ``warmup()`` only *relocates* that cost into init; it comes back
-every process.
+``cppdef_cached`` compiles supplied definitions into a ``.so`` using the direct
+compile helper in ``cppyy_kit._compile``. This includes trampolines that create a
+``std::function`` and call Python from compiled code. Later runs load the library
+and register the declarations with cppyy. In the bt tick path, the measured first
+call fell from about 414 ms to about 16 ms (see docs/FREEZE.md §Cache).
 
-This cache *eliminates* it, persistently. C++ glue we control -- the kit's
-``cppdef`` helpers and, crucially, the **trampolines** that build a
-``std::function`` and cross into Python in compiled code -- is compiled once into a
-real ``.so`` (the direct-compile recipe, ``cppyy_kit._compile``). On every later
-run the ``.so`` is ``load_library``'d and cppyy is told the *declarations*; the
-heavy template instantiation and call-wrapper codegen already happened at compile
-time, so the first live call is a ~ms symbol call instead of a ~0.4 s JIT. Measured
-on the bt tick path: first-use ~414 ms -> ~16 ms (see docs/FREEZE.md §Cache).
-
-Why declarations are mandatory for the speedup: Cling emits any function *body* it
-can see (inline or not), ignoring the ``.so`` copy -- so the fast path must give
-Cling **bodiless declarations** and let the definitions live only in the ``.so``.
+Declarations are required for this path. Cling compiles any function body it can
+see, including inline definitions, instead of using the copy in the ``.so``. Give
+Cling declarations without bodies. Keep the function definitions in the ``.so``.
 ``cppdef_cached(code, decls=...)`` is therefore the supported fast form: ``code``
 is the definitions (compiled to the ``.so``), ``decls`` the declarations (cheap to
 ``cppdef`` on a hit). Without ``decls`` there is nothing to split, so the call
-degrades to a plain ``cppyy.cppdef`` (always correct, just not cached) with a
-one-time note. ``extern "C"`` functions and free functions / classes with
-out-of-line methods are the clean supported subset.
+uses plain ``cppyy.cppdef`` instead. It remains functional but does not use the
+cache, and emits one notice. Supported forms are ``extern "C"`` functions and
+free functions or classes with out-of-line methods.
 
-Artifact lifecycle mirrors the freeze PCH: env-version-tagged filename, gitignored
-build dir, never committed, rebuilt on a cppyy/compiler/source change (a mismatch
-just misses -> recompiles). A kit can also *ship warm* by building the ``.so`` at
-package-build time so even the first run on a machine is fast.
+Artifacts use an environment and version tagged filename. They live in a
+gitignored build directory and are rebuilt when cppyy, the compiler, or the source
+changes. A mismatch causes a cache miss. A package can include a prebuilt ``.so``
+to avoid compilation on its first run.
 """
 import contextlib
 import hashlib
@@ -49,7 +45,7 @@ _INCLUDED = set()        # include paths already put on cppyy's search path (ded
 _RUNTIME_DISABLED = False  # process-wide runtime bypass (disable_caching / context mgr)
 
 
-# --- Debugging escape hatches: turn the .so compile cache off -------------
+# --- Debugging options: bypass the .so compile cache ----------------------
 # Three ways to bypass the cache, all making ``cppdef_cached`` behave exactly like
 # ``cppyy.cppdef(code)`` (no .so read, no .so write): the ``CPPYY_KIT_NO_CACHE=1`` env
 # var (whole process, before import), the runtime toggles below (whole process, at
@@ -72,8 +68,8 @@ def disable_caching():
 
 
 def enable_caching():
-    """Undo ``disable_caching()`` -- later ``cppdef_cached`` calls use the .so cache
-    again. Note the ``CPPYY_KIT_NO_CACHE=1`` env kill-switch, if set, still wins."""
+    """Enable the .so cache for later ``cppdef_cached`` calls. The
+    ``CPPYY_KIT_NO_CACHE=1`` environment setting still disables it."""
     global _RUNTIME_DISABLED
     _RUNTIME_DISABLED = False
 
@@ -99,9 +95,9 @@ def caching_disabled():
 
 
 def _version_tag():
-    """``<cppstd>.<cppyy-cling-version>`` -- the same tag the freeze PCH uses, so a
-    cache built against a different cppyy is a filename miss, not a silent ABI
-    mismatch. Falls back to a coarse tag if cppyy_backend is unavailable."""
+    """Return ``<cppstd>.<cppyy-cling-version>``, the version tag used by the
+    freeze PCH. A different cppyy version gives a different cache filename. Use a
+    coarse tag if cppyy_backend is unavailable."""
     try:
         from . import freeze
         return freeze.version_tag()
@@ -131,8 +127,8 @@ def _signature(code, decls, include_paths, libraries, link_args, defines, std):
 
 def artifact_paths(code, decls=None, name=None, include_paths=(), libraries=(),
                    link_args=(), defines=(), std="c++17", directory=None):
-    """The ``(so_path, header_path, meta_path)`` a given cppdef would cache to.
-    Pure/deterministic -- useful for a ship-warm build step or the trace manifest."""
+    """Return the ``(so_path, header_path, meta_path)`` for a cppdef cache entry.
+    The result is deterministic. Use it in prebuild steps and trace manifests."""
     key = _signature(code, decls, tuple(include_paths), tuple(libraries),
                      tuple(link_args), tuple(defines), std)
     stem = ("%s_%s" % (name, key[:12])) if name else key
@@ -152,9 +148,8 @@ def _load(so_path):
 def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(),
                   libraries=(), link_args=(), defines=(), std="c++17",
                   trampoline=False, directory=None, cached=True):
-    """Drop-in for ``cppyy.cppdef(code)`` that compiles ``code`` to a ``.so`` once
-    and ``load_library``'s it on every later run -- killing cppyy's first-use
-    call-wrapper JIT persistently (module docstring).
+    """Compile ``code`` into a ``.so`` and load the library in later runs. This
+    avoids cppyy's first-use call-wrapper JIT for the cached functions.
 
     ``decls`` (recommended): bodiless C++ **declarations** of the entry points in
     ``code``. On a cache hit they are ``cppdef``'d (cheap) so cppyy can call the
@@ -170,21 +165,22 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     artifact a readable filename stem. Returns a dict describing what happened
     (``{"cached": bool, "so": path, ...}``) for tests/tracing.
 
-    ``cached=False`` (debugging escape hatch) bypasses the .so cache for this call --
-    a plain in-memory ``cppyy.cppdef(code)``, no cache read or write -- exactly like
-    the process-wide ``CPPYY_KIT_NO_CACHE=1`` / ``disable_caching()`` switches.
+    ``cached=False`` (for debugging) bypasses the .so cache for this call.
+    It uses in-memory ``cppyy.cppdef(code)`` without reading or writing the cache.
+    The process-wide ``CPPYY_KIT_NO_CACHE=1`` and ``disable_caching()`` switches do
+    the same for later calls.
 
     On a hit whose ``.so`` fails to load (truncated/ABI-stale/corrupt), the entry
-    is discarded and rebuilt -- a bad cache never wedges a run.
+    is discarded and rebuilt. This lets the call proceed after a corrupt cache hit.
     """
     t0 = time.perf_counter()
 
     def _ms():
         return round((time.perf_counter() - t0) * 1000, 3)
 
-    # Escape hatches (debugging): per-call cached=False, the process-wide runtime
+    # Debugging options: per-call cached=False, the process-wide runtime
     # toggle (disable_caching), or the CPPYY_KIT_NO_CACHE=1 env kill-switch all make
-    # this behave exactly like cppyy.cppdef -- no .so read, no .so write. See
+    # this behave like cppyy.cppdef: no .so read and no .so write. See
     # docs/FREEZE.md, "Debugging: turning the caches off".
     if cached is False or _caching_off():
         cppyy.cppdef(code)
@@ -206,7 +202,8 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
 
     # Mirror the compile's include paths onto cppyy's in-process search path, so the
     # miss-path cppdef(code) / hit-path cppdef(decls) resolve the same headers the
-    # .so was compiled against (deduped -- add_include_path is process-global).
+    # .so was compiled against. The set avoids duplicate calls because
+    # add_include_path changes process-global state.
     for path in include_paths:
         if path not in _INCLUDED:
             _INCLUDED.add(path)
@@ -297,10 +294,10 @@ def _build(code, decls, so_path, header_path, meta_path, include_paths,
 
 
 def prebuild(code, decls=None, **kwargs):
-    """Build the cached ``.so`` now without loading it -- for a package-build /
-    ship-warm step so the first runtime call is already a hit. No-op (returns the
-    existing path) if already built. Returns the ``.so`` path, or None if ``decls``
-    is missing (nothing to cache)."""
+    """Build the cached ``.so`` without loading it. Use this during package builds
+    to make the first runtime call a cache hit. If the library already exists,
+    return its path. If ``decls`` is missing, return None because there is nothing
+    to cache."""
     if not decls:
         return None
     tramp = kwargs.get("trampoline", False)

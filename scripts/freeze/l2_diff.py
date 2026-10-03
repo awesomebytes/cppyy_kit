@@ -3,11 +3,10 @@
 L0 (Python leaf) vs L2 (native C++ plugin node) differential test for t01's
 ApproachObject leaf.
 
-The lowering cycle's contract is "same tests, every rung". Here the SAME tree XML
-is ticked with ApproachObject as (L0) a Python callback through bt_kit and (L2) a
-native SyncActionNode loaded from a compiled plugin .so via registerFromPlugin --
-no cppyy/JIT and no Python in the L2 hot path. We assert identical stdout + status
-(correctness), then measure the per-tick boundary cost of each (tick rate).
+The test runs the same tree XML with ApproachObject implemented as a Python
+callback through bt_kit and as a native SyncActionNode loaded with
+registerFromPlugin. It checks that both processes return the same output and status,
+then measures the tick rate for each implementation.
 
 Build the plugin first (`pixi run -e bt freeze-l2-build`), then::
 

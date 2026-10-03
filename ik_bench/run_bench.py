@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 """
-The IK benchmark -- ONE Python script that benchmarks every available IK solver on
+The IK benchmark compares available IK solvers on
 the same Panda targets and prints one table (+ ``--json``).
 
-The story (docs/ik_bench/WHY.md): some IK solvers ship only as C++ MoveIt plugins
+Some IK solvers are available only as C++ MoveIt plugins
 (bio_ik, pick_ik are not even packaged); others are packaged (KDL, trac_ik); a plain
 Python baseline rounds it out. Normally comparing them means C++ harnesses, launch
 files and parameter servers. Here **cppyy + moveit_kit** load each C++ plugin
-in-process via pluginlib (COMMON_PATTERNS 19) and drive ``RobotState::setFromIK`` --
-so this single Python file is the whole harness.
+in-process through pluginlib (COMMON_PATTERNS 19) and call ``RobotState::setFromIK``.
 
-Method (honest):
+Method:
   * Same robot: the MoveIt panda test model. Same seeded target set for every solver
     (``--n`` targets: reachable configs + near-joint-limit configs; each target is a
     pose from FK of a valid config, paired with a DIFFERENT random seed config the
@@ -18,10 +17,10 @@ Method (honest):
   * Per solver, per target: one ``setFromIK`` (MoveIt plugins) or one DLS solve
     (Python) with the same per-solve ``--timeout``. Success is verified INDEPENDENTLY
     by forward-kinematics error against the target (position < ``--pos-tol`` m AND
-    orientation < ``--ori-tol`` rad) -- not by trusting the solver's own verdict.
+    orientation < ``--ori-tol`` rad), not only by the solver's reported result.
   * Warmup solves are excluded. Solve-rate is the median of ``--repeats`` timed
     passes. Error stats are over the verified successes. Each solver runs in a fresh
-    subprocess (cppyy and NumPy stay isolated; a blocked plugin can't sink the run).
+    subprocess (cppyy and NumPy stay isolated; blocked plugins are reported separately).
 
 Run: ``pixi run -e ik bench-ik``  (or ``python ik_bench/run_bench.py --json out.json``)
 """

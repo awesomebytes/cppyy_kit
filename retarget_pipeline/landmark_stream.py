@@ -1,22 +1,15 @@
-"""
-landmark_stream -- the record/replay contract between the two pipeline processes.
+"""Record and replay human landmark frames between pipeline processes.
 
-Process A (perception) WRITES a stream of per-frame human landmarks; Process B
-(retargeting) READS it. The stream is newline-delimited JSON (JSONL): one metadata
-header line, then one frame object per line. JSONL was chosen deliberately:
+The stream is newline-delimited JSON: one metadata header, followed by one frame per
+line. Another process can follow a file while it grows, or a test can read a finished
+file. The format can be inspected with `head -1 stream.jsonl`. This module uses only
+the standard library and NumPy, so both pipeline environments can import it without
+ROS, cppyy, MediaPipe, or OpenCV.
 
-  * **tailable** -- for live coupling, B follows A's file as it grows (``follow``);
-  * **replayable** -- CI/headless reads a finished file (``StreamReader``);
-  * **inspectable** -- ``head -1 stream.jsonl`` shows the schema; and
-  * **dependency-free** -- stdlib ``json`` + numpy only, so this module imports in
-    BOTH pixi envs (the ROS/MediaPipe perception env and the pinocchio ``wbc`` env,
-    which share no C++ stack). Nothing here imports ROS, cppyy, mediapipe or cv2.
-
-Coordinates follow MediaPipe's world-landmark convention: metres, origin at the
-midpoint of the hips, **x** to the subject's left, **y** down, **z** toward the
-camera. The retarget stage converts this to its robot frame once (see
-``mediapipe_world_to_robot``); everything upstream stays in MediaPipe's frame so the
-synthetic generator and the real detector produce interchangeable streams.
+Coordinates use the MediaPipe world-landmark convention: metres, origin at the hip
+midpoint, x toward the subject's left, y down, and z toward the camera. The retarget
+stage converts these coordinates to the robot frame. Synthetic and detected landmarks
+use the same format.
 """
 import datetime
 import json
@@ -273,7 +266,7 @@ def mediapipe_world_to_robot(points):
 # Synthetic landmark source: a standing person waving both arms. Produces
 # MediaPipe-world-convention landmarks with NO camera and NO mediapipe, so the
 # perception demo runs headless (CI / rehearsal / no-webcam), and the retarget has
-# real inter-frame motion to track. The pose_image projection is orthographic.
+# inter-frame motion to track. The pose_image projection is orthographic.
 # --------------------------------------------------------------------------- #
 # A neutral standing skeleton in MediaPipe world convention (metres, hip-centered,
 # x=subject-left, y=down, z=toward-camera). Only the retarget-relevant joints need

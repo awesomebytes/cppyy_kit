@@ -1,35 +1,16 @@
-"""
-vision_viz -- shared Rerun setup for the vision demos.
+"""Shared Rerun setup for the vision demos.
 
-The interactive default is a **live viewer**: when you run a demo by hand, a Rerun
-window opens and you watch the pipeline work -- the camera stream, the ORB
-keypoints, the per-frame processing time, and (M3/M4) the loops closing and the
-trajectory snapping back. Headless (writing a ``.rrd`` you open later) is the
-fallback for tests/CI and displayless shells, so ``pixi run -e vision test-vision``
-and any headless run are unchanged.
+When a display is available and the process is not running under pytest, demos open
+a live viewer by default. Set `RCLCPPYY_RERUN_SPAWN=1` to force the viewer or `=0`
+to write a headless `.rrd` recording. The same decision applies to each demo.
 
-One place decides, so every demo behaves the same:
+The `rerun` console command in this environment uses a Python shim that cannot
+import its native bindings because of a `rerun_bindings` symbol mismatch. The demos
+therefore start the native viewer binary included in the `rerun_sdk` package. If it
+cannot be found or started, the demo writes a headless recording instead.
 
-Decision (:func:`should_spawn`):
-  * ``RCLCPPYY_RERUN_SPAWN=1`` -> force the live viewer;
-  * ``RCLCPPYY_RERUN_SPAWN=0`` -> force headless ``.rrd`` (e.g. CI on a display);
-  * unset -> live **iff** a display is present (``DISPLAY`` or ``WAYLAND_DISPLAY``)
-    and we are **not** under pytest.
-
-Spawning the viewer (:func:`native_viewer_path`): rerun-sdk's console entry point
-(the ``rerun`` on ``PATH``) is, in this env, a thin Python shim that fails to import
-its native bindings (a ``rerun_bindings`` symbol mismatch), so ``rr.spawn()`` with
-the default executable never binds its port. We therefore spawn the **native**
-viewer binary that ships inside the wheel (``rerun_sdk/rerun_cli/rerun``) via
-``rr.spawn(executable_path=...)``, falling back to the default name if we can't find
-it, and finally degrading to a headless ``.rrd`` if the viewer won't come up (so a
-demo never dies just because it couldn't open a window).
-
-Tidy tree: demos log under a small set of stable entity roots (``camera/``,
-``perf/``, ``loop/``, ``world/``) and pass a :mod:`rerun.blueprint` layout so the
-viewer opens already arranged into comprehensible panels instead of an
-auto-generated pile.
-"""
+Demos use stable entity roots such as `camera/`, `perf/`, `loop/`, and `world/`.
+Shared blueprint functions set the panel layout."""
 import os
 import sys
 from collections import namedtuple
@@ -43,19 +24,17 @@ VizSession = namedtuple("VizSession", "mode rrd")
 
 
 def under_pytest():
-    """True if we are running inside pytest (so demos invoked by a test never try
-    to pop a window)."""
+    """Return `True` when the process is running under pytest. Tests should not open
+the live viewer."""
     return "PYTEST_CURRENT_TEST" in os.environ or "pytest" in sys.modules
 
 
 def should_spawn(env=None, in_pytest=None):
-    """Decide live viewer (True) vs headless .rrd (False).
+    """Choose the live viewer or headless `.rrd` output.
 
-    ``RCLCPPYY_RERUN_SPAWN`` forces it when set (``1`` -> live, ``0`` -> headless);
-    otherwise go live only when interactive: a display is present and we are not
-    under pytest. Pure and side-effect-free so it is unit-testable -- pass ``env``
-    (a dict) and ``in_pytest`` to exercise every branch.
-    """
+`RCLCPPYY_RERUN_SPAWN` selects the mode when set. Otherwise, open the viewer only
+when a display is available and the process is not running under pytest. The
+function has no side effects; pass `env` and `in_pytest` to test the decision."""
     env = os.environ if env is None else env
     forced = env.get("RCLCPPYY_RERUN_SPAWN")
     if forced is not None and forced.strip() != "":
@@ -68,11 +47,8 @@ def should_spawn(env=None, in_pytest=None):
 
 
 def native_viewer_path():
-    """Absolute path to the native Rerun viewer binary bundled in the rerun_sdk
-    wheel (``rerun_sdk/rerun_cli/rerun``), or ``None`` if not found.
-
-    Preferred over the ``rerun`` console script on ``PATH``, which may be a Python
-    shim that fails to import its bindings in this env."""
+    """Return the path to the native Rerun viewer bundled with `rerun_sdk`, if found.
+The `rerun` console script may fail to import the native bindings in this environment."""
     try:
         pkg = os.path.dirname(os.path.abspath(rr.__file__))          # .../rerun_sdk/rerun
         cand = os.path.join(os.path.dirname(pkg), "rerun_cli", "rerun")
@@ -91,14 +67,10 @@ def native_viewer_path():
 
 
 def init_rerun(app_id, rrd_path, blueprint=None, env=None):
-    """One-call Rerun setup for a demo. Returns a :class:`VizSession`.
+    """Initialize Rerun for a demo and return a `VizSession`.
 
-    Live (interactive) by default: spawns the native viewer and streams to it.
-    Headless otherwise: writes ``rrd_path`` (a ``.rrd`` recording). ``blueprint`` (a
-    :mod:`rerun.blueprint` layout) is applied in both modes, so the recording opens
-    with the same tidy panels the live viewer shows. If a live viewer is wanted but
-    won't come up, degrade to headless rather than fail.
-    """
+In viewer mode, start the native viewer. In headless mode, save an `.rrd` recording
+at `rrd_path`."""
     env = os.environ if env is None else env
     spawn = should_spawn(env)
     rr.init(app_id, default_blueprint=blueprint)
@@ -121,8 +93,7 @@ def init_rerun(app_id, rrd_path, blueprint=None, env=None):
 
 
 def announce(session):
-    """Print a one-line, honest note about where the visualization went, matching
-    the mode init_rerun actually chose."""
+    """Print the selected Rerun output mode."""
     if session.mode == "spawn":
         print("Rerun: live viewer opened -- watch it stream. "
               "(headless instead: RCLCPPYY_RERUN_SPAWN=0)", flush=True)
@@ -141,8 +112,7 @@ def _rrb():
 
 
 def blueprint_camera_perf(perf_title="processing time (ms/frame)"):
-    """Spine/features layout: the camera image (with any keypoint overlay) beside a
-    live per-frame processing-time plot."""
+    """Set the layout for the camera image and per-frame processing-time plot."""
     rrb = _rrb()
     return rrb.Blueprint(
         rrb.Horizontal(
@@ -155,9 +125,7 @@ def blueprint_camera_perf(perf_title="processing time (ms/frame)"):
 
 
 def blueprint_loop():
-    """M3 layout: the live camera on the left; on the right a stack of the
-    processing-time / loop-score plots, the confirmed loop image pair, and the loop
-    event log -- so a closing loop is visible from three angles at once."""
+    """Set the layout for the camera, loop score, matched-image pair, and event log."""
     rrb = _rrb()
     return rrb.Blueprint(
         rrb.Horizontal(
@@ -179,12 +147,8 @@ def blueprint_loop():
 
 
 def blueprint_webcam_ab():
-    """M6b layout (live webcam A-vs-B): the live camera with the tracked features and
-    their flow arrows on the left; on the right a stack of the head-to-head plots --
-    per-frame processing time, achievable FPS and process CPU% (each carrying an
-    ``A`` series = the kits/cppyy path and a ``B`` series = the naive Python path) --
-    over the accumulated camera trajectory. One glance shows A running fast/cheap
-    while B struggles on the very same frames."""
+    """Set the layout for the webcam image, tracked features, flow vectors, pipeline timing,
+CPU use, and accumulated trajectory."""
     rrb = _rrb()
     return rrb.Blueprint(
         rrb.Horizontal(
@@ -206,9 +170,8 @@ def blueprint_webcam_ab():
 
 
 def blueprint_posegraph():
-    """M4 layout: the trajectories in a 3D view (drift vs corrected vs ground truth
-    + loop edges) beside the mean-error-over-time plot that drops when the optimizer
-    runs."""
+    """Set the layout for the ground-truth, drifted, and corrected trajectories and error
+plot."""
     rrb = _rrb()
     return rrb.Blueprint(
         rrb.Horizontal(

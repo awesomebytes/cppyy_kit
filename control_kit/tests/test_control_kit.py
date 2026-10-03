@@ -143,7 +143,7 @@ def test_python_controller_converges(ros):
 
 def test_interface_config_types(ros):
     # A uint8_t-backed enum read back from a struct member crosses as a 1-char str
-    # (same quirk as a returned return_type -- see ok()); ord() it to compare.
+    # This matches the behavior of a returned return_type. Use ord() to compare.
     cfg = ck.interface_config(["j/position"], "individual")
     assert ord(cfg.type) == int(ck.interface_configuration_type.INDIVIDUAL)
     assert list(cfg.names) == ["j/position"]

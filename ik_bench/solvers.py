@@ -7,15 +7,15 @@ and collect the same metrics. Three families:
 
   * ``moveit`` -- a MoveIt ``kinematics::KinematicsBase`` plugin loaded IN-PROCESS via
     ``moveit_kit``'s pluginlib recipe (REPORT.md 2.2 / COMMON_PATTERNS 19). This is
-    the whole point: KDL and trac_ik are packaged; **bio_ik and pick_ik are C++-only
-    and unpackaged**, vendored-built (ik_bench/vendor/) and discovered by the SAME
-    pluginlib-by-lookup-name path -- Cling never parses their headers.
+    KDL and trac_ik are packaged; **bio_ik and pick_ik are C++-only
+    and unpackaged**, built from vendored source (ik_bench/vendor/) and discovered by
+    pluginlib lookup name. Cling does not parse their headers.
   * ``python`` -- the pure-NumPy DLS baseline (ik_bench/panda.py). No C++ at all.
 
 A ``moveit`` solver is *available* iff pluginlib can find its lookup name in the
-ament index (packaged plugins are always there; a vendored one appears once its
+ament index (packaged plugins are there; a vendored one appears once its
 build has installed the ament marker + plugin xml + .so, and its prefix is on
-``AMENT_PREFIX_PATH``). Unavailable solvers show up as an honest ``blocked`` row.
+``AMENT_PREFIX_PATH``). Unavailable solvers appear with status ``blocked``.
 """
 import os
 
@@ -87,7 +87,7 @@ REGISTRY = [
                 "vendored-source build; generate_parameter_library-heavy."),
     Solver("pure_python", "pure-Python DLS (NumPy)", "python",
            note="Damped-least-squares Jacobian IK in NumPy (ik_bench/panda.py). "
-                "No MoveIt, no cppyy -- the honest Python baseline."),
+                "NumPy implementation; does not use MoveIt or cppyy."),
 ]
 
 BY_KEY = {s.key: s for s in REGISTRY}

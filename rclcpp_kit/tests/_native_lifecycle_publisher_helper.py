@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Committed proof for PLAN-lifecycle.md S2: create_lifecycle_publisher (a
+"""Test PLAN-lifecycle.md S2: create_lifecycle_publisher (a
 managed rclcpp_lifecycle::LifecyclePublisher) gates natively -- a publish
 while unconfigured or inactive is suppressed in C++; once the node
 transitions to active the same publisher delivers, observed on a stock
@@ -10,8 +10,8 @@ client -- the plan explicitly allows either funnel for this slice.
 create_publisher<>() auto-registers the publisher with the node as a
 managed entity (lifecycle_node_impl.hpp), so the node's own transition
 machinery already calls the publisher's on_activate/on_deactivate; no extra
-wiring is exercised here beyond construction -- this proof is what confirms
-that auto-registration actually reaches an rclcpp_kit-owned publisher.
+wiring is exercised here beyond construction. This test confirms that
+auto-registration reaches an rclcpp_kit-owned publisher.
 """
 import time
 
@@ -101,7 +101,7 @@ def main():
         message.data = "while-inactive-again"
         publisher.publish(message)
 
-        # A second activate + publish proves no residual gating state stuck.
+        # Activate and publish again to check that no gating state remains.
         assert (
             lifecycle.trigger_transition_by_label("activate")
             == CALLBACK_RETURN_SUCCESS

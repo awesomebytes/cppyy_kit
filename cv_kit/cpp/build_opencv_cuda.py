@@ -1,39 +1,27 @@
 #!/usr/bin/env python3
-"""Provision & validate CUDA-enabled OpenCV (cv::cuda::ORB / cudafeatures2d) for
-the vision tutorial's GPU path.
+"""Provision and validate CUDA-enabled OpenCV for `cv::cuda::ORB`.
 
-Job-1 finding (full evidence in docs/vision/CUDA_OPENCV.md):
+Details and evidence are in `cv_kit/CUDA_OPENCV.md`.
 
-  * conda-forge ships NO CUDA OpenCV. Its opencv-feedstock build.sh sets
-    -DWITH_CUDA=0 -DWITH_CUBLAS=0, there is no cuda variant key in
-    conda_build_config.yaml, and 0 of 6357 conda-forge `libopencv` builds carry a
-    cuda tag (verified via the anaconda.org API). Requests to enable it are
-    long-standing and declined (feedstock issues #74, #109).
+The conda-forge OpenCV build has CUDA disabled. The Esri channel provides a
+public Apache-2.0 OpenCV 4.13.0 package built with CUDA 12.9. It was tested on an
+RTX PRO 2000 Blackwell GPU (sm_120). The package includes
+`libopencv_cudafeatures2d.so`, which provides `cv::cuda::ORB`. The driver compiles
+the package's PTX for sm_120 when the first CUDA kernel runs.
 
-  * A trustworthy prebuilt DOES exist: the public, Apache-2.0 **Esri** channel's
-    `libopencv 4.13.0 cuda129_py313_4` for linux-64 -- the SAME OpenCV version as
-    the vision env's conda-forge opencv 4.13.0, built against CUDA 12.9 (which
-    supports Blackwell sm_120). It ships the full cuda module set incl.
-    libopencv_cudafeatures2d.so (cv::cuda::ORB). Validated end-to-end on an
-    RTX PRO 2000 Blackwell (sm_120) via PTX->sm_120 JIT.
-
-Consumption: we extract just the C++ .so's + headers into build/vendor/opencv-cuda/
-(the Esri package's gstreamer/ffmpeg/hdf5 deps don't co-solve with current
-conda-forge and the ORB path needs none of them). The CUDA 12.9 runtime the libs
-link against comes from the pixi `cudabuild` feature (cudart/cublas/cufft/npp).
-cv_kit loads these C++ libs directly via cppyy -- no py-opencv, no python coupling.
+The script extracts the C++ shared libraries and headers into
+`build/vendor/opencv-cuda/`. The `cudabuild` pixi feature supplies the CUDA 12.9
+runtime libraries used by ORB. cppyy loads the C++ libraries directly.
 
 Subcommands:
-  provision          download + verify (sha256) + extract prebuilt into build/vendor/opencv-cuda/
-  validate           compile & run a C++ cv::cuda::ORB smoke test + CPU-vs-CUDA fps bench
-  validate-cppyy     the same check through cppyy (run from an env with cppyy, e.g. vision)
-  build-from-source  FALLBACK: configure+compile OpenCV+contrib 4.13.0 with CUDA ON (sm_120)
-                     if you cannot/won't use the prebuilt (documented; ~30-90 min)
+  provision          download, verify the sha256, and extract the package
+  validate           compile and run a C++ ORB smoke test and CPU/CUDA benchmark
+  validate-cppyy     run the same check through cppyy; use an env with cppyy
+  build-from-source  build OpenCV 4.13.0 and contrib with CUDA and sm_120 support
 
-Run the packaged tasks with the cudabuild env:
+Run the packaged tasks in the cudabuild env:
   pixi run -e cudabuild provision-cuda-opencv
-  pixi run -e cudabuild validate-cuda-opencv
-"""
+  pixi run -e cudabuild validate-cuda-opencv"""
 from __future__ import annotations
 
 import argparse

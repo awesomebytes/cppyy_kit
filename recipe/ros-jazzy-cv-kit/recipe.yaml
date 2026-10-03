@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: ros-jazzy-cv-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
   version: "0.3.0"
 
 package:
@@ -42,10 +42,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Drive OpenCV's C++ API from Python via cppyy (zero-copy Image->cv::Mat)"
+  summary: "Call OpenCV's C++ API from Python through cppyy"
   description: |
-    cv_kit drives OpenCV's C++ API (core/imgproc/features2d) from Python via
-    cppyy, with a zero-copy bridge from a C++ sensor_msgs/Image into cv::Mat.
+    cv_kit exposes OpenCV core, imgproc, and features2d to Python through
+    cppyy. It can create a cv::Mat view of a C++ sensor_msgs/Image without
+    copying the image data.
 
 extra:
   recipe-maintainers:

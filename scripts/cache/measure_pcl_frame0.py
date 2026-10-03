@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
-Measure pcl_kit's compile-cache adoption on the d02 showcase's frame-0
-(cloud_from_msg -> voxel_downsample -> msg_from_cloud), in cold subprocesses.
+Measure pcl_kit's compile-cache effect on frame 0 of d02
+(cloud_from_msg -> voxel_downsample -> msg_from_cloud) in fresh subprocesses.
 
   pixi run -e pcl python scripts/cache/measure_pcl_frame0.py
 
-In the showcase the publisher builds the input PointCloud2 once at init (that pays
-toROSMsg's first-use), so the first *processed* frame's cost is dominated by the
-VoxelGrid template first-use -- exactly what the compile cache moves into the .so.
-"JIT" forces the Python-driven VoxelGrid path (CPPYY_KIT_NO_CACHE=1); "cached" runs
-the compiled voxel_downsample from the kit's .so (run 1 a miss, runs 2+ hits).
+The publisher creates the input PointCloud2 at startup, including the first-use
+cost of toROSMsg. Frame 0 then includes first-use compilation of the VoxelGrid
+template. The compile cache moves that compilation into the .so.
+"JIT" forces the Python-driven VoxelGrid path (CPPYY_KIT_NO_CACHE=1). "cached" uses
+the compiled voxel_downsample from the kit's .so. Run 1 compiles it; later runs reuse it.
 """
 import argparse
 import json
@@ -29,7 +29,7 @@ def _worker():
     pcl_kit.bringup_pcl(with_ros=True)
     rng = np.random.default_rng(0)
     base = pcl_kit.cloud_from_numpy(rng.random((N_POINTS, 3), dtype=np.float32))
-    in_msg = pcl_kit.msg_from_cloud(base)   # toROSMsg first-use lands here (init)
+    in_msg = pcl_kit.msg_from_cloud(base)   # toROSMsg runs here on first use
 
     t = {}
 

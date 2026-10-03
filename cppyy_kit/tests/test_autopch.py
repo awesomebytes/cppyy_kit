@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.autopch -- the zero-config Cling PCH (build-on-first-use,
-auto-load thereafter, activated at interpreter start by an installed .pth).
+"""Tests for cppyy_kit.autopch, which builds and loads a Cling PCH automatically.
+The installed .pth activates the PCH at interpreter start.
 
-Hermetic and fast: they never build a real PCH (except the opt-in test) and never
+These tests do not build a real PCH except in the opt-in test. They do not
 touch the user's real cache or site-packages. XDG_CACHE_HOME and site-packages are
-redirected to tmpdirs, and the key material (CONDA_PREFIX, the cppyy version) is
-pinned. The cross-process test loads the standalone boot module by file path (no
-cppyy), mirroring how the real .pth activates before cppyy loads.
+redirected to temporary directories, and the key inputs (CONDA_PREFIX and the
+cppyy version) are fixed. The cross-process test loads the standalone boot module
+by file path without importing cppyy. This matches how the real .pth runs first.
 """
 import importlib.util
 import json
@@ -24,7 +24,7 @@ _BOOT_PATH = os.path.join(_REPO, "cppyy_kit", "_autopch_boot.py")
 
 def _load_boot_by_path():
     """Load _autopch_boot.py as a standalone top-level module (as the installed .pth
-    copy runs) -- no package import, no cppyy."""
+    copy runs). It does not import the package or cppyy."""
     spec = importlib.util.spec_from_file_location("_cppyy_kit_autopch_probe", _BOOT_PATH)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

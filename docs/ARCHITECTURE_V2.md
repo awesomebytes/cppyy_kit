@@ -1,48 +1,48 @@
-# Proposal: cppyy_kit as the base package — re-architecting the kit suite
+# Architecture decision: cppyy_kit and the kit suite
 
-**Status: APPROVED DIRECTION (2026-07-11)** — The architecture was approved with
-two refinements, captured in §4: the ROS core becomes **`rclcpp_kit`** (obeying
-the same naming rule as every other kit), **`rclcppyy` stays a standalone
-product** that depends on it, and the kit suite moves to a **new repo**. §§1–3
-below are the original evaluation; §4 is the operative plan.
+**Status: approved direction (2026-07-11).** Section 4 records two changes to
+the original proposal. The ROS core is packaged as **`rclcpp_kit`**. The
+standalone **`rclcppyy`** product depends on that kit. The kit suite moves to a
+separate repository. Sections 1-3 contain the proposal evaluation. Section 4
+records the approved layout.
 
 ---
 
-## 1. Ideas from the design proposal — evaluated against measured evidence
+## 1. Design proposal evaluation
 
-### 1.1 Good and missing (adopt)
+### 1.1 Proposed features to adopt
 
-| Idea (doc §) | Verdict | Why, grounded in measured evidence |
+| Idea (doc §) | Decision | Evidence and implementation |
 |---|---|---|
-| **Content-hash compile cache** (§5.7) | **Adopt — highest value** | The single best idea in the proposal. The freeze work proved the Cling PCH kills the header parse (890→6 ms) but NOT the per-signature wrapper JIT (~0.69 s, measured identical L0/L1, not reducible by flags). The proposed approach — hash the C++ source, compile ONCE to a real `.so`, `dlopen` thereafter — is the L2 direct-compile recipe applied automatically to every `cppdef`. It makes the "slow first call" happen once per machine *ever*, superseding warmup's cost-relocation with cost-elimination. Every ingredient is already in place (direct-compile recipe §21, artifact tagging from FREEZE.md). |
-| **`require()` header-only fetcher** (§5.5) | **Adopt, conda-first** | Generalizes the §21 vendored-source pattern (DBoW2 took a bespoke script). Policy matters: prefer conda/pixi packages when they exist (they usually do — eigen, fmt, nlohmann); `require()` is the fallback for header-only libs that aren't packaged or need exact versions. Must cache + checksum like the dataset tooling. |
-| **`@cpp` decorator** (§5.6) | **Adopt** | Natural unification of what was already half-built: `callback()`'s type-hint signature inference + the marshaling patterns (numpy→pointer+size is §6). Body-never-executed with annotation-driven marshaling is clean, and it composes with the compile cache (each `@cpp` block = one cached `.so`). |
-| **`.pyi` stub generation** (§5.1) | **Adopt — revive** | Was on rclcppyy's ORIGINAL roadmap (`scripts/create_stubs.py`, stalled WIP). Belongs at the cppyy_kit level; directly serves the LLM-ergonomics principle (typed corridors help agents too). |
-| **async/nogil helpers** (§2.2) | **Adopt, corrected** | The proposal's premise ("cppyy calls release the GIL automatically") is **factually wrong** — control_kit *measured* that cppyy holds the GIL on blocking C++ calls (COMMON_PATTERNS §13). But the goal is right: a `nogil()` wrapper (C++-side GIL release shim) + an asyncio `run_in_executor` integration would make blocking C++ calls event-loop-safe. Built on the corrected foundation. |
-| **Layered packaging: base + kit packages** (§5.1/§5.8) | **Adopt — the re-architecture** | Matches the project's design direction and practical reality: cppyy_kit is already ROS-free by content; six kits already follow "depends on the base". See §3. |
-| **Fallback contract + `status()` introspection** (§5.2) | **Adopt the pattern, not the target** | The project already does capability-detection-with-fallback ad hoc (CUDA auto-detect, frozen-path fallback, gtsam binding fallback). Codified once in cppyy_kit (capability probe + fallback + introspectable status) so kits stop reinventing it. |
+| **Content-hash compile cache** (§5.7) | **Adopt** | The PCH reduced header parsing from 890 ms to 6 ms. It did not reduce the per-signature wrapper JIT, which took about 0.69 s in both L0 and L1 and did not improve with compiler flags. Hash each C++ source, compile it to a `.so`, and load that artifact on later calls. Apply the existing L2 direct-compile recipe to each `cppdef`. The direct-compile recipe (§21) and artifact tagging in FREEZE.md provide starting points. |
+| **`require()` header-only fetcher** (§5.5) | **Adopt, conda-first** | Extend the vendored-source pattern from §21, which DBoW2 currently handles with a custom script. Prefer conda or Pixi packages. Use `require()` for un-packaged header-only libraries or when a specific version is needed. Cache files and verify checksums, as the dataset tools do. |
+| **`@cpp` decorator** (§5.6) | **Adopt** | Combine the signature inference used by `callback()` with the marshaling patterns in §6. The decorated function body is not executed by Python. Its annotations determine argument conversion. Cache each `@cpp` block as a separate `.so`. |
+| **`.pyi` stub generation** (§5.1) | **Adopt** | `scripts/create_stubs.py` was an unfinished item on the rclcppyy roadmap. Add stub generation to cppyy_kit so editors and static analysis tools can read dynamic APIs. |
+| **async/nogil helpers** (§2.2) | **Adopt with correction** | The proposal says cppyy releases the GIL automatically. Measurements in control_kit show that cppyy holds the GIL during blocking C++ calls (COMMON_PATTERNS §13). Add an explicit `nogil()` wrapper and an asyncio `run_in_executor` integration for blocking calls. |
+| **Layered packaging: base + kit packages** (§5.1/§5.8) | **Adopt** | cppyy_kit has no ROS dependency, and six kits already depend on it. See §3. |
+| **Fallback contract + `status()` introspection** (§5.2) | **Adopt** | Kits currently handle capability checks and fallback behavior separately. Add a shared probe, fallback, and status interface to cppyy_kit. |
 
-### 1.2 Doesn't make sense for us (skip, with reasons)
+### 1.2 Proposed features not included
 
-| Idea | Verdict | Why |
+| Idea | Decision | Reason |
 |---|---|---|
-| **`kits.fast` — monkey-patching builtins/stdlib** (§5.2) | **Skip** | A different product (general Python acceleration, competing with orjson/polars/numpy). The data in this project is never 10M-element Python lists — it's messages/clouds/images already living in C++. The proposal itself lists the costs (CPython-version compatibility surface, float-reduction correctness, patch conflicts), and the project's monkeypatching experience shows global patching is the most fragile thing shipped. Not this project's mission. |
-| **Lambda transpilation** (§5.3) | **Skip** | AST→C++ transpiling is admitted-fragile with an ill-defined boundary. The L0→L2 lowering with tests-as-the-contract is the principled version of the same desire. The `op.*` functor algebra is a DSL — violates mirror-don't-sugar. If a kit ever needs composed C++ functors, add the minimal helper then, evidence-first. |
+| **`kits.fast`: monkey-patching builtins/stdlib** (§5.2) | **Skip** | This project moves work on messages, point clouds, and images that already use C++. It does not target Python lists with millions of elements. Global patches also add CPython-version constraints, can change floating-point results, and can conflict with other packages. |
+| **Lambda transpilation** (§5.3) | **Skip** | The proposal does not define which Python expressions can be translated from AST to C++. Use tested L0-to-L2 lowering instead. Add small C++ functor helpers only when a kit requires them. |
 | **"GIL bypass is automatic"** (§2.1) | **Reject the claim** | Measured false for cppyy (control_kit). Keep the corrected record; build explicit nogil instead. |
-| **`kits.parallel` as a headline** (§5.3) | **Defer** | Parallel STL via cppyy is real capability, but it's generic-Python-audience material, not robotics. Community-kit territory after the base exists. Exception: **`concurrent`** primitives (lock-free SPSC queues via moodycamel) DO matter for robotics pipelines — a small module once `require()` exists. |
-| **Freeze CLI → "wheel with no Cling dependency"** (§5.7) | **Reframe** | Overpromised: full AOT of arbitrary reflection surfaces is beyond current cppyy; the measured ladder (PCH keeps Cling; wrappers still JIT; L2 removes cppyy per-path) is the honest version. The compile cache gets most of the practical benefit without the false promise. |
+| **`kits.parallel` as a main feature** (§5.3) | **Defer** | Parallel STL is a general Python capability rather than a robotics-specific one. Consider it after the base package is available to the community. A separate `concurrent` module for lock-free SPSC queues may help robotics pipelines; consider it after `require()` is available. |
+| **Freeze CLI that removes the Cling dependency** (§5.7) | **Do not promise** | Full ahead-of-time compilation of arbitrary reflection surfaces is outside cppyy's current support. The measured options use PCH with Cling, JIT-compiled wrappers, or L2 code that removes cppyy from selected call paths. |
 
 ---
 
-## 2. What the proposal missed — hard-won lessons
+## 2. Existing implementation constraints
 
-Anyone building the proposal's design would rediscover the 21 patterns: the GIL truth
-(§13), silent SIGSEGVs (containers, failed cppdef/include — §9), keep-alive
-lifetime discipline (§3), ownership rules (§5, §16), the `final`-virtual and
-`generate_parameter_library` walls, value-crossing traps (§11), and the honest
-performance framing (boundary cost per call; engine value ≠ tick speed). Our
-COMMON_PATTERNS.md + cppyy_kit primitives are the moat; the proposal's contribution is
-packaging, cache, and ergonomics ideas on top.
+The 21 existing patterns document constraints relevant to this design: GIL
+behavior (§13), SIGSEGVs involving containers and failed `cppdef`/`include` calls
+(§9), object lifetime (§3), ownership (§5, §16), limitations on `final` virtual
+methods and `generate_parameter_library`, value conversion (§11), and the
+per-call cost at the Python/C++ boundary. Engine performance does not imply
+faster tree ticks. COMMON_PATTERNS.md and cppyy_kit provide these implementations
+and patterns. The proposal adds packaging, caching, and API usability work.
 
 ---
 
@@ -71,12 +71,11 @@ repo root
 ```
 
 - **Same repo** (monorepo), **separate conda packages** on the existing
-  prefix.dev channel: `cppyy-kit` (no ROS deps — conda-forge candidate later),
+  prefix.dev channel: `cppyy-kit` (no ROS deps: conda-forge candidate later),
   `ros-jazzy-rclcppyy` (as today), `ros-jazzy-<kit>-kit` each declaring its own
   C++ deps (behaviortree-cpp, pcl, ompl, nav2-*, moveit, ros2-control…).
-- Kits are **pure-Python packages** (no ament needed — only rclcppyy keeps
-  ament_cmake for the ROS index); their recipes are trivial compared to the one
-  already shipped.
+- The kit Python modules do not require ament. Only rclcppyy uses ament_cmake
+  for the ROS index. Recipes may also build or include optional C++ sources.
 - **Import compatibility**: `rclcppyy.kits.X` shims re-exporting the new
   top-level modules for one release cycle, with a deprecation note.
 - **Versioning**: lockstep initially (one tag releases the whole suite via a
@@ -84,33 +83,32 @@ repo root
 
 ### Phases
 
-- **Phase A — Extract & re-plumb (mechanical, no new features).**
+- **Phase A: Extract & re-plumb (mechanical, no new features).**
   Move cppyy_kit to top-level; kits import it; compat shims; multi-recipe
   release matrix; CI path-filtered test jobs. Gate: every existing suite green,
   every artifact builds, fresh-env install of each package proven (the Phase-4
   playbook per package).
-- **Phase B — Enrich the base (the adopted ideas, value order).**
-  1. Compile cache (kills first-use JIT persistently — measure vs warmup).
+- **Phase B: Add base features in priority order.**
+  1. Compile cache to reuse wrapper builds across runs. Compare with warmup.
   2. `require()` + port the DBoW2 build onto it.
   3. `@cpp` decorator (unify with callback() inference).
   4. `nogil()` + asyncio helper (with a measured GIL-release proof).
   5. Stubs revival. 6. capability/status codification.
-  Each lands with the usual gates + COMMON_PATTERNS updates.
-- **Phase C — Publish the suite.** Tag → matrix build → prefix.dev; README
+  For each feature, run the required checks and update COMMON_PATTERNS.
+- **Phase C: Publish the suite.** Tag → matrix build → prefix.dev; README
   install matrix; per-kit WHY docs become per-package READMEs.
-- **Phase D — Outward (optional).** `concurrent` module; conda-forge submission
+- **Phase D: Optional follow-up work.** `concurrent` module; conda-forge submission
   of `cppyy-kit`; community-kit contribution guide (COMMON_PATTERNS as the
   authoring manual).
 
 ### Risks
 
-- **Churn vs. momentum**: Phase A touches every import path — do it in one
-  focused pass with the full gate matrix, not incrementally alongside feature work.
-- **cppyy-kit without ROS** needs its own CI leg (plain conda-forge env) to keep
-  the ROS-free claim honest.
-- **Naming**: `cppyy_kit` on conda-forge may collide with the reference doc's
-  hypothetical if it ever ships; claim the name early (publish to the
-  first, conda-forge when stable).
+- **Import changes**: Phase A updates every import path. Complete these changes
+  in one pass and run the full test matrix before starting feature work.
+- **ROS-free package**: add a CI job that tests cppyy-kit in an environment
+  without ROS dependencies.
+- **Package name**: publish `cppyy-kit` to prefix.dev first, then consider
+  submitting it to conda-forge when it is stable.
 
 ---
 
@@ -118,34 +116,29 @@ repo root
 
 ### 4.1 Project name: **`cppyy_kit`** (recommended; availability verified)
 
-The project, the new repo, and the base package share one name. Evidence-based
-availability check (2026-07-11): PyPI `cppyy-kit`/`cppyy_kit` **free**, GitHub
-**zero** repos by that name, conda-forge **clean** (`rclcpp-kit` clean too).
-Rationale:
+The project, repository, and base package share one name. The 2026-07-11
+availability check found no PyPI package or GitHub repository named
+`cppyy-kit`/`cppyy_kit`. conda-forge had no package with that name. It also had
+no package named `rclcpp-kit`.
 
-- **Base package = project identity** (the pytest/django model): no brand
-  splitting, and "the cppyy_kit project's `nav2_kit` package" reads naturally.
-- **Claims the strategic name now** — the ideation doc's hypothetical library
-  would otherwise collide with us later; first-published wins mindshare.
-- **Searchability**: anyone evaluating cppyy finds the kit ecosystem.
-- **Honest umbrella**: the base is deliberately generic (ROS-free); robotics
-  kits are the flagship members, not a fence around the name.
+- **One project and package name**: the base and domain kits share the
+  `cppyy_kit` name.
+- **Searchability**: the name associates the suite with cppyy.
+- **Scope**: the base has no ROS dependency. The domain kits target robotics.
 
-Considered alternatives: `kitforge` (brandable, tech-agnostic; PyPI free,
-only hobby GitHub repos — the runner-up if a cppyy-independent brand is ever
-wanted); `kitbash` (best metaphor — assembling systems from kits — but PyPI
-taken and adjacent to the KitBash3D commercial brand; rejected).
+Other names considered were `kitforge` and `kitbash`. `kitforge` was available
+on PyPI but had only small GitHub repositories. `kitbash` was already used on
+PyPI and is close to the KitBash3D brand.
 
 ### 4.2 The two-repo model
 
-**Repo 1 — NEW: `github.com/awesomebytes/cppyy_kit`** (the suite):
+**Repository 1: `github.com/awesomebytes/cppyy_kit`** (the suite):
 
 ```
-cppyy_kit/    # base, ROS-FREE: primitives + cache/require/@cpp/nogil/stubs/
-              # capability-fallback + freeze & vendored-source tooling
-rclcpp_kit/   # the kit FOR rclcpp — same rule as every kit: bringup, C++
-              # message resolution/conversion, serialization, rosbag2_cpp,
-              # tf (rclcppyy.tf moves here), executor/node helpers, rclcpp PCH
+cppyy_kit/    # ROS-free base: primitives, cache, require, @cpp, nogil, stubs,
+              # capability reporting, freeze and vendored-source tools
+rclcpp_kit/   # rclcpp interfaces: bringup, message resolution and conversion,
+              # serialization, rosbag2_cpp, tf, executor/node helpers, rclcpp PCH
 bt_kit/ pcl_kit/ ompl_kit/ nav2_kit/ moveit_kit/ control_kit/ cv_kit/ dbow_kit/
 docs/         # COMMON_PATTERNS, FREEZE, per-kit trios, vision tutorial
 scripts/      # freeze, datasets, kit demos & benches
@@ -154,24 +147,23 @@ recipe/<pkg>/ # one rattler-build recipe per package; release matrix on tag
 
 Conda packages: `cppyy-kit` (distro-free; conda-forge candidate when stable),
 `ros-jazzy-rclcpp-kit`, and distro-scoped `ros-jazzy-<name>-kit` for every kit
-that imports ROS bits (nav2, moveit, control, cv, pcl — their ROS bridges pull
+that imports ROS bits (nav2, moveit, control, cv, pcl: their ROS bridges pull
 sensor_msgs/pcl_conversions). bt/ompl/dbow kits need only `cppyy-kit` at import
 time (their ROS demos declare extras). All on the existing prefix.dev
 `awesomebytes` channel; lockstep versioning from a single tag initially.
 
-**Repo 2 — EXISTING, slimmed: `rclcppyy`** (the product):
+**Repository 2: `rclcppyy`** (the product):
 
-- **Keeps**: the brand + ROSCon story, `enable_cpp_acceleration()`, the
+- **Keeps**: `enable_cpp_acceleration()`, the
   monkeypatching layer (`monkey.py`, `monkeypatch_messages.py`,
   `RclcppyyNode`), rclpy-parity benchmarks + tutorial demos, the release
   pipeline (`ros-jazzy-rclcppyy`, now with a run-dep on `ros-jazzy-rclcpp-kit`).
 - **Sheds** (moves to `rclcpp_kit`): `bringup_rclcpp.py`, `serialization.py`,
-  `rosbag2_cpp.py` + compat, `tf.py`, the shared converter — with one release
+  `rosbag2_cpp.py` + compat, `tf.py`, the shared converter. For one release
   cycle of deprecation re-export shims (`rclcppyy.bringup_rclcpp` →
   `rclcpp_kit` + warning). Version bump to 0.2.0 marks the split.
-- The split's correctness proof: rclcppyy's own bench/test suite must produce
-  the SAME numbers/results before and after (the suite is the contract, as
-  always).
+- Verify the split by running rclcppyy's benchmark and test suite before and
+  after. Results must match.
 
 Dependency graph:
 `cppyy-kit` ← `rclcpp-kit` ← { `rclcppyy`, nav2/moveit/control/cv/pcl kits };
@@ -179,14 +171,15 @@ Dependency graph:
 
 ### 4.3 Migration phases (supersedes §3's Phase A)
 
-- **Bootstrap the new repo:** create `cppyy_kit` repo; migrate kit +
-  docs + freeze/dataset paths WITH history (`git filter-repo` path filter);
+- **Bootstrap the new repo:** create the `cppyy_kit` repository; migrate kits,
+  documentation, freeze tools, and dataset tools with history using
+  `git filter-repo` path filters;
   replicate the proven pixi workspace, CI, and multi-recipe release plumbing;
   all suites green in the new home before anything is deleted here.
 - **Carve `rclcpp_kit`:** move the ROS-core capability layer out of
   rclcppyy into the new repo's `rclcpp_kit` package; its tests move with it;
-  then Phase B enrichment lands there (compile cache first — it kills the
-  first-use JIT persistently and benefits every package).
+  then add Phase B features there. Start with the compile cache to reuse
+  wrapper builds across runs and packages.
 - **Slim rclcppyy:** replace moved internals with `rclcpp_kit` imports +
   deprecation shims; 0.2.0; recipes updated (rclcppyy depends on rclcpp-kit);
   release both repos; parity benchmarks green.
@@ -199,31 +192,25 @@ Dependency graph:
 alongside robostack; (c) the roscon archive stays in rclcppyy (product history,
 not suite material).
 
-### 4.4 Kit anatomy (correction, 2026-07-11: kits are a MIX, not pure Python)
+### 4.4 Kit package contents (correction, 2026-07-11)
 
-§3's "pure-Python packages" was packaging shorthand (no ament/colcon needed) and
-undersells what a kit is. The kit anatomy:
+The kits use Python packages without ament or colcon. Some also include C++
+sources, so the package may build or ship native code. A kit contains:
 
 ```
 <name>_kit/
-├── <name>_kit/       # Python package — the mirror API + friction glue
+├── <name>_kit/       # Python package: the library API and helper functions
 ├── cpp/              # optional C++ sources: bridge shims, L2-lowered nodes,
 │                     # vendored-source build scripts, PCH/freeze recipes
-├── SKILL.md          # LLM-facing skill file: when to use this kit, the
-│                     # copy-paste patterns, the gotchas — evolves from
-│                     # today's cheat sheets (BT.CPP_KIT.md etc.) so a coding
-│                     # agent can load one file and use the kit correctly
-├── WHY.md            # the human pitch: side-by-side + what you gain
-├── REPORT.md         # the evidence: probe matrix, benchmarks, gaps
+├── SKILL.md          # API usage and examples for coding agents
+├── WHY.md            # reasons to use the kit and available functions
+├── REPORT.md         # measurements, tests, and known limits
 ├── demos/  tests/
-└── recipe/           # rattler-build recipe; MAY compile cpp/ shims at
-                      # package-build time — priming the compile cache so
-                      # users never pay that JIT (composes with §1.1's cache)
+└── recipe/           # rattler-build recipe; may compile cpp/ shims while
+                      # building the package to populate the compile cache
 ```
 
-Two consequences worth naming: (a) recipes that precompile the kit's C++ glue at
-conda-build time turn the compile cache from a first-run optimization into a
-ships-warm default; (b) SKILL.md per kit + COMMON_PATTERNS.md as the shared
-manual is the LLM-consumption story made first-class — the kit suite becomes
-something an agent can pick up kit-by-kit, which was the design principle from
-day one.
+Recipes can compile a kit's C++ glue during package builds. This populates the
+compile cache before installation. Each kit's `SKILL.md` documents its API and
+usage patterns for coding agents. COMMON_PATTERNS.md documents patterns shared
+across kits.

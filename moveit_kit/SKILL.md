@@ -1,10 +1,9 @@
-# moveit_kit — cheat sheet for a coding agent
+# moveit_kit, cheat sheet for a coding agent
 
-You are writing Python that drives **MoveIt 2** — the C++ motion-planning framework —
-through `moveit_kit`. The kit **mirrors MoveIt's C++ API**: it returns the
+You are writing Python that drives **MoveIt 2**, the C++ motion-planning framework, through `moveit_kit`. The kit **mirrors MoveIt's C++ API**: it returns the
 real `moveit` namespace and you use `moveit.core.RobotState`,
 `planning_scene::PlanningScene`, `RobotState::setFromIK`, a real OMPL `PlannerManager`
-exactly as in the MoveIt C++ tutorials. The kit removes the cppyy friction: staged
+exactly as in the MoveIt C++ tutorials. The kit provides helpers for staged
 bringup, the plugin/parameter bootstrap (loading the KDL/OMPL plugins via pluginlib and
 assembling node parameters from config YAMLs), an Eigen pose helper, and ordered
 teardown. You do **not** need to know cppyy.
@@ -17,7 +16,7 @@ is built around the **panda** test model (`moveit_resources_panda_*`).
 
 **Golden rules**
 - Bringup is **staged and idempotent**. `moveit_kit.bringup_moveit()` = the *parse* layer
-  (RobotModel/RobotState/PlanningScene/FCL — no node, no plugins). Add
+  (RobotModel/RobotState/PlanningScene/FCL, no node, no plugins). Add
   `with_kinematics=True` for KDL IK, `with_planning=True` for OMPL planning. The heavy
   stages are gated (JIT + plugin teardown), so a parse-only user skips them.
 - The **kinematics and planning layers need rclcpp initialized** (the plugins load against
@@ -27,13 +26,13 @@ is built around the **panda** test model (`moveit_resources_panda_*`).
 - **Plugins read node parameters.** The OMPL planner needs the config: build a node with
   `make_node(name, parameter_overrides(cfg.ompl, "ompl"))`. The KDL plugin declares its own
   defaults, so a plain `make_node(name)` is enough for IK.
-- **Pin nothing manually for the plugins** — the kit registers their teardown. A benign
+- **Pin nothing manually for the plugins**, the kit registers their teardown. A benign
   `class_loader` "SEVERE WARNING … will NOT be unloaded" may print at exit; ignore it.
 - Domain: set `ROS_DOMAIN_ID` if you publish (the demos use 48).
 
 ---
 
-## Pattern 1 — RobotModel + forward kinematics  (parse layer, no node)
+## Pattern 1, RobotModel + forward kinematics  (parse layer, no node)
 *Use for:* loading a robot, reading link transforms. No rclcpp needed.
 
 ```python
@@ -51,7 +50,7 @@ p = state.getGlobalLinkTransform("panda_link8").translation()   # FK: p[0], p[1]
 
 ---
 
-## Pattern 2 — inverse kinematics with the real KDL plugin
+## Pattern 2, inverse kinematics with the real KDL plugin
 *Use for:* solving joint angles for an end-effector pose. Loads the KDL plugin via
 pluginlib in-process.
 
@@ -73,7 +72,7 @@ if state.setFromIK(jmg, target, 0.1):                 # MoveIt's own setFromIK
 
 ---
 
-## Pattern 3 — collision-aware IK with a Python validity callback  (moveit_py can't)
+## Pattern 3, collision-aware IK with a Python validity callback  (moveit_py can't)
 *Use for:* IK that rejects in-collision solutions. The C++ solver calls your Python check
 per candidate. This overload has no moveit_py equivalent.
 
@@ -88,7 +87,7 @@ state.setFromIK(jmg, target, 0.2, cb)                 # solver invokes ok() per 
 
 ---
 
-## Pattern 4 — PlanningScene + collision checking (FCL)
+## Pattern 4, PlanningScene + collision checking (FCL)
 *Use for:* self-collision, world-object collision, state validity.
 
 ```python
@@ -112,7 +111,7 @@ print("colliding:", bool(hit.collision))
 
 ---
 
-## Pattern 5 — plan a motion with the real OMPL pipeline
+## Pattern 5, plan a motion with the real OMPL pipeline
 *Use for:* motion planning. Loads MoveIt's OMPL `PlannerManager` plugin; params come from
 `ompl_planning.yaml`.
 
@@ -145,7 +144,7 @@ print(r.ok, r.error_code, r.trajectory.getWayPointCount())
 
 ---
 
-## Pattern 6 — publish a plan to RViz (DisplayTrajectory)
+## Pattern 6, publish a plan to RViz (DisplayTrajectory)
 *Use for:* visualizing a plan. Build the rviz-compatible message and publish via rclcppyy.
 
 ```python
@@ -154,12 +153,12 @@ pub = node.create_publisher(DisplayTrajectory, "display_planned_path", 10)
 msg = moveit_kit.display_trajectory(r, scene, model_id="panda")   # C++ message
 pub.publish(msg)                                        # rclcppyy publishes it directly
 ```
-`scripts/moveit_kit_demos/d02_plan_pose_goal.py` is the full showcase
+`moveit_kit/demos/d02_plan_pose_goal.py` is a complete example
 (`pixi run -e moveit demo-moveit-plan`); open `rviz2` on `/display_planned_path`.
 
 ---
 
-## Pattern 7 — Eigen poses
+## Pattern 7, Eigen poses
 The `pose()` helper builds an `Eigen::Isometry3d` (Eigen block assignment does not cross
 cppyy, so build poses this way, not `iso.translation()[i] = v`):
 
@@ -178,13 +177,13 @@ p = moveit_kit.pose(x, y, z, qx, qy, qz, qw)            # with a quaternion
 - **The OMPL planner needs its params**: `make_node(name, parameter_overrides(cfg.ompl,
   "ompl"))`. The KDL plugin uses its own defaults (a plain node is fine).
 - **Do NOT `cppyy.include` MoveIt's convenience headers** (`robot_model_loader.hpp`,
-  `moveit_cpp.hpp`, `planning_pipeline.hpp`) — they pull `generate_parameter_library`
+  `moveit_cpp.hpp`, `planning_pipeline.hpp`), they pull `generate_parameter_library`
   headers that crash Cling. The kit loads the plugins directly instead (REPORT.md §2).
 - **Trajectories are geometric** (no timing / `getDuration()` = 0): the direct planner
   plugin skips the time-parameterization adapter. Add
   `trajectory_processing::TimeOptimalTrajectoryGeneration` if you need velocities.
 - **Build Eigen objects in C++** (`moveit_kit.pose`), not by item-assigning Eigen blocks.
-- **Benign `class_loader` "SEVERE WARNING" at exit** — cosmetic; the process exits clean.
+- **Benign `class_loader` "SEVERE WARNING" at exit**, cosmetic; the process exits clean.
 - **Panda-specific**: `panda_config()` and the `panda_arm`/`panda_link8` names are for the
   panda test model; another robot needs its own URDF/SRDF + kinematics/OMPL YAMLs.
 - Call `moveit_kit.warmup()` once during init to move the plugin-load first-use JIT off

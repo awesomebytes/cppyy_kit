@@ -1,34 +1,31 @@
-# dbow_kit — SKILL (seed)
+# dbow_kit
 
-> Seed cheat sheet. A full LLM-facing SKILL.md is a planned deliverable
-> (tracked in the project plan). This points at the authoritative sources.
+Use DBoW2 from Python through cppyy for ORB place recognition and loop-closure
+detection. DBoW2 has no Python binding and is not packaged on conda-forge.
+[`cv_kit`](../cv_kit/WHY.md) provides the ORB descriptor Mats.
 
-**What:** drive DBoW2 (Gálvez-López & Tardós, "Bags of Binary Words") from
-Python via cppyy for ORB place recognition / loop-closure detection. Pairs with
-[`cv_kit`](../cv_kit/WHY.md) (which produces the ORB descriptor Mats).
+## Build
 
-**Why (impossible → possible):** DBoW2 has **no Python binding** and is **not**
-packaged on conda-forge. cppyy makes it drivable from Python without writing a
-binding. See [`WHY.md`](WHY.md) and [`REPORT.md`](REPORT.md).
+Build the vendored source once:
 
-**One-time build (vendored from source):**
-```
-pixi run -e vision build-dbow2      # compiles dbow_kit/cpp/build_dbow2.py -> build/vendor/libDBoW2.so
+```bash
+pixi run -e vision build-dbow2  # Builds build/vendor/libDBoW2.so
 ```
 
-**Use:**
+## Use
+
 ```python
 import dbow_kit
-voc = dbow_kit.train_vocabulary(all_descriptors)   # small, zero-download; or
-voc = dbow_kit.load_vocabulary("data/ORBvoc.txt")  # real ORBvoc (binary-cached)
+
+voc = dbow_kit.train_vocabulary(all_descriptors)  # Small vocabulary; no download
+voc = dbow_kit.load_vocabulary("data/ORBvoc.txt")  # Real ORBvoc; binary-cached
 db = dbow_kit.OrbDatabase(voc)
-db.add(dbow_kit.descriptors_from_mat(orb_descriptors))   # Nx32 CV_8U -> vector<cv::Mat>
+db.add(dbow_kit.descriptors_from_mat(orb_descriptors))
 ```
 
-**Descriptor layout:** ORB = 256-bit = 32 bytes; one image is an `Nx32 CV_8U`
-`cv::Mat`. DBoW2 wants a `std::vector<cv::Mat>` of `1x32` rows —
-`descriptors_from_mat` does that split in C++.
+ORB descriptors are 256 bits, or 32 bytes. An image uses an `Nx32 CV_8U`
+`cv::Mat`. DBoW2 expects one `1x32` Mat per feature in a
+`std::vector<cv::Mat>`. `descriptors_from_mat` creates that vector in C++.
 
-**Full story:** [`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
-The joint cv+dbow loop-closure flow is covered in the
-[vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md).
+See the [vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md)
+for the complete pipeline.

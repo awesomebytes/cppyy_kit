@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Benchmark the honest cost of a Python state-validity checker in OMPL's hot loop.
+Measure the cost of Python state-validity checkers in OMPL's hot loop.
 
 Same 2D planning problem as d01 (unit square, circular obstacle, RRTConnect),
 three ways to answer "is this state valid?" -- the check a sampling planner calls
@@ -16,7 +16,7 @@ thousands of times per solve:
 For each variant we report the real solve (time + validity-call count on a fixed
 seed, so all three explore identical geometry) AND a microbenchmark that isolates
 the per-call boundary cost (N direct isValid calls from a C++ driver loop). The
-microbenchmark is the honest "Python in a real hot loop" number.
+microbenchmark measures the time for repeated checker calls.
 
 Each variant runs in a fresh subprocess: OMPL's global RNG can only be seeded once
 per process, so a shared process could not give all three the same geometry.

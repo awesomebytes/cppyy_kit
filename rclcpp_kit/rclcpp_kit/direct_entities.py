@@ -672,8 +672,8 @@ uintptr_t clock_timer_clock_address(const std::shared_ptr<DirectClockTimer> & ti
 class QoSEventUnsupported(RuntimeError):
     """A requested QoS event callback cannot be honored by the active RMW.
 
-    Raised instead of silently returning an entity with fewer event handlers than
-    requested (fail-closed, per the suite's iron rules): rclcpp's own
+    Raised instead of returning an entity with fewer event handlers than
+    requested. rclcpp's own
     ``UnsupportedEventTypeException`` propagates out of the Publisher/Subscription
     constructor with no internal catch for a user-supplied callback, so construction
     fails all-or-nothing and nothing partially-registered leaks out of the factory.
@@ -756,11 +756,10 @@ class ContentFilterUnsupported(RuntimeError):
     ``rmw_subscription_get_content_filter`` are literal "unimplemented" stubs (the
     binary carries those exact strings). Creating a subscription with a
     non-empty ``content_filter_options`` does not error at ``rcl_subscription_init``
-    on Cyclone -- the rmw silently creates an ordinary (unfiltered) subscription.
-    That silent no-op is exactly the fail-closed hazard this exception exists to
-    prevent: the foundation probes ``is_cft_enabled()`` immediately after
-    creation and raises here instead of ever returning an unfiltered
-    subscription under the guise of filtering.
+    on Cyclone. The rmw creates an ordinary (unfiltered) subscription. This exception
+    prevents the API from returning an unfiltered subscription while reporting that
+    filtering is enabled. The foundation probes ``is_cft_enabled()`` immediately
+    after creation and raises this exception when filtering is disabled.
     """
 
 
@@ -801,13 +800,13 @@ def _validate_content_filter(
 def _validate_qos_overriding(qos_overriding: Any) -> bool:
     """Fence a ``qos_overriding=`` argument.
 
-    Only a plain ``bool`` is supported this wave: ``True`` attaches
+    Only a plain ``bool`` is supported: ``True`` attaches
     ``QosOverridingOptions::with_default_policies()`` (history, depth,
-    reliability -- the exact set the DoD proves declares and honors overrides);
+    reliability, the exact set the DoD requires to be declared and honored);
     ``None``/``False`` attaches nothing. A custom policy-kind subset and a
-    user-supplied validation callback are deferred (see the plan's OUT-of-scope
-    list) -- accepting a narrower request and silently applying the full default
-    set would over-claim, so that surface simply isn't exposed yet.
+    user-supplied validation callback are not supported. Accepting a narrower
+    request and silently applying the full default set would misrepresent the API,
+    so those options are not exposed.
     """
     if qos_overriding is None:
         return False
@@ -816,39 +815,34 @@ def _validate_qos_overriding(qos_overriding: Any) -> bool:
     return qos_overriding
 
 
-# Verified against the installed librmw_cyclonedds_cpp.so: it carries no
-# dds_lset_incompatible_type_arg symbol at all (no DDS listener exists for this
-# event on Cyclone) -- yet rcl_subscription_event_init / rcl_publisher_event_init
-# return RCL_RET_OK for it regardless, so rclcpp's own UnsupportedEventTypeException
-# (event_handler.hpp) never fires the way it does for a genuinely-rejected event
-# type. Left unchecked, requesting incompatible_type on Cyclone would silently
-# succeed with a dead handler that never fires -- exactly the fail-closed hazard
-# the suite's iron rules forbid. The foundation therefore rejects it itself,
-# proactively, rather than relying on rclcpp to reject it.
+# The installed librmw_cyclonedds_cpp.so has no dds_lset_incompatible_type_arg
+# symbol, so Cyclone DDS has no listener for this event. However,
+# rcl_subscription_event_init and rcl_publisher_event_init return RCL_RET_OK.
+# rclcpp therefore does not raise UnsupportedEventTypeException for this event.
+# Reject incompatible_type on Cyclone here to avoid creating a handler that
+# cannot fire.
 _INCOMPATIBLE_TYPE_KNOWN_UNSUPPORTED_RMWS = frozenset({"rmw_cyclonedds_cpp"})
 
 
 def _active_rmw_implementation() -> str:
-    """The RMW implementation actually linked into this process.
+    """Return the RMW implementation linked into this process.
 
-    Queries the real rmw layer (``rclpy.utilities.get_rmw_implementation_identifier``,
-    which wraps ``rmw_get_implementation_identifier()``) rather than trusting the
-    ``RMW_IMPLEMENTATION`` env var: the env var can be unset while Cyclone is still
-    the linked default, and a guard keyed on an absent env var would silently defeat
-    itself on exactly the system it exists to protect.
+    Uses ``rclpy.utilities.get_rmw_implementation_identifier``, which wraps
+    ``rmw_get_implementation_identifier()``. The ``RMW_IMPLEMENTATION`` environment
+    variable may be unset even when Cyclone is the linked default, so it cannot
+    identify the active implementation reliably.
     """
     from rclpy.utilities import get_rmw_implementation_identifier
     return str(get_rmw_implementation_identifier())
 
 
 def _reject_incompatible_type_if_unsupported(validated_events: dict) -> None:
-    """Fail closed for ``incompatible_type`` on a verified-unsupported RMW.
+    """Reject ``incompatible_type`` on a known unsupported RMW.
 
     See ``_INCOMPATIBLE_TYPE_KNOWN_UNSUPPORTED_RMWS`` for why this cannot be left
     to rclcpp's own construction-time exception. A construction attempt still
-    runs behind a try/except in the caller as a defense-in-depth backstop, but
-    this proactive check -- gated on the actual runtime RMW identifier, not an
-    environment variable -- is the one that actually fires for the production RMW.
+    runs inside a try/except in the caller as a backstop. This check uses the
+    runtime RMW identifier instead of an environment variable.
     """
     if "incompatible_type" not in validated_events:
         return

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live proof: create_raw_subscription's interaction matrix --
+"""Integration test for create_raw_subscription options:
 event_callbacks fire like the typed path, content_filter fails closed on
 Cyclone (never a silently-unfiltered subscription), and a fail-closed
 scenario never disturbs the node's ability to create the next entity.

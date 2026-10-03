@@ -2,10 +2,10 @@
 """Tests for the @cpp decorator (cppyy_kit.cpp).
 
 Needs cppyy + a compiler (both in the default env), so runs under `pixi run test`.
-Each test's C++ body is unique, so the per-function hashed symbol names don't clash
-in the shared interpreter. Verbatim C++ type-string annotations (e.g. "float*") are
-forward-ref false positives to pyflakes -- hence the `# noqa: F722,F821` (the same
-convention as callback signatures, COMMON_PATTERNS §3)."""
+Each test's C++ body is unique, so the per-function hashed symbol names do not
+clash in the shared interpreter. Verbatim C++ type-string annotations (e.g.
+"float*") look like forward references to pyflakes. The `# noqa: F722,F821`
+comment follows the callback signature convention in COMMON_PATTERNS §3."""
 import os
 import threading
 import time
@@ -196,7 +196,7 @@ def test_nogil_releases_gil_for_concurrent_thread():
 
 def test_nogil_first_use_thread_safe_single_compile():
     """N threads first-using the SAME @cpp(nogil=True) kernel at once must compile it
-    exactly once (double-checked lock in _CppFunc._ensure), not once per thread -- a
+    exactly once (double-checked lock in _CppFunc._ensure), not once per thread. A
     race that would re-run cppdef and make Cling emit a redefinition error."""
     from cppyy_kit import cache
 
@@ -237,7 +237,7 @@ def test_nogil_first_use_thread_safe_single_compile():
 
 
 def test_cached_false_skips_so_cache(tmp_path, monkeypatch):
-    # @cpp(cached=False) compiles in-memory and writes no .so (debugging escape hatch).
+    # @cpp(cached=False) compiles in memory and writes no .so (debugging option).
     monkeypatch.setenv("CPPYY_KIT_CACHE_DIR", str(tmp_path))
 
     @cpp(cached=False, name="ck_nocache_%d" % os.getpid())

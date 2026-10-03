@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: cppyy-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
   version: "0.3.0"
 
 package:
@@ -54,13 +54,12 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "cppyy friction primitives + freeze/vendored-source tooling (ROS-free base)"
+  summary: "Shared cppyy utilities and build tools (ROS-free base)"
   description: |
-    cppyy_kit is the ROS-free base of the cppyy_kit suite: the friction
-    primitives shared by every kit (load / keep_alive / callback /
-    HandleRegistry / warmup / first_use / teardown / probe) plus the freeze
-    (Cling PCH + direct-compile + vendored-source) tooling. Everything else in
-    the suite depends on it.
+    cppyy_kit is the ROS-free base package for the suite. It provides shared
+    utilities for loading libraries, managing callbacks and object lifetimes,
+    warming up C++ code, and compiling code into libraries. Other kits depend
+    on this package.
 
 extra:
   recipe-maintainers:

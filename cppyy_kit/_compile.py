@@ -1,15 +1,12 @@
 """
-cppyy_kit._compile -- the direct-compile recipe, factored out of the freeze/L2
-scripts so the compile cache (``cppyy_kit.cache``) and the vendored-source builds
-share one code path.
+cppyy_kit._compile builds shared libraries from C++ source files. The freeze/L2
+scripts, compile cache (``cppyy_kit.cache``), and vendored-source builds use it.
 
-A single ``$CXX -shared -fPIC`` invocation turns a C++ translation unit into a
-real ``.so`` that cppyy can ``load_library`` -- this is the mechanism behind the
-L2 lowering (``scripts/freeze/build_l2_node.py``) and the §21 vendored-source
-builds, generalized. ``cppyy_toolchain()`` adds what a *trampoline* .so needs (the
-Python + CPyCppyy headers and ``libcppyy``) so compiled glue can convert C++
-objects to Python proxies and call Python callables directly -- the pattern that
-lets the cache eliminate cppyy's first-use call-wrapper JIT (see cache.py).
+The ``$CXX -shared -fPIC`` command builds a C++ translation unit as a shared
+library that cppyy can load. The L2 lowering (``scripts/freeze/build_l2_node.py``)
+and the §21 vendored-source builds use this function. ``cppyy_toolchain()`` adds
+the Python and CPyCppyy headers and ``libcppyy`` needed by trampoline libraries.
+These libraries convert C++ objects to Python proxies and call Python callables.
 """
 import glob
 import os

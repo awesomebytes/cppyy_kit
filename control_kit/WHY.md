@@ -1,9 +1,8 @@
-# WHY control_kit — the "write a controller" ceremony, stock ros2_control vs ours
+# Why control_kit: Python and C++ ros2_control workflows
 
-ros2_control is C++-only by design: there is **no Python controller API**. Writing even a
-trivial controller is a multi-file, multi-tool ceremony, and running it means launching a
-separate `controller_manager` process and spawning the controller into it. control_kit
-collapses that to one Python class and three lines, run in your own process.
+ros2_control provides no Python controller API. A stock controller needs a C++ class,
+plugin metadata, a build, and a running `controller_manager`. control_kit lets Python
+code add a controller instance to a manager in the same process.
 
 ## Stock ros2_control: what a new controller costs
 
@@ -11,11 +10,11 @@ To add a controller you write, minimum:
 
 1. **A C++ class** deriving `controller_interface::ControllerInterface`, implementing the
    pure virtuals `on_init`, `command_interface_configuration`, `state_interface_configuration`,
-   `update`, plus the lifecycle `on_configure`/`on_activate`/`on_deactivate` — in a
+   `update`, plus the lifecycle `on_configure`/`on_activate`/`on_deactivate`, in a
    `.hpp` + `.cpp` pair, with visibility macros.
 2. **A `plugin_description.xml`** declaring the class as a `pluginlib` plugin with its
    `base_class_type`.
-3. **A `CMakeLists.txt`** — `ament_cmake` project, `pluginlib_export_plugin_description_file`,
+3. **A `CMakeLists.txt`**, `ament_cmake` project, `pluginlib_export_plugin_description_file`,
    `generate_parameter_library` for the params, link `controller_interface` /
    `hardware_interface` / `rclcpp_lifecycle`, install targets.
 4. **A `package.xml`** with the build/exec deps.
@@ -26,10 +25,10 @@ To add a controller you write, minimum:
 7. **A spawner** (`ros2 run controller_manager spawner my_controller`) to load, configure
    and activate it into the running manager.
 
-Edit the control law → rebuild the workspace → relaunch → respawn. The iteration loop is
-minutes, and every experiment is a C++ compile.
+Each change to the control law requires a rebuild and relaunch. This takes longer than
+rerunning a Python script.
 
-## control_kit: the same controller, in Python
+## The same controller in Python
 
 ```python
 import rclcpp_kit
@@ -56,17 +55,16 @@ class MyPD(ck.ControllerInterface):                 # derive the REAL base class
         return ck.return_type.OK
 
 rig = ck.make_controller_manager(ck.mock_system_urdf(["joint1", "joint2"]))
-rig.add_python_controller(MyPD(), "pd")             # inject — no plugin xml, no .so
+rig.add_python_controller(MyPD(), "pd")             # inject, no plugin xml, no .so
 rig.configure("pd"); rig.activate(["pd"])
 rig.run(seconds=2.0, rate_hz=100)                   # the REAL read/update/write loop
 ```
 
-No `plugin_description.xml`, no `CMakeLists.txt`, no `package.xml`, no colcon build, no
-launch file, no spawner, no second process. Edit the control law → rerun the script. And
-it is not a mock or reimplementation: `MyPD` derives the *actual*
-`controller_interface::ControllerInterface`, and the *actual*
-`controller_manager::ControllerManager` calls its `update()` in the real control loop,
-against real mock hardware (`mock_components/GenericSystem`) parsed from a URDF string.
+This example needs no `plugin_description.xml`, `CMakeLists.txt`, `package.xml`, colcon
+build, launch file, spawner, or second process. `MyPD` derives from
+`controller_interface::ControllerInterface`. A real
+`controller_manager::ControllerManager` calls its `update()` method in the control loop.
+The manager uses `mock_components/GenericSystem` hardware created from a URDF string.
 
 ## Side-by-side
 
@@ -82,21 +80,19 @@ against real mock hardware (`mock_components/GenericSystem`) parsed from a URDF 
 
 ## What this is for (and what it isn't)
 
-**For:** prototyping a control law against the real ros2_control machinery without the C++
-build-and-launch ceremony — fast iteration, teaching, HIL/sim, and validating a controller
-end-to-end before committing it to C++. See [REPORT.md](REPORT.md) §4 for the real-time
-verdict: 100 Hz is rock-solid, 1 kHz works on average but Python's GC/GIL pauses cost the
-odd deadline, so this is soft-real-time / prototyping-grade, not hard-real-time.
-The miss rate is not fixed, though: the jitter benchmark drove this same rig at 1 kHz
-with unprivileged real-time knobs — `prctl(PR_SET_TIMERSLACK, 1)` (Linux's default 50 µs
-timer slack, not Python, dominates the median: 52.4 → 2.4 µs on the pure-Python timer
-loop), `mlockall`, and CPU pinning — and measured ~2.4 µs median wakeup latency for the
-in-process `ControllerManager` loop on a stock kernel
-([jitter bench report](../docs/jitter_bench/REPORT.md)). Tail spikes under load remain
-until `SCHED_FIFO`/preemption tuning is applied (owner-action commands in that report).
+**Use control_kit** to prototype a control law against ros2_control, teach the API, or
+test a controller with mock hardware before building a plugin. See [REPORT.md](REPORT.md)
+§4 for measurements. In that test, both controllers completed 100 Hz cycles without
+late cycles. At 1 kHz, both reached the average rate, but Python garbage collection and
+GIL pauses caused late cycles. This test does not establish hard real-time behavior.
 
-**Not for (yet):** shipping a controller that a *separately launched*, stock (C++)
-`controller_manager` loads by name — that still needs a compiled pluginlib `.so`
-(REPORT §3, Route B). The intended path is to **prototype in Python here, then lower the
-validated `update()` to a native C++ plugin** (the L2 direct-compile recipe) for hard-RT
-deployment — the interface contract is identical, so the port is mechanical.
+The jitter benchmark measured this rig at 1 kHz with `prctl(PR_SET_TIMERSLACK, 1)`,
+`mlockall`, and CPU pinning. It measured about 2.4 µs median wakeup latency for the
+in-process `ControllerManager` loop on a stock kernel. See the
+[jitter benchmark report](../docs/jitter_bench/REPORT.md). Tail spikes under load remain
+until `SCHED_FIFO` and preemption settings are applied.
+
+**Use a compiled plugin** when a separately launched `controller_manager` must load the
+controller by type name. See REPORT §3, Route B. A prototype can be written in Python
+and then ported to a native C++ plugin with the L2 direct-compile procedure. The interface
+contract is the same.

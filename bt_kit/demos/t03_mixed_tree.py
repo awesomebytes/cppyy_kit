@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 """
-Mixed-language behavior tree: one BT.CPP tree whose leaves span the full
-spectrum bt_kit enables --
-  1. CheckSensors  -- a leaf written in Python (the kit as-is);
-  2. ComputePlan   -- a leaf JIT-compiled as a C++ functor (bt_kit KIT.md pattern 4);
-  3. PublishStatus -- a leaf that drives EXISTING C++ software: it publishes a
+Mixed-language behavior tree: one BT.CPP tree with three kinds of leaves:
+  1. CheckSensors, written in Python;
+  2. ComputePlan, JIT-compiled as a C++ functor (see bt_kit/SKILL.md pattern 4);
+  3. PublishStatus, which publishes a
                       ROS 2 std_msgs/String via rclcpp (through rclcppyy) from
                       inside the tick.
 
-This is the repo's thesis in one file: a C++ behavior-tree engine, orchestrated
-from Python, calling into a real installed C++ stack (rclcpp) -- no wrapper code
-generated, no build step. A subscriber in this same process counts the messages
-to prove they actually flowed. Run with ROS_DOMAIN_ID set to stay isolated.
+This demo combines a C++ behavior-tree engine, Python callbacks, and calls to the
+installed C++ rclcpp library. It does not generate a wrapper or build a binary. A
+subscriber in the same process counts the messages. Set ROS_DOMAIN_ID to isolate
+the demo.
 
 Run: pixi run -e bt demo-bt-t03
 """
@@ -62,7 +61,7 @@ def main():
         executor.spin_some()
         time.sleep(0.05)
 
-    # Leaf 2: a C++ functor, JIT-compiled -- no Python on this tick.
+    # Leaf 2: a C++ functor, JIT-compiled. Python does not run on this tick.
     cppyy.cppdef(r"""
     namespace t03 {
       inline void registerComputePlan(BT::BehaviorTreeFactory& f) {

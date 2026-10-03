@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live sim-time-aware clock timer proof."""
+"""Integration test for a clock timer that uses simulated time."""
 
 import importlib
 import time
@@ -111,7 +111,7 @@ with native(["direct-clock-timer-proof"]) as session:
     frozen_timer.destroy()
 
     # Stage 3: the same primitive on a separate node with use_sim_time=False
-    # fires on real time — the contrast that makes stages 1/2 meaningful.
+    # fires on real time. This is the wall-time control for stages 1 and 2.
     wall_node = session.create_node("direct_clock_timer_wall")
     executor.add_node(wall_node)
     wall_calls = []
@@ -180,7 +180,7 @@ with native(["direct-clock-timer-proof"]) as session:
 
     # The node's callback group retains only a TimerBase::WeakPtr; the DirectTimer
     # facade's entity= is the sole strong reference, so destroy() dropping it must
-    # actually stop the timer firing, not merely fence the facade's own accessors.
+    # stop the timer, rather than only blocking access through the facade.
     calls_at_destroy = len(lifecycle_calls)
     assert lifecycle_timer.destroy()
     assert not lifecycle_timer.destroy()

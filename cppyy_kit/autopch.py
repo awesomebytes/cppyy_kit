@@ -1,41 +1,41 @@
 """
-cppyy_kit.autopch -- zero-config Cling PCH: built on first use, auto-loaded after.
+cppyy_kit.autopch builds a Cling PCH on first use and loads it on later runs.
 
 A kit's bringup cost is dominated by the one-time Cling JIT-parse of its library
 headers (rclcpp: ~1.7 s for ``cppyy.include("rclcpp/rclcpp.hpp")``). A prebuilt
 Cling *precompiled header* (PCH) that already carries the header AST turns that
 parse into a few-millisecond load (see ``docs/FREEZE.md``). ``docs/FREEZE.md``
-describes the *manual* freeze -- build an artifact, launch scripts through a wrapper
-that sets ``CLING_STANDARD_PCH``. This module makes that fast path **require no
-configuration at all**, and it does so *independently of import order*:
+describes the manual freeze process: build an artifact, then launch scripts
+through a wrapper that sets ``CLING_STANDARD_PCH``. This module enables
+automatic PCH use without extra configuration and regardless of import order:
 
-  * A ``.pth`` file installed into the environment's site-packages runs at every
-    interpreter start -- before any user import -- and binds ``CLING_STANDARD_PCH``
+  * A ``.pth`` file in the environment's site-packages runs at every
+    interpreter start, before user imports, and binds ``CLING_STANDARD_PCH``
     to this env's PCH if one is built (``cppyy_kit._autopch_boot.activate``). Cling
     reads the variable when it initialises, so the PCH is active whether or not the
     program imports cppyy before cppyy_kit. cppyy_kit self-installs that ``.pth`` on
     first import; ``python -m cppyy_kit.autopch --uninstall`` removes it.
-  * The first time a kit parses headers that aren't baked yet, the run proceeds on
-    the JIT path (never blocks) and a one-time PCH build is kicked off in the
-    background at interpreter exit, so the *next* run loads it instantly. On build
-    completion the cache is pruned to the newest few artifacts per environment.
+  * The first time a kit parses headers that are not in the PCH, it uses JIT.
+    A PCH build starts in the background at interpreter exit, so the next run
+    loads the PCH. When the build completes, the cache removes older artifacts
+    for the environment.
 
-Nothing to set, no launcher, no pixi task. A user who *has* set ``CLING_STANDARD_PCH``
-themselves keeps full control (we never touch it); ``CPPYY_KIT_NO_AUTOPCH=1`` opts
-out entirely (honoured by both the ``.pth`` and this module).
+No launcher or pixi task is needed. If a user sets ``CLING_STANDARD_PCH``, this
+module leaves it unchanged. Set ``CPPYY_KIT_NO_AUTOPCH=1`` to disable autopch. Both
+the ``.pth`` file and this module honor that setting.
 
-Cache layout, under ``${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`` (see _autopch_boot
-for the path/key logic, which is shared with the ``.pth`` so they cannot disagree):
+Cache layout is under ``${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch``. The ``.pth``
+and _autopch_boot use the same path and key logic:
 
-  * ``<env-tag>.manifest.json`` -- the accumulated headers kits ask to bake in this
+  * ``<env-tag>.manifest.json``: the headers kits request for this
     environment, their include paths, and the current header-set's ``pch_key``. The
     env-tag hashes the environment prefix and the cppyy/cppyy-backend versions.
-  * ``<pch-key>.pch`` (+ ``.pch.json`` metadata, ``.pch.log`` build output) -- the
+  * ``<pch-key>.pch`` (with ``.pch.json`` metadata and ``.pch.log`` build output): the
     artifact. The key hashes the env material *and* the header set, so any change is
-    a clean miss (fall back to JIT), never a silent ABI mismatch.
+    a cache miss and the program uses JIT, which avoids an ABI mismatch.
 
-Artifacts are large and environment-specific: they live outside the repo, are never
-committed, and are pruned automatically.
+Artifacts are large and environment-specific. They live outside the repository,
+are not committed, and are pruned automatically.
 """
 import atexit
 import json
@@ -47,8 +47,8 @@ import time
 from . import _autopch_boot as _boot
 
 # --- process state (set by setup(), read by register_pch_headers()) -------
-_disabled = False        # CPPYY_KIT_NO_AUTOPCH=1 -- behave as if this module didn't exist
-_user_override = False   # user set CLING_STANDARD_PCH -- hands off, never touched
+_disabled = False        # CPPYY_KIT_NO_AUTOPCH=1: disable this module
+_user_override = False   # user set CLING_STANDARD_PCH: leave it unchanged
 _active_headers = frozenset()  # headers baked into the auto-PCH loaded THIS run
 _active_path = None      # path of the auto-PCH loaded this run, or None (JIT)
 _build_scheduled = False  # at-exit builder registered once
@@ -227,13 +227,11 @@ def setup():
     """Bind this environment's auto-PCH for the run, and ensure the startup ``.pth``
     is installed for future runs.
 
-    Order of preference: the ``.pth`` already activated a PCH before any import (the
-    general path -- works regardless of whether cppyy was imported first) -> print
-    and record it. Else respect a user-set ``CLING_STANDARD_PCH``. Else, if cppyy is
-    not yet loaded, activate from the manifest now (covers the first run, before the
-    ``.pth`` existed). Else stay on JIT (the ``.pth`` just installed makes the next
-    run warm regardless of import order). Honours the CPPYY_KIT_NO_AUTOPCH opt-out
-    and never raises into the import."""
+    Preference order: use and record a PCH activated by the ``.pth`` file; respect
+    a user-set ``CLING_STANDARD_PCH``; or, if cppyy is not loaded, activate a PCH
+    from the manifest. If cppyy is already loaded, use JIT for this run. The
+    installed ``.pth`` can activate the PCH on later runs. Honor
+    ``CPPYY_KIT_NO_AUTOPCH`` and do not raise during import."""
     global _disabled, _user_override, _active_headers, _active_path
     try:
         if os.environ.get("CPPYY_KIT_NO_AUTOPCH") == "1":
@@ -243,7 +241,7 @@ def setup():
 
         marker = os.environ.get(_boot.MARKER_ENV)
         if marker and os.environ.get("CLING_STANDARD_PCH") == marker and os.path.exists(marker):
-            # The .pth activated our PCH before any import -- the order-independent path.
+            # The .pth activated our PCH before any import.
             _active_path = marker
             _active_headers = frozenset(_read_manifest()["headers"])
             _note("cppyy_kit: Cling PCH loaded from %s" % marker)
@@ -251,9 +249,8 @@ def setup():
 
         cppyy_loaded = _cppyy_loaded()
         if os.environ.get("CLING_STANDARD_PCH") and not cppyy_loaded:
-            # Set deliberately before any cppyy import -> a genuine user/launcher
-            # override. Hands off. (cppyy sets CLING_STANDARD_PCH to its own std PCH
-            # at import, so this is only meaningful before cppyy loads.)
+            # Preserve a value set before cppyy imports. cppyy sets this variable
+            # to its standard PCH during import, so only an earlier value counts.
             _user_override = True
             return
         if cppyy_loaded:
@@ -273,20 +270,20 @@ def setup():
 
 
 def register_pch_headers(headers, include_paths=(), force_symbols=None, std="c++17"):
-    """Kit hook: declare the C++ headers a kit JIT-parses at bringup so they get
-    baked into the environment's auto-PCH -- their parse then vanishes on later runs.
+    """Declare the C++ headers a kit parses at bringup so the auto-PCH can include
+    them on later runs.
 
     Call this at bringup, around the ``cppyy.include()`` of those headers.
     ``include_paths`` are the ``-I`` directories needed to resolve ``headers`` when
     the PCH is built out-of-process (e.g. every ament package's include dir for
     rclcpp). ``force_symbols`` is optional C++ source defining any internal-linkage
-    statics the AST-only PCH declares but never emits (rare; rclcpp needs none) --
-    applied now, but only on a warm run whose active PCH already bakes ``headers``
+    statics the AST-only PCH declares but does not emit (rclcpp needs none).
+    Apply these only on a warm run whose active PCH already includes ``headers``
     (on the JIT path the live parse defines them, so a second definition would clash).
 
     Behaviour:
-      * warm run, active PCH already covers ``headers`` -> cheap no-op (+force_symbols);
-      * otherwise -> fold ``headers``/``include_paths`` into the env manifest and
+      * If the active PCH covers ``headers``, return without parsing them again.
+      * Otherwise, add ``headers`` and ``include_paths`` to the environment manifest and
         schedule a one-time background PCH build at interpreter exit, so the NEXT run
         loads it. This run continues on the JIT path.
 
@@ -296,14 +293,14 @@ def register_pch_headers(headers, include_paths=(), force_symbols=None, std="c++
     headers = list(headers)
 
     # Warm: the active auto-PCH already bakes these headers. Apply any force-symbols
-    # and return -- the include()s that follow are ~ms PCH lookups.
+    # and return. The following include() calls load these headers from the PCH.
     if _active_headers and set(headers) <= _active_headers:
         if force_symbols:
             _apply_force_symbols(force_symbols)
         return
 
     # Miss (new headers, or no auto-PCH active): record the union for the next run
-    # and schedule the build. Do NOT apply force_symbols here -- the JIT parse this
+    # and schedule the build. Do not apply force_symbols here; the JIT parse this
     # run defines those symbols itself.
     try:
         m = _read_manifest()
@@ -476,7 +473,7 @@ def prune(directory=None, keep=3, log=None):
             removed.append(path)
 
         # Orphan sweep: sidecars (.pch.json/.pch.log/.pch.lock) whose .pch no longer
-        # survives -- except a lock young enough to be an in-flight build.
+        # survives, except for a lock that may belong to an active build.
         now = time.time()
         for fn in os.listdir(directory):
             base = _base_pch(fn)
@@ -592,7 +589,7 @@ def generate_pch(out_path, headers, include_paths=(), std="c++17", log=None):
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
-    # Metadata sidecar (best-effort) -- groups artifacts by env for pruning.
+    # Write a metadata sidecar for artifact pruning.
     try:
         base = os.path.basename(out_path)
         meta = {"env_tag": _boot.env_tag(),

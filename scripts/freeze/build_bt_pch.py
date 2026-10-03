@@ -10,8 +10,8 @@ This mirrors cppyy's own ``etc/dictpch/makepch.py`` (``rootcling -generate-pch``
 over ``allHeaders.h`` + ``allLinkDefs.h`` with the env's ``allCppflags.txt``) but
 inserts the kit header and its include path. The artifact is written, gitignored,
 under ``<repo>/build/freeze`` with an env-version tag; rebuild it whenever the
-cppyy-cling or behaviortree_cpp version changes (a tag mismatch makes that
-obvious). Run inside the bt env::
+cppyy-cling or behaviortree_cpp version changes. Rebuild if the artifact tag does
+not match. Run inside the bt env::
 
     pixi run -e bt freeze-bt-build
 

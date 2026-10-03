@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live exact-native timer inspection proof."""
+"""Integration test for native timer inspection."""
 
 import importlib
 import time

@@ -1,12 +1,12 @@
-# ompl_kit — cheat sheet for a coding agent
+# ompl_kit, cheat sheet for a coding agent
 
-You are writing Python that drives the **Open Motion Planning Library (OMPL)** — a
-C++ sampling-based motion planner — through `ompl_kit`. The kit
+You are writing Python that drives the **Open Motion Planning Library (OMPL)**, a
+C++ sampling-based motion planner, through `ompl_kit`. The kit
 **mirrors OMPL's C++ API**: `bringup_ompl()` returns the real `ompl::base` /
 `ompl::geometric` namespaces (the conventional `ob` / `og`) and you use
 `ob.RealVectorStateSpace`, `og.SimpleSetup`, `og.RRTConnect`,
 `setStateValidityChecker`, `setStartAndGoalStates`, `solve`, `getSolutionPath`
-exactly as in the OMPL C++ tutorials. The kit only removes the cppyy friction
+exactly as in the OMPL C++ tutorials. The kit provides helpers for cppyy setup,
 (bringup, the validity `std::function` signature, the `as` keyword, RNG seeding,
 path extraction). You do **not** need to know cppyy.
 
@@ -21,7 +21,7 @@ the cross-inheritance mechanics and benchmarks, see [REPORT.md](REPORT.md).)
   ~60 ms planner JIT). Bringup is idempotent (~0.5 s, once).
 - Wrap a raw space/planner/checker in the library `Ptr` to hand it to OMPL:
   `ob.StateSpacePtr(space)`, `ob.PlannerPtr(planner)`,
-  `ob.StateValidityCheckerPtr(checker)`. The wrap **transfers ownership** — safe, no
+  `ob.StateValidityCheckerPtr(checker)`. The wrap **transfers ownership**, safe, no
   double-free.
 - The validity checker is the planner's inner-loop callback. Two ways: a Python
   function via `ompl_kit.validity_checker(fn)`, or a Python subclass of
@@ -36,7 +36,7 @@ the cross-inheritance mechanics and benchmarks, see [REPORT.md](REPORT.md).)
 
 ---
 
-## Pattern 1 — a 2D plan, validity checker as a Python function  (the minimal path)
+## Pattern 1, a 2D plan, validity checker as a Python function  (the minimal path)
 *Use for:* planning where the validity/obstacle logic is a plain function.
 
 ```python
@@ -67,11 +67,11 @@ if ss.solve(1.0):
 ```
 `validity_checker(fn, owner=ss)` wraps `fn` as OMPL's
 `std::function<bool(const State*)>` and pins it on `ss`. See
-`scripts/ompl_kit_demos/d01_first_plan.py`.
+`ompl_kit/demos/d01_first_plan.py`.
 
 ---
 
-## Pattern 2 — validity checker as a Python subclass  (cross-inheritance)
+## Pattern 2, validity checker as a Python subclass  (cross-inheritance)
 *Use for:* an OMPL-idiomatic checker, or one that holds state / queries a map.
 
 ```python
@@ -88,16 +88,16 @@ class CircleChecker(ob.StateValidityChecker):
 
 # ... build space + ss as in Pattern 1 ...
 checker = CircleChecker(ss.getSpaceInformation())
-cppyy_kit.keep_alive(ss, checker)                # PIN it (footgun otherwise)
+cppyy_kit.keep_alive(ss, checker)                # keep Python object alive
 ss.setStateValidityChecker(ob.StateValidityCheckerPtr(checker))
 ```
 The C++ planner calls the Python `isValid` through the vtable. Works because
-`isValid` is a *plain* virtual. Cost: ~345 ns/call (~190x a native checker) — fine
+`isValid` is a *plain* virtual. Cost: ~345 ns/call (~190x a native checker), fine
 until validity dominates, then lower it (Pattern 5).
 
 ---
 
-## Pattern 3 — optimal planning with a Python OptimizationObjective  (RRT\*)
+## Pattern 3, optimal planning with a Python OptimizationObjective  (RRT\*)
 *Use for:* minimizing a custom cost (path length, clearance, energy) with RRT\* /
 an optimizing planner. Same cross-inheritance shape, two virtuals.
 
@@ -117,7 +117,7 @@ ss.solve(1.0)                                    # motionCost called ~1M times/s
 
 ---
 
-## Pattern 4 — a compound state space (SE2/SE3)  (explicit downcast)
+## Pattern 4, a compound state space (SE2/SE3)  (explicit downcast)
 *Use for:* poses with orientation. The auto-downcast covers `RealVectorStateSpace`;
 for a compound space, cast explicitly with `as_state` (Python can't write `.as`).
 
@@ -130,9 +130,9 @@ def is_valid(state):
 
 ---
 
-## Pattern 5 — lower the hot checker to native C++  (when validity dominates)
+## Pattern 5, lower the hot checker to native C++  (when validity dominates)
 *Use for:* a planner that calls the checker millions of times (RRT\*, long solves).
-Prototype in Python (Patterns 1–3), then lower that one function to C++ — same OMPL
+Prototype in Python (Patterns 1–3), then lower that one function to C++, same OMPL
 calls, ~150x faster inner loop.
 
 ```python
@@ -160,7 +160,7 @@ ss.setStateValidityChecker(ob.StateValidityCheckerPtr(checker))
 
 ---
 
-## Pattern 6 — publish a plan as a ROS 2 nav_msgs/Path
+## Pattern 6, publish a plan as a ROS 2 nav_msgs/Path
 *Use for:* feeding a plan to RViz / a navigation stack. Build the **C++** message.
 
 ```python
@@ -187,7 +187,7 @@ for x, y in waypoints:
 node = rclcpp.Node("planner")
 node.create_publisher(Path, "plan", 10).publish(msg)
 ```
-See `scripts/ompl_kit_demos/d02_publish_path.py`.
+See `ompl_kit/demos/d02_publish_path.py`.
 
 ---
 
@@ -195,13 +195,13 @@ See `scripts/ompl_kit_demos/d02_publish_path.py`.
 - **Pin** any Python subclass instance (checker/objective) you hand to C++, or the
   next dispatch raises `TypeError: callable was deleted`. `validity_checker(owner=)`
   does it for you; a raw subclass is yours to `keep_alive`.
-- **`validity_checker` needs no hint** — the kit fixes the `bool(const State*)`
+- **`validity_checker` needs no hint**, the kit fixes the `bool(const State*)`
   signature. Don't rely on `cppyy_kit.callback`'s inference here: it would infer a
   `State&` reference, which won't bind to `setStateValidityChecker`.
 - Inside a callback, `state[0]`/`state[1]` work for `RealVectorStateSpace`
   (auto-downcast); a compound space needs `ompl_kit.as_state(state, ...StateType)`.
 - **Seed before solving** with `ompl_kit.set_seed(n)`; a seed set after the first
-  sample is ignored (OMPL warns). Re-seeding in one process is unreliable — use a
+  sample is ignored (OMPL warns). Re-seeding in one process is unreliable, use a
   fresh process per reproducible run.
 - Wrap raws in the library `Ptr` (`ob.StateSpacePtr`, `ob.PlannerPtr`) to pass them
   to OMPL; the wrap transfers ownership (no double-free).

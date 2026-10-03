@@ -1,4 +1,4 @@
-"""Live Jazzy/Cyclone proof for strict direct-entity QoS lowering."""
+"""Jazzy and Cyclone DDS integration test for direct-entity QoS lowering."""
 
 import json
 from pathlib import Path

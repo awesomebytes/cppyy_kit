@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live native callback-group proof for direct C++ entities."""
+"""Integration test for callback groups on direct C++ entities."""
 
 import gc
 import importlib

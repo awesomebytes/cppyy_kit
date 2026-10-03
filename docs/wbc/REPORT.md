@@ -1,108 +1,97 @@
-# wbc_kit spike — Whole-Body Control frameworks via cppyy
+# wbc_kit study: Whole-Body Control frameworks via cppyy
 
 **Date:** 2026-07-12 · **Env:** pixi `wbc` (standalone, conda-forge only),
 `pinocchio 4.0.0`, `crocoddyl 3.2.1`, `tsid 1.x`, `casadi 3.7.2`,
 `example-robot-data 5.0.0`, `libboost 1.90`, `cppyy 3.5.0`, Python 3.12.13, linux-64.
 
-**Question:** tsid / crocoddyl / pinocchio are all on conda-forge
-**with** Python bindings (verified). So the cppyy win — if there is one — must be
-**sharper than "bindings exist"**. Where, for whole-body control, does cppyy do
-something the bindings genuinely cannot? "Bindings are fine, no kit needed" is an
-acceptable honest answer.
+**Question:** tsid, crocoddyl, and pinocchio are all on conda-forge with Python
+bindings. This study looked for work that cppyy can do that these bindings cannot.
+If the bindings cover a framework's use cases, then no cppyy kit is needed.
 
-**Verdict: GO, narrowly and specifically — Crocoddyl.** The sharp, measurable,
-demo-worthy win is **authoring a custom Crocoddyl action model in C++ inline and
-JIT-compiling it at runtime with no build system**, so the DDP solver calls its
-`calc`/`calcDiff` natively. On the canonical unicycle problem this runs at the exact
-speed of Crocoddyl's compiled built-in model and **~21x faster** than the
-Python-derived model that Crocoddyl's bindings support — converging to a
-bit-identical cost. This is the ompl_kit "lower the hot path to C++" story applied
-to optimal control, and it is a genuinely new capability: the bindings let you
-prototype a custom model in Python (slow) or ship one in C++ (needs a CMake build);
-cppyy fills the missing "fast **and** no build system, in the same script" cell. A
-thin `wbc_kit` (bringup + the crash-safe custom-model compile + the one mandatory
-Crocoddyl-3.2 boilerplate) is justified. pinocchio's templated-scalar angle and
-tsid's custom-task angle were evaluated and are **weaker** (see the table).
+**Result: Crocoddyl is the best target.** The measured benefit is that users can
+author a custom Crocoddyl action model in inline C++ and JIT-compile it at runtime
+without a build system. The DDP solver then calls its `calc`/`calcDiff` natively.
+On the canonical unicycle problem, this runs at the speed of Crocoddyl's compiled
+built-in model and 21.7 times faster than the Python-derived model. All three
+models reach the cost 250.039320 in 8 iterations. Crocoddyl's bindings support Python models and
+compiled C++ models. cppyy lets users write and compile the C++ model in the same
+script. A small `wbc_kit` is useful for bringup, safe model compilation, and required
+Crocoddyl 3.2 boilerplate. pinocchio's templated-scalar feature and tsid's custom-task
+feature were also evaluated (see the table).
 
 ---
 
-## 1. Decision table — where does cppyy actually win for WBC?
+## 1. Framework comparison
 
 | Framework | Binding today | Failure-mode the binding leaves | cppyy angle | Effort | Demo value | Evidence |
 |---|---|---|---|:--:|:--:|---|
-| **Crocoddyl 3.2** | boost::python; **can** subclass `ActionModelAbstract` in Python | Python-authored models are **slow** in the DDP hot loop; the fast path (C++ model) needs a CMake project + rebuild | **Author the custom C++ action model inline (`cppdef`), JIT'd at runtime — native speed, no build system.** Prototype in Python, *lower* to inline C++ in the same script | **Low–Med** | **HIGH** | S2/S3: WORKS. 21.7x vs Python model, == built-in speed, cost bit-identical; bringup clean (~0.4 s JIT, no boost/ORC wall) |
-| **pinocchio 4.0** | double + **casadi** scalar (`pinocchio.casadi`) shipped; cppad **not** built | Non-casadi scalar surfaces (`ModelTpl<Scalar>` for a scalar the binding never built) | Instantiate `ModelTpl<Scalar>` on demand (the pcl `PointCloud<T>` pattern) | Med | Low–Med | S4: **BLOCKED in this env** — pinocchio's 25-type `JointModel` `boost::variant` exceeds **boost 1.90**'s template-arity when re-instantiated for a new scalar (`ModelTpl<float>` and `.cast<float>()` both fail to compile). casadi (the main autodiff scalar) already shipped |
-| **tsid 1.x** | boost::python; bindings expose **only concrete task types** (no subclassable `TaskBase`/`TaskMotion` trampoline) | Authoring a **new task type** from Python isn't exposed | Cross-inheritance: derive `TaskMotion` and override `compute` (plain virtuals, not `final`) | Med | Med | S5: expected WORKS (same pattern as ompl/control), **not probed** — it is the *same* cross-inheritance capability those kits already prove, so lower novelty. Bringup shares Crocoddyl's clean pinocchio+boost stack |
-| **OCS2** (C++-only) | none | — | Would be a pure cppyy target | — | — | S6: **not on conda-forge / robostack**; source build is large (multi-package MPC framework) -> out of scope, documented |
-| **mc_rtc** (C++-only) | own Python bindings, own build | — | — | — | — | S6: **not on conda-forge / robostack** -> out of scope |
-| **proxsuite / QP** | conda-forge package **with** bindings | — | none | — | — | S6: bindings are complete; no cppyy win. Honest "no kit needed" |
+| **Crocoddyl 3.2** | boost::python; supports Python subclasses of `ActionModelAbstract` | Python models are slow in the DDP loop. C++ models usually require a CMake project and rebuild. | Define a custom action model in inline C++ with `cppdef`. | Low to medium | High | S2/S3: 21.7x faster than the Python model, same cost as built-in C++; header JIT about 0.4 s |
+| **pinocchio 4.0** | double + **casadi** scalar (`pinocchio.casadi`) shipped; cppad **not** built | Non-casadi scalar surfaces (`ModelTpl<Scalar>` for a scalar the binding never built) | Instantiate `ModelTpl<Scalar>` on demand (the pcl `PointCloud<T>` pattern) | Med | Low–Med | S4: **BLOCKED in this env**, pinocchio's 25-type `JointModel` `boost::variant` exceeds **boost 1.90**'s template-arity when re-instantiated for a new scalar (`ModelTpl<float>` and `.cast<float>()` both fail to compile). casadi (the main autodiff scalar) already shipped |
+| **tsid 1.x** | boost::python; bindings expose concrete task types only | Python bindings do not expose a subclassable `TaskBase` or `TaskMotion` trampoline. | Derive `TaskMotion` through cppyy and override `compute`. | Medium | Medium | S5: not tested; uses the cross-inheritance pattern used in ompl_kit and control_kit. Bringup shares Crocoddyl's pinocchio and boost packages. |
+| **OCS2** (C++-only) | none | none | Would be a pure cppyy target | N/A | N/A | S6: **not on conda-forge / robostack**; source build is large (multi-package MPC framework), so it is out of scope |
+| **mc_rtc** (C++-only) | own Python bindings, own build | none | none | N/A | N/A | S6: **not on conda-forge/robostack**, so it is out of scope |
+| **proxsuite / QP** | conda-forge package **with** bindings | none | none | N/A | N/A | S6: bindings are complete; no cppyy benefit, so no kit is needed |
 
-**Chosen probe target: Crocoddyl** — the only candidate whose cppyy win is
-simultaneously (a) sharper than "bindings exist", (b) measurable end-to-end, and
-(c) demo-worthy in a new domain (optimal control) rather than a re-run of the
-cross-inheritance pattern ompl_kit/control_kit already own.
+**Probe target: Crocoddyl.** It is the only candidate with a measurable end-to-end
+cppyy benefit in optimal control. The other kits already cover cross-inheritance.
 
 ---
 
-## 2. Probe — Crocoddyl capability matrix
+## 2. Crocoddyl capability results
 
-Each probed in a fresh subprocess (S20: risky includes/`cppdef` out-of-process first)
-from the `wbc` env against the installed Crocoddyl 3.2.1.
+Each probe ran in a fresh subprocess in the `wbc` environment, against Crocoddyl 3.2.1.
 
 | # | Capability | Result | Evidence |
 |---|---|:--:|---|
-| 1 | **Bringup + JIT**: `pinocchio/fwd.hpp` + Crocoddyl core/action/state/solver headers, load `libpinocchio_default.so` + `libcrocoddyl.so` | **WORKS** | Header JIT **~420 ms** (pinocchio/fwd 224 + crocoddyl core 155 + solvers 44); lib load ~5 ms. **No boost/ORC wall** despite the eigen+boost+pinocchio stack (S20's warning did not bite here). Comparable to ompl (~538 ms) |
-| 2 | **Built-in model via cppyy**: construct `crocoddyl::ActionModelUnicycle`, run `calc` | **WORKS** | `xnext=[1.05, 0, 0.01]`, `cost=50.13` for `x=[1,0,0], u=[0.5,0.1]` — exact |
-| 3 | **Custom C++ action model (cross-inheritance in C++)**: `cppdef` a subclass of `crocoddyl::ActionModelAbstract`, drive a real FDDP solve | **WORKS** | 100-node unicycle, FDDP -> `cost=250.039320`, 8 iters, converged. Solve driven entirely in C++ (Pattern 6 containers). See S3 |
-| 4 | **Numeric verification** vs the binding's built-in model | **WORKS** | The inline-C++ model's converged cost is **bit-identical** to Crocoddyl's compiled `ActionModelUnicycle` and to a Python-derived model (all three: `250.039320`, 8 iters) |
-| 5 | **Benchmark** (the honest number) | **WORKS** | S3 — 21.7x vs Python model; == built-in C++ speed |
+| 1 | Bringup and JIT: include pinocchio and Crocoddyl headers; load both shared libraries | Yes | Header JIT took about **420 ms**: pinocchio/fwd 224 ms, Crocoddyl core 155 ms, solvers 44 ms. Library loading took about 5 ms. Comparable to OMPL at about 538 ms. |
+| 2 | Construct `crocoddyl::ActionModelUnicycle` through cppyy and call `calc` | Yes | `xnext=[1.05, 0, 0.01]`, `cost=50.13` for `x=[1,0,0], u=[0.5,0.1]`. |
+| 3 | Define a C++ subclass of `ActionModelAbstract` with `cppdef` and run FDDP | Yes | The 100-node unicycle solve converged to `cost=250.039320` in 8 iterations. The solve ran in C++ using Pattern 6 containers. See S3. |
+| 4 | Compare against the built-in model | Yes | The inline C++ model, built-in model, and Python model all reached `250.039320` in 8 iterations. Costs were bit-identical. |
+| 5 | Benchmark inline C++ against the Python model | Yes | S3 measured a 21.7x speedup over the Python model and similar speed to the built-in C++ model. |
 
-**One sharp edge (fixed in the kit):** authoring a custom model is a
-**failed-`cppdef`-crash** minefield (S20 Pattern 9). Two forced dead-ends before it
-compiled: (a) `calc`/`calcDiff` signatures must match the base's
-`const Eigen::Ref<const VectorXs>&` exactly; (b) **Crocoddyl 3.2's `CROCODDYL_BASE_CAST`
+**Failure handling:** an error during `cppdef` can crash the process (S20 Pattern 9).
+Two compile errors were found while developing the model. First, `calc` and `calcDiff`
+signatures must match the base class's `const Eigen::Ref<const VectorXs>&`. Second,
+**Crocoddyl 3.2's `CROCODDYL_BASE_CAST`
 macro adds two pure-virtual clone methods** (`cloneAsDouble`/`cloneAsFloat`) that a
 subclass **must** implement or it stays abstract. Each mistake crashed Cling during
 transaction revert (no Python traceback). `wbc_kit.safe_cppdef` probes the model
-out-of-process first and raises a clean `CppyyKitError`; `wbc_kit.ACTION_MODEL_CLONES`
-is the mandatory boilerplate.
+out-of-process first and raises `CppyyKitError`; `wbc_kit.ACTION_MODEL_CLONES`
+contains the required clone methods.
 
 ---
 
-## 3. Bench — custom action model, three ways (the honest number)
+## 3. Action model benchmark
 
 Same unicycle optimal-control problem (T=100 nodes, FDDP, x0=[-1,-1,1]), authored
-and solved three ways. **Shared machine during measurement — provisional,
-directional not exact** (best of 7 after warm-up).
+and solved three ways. The machine was shared during measurement, so results are
+provisional (best of 7 after warm-up).
 
 | model authoring path | cost | iters | solve | vs Python-model |
 |---|--:|--:|--:|--:|
-| **(A) Python-derived** (subclass `ActionModelAbstract` in Python — the binding's prototype path) | 250.039320 | 8 | **6.84 ms** | 1.0x |
+| **(A) Python-derived** (subclass `ActionModelAbstract` in Python, the binding's prototype path) | 250.039320 | 8 | **6.84 ms** | 1.0x |
 | **(ref) built-in C++** (`crocoddyl::ActionModelUnicycle`, compiled in the binding) | 250.039320 | 8 | **0.34 ms** | 20.2x |
 | **(B) cppyy inline C++** (custom model `cppdef`'d at runtime, no build system) | 250.039320 | 8 | **0.32 ms** | **21.7x** |
 
-**Reading these honestly:**
-- **All three converge to a bit-identical cost** — the inline-C++ model is a faithful
-  *lowering* of the Python prototype, not an approximation. This is the tests-as-
-  contract discipline: the numeric match is the regression gate (`test_wbc_kit.py`).
-- **The inline-C++ model runs at the compiled built-in's speed** (0.32 vs 0.34 ms) —
-  cppyy's JIT'd C++ is *native* C++; there is no Python in the DDP hot loop.
+**Results:**
+- **All three converge to a bit-identical cost.** The inline-C++ model implements the
+  same math as the Python prototype. The numeric match is checked in `test_wbc_kit.py`.
+- **The inline-C++ model runs at the compiled built-in's speed** (0.32 vs 0.34 ms).
+  There is no Python in the DDP hot loop.
 - **~21x over the Python-derived model.** The DDP solver calls `calc`/`calcDiff` per
-  node per iteration (plus line-search rollouts) — thousands of crossings; the Python
-  model pays the boundary + NumPy-allocation cost on every one. This is the crocoddyl
-  analogue of ompl_kit's "Python validity checker in the hot loop" figure, in a domain
-  (trajectory optimization) where the callback truly dominates.
-- **The win is "fast *and* no build system, same script."** Crocoddyl's own workflow
+  node per iteration (plus line-search rollouts), causing thousands of calls. The Python
+  model pays the Python boundary and NumPy allocation cost on each call. This is similar
+  to the OMPL validity-checker benchmark, in trajectory optimization.
+- **The benefit is C++ without a separate build system.** Crocoddyl's own workflow
   is "prototype in Python, rewrite the hot model in C++"; the rewrite normally means a
   CMake project linking libcrocoddyl. cppyy makes the lowered C++ model a `cppdef`
-  string in the same file — the exact ROSCon storyline (prototype -> lower -> benchmark,
-  code stays ~the same).
+  string in the same file. The workflow is prototype, translate to C++, then benchmark.
 
 Run it: `pixi run -e wbc demo-wbc-lower` (and `pixi run -e wbc test-wbc`).
 
 ---
 
-## 4. pinocchio templated-scalar — BLOCKED in this env (the plan's named gap)
+## 4. pinocchio templated scalar: blocked in this environment
 
 The plan flagged `pinocchio::ModelTpl<Scalar>` for a non-double `Scalar` (autodiff)
 as the pinocchio angle. Findings:
@@ -110,9 +99,9 @@ as the pinocchio angle. Findings:
   feedstock builds `WITH_CASADI`. So the main autodiff scalar is a binding feature,
   not a cppyy gap.
 - **Non-casadi scalars are env-blocked.** `ModelTpl<float>` and the
-  build-as-double-then-`.cast<float>()` path both **fail to compile** — not a Cling
+  build-as-double-then-`.cast<float>()` path both **fail to compile**, not a Cling
   quirk (`g++` reproduces it): pinocchio's `JointModelVariant` is a **25-type
-  `boost::variant`**, and re-instantiating it for a new scalar hits **boost 1.90**'s
+  `boost::variant`**, and re-instantiating it for a new scalar exceeds **boost 1.90**'s
   `make_variant_list` template-arity limit (`wrong number of template arguments (25,
   should be at least 0)`). The shipped double/casadi libraries sidestep this by being
   *precompiled*; JIT-instantiating a fresh scalar from headers does not.
@@ -120,104 +109,74 @@ as the pinocchio angle. Findings:
   so the ergonomic "any scalar on demand" (the pcl `PointCloud<T>` pattern) does not
   transfer cleanly even setting boost aside.
 
-**So the plan's named gap is real in principle but env-blocked here.** It might be
-pried open with boost-preprocessor arity defines (a S20 "peel one layer" exercise),
-but that is a dependency-config fight, not a clean cppyy win — and casadi already
-covers the motivating use case. Honest verdict: **not the probe target.**
+The plan's proposed gap exists in principle, but this environment blocks it. Boost
+preprocessor arity defines might resolve the issue (an S20 "peel one layer" exercise),
+but that would require dependency configuration. Casadi already covers the main use
+case, so pinocchio is not the probe target.
 
 ---
 
-## 5. tsid custom tasks — genuine but not novel
+## 5. tsid custom tasks
 
-tsid's boost::python bindings expose **only concrete task classes**
-(`TaskSE3Equality`, `TaskComEquality`, `TaskJointPosture`, ...) — there is no exposed
-subclassable `TaskBase`/`TaskMotion` with a virtual trampoline, so you **cannot
-author a new task type from Python** through the binding. `TaskMotion`'s virtuals
-(`compute`, `getConstraint`, ...) are plain (not `final`), so a Python or C++ subclass
-via cppyy cross-inheritance would work — this is a real capability the binding lacks.
-**But it is the *same* cross-inheritance pattern ompl_kit and control_kit already
-prove** (Python derives a C++ virtual base; S16). Lower novelty, medium demo value,
-and it shares Crocoddyl's clean pinocchio+boost bringup. Documented as a viable
-follow-on, not the headline.
+tsid's boost::python bindings expose concrete task classes such as
+`TaskSE3Equality`, `TaskComEquality`, and `TaskJointPosture`. They do not expose a
+subclassable `TaskBase` or `TaskMotion` trampoline, so Python cannot define a new task
+type through the bindings. `TaskMotion`'s virtual methods, including `compute` and
+`getConstraint`, are not `final`. A cppyy subclass can override them.
+This is the same cross-inheritance pattern used in ompl_kit and control_kit (Python
+derives a C++ virtual base; S16). It has lower novelty and medium demo value. It also
+uses the same pinocchio and boost setup as Crocoddyl. It is a possible follow-on.
 
 ---
 
-## 6. C++-only candidates & environment findings
+## 6. C++-only candidates and environment
 
-- **OCS2** — not on conda-forge or robostack; a large multi-package MPC framework
-  (source build with catkin/ROS deps). A pure cppyy target in principle, but the
-  source-build size puts it out of scope for this spike. Documented.
-- **mc_rtc** — not on conda-forge/robostack; ships its own Python bindings + build.
-  Out of scope.
-- **proxsuite** and the QP-solver ecosystem — on conda-forge **with** complete
-  bindings. No cppyy win; honest "no kit needed."
+- OCS2 is not available on conda-forge or robostack. It is a multi-package MPC
+  framework with ROS and catkin build dependencies, so building it from source is
+  outside this study.
+- mc_rtc is not available on conda-forge or robostack. It has its own Python bindings
+  and build system.
+- proxsuite and the QP solver packages have complete conda-forge bindings. No cppyy
+  package is needed for them.
 
-### Environment / lock changes (flag for the lead)
-- **Added `[feature.wbc]` + `wbc` env to pixi.toml — STANDALONE (`no-default-feature`),
-  NOT `solve-group="default"`.** The plan suggested solve-group default; it is
-  **infeasible** and I switched to standalone on evidence:
-  - conda-forge pinocchio/crocoddyl/tsid can only co-resolve with the robostack-jazzy
-    ROS stack if they share a boost, but the shared solve-group is over-constrained by
-    the ROS stack — `pixi install -e wbc` under solve-group default **fails**
-    (`libboost 1.86 ... conflicts with the versions reported above`; some pinocchio
-    builds also demanded python 3.9). pinocchio/crocoddyl/tsid carry **no ROS
-    dependency**, so a standalone conda-forge env is the correct home; it resolves
-    cleanly (boost 1.90, py3.12) and **leaves the shared ROS lock untouched**.
+### Environment and lock changes
 
-> **Dated correction (2026-07-12):** the pinocchio↔ROS half of this clash dissolved —
-> conda-forge rebuilt **pinocchio 4.x against libboost 1.90**, so `pinocchio` +
-> `example-robot-data` now co-solve with the robostack ROS stack under
-> `solve-group="default"` (verified; the retarget lane's `[feature.retarget-ros]` env
-> does exactly this and runs the CLIK retarget alongside rclcpp_kit in one process). The
-> `wbc` env stays standalone only for **crocoddyl/tsid**, which still pull the older boost
-> line here. Unchanged: the Cling header-parse wall on `pinocchio::Model` (the 25-type
-> `boost::variant`, §4 above) — it trips on boost 1.90 too, so driving pinocchio's
-> rigid-body core from cppyy remains blocked regardless of the solve; use the bindings.
-  - The standalone `wbc` feature re-declares its own `python`/`cppyy`/`compilers`/
-    `numpy`/`pytest`, since it does not inherit the default.
-- **`pixi.lock` re-locked** to add the `wbc` env's solve (a new standalone env; the
-  default and existing kit envs are unchanged — the standalone choice was made
-  specifically to avoid perturbing the shared lock). **Re-lock flagged as requested.**
-- Registered `wbc_kit` in the `lint` and `test` pixi tasks and on the default
-  `PYTHONPATH`; the new tests **auto-skip** outside the `wbc` env (verified: `6 skipped`
-  in the default env), so the default suite is untouched.
+- Added the standalone `[feature.wbc]` feature and `wbc` environment in `pixi.toml`.
+  The default solve group failed: pinocchio, Crocoddyl, and tsid required Boost 1.86,
+  which conflicted with the robostack Jazzy ROS stack. Some pinocchio packages also
+  required Python 3.9. These packages do not depend on ROS, so the standalone
+  conda-forge environment uses Boost 1.90 and Python 3.12.
+- **Correction (2026-07-12):** conda-forge rebuilt pinocchio 4.x against Boost 1.90.
+  pinocchio and example-robot-data now resolve with the robostack ROS stack in the
+  default solve group. The `retarget-ros` environment uses this setup. Crocoddyl and
+  tsid still require the older Boost version here, so `wbc` remains standalone. The
+  Cling template-arity error for `pinocchio::Model` remains with Boost 1.90; use
+  pinocchio's bindings for rigid-body computations.
+- The standalone `wbc` feature declares its own Python, cppyy, compilers, NumPy, and
+  pytest dependencies. Its lock entries were added without changing existing
+  environments. `wbc_kit` was added to the lint and test tasks and default `PYTHONPATH`.
+  Its tests skip when Crocoddyl is absent; six tests skipped in the default environment.
 
 ---
 
-## 7. Generic-lesson candidates for COMMON_PATTERNS
+## 7. Notes for COMMON_PATTERNS
 
-Noted for the lead (COMMON_PATTERNS.md is the lead's to edit):
+These notes are for the maintainer of COMMON_PATTERNS.md.
 
-- **Cross-binding-runtime co-existence (NEW nuance for S16/S20).** A library can ship
-  **boost::python** bindings *and* be driven by cppyy **in the same process** — both
-  load the same `libcrocoddyl.so`, the C++ objects are separate. The clean division of
-  labour: **prototype with the library's own binding, lower the hot path with cppyy**,
-  in one script. But a **cppyy-created C++ object cannot be handed to a boost::python
-  API** (two proxy runtimes) — so the cppyy path must build its own containers/solve in
-  C++ (Pattern 6), not feed the binding's objects. Worth a sentence: "mixing a library's
-  own binding with cppyy is fine and often ideal; just don't pass objects *between* the
-  two runtimes."
-
-- **Versioned pure-virtual creep across the inheritance boundary (sharpens S16).**
-  A library minor version can **add pure virtuals to a base you subclass** and silently
-  make your override abstract — Crocoddyl 3.2's `CROCODDYL_BASE_CAST` added
-  `cloneAsDouble`/`cloneAsFloat` to `ActionModelAbstract`. In C++ it is a compile error;
-  **in cppyy it is a failed-`cppdef` crash** (S9/S20 Pattern 9). Rule: when
-  cross-inheriting a C++ base, `nm`/grep the base for **every** pure virtual (including
-  macro-injected ones) before authoring; probe the subclass `cppdef` out-of-process. A
-  kit should ship the mandatory boilerplate as a constant (wbc_kit.ACTION_MODEL_CLONES).
-
-- **`boost::variant` template-arity is an env-version JIT wall (new S20 sub-case).**
-  A big `boost::variant` (pinocchio's 25-type `JointModel`) that a **precompiled** `.so`
-  carries fine can be **un-JIT-able from headers** under a newer boost whose
-  preprocessed arity limit it exceeds — parse fails, not execution (distinct from the
-  ORC static-init wall). Suspect it when a template *class* re-instantiation for a new
-  parameter fails but the shipped specialization works. Reproduce with `g++` to
-  distinguish from a Cling quirk.
-
-- **"Slow Python subclass, fast C++ subclass, no build system" is a recurring shape.**
-  Third instance of the *lowering* pattern after ompl_kit (validity checker) and
-  control_kit (controller): a framework whose hot loop calls a user-authored virtual
-  (OMPL validity, ros2_control update, Crocoddyl `calc`/`calcDiff`) is the ideal cppyy
-  target — cppyy uniquely offers the *fast* authoring path (inline C++) without the
-  framework's usual build step. Candidate for a named pattern: "lower the hot virtual."
+- A library's boost::python binding and cppyy can load the same shared library in one
+  process. Their C++ objects use different proxy runtimes and cannot be passed between
+  them. Use the library binding to prototype, then build cppyy containers and the solve
+  in C++ (Pattern 6).
+- A library update can add pure virtual methods to a base class. Crocoddyl 3.2 added
+  `cloneAsDouble` and `cloneAsFloat` to `ActionModelAbstract` through
+  `CROCODDYL_BASE_CAST`. A subclass that omits them remains abstract. A failed cppyy
+  `cppdef` can crash Cling (S9/S20 Pattern 9). Check for all pure virtual methods,
+  including macro-generated methods, and test risky subclasses in a subprocess.
+- Pinocchio's 25-type `JointModel` `boost::variant` is available in the precompiled
+  library but exceeds Boost 1.90's `make_variant_list` template arity when Cling tries
+  to instantiate it from headers for a new scalar. This is a compile-time error, not
+  an execution error. Reproduce it with `g++` to distinguish it from a Cling issue.
+- A framework may call user-defined virtual methods many times in a hot loop. Moving
+  such a method from a Python subclass to inline C++ can avoid per-call Python overhead
+  without a separate build system. Examples here are OMPL validity checks,
+  ros2_control updates, and Crocoddyl `calc` and `calcDiff`.

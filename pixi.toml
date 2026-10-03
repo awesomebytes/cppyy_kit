@@ -4,19 +4,19 @@ name = "cppyy_kit_ws"
 # robostack-jazzy + conda-forge supply the ROS/cppyy stack and every kit's C++
 # dependency. (the published kit packages ship on the prefix.dev `awesomebytes` channel;
 # this dev workspace resolves every conda package from these
-# two channels and finds the local kits — including rclcpp_kit — via PYTHONPATH.)
+# two channels and finds local kits, including rclcpp_kit, through PYTHONPATH.)
 channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
 version = "0.3.0"
 
-# Default environment. Mirrors rclcppyy's proven default (ros-base + cyclonedds +
+# Default environment. Uses the same default as rclcppyy (ros-base + cyclonedds +
 # cppyy + toolchain + test/lint tooling): the base cppyy_kit package is ROS-free,
 # but most kits (pcl/nav2/moveit/control/cv/tf) are ROS-adjacent and JIT C++ that
 # needs the ROS message packages, headers and compiler toolchain, and the
-# early rclcppyy bridge (since dropped) was a ROS package — so a ROS-based default keeps the feature
-# envs purely additive (solve-group = "default") on the same proven stack that
-# rclcppyy's CI already validates. flake8 + its plugins arrive transitively via
-# ros-base (same as rclcppyy), satisfying the `lint` gate.
+# early rclcppyy bridge was a ROS package. A ROS-based default keeps feature
+# environments additive (solve-group = "default") on the base stack that
+# rclcppyy's CI validates. flake8 and its plugins arrive through ros-base and
+# satisfy the `lint` task.
 [dependencies]
 ros-jazzy-ros-base = ">=0.11"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
@@ -55,12 +55,12 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 
 [tasks]
 # Default smoke: collect every domain-kit test suite. In the default env (no kit
-# C++ libs) each suite auto-skips on its capability probe, so this is a green
-# "everything collects & skips" check. The rclcpp_kit suite is NOT here: unlike the
+# C++ libs) each suite skips after its capability check. This checks that tests
+# collect and skip as expected. The rclcpp_kit suite is not here: unlike the
 # domain kits it needs no opt-in C++ library (ros-base is already in the default
-# env), so it would actually bring up rclcpp + DDS rather than skip — it runs in its
-# own env via `pixi run -e rclcpp test-rclcpp` (and the `test-tf` gate). The real
-# per-kit proof is the feature-env test-<kit> tasks.
+# env), so it starts rclcpp and DDS rather than skipping. It runs in its own env
+# via `pixi run -e rclcpp test-rclcpp` and the `test-tf` task. Feature environments
+# run each kit's tests.
 test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests examples/parallel_demo/test_parallel.py"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
 lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench jitter_bench retarget_pipeline scripts skills examples"
@@ -72,11 +72,11 @@ clean = "rm -rf build"
 # default ros-base env), so this feature carries no extra conda deps. It exists as
 # a standalone env for the rclcpp_kit test suite + tf demos. (This was the
 # temporary `ros-jazzy-rclcppyy` bridge; the carve-out moved rclcpp_kit into this repo
-# and dropped the bridge — every kit now imports `rclcpp_kit` directly.)
+# and removed the bridge. Every kit now imports `rclcpp_kit` directly.)
 [feature.rclcpp.tasks]
 # Full rclcpp_kit suite: bringup, plain pub/sub roundtrip, serialization parity, tf.
 test-rclcpp = "pytest rclcpp_kit/tests -v"
-# tf2 C++ transform stack via cppyy (rclcpp_kit.tf) — the tf gate (8 tests).
+# tf2 C++ transform stack via cppyy (rclcpp_kit.tf), covered by 8 tests.
 test-tf = "pytest rclcpp_kit/tests/test_tf.py -v"
 # C++ tf2_ros::TransformListener ingests /tf; Python looks the transform up.
 demo-tf-lookup = "python rclcpp_kit/demos/d01_lookup_example.py"
@@ -128,7 +128,7 @@ eigen = "*"                     # PCL dependency (eigen3 headers)
 [feature.pcl.tasks]
 # NumPy cloud -> PCL VoxelGrid -> NumPy.
 demo-pcl-voxel = "python pcl_kit/demos/d01_voxel_numpy.py"
-# THE SHOWCASE: self-contained ROS 2 pipeline where the cloud stays in C++ end to end.
+# Run a ROS 2 pipeline where the point cloud stays in C++ from input to output.
 demo-pcl-pipeline = "python pcl_kit/demos/d02_ros_pipeline.py"
 # pcl_kit pipeline (d02) vs plain rclpy+NumPy baseline (d03): latency, CPU%, LOC.
 bench-pcl = "python pcl_kit/demos/bench_pcl_pipeline.py"
@@ -154,7 +154,7 @@ demo-ompl-plan = "python ompl_kit/demos/d01_first_plan.py"
 demo-ompl-sweep = "python ompl_kit/demos/d03_planner_sweep.py"
 # Plan a 2D path, then publish it as nav_msgs/Path on a ROS 2 topic (needs bridge).
 demo-ompl-path = "python ompl_kit/demos/d02_publish_path.py"
-# The honest hot-loop bench: Python-callback / Python-subclass / native JIT'd C++ checkers.
+# Compare Python callbacks, Python subclasses, and native JIT-compiled C++ checkers.
 bench-ompl = "python ompl_kit/demos/bench_ompl_validity.py"
 # ompl_kit tests (gate on OMPL headers). The base cppyy_kit layer is covered by test-bt.
 test-ompl = "pytest ompl_kit/tests/test_ompl_kit.py -v"
@@ -175,9 +175,9 @@ ros-jazzy-nav2-regulated-pure-pursuit-controller = "*" # RPP controller
 ros-jazzy-nav2-msgs = "*"                              # nav2 message types
 
 [feature.nav2.tasks]
-# Plan on a synthetic occupancy grid with real Costmap2D + NavFn, driven from Python.
+# Plan on a synthetic occupancy grid with Costmap2D + NavFn, called from Python.
 demo-nav2-plan = "python nav2_kit/demos/d01_plan_grid.py"
-# THE SHOWCASE: a complete miniature nav stack in one file (rviz2-visualizable).
+# Run a small navigation stack defined in one file. It can be visualized in RViz.
 demo-nav2-stack = "python nav2_kit/demos/d02_own_nav_stack.py"
 # NavFn-from-Python vs pure-Python A* on 256/512/1024 grids: plan-time table.
 bench-nav2-plan = "python nav2_kit/demos/bench_nav2_plan.py"
@@ -193,7 +193,7 @@ ros-jazzy-moveit-py = "*"                              # official Python subset 
 [feature.moveit.tasks]
 # RobotModel + FK + KDL IK basics from Python (parse layer + pluginlib kinematics).
 demo-moveit-state = "python moveit_kit/demos/d01_robot_state.py"
-# THE SHOWCASE: plan the Panda to a Cartesian pose goal with MoveIt's real OMPL pipeline.
+# Plan a Cartesian pose goal for the Panda using MoveIt's OMPL pipeline.
 demo-moveit-plan = "python moveit_kit/demos/d02_plan_pose_goal.py"
 # Bench: collision checks/sec + IK solves/sec, moveit_kit (full C++) vs moveit_py.
 bench-moveit = "python moveit_kit/demos/bench_moveit.py"
@@ -208,15 +208,15 @@ test-moveit = "pytest moveit_kit/tests/test_moveit_kit.py -v"
 # with `moveit` (the `ik` env = both features) and adds only the one extra packaged
 # solver; bio_ik/pick_ik carry no conda dep (built from source into build/vendor/).
 # Adding trac_ik to the shared `default` solve-group re-locks it (pixi.lock churns);
-# trac_ik's own generate_parameter_library dep is a header-only Cling wall we never
-# hit because pluginlib dlopen's the compiled plugin .so (REPORT §2.1).
+# trac_ik's generate_parameter_library dependency is header-only. Cling cannot parse
+# it, but this feature uses pluginlib to load the compiled plugin .so (REPORT §2.1).
 [feature.ik.dependencies]
 ros-jazzy-trac-ik-kinematics-plugin = "2.0.2.*"  # TRAC-IK (packaged) kinematics plugin
 range-v3 = "*"  # header-only; a build-time dep of the vendored pick_ik source build
 
 [feature.ik.tasks]
-# THE DELIVERABLE: one Python script runs every available solver on the same Panda
-# targets and prints the solve-rate / success / accuracy table (+ --json).
+# Run each available solver on the same Panda targets. Print solve rate, success,
+# and accuracy. The script can also write JSON with --json.
 bench-ik = "python ik_bench/run_bench.py"
 # Fetch/patch/compile bio_ik + pick_ik from source into build/vendor/ (§21). Once.
 build-bio-ik = "python ik_bench/vendor/build_bio_ik.py"
@@ -233,16 +233,17 @@ ros-jazzy-ros2-controllers = "*"  # standard C++ controllers (baselines) + mock 
 [feature.control.tasks]
 # A real controller_manager in-process with mock hardware + a stock C++ controller.
 demo-control-rig = "python control_kit/demos/d01_mock_rig.py"
-# THE SHOWCASE: a PD controller written in Python, cross-inherited from the real
-# controller_interface::ControllerInterface, driven by the real read/update/write loop.
+# Run a Python PD controller derived from
+# controller_interface::ControllerInterface in the standard read/update/write loop.
 demo-control-python = "python control_kit/demos/d02_python_controller.py"
 # Update-loop rate/jitter/missed-deadline numbers, Python controller vs C++ baseline.
 bench-control = "python control_kit/demos/bench_control_loop.py"
 # control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
 test-control = "pytest control_kit/tests/test_control_kit.py -v"
 # --- low-jitter Python control experiment (jitter_bench) ---
-# THE REFERENCE MATRIX: every variant (a1/a2/b/c) x {idle, load}, 60 s each, mlockall +
-# CPU-pinned; full stats -> build/jitter_bench.json (gitignored). Set ROS_DOMAIN_ID=63.
+# Run each variant (a1/a2/b/c) under idle and loaded conditions for 60 seconds.
+# It pins memory and CPU, writes full statistics to the gitignored
+# build/jitter_bench.json, and uses ROS_DOMAIN_ID=63.
 bench-jitter = "python jitter_bench/run_bench.py --duration 60 --mlock --cpu 2 --json build/jitter_bench.json"
 # Fast smoke (no ros2_control needed for a1/a2/b): short, idle-only, no histogram.
 bench-jitter-smoke = "python jitter_bench/run_bench.py --variant a1,a2,b --duration 2 --smoke --no-hist"
@@ -286,19 +287,19 @@ bench-webcam = "python cv_kit/demos/webcam_demo.py --bench"
 # The perception half (Process A): webcam -> MediaPipe HolisticLandmarker
 # (pose + hands, face optional) -> a landmark stream (record/replay) -> TF frames
 # via rclcpp_kit -> live Rerun. The retargeting half (Process B) runs in the
-# standalone `wbc` env (pinocchio can't share a process/env with ROS -- libboost
-# 1.86 vs 1.90, see [feature.wbc]); the two processes are coupled by the landmark
+# standalone `wbc` env (pinocchio can't share a process/env with ROS because
+# libboost versions differ, see [feature.wbc]); the two processes are coupled by the landmark
 # stream file (tailable live, replayable in CI) and both log to one Rerun viewer.
 #
 # This feature composes with the DEFAULT ros-base env (solve-group = "default"):
 # it needs rclcpp_kit (TF) + cppyy, which the default already carries. It adds only
 # rerun-sdk (conda) and MediaPipe (the repo's FIRST pip dependency, in a
 # [pypi-dependencies] section). MediaPipe pulls opencv-contrib-python (pip cv2) and
-# resolves numpy to 2.5.1 -- the SAME version the default conda env already carries,
+# resolves numpy to 2.5.1, the same version as the default conda env,
 # so there is no conda/pip numpy split. The default env carries no conda OpenCV, so
-# pip's cv2 does not shadow a conda cv2 (why this feature does NOT compose with the
+# pip's cv2 does not shadow a conda cv2 (so this feature does not compose with the
 # `vision` feature, whose conda opencv WOULD collide). cv_kit's C++ OpenCV is not
-# needed here -- perception's only hot cppyy path is TF, not image kernels.
+# needed here because perception uses cppyy for TF, not image processing.
 [feature.pipeline.dependencies]
 rerun-sdk = "0.34.*"  # live multimodal viz (pin matches the `vision` feature)
 
@@ -313,8 +314,8 @@ mediapipe = "==0.10.35"
 [feature.pipeline.tasks]
 # One-time: fetch the MediaPipe .task model bundles to build/pipeline/models/.
 fetch-models = "python retarget_pipeline/fetch_models.py"
-# THE PERCEPTION DEMO (Process A): live webcam if present else synthetic; opens a
-# Rerun window; writes the landmark stream. Add --record <path> / --replay <path>.
+# Process A uses a webcam when available, otherwise synthetic input. It opens a
+# Rerun window and writes the landmark stream. Use --record <path> or --replay <path>.
 demo-perceive = "python retarget_pipeline/perceive.py"
 # Perception A-vs-B glue bench: TF broadcast of all landmark frames, rclcpp_kit
 # (C++ tf2) vs a stock rclpy broadcaster, on the same recorded stream.
@@ -331,7 +332,7 @@ test-pipeline = "pytest retarget_pipeline/tests/test_stream.py retarget_pipeline
 # ROS stack (the earlier 1.86-vs-1.90 clash that forced the standalone `wbc` env has
 # dissolved for this specific case). solve-group="default" keeps the shared ROS/cppyy
 # stack one solve. crocoddyl/tsid are NOT needed for CLIK, so they are left out (the
-# `wbc` env keeps them for the optimal-control probe). rerun-sdk for the shared viewer.
+# `wbc` env keeps them for the optimal-control probe). rerun-sdk is used by the shared viewer.
 [feature.retarget-ros.dependencies]
 pinocchio = "*"            # rigid-body kinematics (python bindings) for the CLIK solve
 example-robot-data = "*"   # Talos / G1 URDFs
@@ -365,15 +366,16 @@ validate-cuda-opencv = "python cv_kit/cpp/build_opencv_cuda.py validate"
 
 # --- wbc: Whole-Body Control exploration -------------------------------
 # tsid / crocoddyl / pinocchio are on conda-forge WITH Python bindings, so this
-# feature exists to PROBE where cppyy is sharper than those bindings (templated
-# scalars, inline C++ action models, custom tasks) — not to re-wrap what the
+# feature tests where cppyy is useful beyond those bindings (templated
+# scalars, inline C++ action models, custom tasks). It does not re-wrap what the
 # bindings already do. example-robot-data supplies real robot models (Talos, Solo,
 # arm) for the WBC solves; casadi is pinocchio's shipped autodiff-scalar backend
 # (the contrast point for the templated-scalar probe).
 #
-# STANDALONE env (no-default-feature), NOT solve-group="default": the conda-forge
-# WBC bindings pin libboost 1.86, but the robostack-jazzy ROS stack in the default
-# solve-group pins libboost 1.90 — an irreconcilable ABI clash under one solve-group
+# This is a standalone env (no-default-feature), not part of solve-group="default".
+# The conda-forge WBC bindings pin libboost 1.86. The default robostack-jazzy ROS
+# environment pins libboost 1.90. The versions cannot share one solve-group
+# because of their ABI difference.
 # (verified: `pixi install` fails on "libboost 1.86 conflicts"). pinocchio/crocoddyl/
 # tsid carry no ROS dependency, so a standalone conda-forge env is the correct home;
 # it also keeps the shared ROS lock untouched. This feature therefore re-declares its
@@ -401,23 +403,21 @@ LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
 PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/wbc_kit"
 
 [feature.wbc.tasks]
-# THE SHOWCASE: author a custom Crocoddyl action model in Python vs inline C++ (JIT,
-# no build system) and solve the same unicycle problem -- numeric match + speedup.
+# Compare a custom Crocoddyl action model in Python with one in inline C++ (JIT,
+# no build system). Both solve the same unicycle problem and should match numerically.
 demo-wbc-lower = "python wbc_kit/demos/d01_lower_action_model.py"
 # wbc_kit tests (gate on the WBC C++ libs). The base cppyy_kit layer is in test-bt.
 test-wbc = "pytest wbc_kit/tests/test_wbc_kit.py -v"
-# --- retargeting half (Process B), OFFLINE replay in this env: consume a recorded
-# landmark stream, retarget onto a humanoid via a whole-body CLIK solve (pinocchio),
-# log to Rerun + write the policy-kickstart dataset. This env has no ROS, so it runs
-# the file modes (--replay/--follow); the LIVE /tf mode lives in the retarget-ros env
-# (demo-retarget-ros). --robot g1 swaps Talos for the Unitree G1 (both URDFs ship with
-# example-robot-data). Explicit --replay: retarget.py's default source is now live tf.
+# Offline retargeting (Process B) reads a recorded landmark stream and solves for a
+# humanoid pose with whole-body CLIK (pinocchio). It logs to Rerun and writes a dataset.
+# This env has no ROS, so it uses --replay or --follow. Live /tf input uses the
+# retarget-ros env (demo-retarget-ros). --robot g1 selects Unitree G1 instead of Talos.
+# Both URDFs are in example-robot-data. Use --replay because retarget.py defaults to live tf.
 demo-retarget = "python retarget_pipeline/retarget.py --replay build/pipeline/demo.jsonl"
-# The honest cppyy_kit win in this half: the per-frame retarget GLUE kernel (coord
-# transform + target map + sequential One-Euro filter) authored as one cppyy.cppdef
-# C++ pass vs the identical Python per-frame loop. (The IK solve itself uses pinocchio's
-# Python bindings -- pinocchio::Model won't JIT under Cling with this env's boost; see
-# docs/retarget_pipeline/REPORT.md.)
+# The cppyy_kit acceleration is the per-frame retarget kernel: coordinate transform,
+# target map, and sequential One-Euro filter. One cppyy.cppdef C++ function replaces
+# the Python loop. The IK solve uses pinocchio's Python bindings. pinocchio::Model
+# does not JIT under Cling with this env's boost; see docs/retarget_pipeline/REPORT.md.
 bench-retarget = "python retarget_pipeline/retarget.py --bench"
 # retarget tests (gate on pinocchio). Headless replay of a tiny recorded stream.
 test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
@@ -485,7 +485,7 @@ pipeline = { features = ["pipeline"], solve-group = "default" }
 retarget-ros = { features = ["retarget-ros"], solve-group = "default" }
 # WBC exploration: pinocchio/crocoddyl/tsid + robot models. STANDALONE
 # (no-default-feature): the conda-forge WBC bindings pin libboost 1.86 vs the ROS
-# stack's 1.90 — incompatible under one solve-group (see [feature.wbc.dependencies]).
+# stack's 1.90. These versions are incompatible in one solve-group (see [feature.wbc.dependencies]).
 wbc = { features = ["wbc"], no-default-feature = true }
 # Standalone env for the rclcpp_kit test suite + tf demos (see the `rclcpp` feature).
 rclcpp = { features = ["rclcpp"], solve-group = "default" }

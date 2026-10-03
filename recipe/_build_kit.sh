@@ -4,8 +4,8 @@
 # The kit packages carry no setup.py/pyproject.toml (in-repo they resolve via
 # PYTHONPATH; those dirs are also out of this packaging lane). So each package's
 # build.sh sets PKG_NAME / PKG_IMPORT / PKG_WHERE / PKG_VERSION and calls this,
-# which writes a minimal pyproject.toml into the THROWAWAY build source tree
-# ($SRC_DIR, a copy — never the repo) and pip-installs just that one package.
+# which writes a minimal pyproject.toml into a temporary build source tree
+# ($SRC_DIR, a copy rather than the repository) and pip-installs that package.
 set -euxo pipefail
 : "${PKG_NAME:?}" "${PKG_IMPORT:?}" "${PKG_WHERE:?}" "${PKG_VERSION:?}"
 
@@ -21,7 +21,7 @@ version = "${PKG_VERSION}"
 [tool.setuptools.packages.find]
 where = ["${PKG_WHERE}"]
 # Only the importable package tree. demos/ tests/ cpp/ carry no __init__.py so
-# find never treats them as packages — no exclude needed (and a broad "*cpp*"
+# find never treats them as packages, so no exclude is needed. A broad "*cpp*"
 # exclude would wrongly drop cppyy_kit itself, which contains "cpp").
 include = ["${PKG_IMPORT}", "${PKG_IMPORT}.*"]
 PYPROJECT

@@ -1,11 +1,11 @@
 """
-cppyy_kit.cpp -- the ``@cpp`` decorator: write a C++ function in Python, get a
-compiled, cached, auto-marshaling callable.
+cppyy_kit.cpp provides the ``@cpp`` decorator. It compiles a C++ function written
+in Python and returns a cached callable with argument conversion.
 
 The decorated function's **docstring is the C++ body** (its Python body is never
 executed) and its **annotations drive the marshaling**. On first call the function
-is compiled once into a cached ``.so`` (``cppdef_cached``) and every later run loads
-it -- so a ``@cpp`` kernel has the compile cache's persistence for free.
+is compiled once into a cached ``.so`` (``cppdef_cached``). Later runs load that
+library from the cache.
 
     @cpp
     def saxpy(y: "float*", x: "float*", n: int, a: float) -> None:
@@ -13,32 +13,31 @@ it -- so a ``@cpp`` kernel has the compile cache's persistence for free.
 
     saxpy(y_np, x_np, y_np.size, 2.0)      # numpy arrays cross as raw pointers
 
-Annotation → marshaling (the §6 "pass raw addresses" pattern, with the
-``reinterpret_cast`` done for you):
+Annotation and argument conversion (the §6 "pass raw addresses" pattern):
 
-* ``int`` / ``float`` / ``bool`` — scalar, by value (``int`` / ``double`` / ``bool``).
-* a **verbatim C++ type string** ending in ``*`` (``"float*"``, ``"const int*"``) —
+* ``int`` / ``float`` / ``bool``: scalar, passed by value (``int`` / ``double`` / ``bool``).
+* a **verbatim C++ type string** ending in ``*`` (``"float*"``, ``"const int*"``):
   the argument is taken as a buffer: a NumPy array (its ``.ctypes.data``) or an int
   address crosses as ``uintptr_t`` and the body gets the typed pointer.
-* ``cpp.arr("float")`` — a NumPy array crosses as **pointer + size**: the body sees
+* ``cpp.arr("float")``: a NumPy array passes as **pointer + size**. The body sees
   ``name`` (``float*``) and ``name_size`` (``std::size_t``, the array's element
   count). This is the numpy→(pointer,size) convenience for array kernels.
-* any other verbatim string — used as the C++ parameter type, value passed through.
-* return ``None`` → ``void``; ``int``/``float``/``bool`` or a verbatim string → that.
+* any other verbatim string: use it as the C++ parameter type and pass the value through.
+* return ``None`` maps to ``void``. Return ``int``/``float``/``bool`` or a verbatim string to use that type.
 
 Calls bind against the original Python signature before compilation or marshaling,
 so defaults and keyword arguments work and invalid calls raise ``TypeError`` early.
 Keyword-only and variadic parameters are rejected at decoration time.
 
-Only the honest subset above is marshaled; anything else raises at decoration time.
+Only the types listed above are marshaled. Other types raise an error at decoration time.
 Compose with real libraries via ``@cpp(include_paths=..., libraries=...)``.
 
 ``@cpp(nogil=True)`` releases the GIL (``Py_BEGIN_ALLOW_THREADS``) around **only** the
-compiled body -- argument and result marshaling stay under the lock -- so plain Python
-threads each calling the kernel run their C++ in true parallel (see
+compiled body. Argument and result marshaling stay under the lock, so plain Python
+threads that call the kernel can run their C++ code in parallel (see
 ``examples/parallel_demo``). ``@cpp(cached=False)`` (or ``cppyy_kit.disable_caching()``
-/ ``CPPYY_KIT_NO_CACHE=1``) compiles in-memory with ``cppyy.cppdef`` and never reads or
-writes the ``.so`` cache -- the debugging escape hatch (see docs/FREEZE.md, "Debugging:
+/ ``CPPYY_KIT_NO_CACHE=1``) compiles in memory with ``cppyy.cppdef`` and does not read
+or write the ``.so`` cache. Use this option for debugging (see docs/FREEZE.md, "Debugging:
 turning the caches off").
 """
 import hashlib
@@ -107,10 +106,10 @@ class _CppFunc:
         self.__doc__ = fn.__doc__
 
     def _ensure(self):
-        """Compile + resolve the kernel once. Thread-safe (double-checked lock): the
-        first call may arrive from several threads at once -- without the lock each
-        would re-run ``cppdef``, and Cling would emit a redefinition error. The fast
-        path returns before acquiring the lock once ``_impl`` is set."""
+        """Compile and resolve the kernel once. The double-checked lock handles
+        concurrent first calls. Without the lock, each thread could run ``cppdef``
+        and Cling would report a redefinition. After ``_impl`` is set, calls return
+        before acquiring the lock."""
         if self._impl is not None:          # fast path: no lock once compiled
             return
         with self._lock:
@@ -150,15 +149,15 @@ def _address(arg):
 
 def _nogil_wrapper(ret, entry, real_name, sig, call_args):
     """C++ source for a GIL-releasing wrapper ``entry`` around the compiled kernel
-    ``real_name``. It forwards the already-marshaled POD arguments (scalars, buffer
-    addresses, sizes) into the kernel inside a ``Py_BEGIN_ALLOW_THREADS`` /
-    ``Py_END_ALLOW_THREADS`` region, so the GIL is dropped for **only** the C++ body
-    -- cppyy's argument and result marshaling stay under the lock on either side of
+    ``real_name``. It passes the marshaled POD arguments (scalars, buffer addresses,
+    and sizes) to the kernel inside a ``Py_BEGIN_ALLOW_THREADS`` /
+    ``Py_END_ALLOW_THREADS`` region. The GIL is released only during the C++ body.
+    cppyy's argument and result marshaling stay under the lock.
     this call. Written as the macros' explicit expansion (``PyEval_SaveThread`` /
     ``PyEval_RestoreThread``) so a non-void result can be carried across the region
     without a default-constructed placeholder. The body is guarded by ``try``/``catch``
-    so the GIL is re-acquired even if it throws -- cppyy converts that C++ exception to
-    a Python one on the way out, which must happen under the lock."""
+    The wrapper reacquires the GIL if the body throws. cppyy converts the C++
+    exception to a Python exception after the lock is reacquired."""
     call = "%s(%s)" % (real_name, ", ".join(call_args))
     if ret == "void":
         inner = ("  PyThreadState* _save = PyEval_SaveThread();\n"
@@ -242,7 +241,7 @@ def cpp(func=None, *, name=None, include_paths=(), library_paths=(), libraries=(
 
     ``nogil=True`` releases the GIL around only the compiled body (true parallelism
     from plain Python threads). ``cached=False`` compiles in-memory and skips the
-    ``.so`` cache entirely (the debugging escape hatch)."""
+    ``.so`` cache entirely. Use this option for debugging."""
     def decorate(fn):
         return _CppFunc(fn, name, include_paths, library_paths, libraries, std,
                         nogil, cached)

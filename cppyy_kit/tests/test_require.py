@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.require -- the conda-first header-only fetcher.
+"""Tests for cppyy_kit.require, which checks Conda before fetching headers.
 
-Offline and deterministic: the conda-first path is exercised with a fake include
+These tests are offline. They use a fake include
 root, and the fetch path with ``file://`` URLs (no network), so these run anywhere
 cppyy_kit imports (default env included)."""
 import hashlib

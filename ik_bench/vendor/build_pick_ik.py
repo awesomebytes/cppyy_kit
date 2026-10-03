@@ -3,17 +3,17 @@
 Vendored-source build of **pick_ik** -- PickNik's gradient-descent + memetic MoveIt
 kinematics plugin, NOT packaged on conda-forge/RoboStack (COMMON_PATTERNS 21).
 
-pick_ik is ``generate_parameter_library``-heavy: its parameters come from a g_p_l
-header that would **crash Cling's parser** (COMMON_PATTERNS 9 / moveit_kit REPORT
-2.1). That wall never bites here -- we do NOT ``cppyy.include`` any pick_ik header;
+pick_ik uses ``generate_parameter_library`` for its parameters. Its generated g_p_l
+header **crashes Cling's parser** (COMMON_PATTERNS 9 / moveit_kit REPORT 2.1). This
+does not prevent building or loading the plugin because we do not ``cppyy.include``
+any pick_ik header.
 its own CMake generates + compiles that code into ``libpick_ik_plugin.so``, and
 pluginlib ``dlopen``s the finished ``.so`` by lookup name (``pick_ik/PickIkPlugin``).
-So this is the crisp demonstration of the "g_p_l is a HEADER wall, not a build wall,
-and dlopen is fine" boundary: the plugin builds and loads cleanly.
+The plugin builds and loads even though Cling cannot parse the generated header.
 
 Same plain-``cmake``-into-a-private-prefix recipe as build_bio_ik.py; the extra
-build dep (``range-v3``, header-only) is in the ``ik`` feature. Everything lands in
-the gitignored ``build/vendor/`` tree; idempotent (``--force`` rebuilds).
+build dependency (``range-v3``, header-only) is in the ``ik`` feature. Build files are
+in the gitignored ``build/vendor/`` tree. Use ``--force`` to rebuild.
 
     pixi run -e ik build-pick-ik
 """

@@ -1,25 +1,21 @@
 #!/usr/bin/env python
-"""
-vision demo M2 -- FEATURES: C++ cv::ORB on every frame, keypoints overlaid in Rerun.
+"""Vision demo M2: extract and display C++ ORB features for each frame.
 
-Extends the spine: each C++ ``sensor_msgs/Image`` is wrapped zero-copy
-(cv_kit.msg_to_mat), converted to gray, and run through C++ ``cv::ORB`` (cv_kit's
-OrbDetector -- CPU here; the same call switches to ``cv::cuda::ORB`` when a CUDA
-OpenCV build is present, see docs/vision/CUDA_OPENCV.md). Keypoints are logged as a
-Rerun Points2D overlay on the image; the ORB descriptor is the Nx32 CV_8U matrix
-DBoW2 will consume in M3. Reports ORB throughput (frames/s).
+The demo wraps each C++ `sensor_msgs/Image` as a `cv::Mat` without copying the
+pixels, converts it to grayscale, and runs C++ `cv::ORB` through `cv_kit`. It logs
+keypoints as a Rerun `Points2D` overlay and reports ORB throughput. Descriptors are
+stored as an `Nx32 CV_8U` matrix for the DBoW2 stage in M3. The detector uses CPU
+OpenCV unless a CUDA-enabled build is available.
 
-Honest note: cv2.ORB would give similar per-frame numbers -- the win here is not the
-detector call, it is *composition*: the frame never leaves C++ between the rclcppyy
-subscription, the Mat, ORB, and (M3) the DBoW2 query.
+`cv2.ORB` has similar per-frame performance. This example uses the C++ API so image
+data can stay in C++ from the ROS subscription through ORB and the DBoW2 query.
 
-Rerun is LIVE by default when run interactively (a viewer opens; keypoints update
-on the stream in real time), headless (.rrd) under pytest/CI or no display. Force
-with RCLCPPYY_RERUN_SPAWN=1/0. See cv_kit/demos/vision_viz.py.
+The Rerun viewer is enabled by default when a display is available. Headless runs
+write an `.rrd` file. Set `RCLCPPYY_RERUN_SPAWN=1` or `=0` to force a mode. See
+`cv_kit/demos/vision_viz.py`.
 
     pixi run -e vision demo-vision-features
-    RCLCPPYY_RERUN_SPAWN=1 pixi run -e vision demo-vision-features --tum data/<tum-seq>
-"""
+    RCLCPPYY_RERUN_SPAWN=1 pixi run -e vision demo-vision-features --tum data/<tum-seq>"""
 import argparse
 import os
 import sys

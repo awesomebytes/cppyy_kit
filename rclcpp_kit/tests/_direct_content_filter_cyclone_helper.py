@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live Cyclone fail-closed proof: content_filter must never silently no-op."""
+"""Cyclone DDS integration test that unsupported content filters fail closed."""
 
 import json
 import os

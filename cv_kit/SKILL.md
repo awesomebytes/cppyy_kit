@@ -1,35 +1,27 @@
-# cv_kit — SKILL (seed)
+# cv_kit
 
-> Seed cheat sheet. A full LLM-facing SKILL.md (when-to-use / copy-paste
-> patterns / gotchas) is a planned deliverable (tracked in the project plan:
-> "SKILL.md for every kit"). For now this points at the authoritative sources.
+Use OpenCV's C++ API from Python through cppyy. `cv_kit` can wrap a C++ ROS 2
+`sensor_msgs::msg::Image` buffer as a `cv::Mat` without copying the image data. It
+also provides C++ ORB feature extraction. Use it with [`dbow_kit`](../dbow_kit/WHY.md)
+for place recognition and loop closure.
 
-**What:** drive OpenCV's C++ API (core / imgproc / features2d) from Python via
-cppyy, with a **zero-copy** bridge from a ROS 2 `sensor_msgs/Image` (C++
-message) into `cv::Mat`. Pairs with [`dbow_kit`](../dbow_kit/WHY.md) for loop
-closure.
+## Start
 
-**Why (not cv2):** composition. A `cv::Mat` can alias a C++ message's `data`
-buffer with no copy, run C++ `cv::ORB`, and hand descriptors straight to DBoW2 —
-the whole vision front-end stays in one C++ address space, Python only
-orchestrates. See [`WHY.md`](WHY.md).
-
-**Bring up:**
 ```python
 import cv_kit
-cv = cv_kit.bringup_cv()          # JIT-includes opencv4, loads libopencv_*.so
-orb = cv_kit.create_orb(500)      # CUDA auto-detected; CPU cv::ORB otherwise
-mat = cv_kit.msg_to_mat(image)    # zero-copy view over the message's data buffer
+
+cv = cv_kit.bringup_cv()          # JIT-includes opencv4 and loads libopencv_*.so
+orb = cv_kit.create_orb(500)      # Uses CUDA when available; otherwise uses CPU ORB
+mat = cv_kit.msg_to_mat(image)    # View of the message data; does not copy pixels
 ```
 
-**Footgun (dangling Mat):** `msg_to_mat` / `mat_to_numpy(copy=False)` return
-views that ALIAS C++/message storage — keep the backing object alive while you
-use the view (use the Mat inside the callback that owns the message).
+`msg_to_mat` and `mat_to_numpy(copy=False)` return views into C++ or message
+storage. Keep the owner alive while using the view. For a ROS message, use the Mat
+inside the callback that owns the message.
 
-**Evidence & CUDA:** [`REPORT.md`](REPORT.md) (probe matrix + benchmarks) and
-[`CUDA_OPENCV.md`](CUDA_OPENCV.md) (the conda-forge-has-no-CUDA verdict and the
-vendored Esri prebuilt route). The end-to-end story is the tutorial:
-[`docs/tutorials/vision_loop_closure.md`](../docs/tutorials/vision_loop_closure.md).
+See [`REPORT.md`](REPORT.md) for probes and benchmarks, and
+[`CUDA_OPENCV.md`](CUDA_OPENCV.md) for the CUDA OpenCV setup. The full pipeline is
+described in the [vision loop-closure tutorial](../docs/tutorials/vision_loop_closure.md).
 
-**Demos:** `cv_kit/demos/` (`demo_spine`, `demo_features`, `demo_loop`,
-`demo_posegraph`, `bench_vision`). **CUDA build:** `cv_kit/cpp/build_opencv_cuda.py`.
+The demos are in `cv_kit/demos/`. The CUDA build script is
+`cv_kit/cpp/build_opencv_cuda.py`.

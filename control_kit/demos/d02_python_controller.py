@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """
-control_kit demo 2 (Stage 3, THE SHOWCASE): a controller written in *Python*, running
+control_kit demo 2 (Stage 3): a controller written in Python, running
 inside the real controller_manager.
 
 ``PythonPDController`` is a plain Python class that derives the real
 ``controller_interface::ControllerInterface`` (cross-language inheritance) and overrides
-the same virtuals a C++ controller would -- ``on_init``, ``command_interface_configuration``,
+the same virtuals as a C++ controller: ``on_init``, ``command_interface_configuration``,
 ``state_interface_configuration``, ``on_configure`` / ``on_activate`` / ``on_deactivate``,
 and ``update``. Its ``update`` runs a per-joint PD law in Python, reading the mock robot's
 state interfaces and writing its command interfaces. It is injected into a real
-``ControllerManager`` and driven by the real read/update/write loop -- no plugin XML, no
-CMake, no ``.so``, no spawner.
+``ControllerManager`` and driven by the real read/update/write loop. It needs no
+plugin XML, CMake, ``.so``, or spawner.
 
 The controller tracks a moving cosine reference on two joints; the mock
 ``GenericSystem`` mirrors each position command back to the position state, so the

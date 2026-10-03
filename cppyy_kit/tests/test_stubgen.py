@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for cppyy_kit.stubgen -- the .pyi generator. Pure Python + a bt_kit import
+"""Tests for cppyy_kit.stubgen, the .pyi generator. Pure Python plus a bt_kit import
 (bt_kit imports without bringup), so this runs in the default env."""
 import ast
 import types
@@ -61,7 +61,7 @@ def test_bt_kit_public_surface():
 
 def test_cppyy_kit_reexports_captured():
     # The base package re-exports from submodules (.cache/.require/._cpp/.nogil);
-    # those must appear in its stub, not just names defined in __init__.
+    # include those in the stub, along with names defined in __init__.
     import cppyy_kit
     text = _valid_python(stubgen.stub_module(cppyy_kit))
     for sym in ("def cppdef_cached(", "def require(", "def cpp(", "def nogil(",

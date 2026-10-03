@@ -31,11 +31,9 @@ LoopClosure = namedtuple("LoopClosure", "query_id match_id score candidates")
 class LoopDetector:
     def __init__(self, vocabulary, min_score=0.3, consistency_k=3,
                  ignore_recent=25, island=8, max_results=5):
-        """``min_score``: minimum BoW score for a candidate. ``consistency_k``:
-        consecutive frames a coherent candidate must persist before confirming.
-        ``ignore_recent``: skip matches to the last N entries (self + neighbours).
-        ``island``: how far (in frame index) a candidate may move frame-to-frame
-        and still count as the *same* place (the DLoopDetector "island")."""
+        """Set the minimum candidate score, consistency length, and number of recent
+entries to ignore. `consistency_k` is the number of consecutive frames required to
+confirm a candidate."""
         self.db = dbow_kit.make_database(vocabulary)
         self.min_score = min_score
         self.consistency_k = consistency_k
@@ -47,9 +45,9 @@ class LoopDetector:
         self._last_match = None    # match id of the previous frame's candidate
 
     def add_and_query(self, desc_mat):
-        """Add this frame's descriptors to the DB, query for a revisit, update the
-        temporal-consistency streak, and return a :class:`LoopClosure` the moment a
-        candidate is confirmed (else ``None``)."""
+        """Add this frame's descriptors, query for a revisit, and update the temporal gate.
+Return a `LoopClosure` when the candidate meets the confirmation rules; otherwise
+return `None`."""
         query_id = self.n
         # max_id is inclusive in DBoW2; restrict to entries older than the ignore
         # window so a frame never matches itself or its immediate neighbours.

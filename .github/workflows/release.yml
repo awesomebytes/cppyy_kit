@@ -112,10 +112,10 @@ jobs:
       - name: Build all packages (dependency-ordered)
         run: pixi run -e pkg pkg-build-all
 
-      # The release discipline: for each artifact, a throwaway pixi workspace
-      # with [file://output, robostack-jazzy, conda-forge] and the single package
-      # as its only dep must import cleanly (+ cppdef for cppyy-kit, bringup for
-      # rclcpp-kit) — no repo on PYTHONPATH.
+      # For each artifact, a temporary pixi workspace with
+      # [file://output, robostack-jazzy, conda-forge] and only that package must
+      # import cleanly (including cppdef for cppyy-kit and bringup for
+      # rclcpp-kit). The repository must not be on PYTHONPATH.
       - name: Prove artifacts install + import from the channel
         run: |
           set -o pipefail

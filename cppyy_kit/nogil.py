@@ -1,23 +1,21 @@
 """
-cppyy_kit.nogil -- release the GIL around a blocking C++ call.
+cppyy_kit.nogil releases the GIL around a blocking C++ call.
 
-The corrected GIL evidence (COMMON_PATTERNS §13): **cppyy does not release the GIL
-on a blocking C++ call**, so a blocking call made from Python holds the GIL for its
-whole duration and starves every other Python thread -- you cannot overlap it with
-Python work by putting it on a *Python* thread. ``nogil(fn)`` fixes that for a C++
-callable: a compiled shim drops the GIL (``Py_BEGIN_ALLOW_THREADS``) around invoking
-``fn`` and re-takes it after, so concurrent Python threads run during the call.
+**cppyy holds the GIL during a blocking C++ call** (COMMON_PATTERNS §13). Other
+Python threads cannot run during that call, even if it runs on a Python thread.
+``nogil(fn)`` uses a compiled shim to release the GIL (``Py_BEGIN_ALLOW_THREADS``)
+while it invokes a C++ callable, then reacquires it when the call returns.
 
     def worker(): ...                    # a normal Python thread, runs concurrently
     threading.Thread(target=worker).start()
     cppyy_kit.nogil(cppyy.gbl.mylib.blocking_spin)    # C++ blocks here, GIL released
 
 Measured (test_nogil.py): a 500 ms C++ sleep called directly lets a co-thread
-advance ~1 tick; through ``nogil`` it advances ~470 -- i.e. the co-thread runs the
-whole time.
+advance about one tick. Through ``nogil``, it advances about 470 ticks while the
+C++ call runs.
 
 Rules:
-* ``fn`` must be a **C++** nullary callable -- a cppyy-bound C++ ``void()`` function
+* ``fn`` must be a **C++** nullary callable: a cppyy-bound C++ ``void()`` function
   or a ``std::function<void()>``. A *Python* callable would re-acquire the GIL to
   run (cppyy takes the GIL to enter Python), defeating the point; bind arguments and
   results in C++ (a ``cppdef``/``@cpp`` nullary wrapper that stores its result in a
@@ -64,9 +62,9 @@ _LOCK = threading.Lock()
 
 def _ensure():
     """Compile the GIL-release shim once. Thread-safe (double-checked lock): the
-    first ``nogil()`` calls may arrive from several threads at once -- without the
+    first ``nogil()`` calls may arrive from several threads at once. Without the
     lock each would re-run the ``cppdef``, and Cling would emit a "redefinition"
-    error. The fast path returns before acquiring the lock once the shim is built."""
+    error. Once built, the shim can be called without acquiring the lock."""
     global _READY
     if _READY:                       # fast path: no lock once the shim exists
         return
@@ -79,7 +77,7 @@ def _ensure():
 
 def nogil(fn):
     """Run the nullary **C++** callable ``fn`` with the GIL released (module
-    docstring). Returns None -- ``fn`` is ``void()``; surface results through a C++
+    docstring). Returns None because ``fn`` is ``void()``. Pass results through a C++
     object it writes. Raises if ``fn`` isn't acceptable as ``std::function<void()>``."""
     _ensure()
     cppyy.gbl.cppyy_kit_nogil.run_nogil(fn)

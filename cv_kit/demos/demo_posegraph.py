@@ -1,36 +1,25 @@
 #!/usr/bin/env python
-"""
-vision demo M4 (STRETCH) -- POSE-GRAPH loop-closure correction with GTSAM.
+"""Vision demo M4: correct loop-closure drift with a GTSAM pose graph.
 
-Closing the loop is only half the story; the payoff is *correcting the trajectory*.
-This demo builds a 2D pose graph over the synthetic sequence: the camera's
-rectangular circuit is the ground truth, the odometry is that circuit corrupted by
-an accumulating heading drift (so the open-loop trajectory spirals away from the
-start), and each loop closure confirmed by the M3 detector (loop_detector.py) adds a
-BetweenFactor tying the revisiting pose back to the earlier one. GTSAM's
-Levenberg-Marquardt optimizer then pulls the drifted trajectory back onto itself.
+The demo builds a 2D pose graph for the synthetic sequence. The rectangular circuit
+is ground truth. The odometry adds heading drift, which moves the open-loop path away
+from the start. Each confirmed loop adds a `BetweenFactor` between the revisited pose
+and the earlier pose. GTSAM's Levenberg-Marquardt optimizer reduces mean position
+error by about 15 times.
 
-Live by default (a Rerun window opens; headless .rrd under pytest/CI or no display;
-force with RCLCPPYY_RERUN_SPAWN=1/0). What you watch, on the "step" timeline:
-  * the DRIFTED open-loop trajectory (red) spiralling away from the GROUND TRUTH
-    (green) as the camera drives, with the mean-error plot climbing;
-  * yellow LOOP EDGES snapping in as the detector confirms each revisit;
-  * then, when the optimizer runs (last step), the CORRECTED trajectory (blue)
-    appearing pulled back onto the ground truth and the error plot dropping ~15x.
-Scrub or play the timeline to see the correction snap into place.
+The Rerun viewer is enabled by default when a display is available. The `step`
+timeline shows the drifted path in red, ground truth in green, loop edges in yellow,
+and the corrected path in blue. The error plot shows the change after optimization.
+In headless mode, the recording is saved as `.rrd`. Set `RCLCPPYY_RERUN_SPAWN=1`
+or `=0` to force a mode.
 
-NOTE on GTSAM + cppyy: we use gtsam's own **Python binding** here, not cppyy. With
-libboost-headers now in the env the old boost/optional.hpp wall is gone, but gtsam
-still does not JIT+run under cppyy in this env: its conda build's config.h sets
-GTSAM_USE_TBB (headers #include <tbb/...>, absent from the env), and -- even with
-tbb headers supplied -- the Cling JIT fails to materialize the static-initializer of
-gtsam's namespace-scope `static const KeyFormatter DefaultKeyFormatter` in Key.h.
-That is fine: pose-graph optimization is a one-shot *batch* step, not a hot ROS loop,
-so the "keep it in C++" argument does not apply and the binding is the honest choice.
-See docs/vision/REPORT.md (GTSAM/cppyy probe) for the full evidence.
+This demo uses GTSAM's Python binding. cppyy cannot run GTSAM in this environment:
+TBB headers are missing, and Cling fails to materialize the `DefaultKeyFormatter`
+static initializer even when those headers are supplied. Pose-graph optimization is
+a batch step, so this demo uses the Python binding. See `cv_kit/REPORT.md` for
+the probe results.
 
-    pixi run -e vision demo-vision-posegraph
-"""
+    pixi run -e vision demo-vision-posegraph"""
 import argparse
 import math
 import os
@@ -185,7 +174,7 @@ def main():
 
     # Optimizer runs: on the next step the corrected (blue) trajectory snaps in onto
     # the ground truth, the loop edges move to their corrected positions, and the
-    # error drops. Held for a few steps so it is unmistakable when playing.
+    # Keep the final state visible for several timeline steps.
     opt_err = mean_err(optimized, gt_xy)
     drift_err = mean_err(drifted, gt_xy)
     rr.log("log/events", rr.TextLog(

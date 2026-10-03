@@ -1,7 +1,7 @@
 #!/bin/bash
 # Regenerate the mkdocs_site/ symlink mirror (M4 docs site).
 #
-# WHY symlinks that MIRROR the repo layout: the read-only kit/docs .md files use
+# Symlinks mirror the repository layout. The read-only kit/docs Markdown files use
 # relative links assuming the repo layout (kit dirs are siblings of docs/, e.g.
 # cv_kit/SKILL.md -> ../docs/tutorials/..., bt_kit/WHY.md -> REPORT.md). Rendering
 # them from a docs_dir that mirrors that layout makes those links resolve without

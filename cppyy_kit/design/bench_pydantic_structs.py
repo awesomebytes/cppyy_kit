@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Benchmarks for the pydantic_structs spike -- the proof behind the three win
-claims in design/pydantic_structs.md. Runnable:
+"""Benchmarks for the storage and compute claims in design/pydantic_structs.md.
+Run the script with:
 
     python cppyy_kit/design/bench_pydantic_structs.py            # all benches
     python cppyy_kit/design/bench_pydantic_structs.py _rss_models  # (internal, one mode)
 
-Needs pydantic v2 + numpy + a cppyy toolchain. The default pixi env has no
-pydantic; run under an env that provides it. Memory numbers are measured in
-**separate subprocesses** (one per representation) so a Python list's heap
-high-water mark does not contaminate the vector's measurement.
+Requires Pydantic v2, NumPy, and a cppyy toolchain. The default pixi environment
+has no Pydantic, so run this in an environment that provides it. Each memory
+measurement uses a separate subprocess to avoid memory use from one
+representation affecting another.
 
 Model: Detection{x,y,z,score: float; label: str} (flat, per the plan). The
 compute task is a filter+centroid: mean of (x,y,z) over items with score > 0.5.
@@ -135,7 +135,7 @@ def _bench_compute():
         t = min(_time(fn) for _ in range(reps))
         return t
 
-    # pure contiguous reduction (sum of score) -- the case that should favor numpy
+    # pure contiguous reduction (sum of score), which should favor NumPy
     sum_kernel = _build_sum_kernel(S)
 
     def py_sum():
@@ -168,7 +168,7 @@ def _bench_compute():
     print("      %-30s %9.3f ms   (1.0x)" % ("pure Python over models", sp * 1e3))
     print("      %-30s %9.3f ms   (%.0fx)" % ("C++ kernel over vector<Struct>", sc * 1e3, sp / sc))
     print("      %-30s %9.3f ms   (%.0fx)" % ("numpy columnar (.sum())", snp * 1e3, sp / snp))
-    print("  honest read: numpy wins the PURE contiguous reduction (B) -- it is the incumbent")
+    print("  measured result: NumPy is faster for contiguous reduction (B)")
     print("  for columnar math. The C++-struct kernel wins the BRANCHY fused one (A), because")
     print("  numpy's mask+gather allocates while the C++ loop is a single alloc-free pass -- and")
     print("  because the struct keeps the model's nested/mixed shape a flat numpy array cannot.")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-nav2_kit benchmark -- the "C++ math, Python orchestration" performance story.
+nav2_kit benchmark comparing NavFn with a pure-Python A* implementation.
 
 Plan the SAME problem on NxN grids two ways and print a timing table:
   * NavFn  -- Nav2's real C++ planner algorithm, driven from Python via nav2_kit

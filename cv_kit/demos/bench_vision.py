@@ -39,7 +39,8 @@ import dbow_kit  # noqa: E402
 
 
 def _cpu_percent(fn, iters):
-    """Run fn() iters times; return (avg_ms, cpu_percent) using psutil if present."""
+    """Run `fn` `iters` times. Return average milliseconds and CPU percent, using
+psutil when available."""
     try:
         import psutil
         proc = psutil.Process()
@@ -55,9 +56,8 @@ def _cpu_percent(fn, iters):
 
 
 def bench_ingest_one(w, h, iters):
-    """One resolution: rclcppyy ingest (msg_to_mat -> a cv::Mat ready for ORB, no
-    per-frame image copy at any size) vs the standard rclpy path (buffer copy +
-    frombuffer + reshape + mutable copy)."""
+    """Measure one resolution. The rclcppyy path wraps the message as a Mat for ORB.
+The rclpy path copies the buffer and creates a mutable NumPy array."""
     import cppyy
     cppyy.include("sensor_msgs/msg/image.hpp")
     Image = cppyy.gbl.sensor_msgs.msg.Image
@@ -82,9 +82,8 @@ def bench_ingest_one(w, h, iters):
 
 
 def bench_ingest(iters=2000):
-    """Ingest at two resolutions -- the zero-copy pointer wrap is flat in image
-    size while the rclpy copy grows with pixels (and understates rclpy, which also
-    deserializes the whole Image message rclcppyy never materializes in Python)."""
+    """Measure ingest at two resolutions. The zero-copy wrap time stays about constant
+as image size increases; the rclpy copy time grows with pixel count."""
     bringup_rclcpp()
     return [bench_ingest_one(640, 480, iters), bench_ingest_one(1920, 1080, iters)]
 
@@ -133,8 +132,8 @@ def bench_vocab_and_loop(n=200, nfeatures=1000):
     tp = sum(1 for q, m in detected if is_true(q, m))
     fp = len(detected) - tp
     precision = tp / len(detected) if detected else float("nan")
-    # Recall over the revisit segment (the first ~k-1 frames can't be confirmed by
-    # the temporal gate, so recall tops out just under 1.0 -- by construction).
+    # Recall counts all frames in the revisit segment. The gate delays confirmation by
+    # k-1 frames, so recall is below 1.0 by design.
     recall = tp / (seg_end - seg_start)
     return {"train_ms": train_ms, "words": int(voc.size()), "query_ms": query_ms,
             "loops": len(detected), "tp": tp, "fp": fp,

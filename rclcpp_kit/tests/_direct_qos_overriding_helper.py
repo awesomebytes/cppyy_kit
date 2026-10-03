@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live proof: qos_overriding declares parameters and an override is honored."""
+"""Integration test that qos_overriding declares parameters and applies an override."""
 
 import json
 import os

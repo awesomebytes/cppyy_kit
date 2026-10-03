@@ -1,40 +1,25 @@
 """
-wbc_kit -- drive Crocoddyl (optimal control for whole-body / legged robots) from
-Python via cppyy, with the one capability its bindings can't give you: a **custom
-action model authored in C++ inline, at native speed, with no build system**.
+wbc_kit provides Crocoddyl setup helpers and safe C++ model compilation through cppyy.
 
-Crocoddyl already ships excellent boost::python bindings, and they let you subclass
-``crocoddyl.ActionModelAbstract`` in Python to prototype a custom dynamics/cost
-model. That path is the one Crocoddyl's own workflow recommends -- "prototype in
-Python, then rewrite the hot model in C++ for production". The rewrite normally
-means a CMake project that links libcrocoddyl and rebuilds. cppyy collapses that:
-you write the C++ ``ActionModelAbstract`` subclass in a ``cppyy.cppdef`` string in
-the *same script*, and the DDP solver calls its ``calc``/``calcDiff`` natively --
-no Python in the hot loop, no build system. Measured on the canonical unicycle
-optimal-control problem (docs/wbc/REPORT.md): the inline-C++ model solves at the
-**exact speed of Crocoddyl's compiled built-in model** and **~21x faster** than the
-Python-derived model, converging to a bit-identical cost. This is the ompl_kit
-"lower the hot checker to C++" story applied to optimal control.
+Crocoddyl bindings support Python subclasses of ``crocoddyl.ActionModelAbstract``.
+The DDP solver calls ``calc`` and ``calcDiff`` many times, so a Python model adds
+Python and NumPy overhead. A C++ model avoids those calls but usually needs a CMake
+project linked to libcrocoddyl. With cppyy, define the C++ subclass in a
+``cppyy.cppdef`` string and compile it at runtime. The solve loop then calls the C++
+methods directly. The canonical unicycle benchmark is about 21 times faster than the
+Python-derived model and reaches the same cost. See ``docs/wbc/REPORT.md``.
 
-So this kit is deliberately thin. It gives you:
-    * ``bringup_crocoddyl()`` -- the bringup friction, hidden. pinocchio 4.0 splits
-      its library into ``libpinocchio_default.so`` (there is no ``libpinocchio.so``),
-      ``pinocchio/fwd.hpp`` must be the first include, and libcrocoddyl must be
-      loaded by soname. Returns Crocoddyl's own ``cppyy.gbl.crocoddyl`` namespace --
-      use its API verbatim (``ActionModelUnicycle``, ``ShootingProblem``,
-      ``SolverFDDP``, ...).
-    * ``safe_cppdef(code)`` -- compile a custom C++ action model without risking the
-      interpreter. A ``cppdef`` that fails to parse crashes Cling during transaction
-      revert (no Python traceback); authoring a custom model is exactly where you hit
-      that. This probes the code out-of-process first (cppyy_kit.probe_cppdef) and
-      raises a clean error instead of crashing.
-    * ``ACTION_MODEL_CLONES`` -- the one non-obvious C++ snippet a custom model needs.
-      Crocoddyl 3.2's scalar-casting machinery (``CROCODDYL_BASE_CAST``) adds two
-      *pure*-virtual clone methods (``cloneAsDouble`` / ``cloneAsFloat``) to
-      ``ActionModelAbstract``; omit them and your subclass is abstract (a compile
-      error -- and, in-process, a crash). Paste this into your class body.
+The kit provides three helpers:
 
-Example -- lower a custom action model to inline C++ and solve (mirrors the demo)::
+* ``bringup_crocoddyl()`` loads ``libpinocchio_default.so`` and ``libcrocoddyl.so``
+  and includes ``pinocchio/fwd.hpp`` before Crocoddyl headers. It returns the
+  ``cppyy.gbl.crocoddyl`` namespace.
+* ``safe_cppdef(code)`` checks a custom C++ action model in a subprocess before
+  compiling it in the main process. This avoids a Cling crash if compilation fails.
+* ``ACTION_MODEL_CLONES`` contains the two clone methods required by Crocoddyl 3.2's
+  ``CROCODDYL_BASE_CAST`` macro. A subclass that omits them is abstract.
+
+Example: define a custom action model and solve it::
 
     import wbc_kit
     cr = wbc_kit.bringup_crocoddyl()                 # Crocoddyl's own namespace
@@ -57,19 +42,14 @@ Example -- lower a custom action model to inline C++ and solve (mirrors the demo
     model = cr  # then build the ShootingProblem + SolverFDDP in C++ (see demo);
                 # the solver calls MyModel::calc natively, no Python in the loop.
 
-Notes / limits (v0):
-    * The inline-C++ model is driven by a C++ solve (containers built in C++, cppyy
-      Pattern 6); a cppyy-created C++ model cannot be handed to Crocoddyl's
-      boost::python ``ShootingProblem`` (two different binding runtimes). Prototype
-      with the Python binding, lower with cppyy -- both live in one script.
-    * This env is standalone (conda-forge pinocchio/crocoddyl pin libboost 1.86-line,
-      the robostack ROS stack pins 1.90; they cannot share one solve-group). So
-      wbc_kit does not mix with the ROS-touching kits in a single environment.
-    * pinocchio's *templated-scalar* surface (``ModelTpl<Scalar>`` for a scalar the
-      binding never built) is the other candidate cppyy win, but it is env-blocked
-      here: re-instantiating pinocchio's 25-type JointModel ``boost::variant`` for a
-      new scalar exceeds boost 1.90's template-arity limit (see REPORT). The shipped
-      ``pinocchio.casadi`` binding already covers the main autodiff scalar.
+Notes and limits:
+    * Build the C++ solve containers because a cppyy-created model cannot be passed
+      to Crocoddyl's boost::python ``ShootingProblem``. The proxy runtimes are separate.
+    * Use the standalone ``wbc`` environment. Crocoddyl and tsid require the Boost
+      1.86 line here, while the robostack ROS packages require Boost 1.90.
+    * Instantiating pinocchio's ``ModelTpl<Scalar>`` for a new scalar is blocked by
+      the 25-type ``boost::variant`` arity limit in Boost 1.90. The existing
+      ``pinocchio.casadi`` binding covers the main autodiff scalar. See REPORT.md.
 """
 import glob
 import os
@@ -205,7 +185,7 @@ def safe_cppdef(code, extra_include_paths=(), libraries=()):
     during transaction revert with no Python traceback (cppyy_kit Pattern 9). This
     runs ``cppyy_kit.probe_cppdef`` in a throwaway subprocess with the Crocoddyl
     headers/paths pre-loaded; on failure it raises ``CppyyKitError`` with the
-    compiler message, on success it runs the real ``cppyy.cppdef``.
+    compiler message, on success it runs ``cppyy.cppdef``.
 
     Bring Crocoddyl up first (``bringup_crocoddyl``) so the headers are on the path.
     """

@@ -1,22 +1,20 @@
-# Why nav2_kit — your own Nav stack from Nav2's cores, in Python via cppyy
+# nav2_kit: use Nav2 algorithm cores from Python
 
 `nav2_kit` lets you build a navigation stack by driving [Nav2](https://nav2.org)'s
 **algorithm cores directly** from Python: the real C++ code owns the costmap grid and
-runs the planner (NavFn or Smac 2D) and, since the lifecycle unlock, the real
-RegulatedPurePursuit controller — while your Python owns the loop and the world. It
-does this against the Nav2 that is already installed, with **no lifecycle servers and
-no pluginlib** — and with no code generation and no build step.
+runs the planner (NavFn or Smac 2D) and the RegulatedPurePursuit controller. Python
+controls the loop and provides the world data. The kit uses the installed Nav2
+headers. It does not require lifecycle servers, pluginlib, code generation, or a build
+step.
 
-That framing is the whole point. Nav2 is a superb, production navigation system — but
-its Python surface is deliberately *client-side*: you configure C++ servers with YAML
-and send them goals. This doc shows what cppyy gives you when you want the opposite:
-to compose your own miniature stack from Nav2's building blocks. For the API, see
-[SKILL.md](SKILL.md); for the feasibility evidence, the honest coupling
-boundary, and benchmarks, see [REPORT.md](REPORT.md).
+Nav2's Python interface is client-side: it configures C++ servers with YAML and sends
+them goals. This document shows how to build a small stack from Nav2's C++ classes
+with Python. For the API, see [SKILL.md](SKILL.md). For implementation evidence,
+limitations, and benchmarks, see [REPORT.md](REPORT.md).
 
 ---
 
-## The thing stock Nav2 makes heavy: a *custom* planning loop
+## Implementing a custom planning loop with stock Nav2
 
 Suppose you just want to try your own idea: "take this occupancy grid, plan across it
 with NavFn, and drive along the result." In stock Nav2, the supported way to run a
@@ -27,17 +25,16 @@ lifecycle server**. Concretely, per the
 - **Write a C++ class** deriving `nav2_core::GlobalPlanner`, implementing
   `configure() / activate() / deactivate() / cleanup() / createPlan()`, taking a
   `LifecycleNode`, a `tf2_ros::Buffer`, and a `Costmap2DROS`.
-- **Export it as a plugin** — `PLUGINLIB_EXPORT_CLASS`, a `plugins.xml`, `ament`
+- **Export it as a plugin**, `PLUGINLIB_EXPORT_CLASS`, a `plugins.xml`, `ament`
   registration, and a `CMakeLists.txt` that builds a shared library.
-- **Wire the lifecycle bringup** — a `planner_server` with a params YAML naming your
+- **Wire the lifecycle bringup**, a `planner_server` with a params YAML naming your
   plugin, then launch the lifecycle manager to `configure`→`activate` it.
-- **Provide tf + a costmap** — the `Costmap2DROS` needs a transform tree
+- **Provide tf + a costmap**, the `Costmap2DROS` needs a transform tree
   (`map`→`odom`→`base_link`) and sensor/static layers to populate the grid.
 
-That is: `colcon build`, a plugin XML, a YAML config, a launch file, a lifecycle
-manager, and a tf tree — before you can call your planner once. It is the right
-architecture for a fleet in production; it is a lot of ceremony for "try my idea on a
-grid."
+The stock setup requires `colcon build`, plugin XML, YAML configuration, a launch file,
+a lifecycle manager, and a tf tree before you can call the planner. This setup suits
+production fleets, but adds steps when testing a planner on a grid.
 
 Contrast the cppyy "after": `pixi install -e nav2`, then `python your_plan.py`,
 JIT-including the installed Nav2 headers in ~70 ms at startup.
@@ -46,10 +43,10 @@ JIT-including the installed Nav2 headers in ~70 ms at startup.
 
 ## Side by side: a custom planning loop, stock Nav2 vs nav2_kit
 
-### Stock Nav2 — the shape of a custom global planner
+### Stock Nav2, the shape of a custom global planner
 
 ```cpp
-// my_planner.hpp / .cpp — a nav2_core::GlobalPlanner plugin
+// my_planner.hpp / .cpp: a nav2_core::GlobalPlanner plugin
 class MyPlanner : public nav2_core::GlobalPlanner {
   void configure(const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
                  std::string name, std::shared_ptr<tf2_ros::Buffer> tf,
@@ -73,9 +70,9 @@ planner_server:
 ```
 …plus a `CMakeLists.txt` building the plugin, a launch file bringing up the
 `planner_server` + lifecycle manager, and a tf tree feeding a `Costmap2DROS`. Then a
-`colcon build` and a lifecycle bringup — before the planner runs once.
+`colcon build` and a lifecycle bringup, before the planner runs once.
 
-### nav2_kit — the complete runnable file this repo ships
+### nav2_kit, the complete runnable file this repo ships
 
 ```python
 #!/usr/bin/env python
@@ -93,24 +90,23 @@ print(f"Planned {len(path)} waypoints from {tuple(path[0])} to {tuple(path[-1])}
 ```
 
 Run it: `pixi run -e nav2 demo-nav2-plan`. It plans across the grid with **Nav2's
-real NavFn algorithm** — the same C++ `nav2_navfn_planner::NavFn` the
-`planner_server` runs — and prints the path, with no server, no plugin XML, no YAML,
+real NavFn algorithm**, the same C++ `nav2_navfn_planner::NavFn` the
+`planner_server` runs, and prints the path, with no server, no plugin XML, no YAML,
 no tf, no build.
 
 ### What we gain (from the comparison above)
 
-- **No plugin/lifecycle/YAML/tf ceremony, no build.** The stock path needs a C++
+- **No plugin, lifecycle, YAML, tf, or build setup.** The stock path needs a C++
   plugin, `plugins.xml`, params YAML, a launch file + lifecycle manager, and a tf
   tree; nav2_kit runs the moment you invoke it (~70 ms one-time cppyy bringup).
 - **The world and the loop are just Python.** The occupancy grid is a NumPy array;
   the follow controller is a Python function you can breakpoint and edit. You iterate
   in seconds, not `colcon build` cycles.
 - **It is the same `libnav2_*.so`.** `Costmap2D` and `NavFn` are Nav2's own classes,
-  header-following, so nav2_kit tracks whatever Nav2 is installed — no binding to fall
+  header-following, so nav2_kit tracks whatever Nav2 is installed, no binding to fall
   behind.
-- **A prototype-to-native path.** As with the other kits, this is the L0 rung:
-  prototype the stack with cppyy JIT today; the same calls lower to a compiled Nav2
-  plugin when you want to deploy inside the real servers.
+- **A prototype-to-native path.** Prototype with cppyy JIT, then compile the planner
+  as a Nav2 plugin when needed. The Nav2 calls stay the same.
 
 **What stock Nav2 buys that this does not.** A production stack: lifecycle
 management, dynamic costmap layers from live sensors, tf/localization, recovery
@@ -120,61 +116,53 @@ not for running a robot in production.
 
 ---
 
-## The honest part: what is a clean core, and what is not
+## Supported components and limitations
 
-nav2_kit draws the line where the evidence does, and the **lifecycle unlock** moved
-it (full detail in [REPORT.md](REPORT.md)):
+The supported components and their requirements are documented in [REPORT.md](REPORT.md):
 
-- **Pure cores (surfaced, no rclcpp at all): `Costmap2D`, `NavFn`.** Plain classes —
-  `Costmap2D(w, h, res, ox, oy)`, `NavFn(nx, ny)` on a raw `unsigned char*` cost array.
+- **Pure cores (no rclcpp): `Costmap2D` and `NavFn`.** Use `Costmap2D(w, h, res,
+  ox, oy)` and `NavFn(nx, ny)` with a raw `unsigned char*` cost array.
   No node, no tf, no pluginlib. Directly drivable.
-- **Lifecycle-coupled cores (NOW surfaced): Smac 2D + the real RegulatedPurePursuit
-  controller.** These take a `LifecycleNode` (and RPP a `Costmap2DROS` + `tf2_ros::Buffer`)
-  — and the key insight is that **a `LifecycleNode` is a plain class you construct
-  in-process from Python**, exactly like the `rclcpp::Node` we already build. So
-  nav2_kit builds the node object (and a plugin-free `Costmap2DROS`) the ctors ask for —
-  **no lifecycle server, no pluginlib, no YAML.** The showcase's follow controller can
-  now be Nav2's *actual* RPP (`--controller rpp`); the ~30-line Python pure-pursuit is a
-  lightweight *choice*, no longer a forced limitation.
-- **Still walled: Smac Hybrid-A\* (SE(2)).** Not a coupling problem — it constructs
-  fine — but its OMPL-backed distance heuristic segfaults non-deterministically under
-  Cling. A documented flaky partial, not shipped.
-
-This honesty is the point: a real, working core road — now including the
-lifecycle-coupled planners/controllers — with the one remaining wall (a runtime OMPL
-instability, not "it needs a node") clearly marked.
+- **Lifecycle-coupled components: Smac 2D and RegulatedPurePursuit.** They take a
+  `LifecycleNode`; RPP also takes a `Costmap2DROS` and `tf2_ros::Buffer`. The kit
+  constructs the `LifecycleNode` in-process from Python, like the `rclcpp::Node` used
+  elsewhere in the kit. It also constructs a plugin-free `Costmap2DROS`. No lifecycle
+  server, pluginlib, or YAML setup is needed. You can use Nav2's RPP
+  (`--controller rpp`) or the Python pure-pursuit controller.
+- **Smac Hybrid-A\* (SE(2)) is unavailable.** It constructs, but its OMPL-backed
+  distance heuristic crashes intermittently under Cling. The kit does not expose it.
 
 ---
 
 ## Two ways to use it
 
-### Mode A — plan from Python on your own grid
+### Mode A, plan from Python on your own grid
 Synthesize or load an occupancy grid, build a `Costmap2D`, plan with `NavFn`, and use
 the path however you like (`d01_plan_grid.py`). Good for planner experiments,
 map-based reasoning, and dataset generation where edit-run speed matters.
 
-### Mode B — a whole miniature nav stack, live to rviz2
-`nav2_kit/demos/d02_own_nav_stack.py` (the showcase) plans, follows over simulated
-diff-drive kinematics, and publishes a live `nav_msgs/OccupancyGrid` +
-`nav_msgs/Path` + `geometry_msgs/TwistStamped` via rclcppyy — so an rviz2 (Fixed Frame
+### Mode B: a small navigation stack in rviz2
+`nav2_kit/demos/d02_own_nav_stack.py` plans and follows a simulated differential-drive
+robot. It publishes `nav_msgs/OccupancyGrid` +
+`nav_msgs/Path` + `geometry_msgs/TwistStamped` via rclcppyy, so an rviz2 (Fixed Frame
 `map`) shows the map, plan, and commanded velocity as the robot drives to the goal.
 **Pick the pieces:** `--planner navfn|smac` and `--controller pursuit|rpp`. All four
 combinations reach the goal; `--planner smac --controller rpp` runs Nav2's real Smac 2D
-planner **and** its real RegulatedPurePursuit controller — both C++, driven from one
+planner **and** its real RegulatedPurePursuit controller, both C++, driven from one
 self-contained Python file.
 
 ---
 
-## Advantages of the cppyy approach
+## cppyy features
 
 Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
 
-- **No plugin/YAML/lifecycle/build ceremony.** `python x.py` is the workflow; bringup
+- **No plugin, YAML, lifecycle, or build setup.** `python x.py` is the workflow; bringup
   is a one-time ~70 ms JIT.
 - **Header-following, tracks the installed Nav2.** No hand-maintained binding.
 - **Bulk data stays fast.** A NumPy grid → `Costmap2D` is a single `memcpy`
   (~600–3600× a per-cell Python loop); the plan never leaves C++ (NavFn on 1024² in
-  tens of ms vs ~2 s for a pure-Python A\* — the orchestration story).
+  tens of ms vs ~2 s for a pure-Python A\* in this benchmark).
 - **A prototype-to-native lowering path**, as with bt_kit / pcl_kit / ompl_kit: the
   same calls become a compiled Nav2 plugin when you deploy.
 
@@ -184,9 +172,9 @@ Grounded in the spike's measured numbers (see [REPORT.md](REPORT.md)):
 
 nav2_kit is deliberately **not a Nav2 stack**: no lifecycle *servers*/manager, no
 pluginlib-by-name loading, no tf tree/localization, no dynamic obstacle/inflation
-layers, no recovery behaviors. Surfaced: `Costmap2D` + `NavFn` (pure cores) and — since
-the lifecycle unlock — Smac **2D** + the real RPP controller (via an in-process `LifecycleNode` +
+layers, no recovery behaviors. The kit exposes `Costmap2D` + `NavFn` and Smac **2D** +
+the RPP controller (via an in-process `LifecycleNode` +
 plugin-free `Costmap2DROS`, still no servers). Smac **Hybrid-A\*** remains out (a flaky
-OMPL-under-Cling crash). The complementary direction — loading a **Python
-planner/controller plugin *inside* a real Nav2 server** — is a separate planned spike.
-The full, honest list is in [REPORT.md](REPORT.md) §6.
+OMPL-under-Cling crash). Loading a **Python
+planner/controller plugin *inside* a real Nav2 server**, is a separate planned spike.
+See [REPORT.md](REPORT.md) §6 for the full list.

@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
-pcl_kit demo 3 -- the honest baseline: the SAME point-cloud pipeline as d02, but
-in plain rclpy + NumPy, with no PCL and no C++.
+pcl_kit demo 3: the same point-cloud pipeline as d02, implemented with rclpy and
+NumPy. This version does not use PCL or C++.
 
 One process, two rclpy nodes (mirrors d02):
-  * a synthetic publisher -- one 100k-point ``sensor_msgs/PointCloud2`` built once
+  * a synthetic publisher: one 100k-point ``sensor_msgs/PointCloud2`` built once
     (via ``sensor_msgs_py``) and republished at ``--rate`` Hz;
-  * a pipeline node -- subscribes, reads the points into NumPy
+  * a pipeline node: subscribes, reads the points into NumPy
     (``read_points_numpy``), voxel-downsamples them in NumPy (centroid per
     0.05 m cell, the same semantics as PCL's VoxelGrid), rebuilds a PointCloud2
-    (``create_cloud_xyz32``), and republishes -- reporting the same per-frame stats
+    (``create_cloud_xyz32``), and republishes. It reports the same per-frame stats
     as d02 so bench_pcl_pipeline.py can compare them apples to apples.
 
 This is what you would write without the kit: every message is deserialized into
@@ -37,7 +37,7 @@ TOPIC_OUT = "pcl_base/points_out"
 
 
 def voxel_downsample(points, leaf):
-    """Centroid-per-voxel downsample in NumPy -- the same semantics as PCL's
+    """Centroid-per-voxel downsample in NumPy with the same semantics as PCL's
     VoxelGrid (each occupied cell collapses to the mean of its points)."""
     keys = np.floor(points / leaf).astype(np.int64)
     _, inverse = np.unique(keys, axis=0, return_inverse=True)

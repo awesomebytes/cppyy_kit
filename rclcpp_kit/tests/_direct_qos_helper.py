@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Live Jazzy/Cyclone endpoint proof for rclpy-to-rclcpp QoS lowering."""
+"""Jazzy and Cyclone DDS integration test for rclpy-to-rclcpp QoS lowering."""
 
 import json
 import importlib

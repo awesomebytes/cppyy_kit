@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: ros-jazzy-control-kit
-  # Suite version — keep in sync across recipe/*/recipe.yaml (see recipe/README.md).
+  # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
   version: "0.3.0"
 
 package:
@@ -43,11 +43,11 @@ about:
   repository: https://github.com/awesomebytes/cppyy_kit
   license: BSD-3-Clause
   license_file: LICENSE
-  summary: "Run a Python ros2_control controller inside the real controller_manager via cppyy"
+  summary: "Run a Python ros2_control controller through cppyy"
   description: |
-    control_kit runs a Python controller cross-inherited from the real
-    controller_interface::ControllerInterface inside an in-process
-    controller_manager, driven by the real read/update/write loop — via cppyy.
+    control_kit runs a Python controller derived from
+    controller_interface::ControllerInterface inside controller_manager. The
+    controller uses the standard read, update, and write loop.
 
 extra:
   recipe-maintainers:

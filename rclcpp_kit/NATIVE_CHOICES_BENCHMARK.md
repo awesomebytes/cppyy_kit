@@ -1,19 +1,18 @@
 # Native rclcpp choice characterization
 
-This harness measures four independent choices exposed by the managed native
-lane. It is correctness-first characterization, not a performance-claim tool.
-Every result document uses the versioned
+This harness records four independent choices exposed by the managed native
+lane. It checks correctness and stores timing measurements. Every result uses the versioned
 `rclcpp_kit.native-choices-benchmark/v1` schema and fixes
 `performance_claims_allowed` to `false`; the validator rejects any other value.
 
 ## Matrix
 
-| Dimension | Cases | Backend and proof |
+| Dimension | Cases | Backend and evidence |
 |---|---|---|
 | Intra-process | disabled, enabled | Cyclone DDS; both nodes report the selected `NodeOptions` value and a C++ sink counts `rmw_message_info_t.from_intra_process` for every message |
 | Loaned output | middleware loan, allocator fallback | Fast DDS must report `can_loan_messages()==true` and one middleware loan per fixed-size `UInt64`; Cyclone DDS must report false and one allocator fallback per message |
 | Executor | single-threaded, multi-threaded with two threads | Cyclone DDS, fixed inter-process route; the concrete C++ executor type must match the requested factory and the C++ sink must receive the exact batch |
-| Composition | separate AOT process, managed component container | The installed `robot_state_publisher` executable or component shared library must be an ELF file with a recorded SHA-256; graph visibility and teardown are exact, and the container case also proves load/list/unload services |
+| Composition | separate AOT process, managed component container | The installed `robot_state_publisher` executable or component shared library must be an ELF file with a recorded SHA-256; both cases check graph visibility and teardown, and the container case checks the load/list/unload services |
 
 Each sample runs in a fresh process on a distinct ROS domain. Backend selection
 is set in that process and checked using the loaded RMW identifier; the exact
@@ -82,9 +81,8 @@ samples and no failures. These are the three raw arrays from that artifact:
 | `composition.managed_component_container` | `[6883991, 7101272, 7009417]` | `[7444384, 7260929, 7541517]` |
 
 The first six rows use nanoseconds for a batch of 1,000 messages; the composition
-rows use nanoseconds for one deployment-readiness operation. The values are raw
-shared-host observations. They are not promoted results and do not select a
-preferred policy.
+rows use nanoseconds for one deployment-readiness operation. These are raw
+observations from this shared-host run.
 
 ## Limits
 
@@ -103,6 +101,6 @@ preferred policy.
 - Composition measures deployment readiness, not steady-state message runtime.
   The process and service-load starts are different mechanisms even though the
   graph-visible endpoint is common.
-- No latency ceiling, throughput floor, speedup ratio, regression threshold, or
-  winner is encoded. Promotion requires controlled repeated runners and a separate
-  review process.
+- The harness sets no latency, throughput, speedup, or regression thresholds. It
+  does not select a policy from these measurements. Compare controlled repeated runs
+  before making a performance decision.
