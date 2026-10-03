@@ -7,7 +7,7 @@ name = "cppyy_kit_ws"
 # two channels and finds local kits, including rclcpp_kit, through PYTHONPATH.)
 channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
-version = "0.3.0"
+version = "0.4.0"
 
 # Default environment. Uses the same default as rclcppyy (ros-base + cyclonedds +
 # cppyy + toolchain + test/lint tooling): the base cppyy_kit package is ROS-free,

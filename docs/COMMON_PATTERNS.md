@@ -660,18 +660,63 @@ For a small hot kernel you'd otherwise hand-write as a `cppdef` helper plus manu
 **docstring is the C++ body** (its Python body never runs) and its **annotations
 drive marshaling**; on first call it compiles once into a cached `.so`
 (`cppdef_cached`, §23) and loads it thereafter.
+
+The numeric annotation API is new in `cppyy-kit` 0.4.0. Published 0.3.x
+packages do not support it; use the source checkout until 0.4.0 is published
+(see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/#run-repository-demos-or-develop-the-kits)).
+
 ```python
+import numpy as np
+from numpy.typing import NDArray
+from cppyy_kit import cpp
+
 @cpp
-def sum_sq(data: cpp.arr("float")) -> float:            # numpy -> (float* data, size_t data_size)
-    "double s=0; for (std::size_t i=0;i<data_size;++i) s+=data[i]*data[i]; return s;"
-sum_sq(np.array([1,2,3], np.float32))                    # 14.0, no manual ctypes/cast
+def sum_sq(data: NDArray[np.float32]) -> float:
+    """
+    double s = 0;
+    for (std::size_t i = 0; i < data_size; ++i) {
+        s += data[i] * data[i];
+    }
+    return s;
+    """
+
+sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
 ```
-- **The marshaling is the §6 pattern, automated.** `int`/`float`/`bool` cross by
-  value; a verbatim `"T*"` annotation takes a NumPy array (its `.ctypes.data`) or an
-  int address as `uintptr_t` and hands the body the typed pointer (the
-  `reinterpret_cast` is injected); `cpp.arr("T")` is the numpy→**pointer+size**
-  convenience (body sees `name` and `name_size`). Return `None`→`void`. Only that
-  supported subset is marshaled; other annotations raise at decoration time.
+- **Input annotation forms.** For arrays, prefer `numpy.typing.NDArray[T]`; a
+  dtype-specific `np.ndarray` annotation works too. Numeric inputs may also be
+  annotated as `list[T]`/`typing.List[T]`, homogeneous `tuple[T, ...]`, or
+  `Sequence[T]` from `collections.abc`/`typing`. An omitted input annotation or
+  bare `np.ndarray` infers a supported numeric type from the value. Use an
+  explicit type when the C++ type should be clear at the function definition.
+- **Type mapping.** Python `int` maps to the existing C++ `int` (`np.intc`),
+  `float` to `double`, `bool` to `bool`, and `complex` to
+  `std::complex<double>`. NumPy `float32`/`float64`, fixed-width integers,
+  booleans, and `complex64`/`complex128` are supported. Integer sequence values
+  are range-checked before conversion to `np.intc`. Sequence values are converted
+  according to their annotation: for example, `list[np.float32]` converts Python
+  floats to 32-bit values and can round them; a `float` annotation accepts integer
+  values and converts them to C++ `double`.
+- **Sequence ownership.** Typed numeric sequences are copied into native storage
+  on each call and kept alive until the C++ function returns, including through
+  `@cpp(nogil=True)`. C++ mutations to that temporary buffer are not copied back
+  to the Python list or tuple. Typed empty sequences work; an untyped empty,
+  heterogeneous or nested sequence, and an unsupported dtype raise clear errors.
+- **Array layout and ownership.** A typed `NDArray` borrows existing storage
+  without a copy only when it is native-endian, aligned, and C-contiguous.
+  Multidimensional C-contiguous arrays are accepted and exposed as one flat typed
+  pointer plus the total element count; shape and strides are not passed to C++.
+  Dtype or layout mismatches and read-only arrays passed to mutable arguments
+  raise errors; arrays are never silently copied to satisfy the annotation. For
+  lower-level pointer work, the existing `cpp.arr("T")` pointer-and-size notation
+  remains available; `std::string` arguments remain supported as well.
+- **Specialization and returns.** A concrete argument specialization is compiled
+  and cached once, then reused across calls, array lengths, and later sessions.
+  Keep a return annotation explicit when returning a value; omitting it returns
+  `void`.
+- **The low-level pointer form remains available.** A verbatim `"T*"` annotation
+  takes a NumPy array address or an integer address and hands the body a typed
+  pointer (the `reinterpret_cast` is injected). Use `cpp.arr("T")` when the
+  generated body should also receive `name_size`.
 - **Calls follow Python binding rules.** Defaults and keyword arguments work;
   missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
   C++ kernel is compiled. Keyword-only and variadic parameters are rejected when

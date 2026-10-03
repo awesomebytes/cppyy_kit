@@ -33,3 +33,22 @@
 ### Inline C++ example formatting
 
 - Reformatted the repeated `sum_sq` documentation example with a triple-quoted multiline docstring and an indented C++ loop. Documentation only; no code was executed.
+
+### Numeric `@cpp` argument annotations and 0.4.0 metadata
+
+- Updated the inline C++ examples in the README and site entry pages to use `NDArray[np.float32]`, preserving the multiline C++ body and expected output. Put a source-checkout availability note before the install steps, with the checkout commands for both examples; published 0.3.x packages do not support the numeric API.
+- Integrated the numeric argument reference into `docs/COMMON_PATTERNS.md` §26: accepted annotation forms and type mappings, inference, specialization cache reuse, sequence conversion/copy/lifetime behavior, direct array borrowing and error conditions, flat pointer/element-count semantics for multidimensional contiguous arrays, plus return annotation and `cpp.arr` notes.
+- Bumped the suite metadata to 0.4.0 with `recipe/bump_version.sh`; made the script explicitly skip the upstream `cppyy` package. Added NumPy to the base package runtime dependencies and reset the changed base/rclcpp recipe build numbers to zero. Updated release SBOM versions, build strings and the base package dependency list, rclcpp build-proof helper pins, recipe version guidance, and the release-version test expectation.
+
+### Numeric annotation documentation and 0.4.0 validation
+
+- The strict MkDocs Python-API build passed with `strict=True` and link-anchor validation set to WARNING.
+- `pixi run -e default pytest -q cppyy_kit/tests/test_release_version.py` passed: **8 passed**. `pixi run -e default python scripts/verify_release_version.py v0.4.0` printed `RELEASE_VERSION_OK 0.4.0`.
+- Extracted the preferred README kernel snippet verbatim into ignored `build/docs_numeric_kernel.py` and ran it from the source checkout with `pixi run python build/docs_numeric_kernel.py`; it printed `14.0`.
+
+### Numeric annotation implementation and final validation
+
+- Normalized supported Python and NumPy annotations into concrete C++ numeric signatures. Omitted input annotations and bare arrays infer supported types; typed sequences copy into call-scoped native storage, while compatible NumPy arrays are borrowed. Fixed cached specialization symbol registration and preserved existing string-form C++ `float` annotations. An independent review was completed.
+- Final core regression passed: `pixi run -e default pytest -q cppyy_kit/tests examples/parallel_demo/test_parallel.py --durations=10` reported **180 passed, 49 skipped in 7.21s**. The skips were optional BehaviorTree.CPP, Pydantic v2, and opt-in Auto-PCH end-to-end coverage. The focused test run reported **93 passed in 3.81s** with no new skips.
+- Full Pixi lint passed after test-style fixes. The strict MkDocs build, release-version test and `v0.4.0` verification, README kernel example, and scoped diff check also passed (details above).
+- Work remains local on `feat/numeric-cpp-annotations`; no push, ARM tests, or release publication occurred.

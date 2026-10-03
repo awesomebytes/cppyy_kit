@@ -41,7 +41,7 @@ ROS_DOMAIN_ID = "61"
 CPPYY_KIT_NO_AUTOPCH = "1"
 
 [dependencies]
-ros-jazzy-rclcpp-kit = "==0.3.0"
+ros-jazzy-rclcpp-kit = "==0.4.0"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
 EOF
 

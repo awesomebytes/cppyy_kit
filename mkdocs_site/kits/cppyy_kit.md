@@ -9,12 +9,18 @@ passing callbacks and arrays, and keeping objects alive.
 Follow [Getting Started](../getting-started.md) to create an environment with
 `cppyy-kit` and NumPy, then save this as `kernel.py`:
 
+The numeric annotations below are new in `cppyy-kit` 0.4.0. Until that version
+is published, run from this repository checkout with `pixi run python kernel.py`;
+the installed 0.3.x package does not support them. After publication, use
+`pixi add "cppyy-kit>=0.4.0" numpy` in a standalone project.
+
 ```python
 import numpy as np
+from numpy.typing import NDArray
 from cppyy_kit import cpp
 
 @cpp
-def sum_sq(data: cpp.arr("float")) -> float:
+def sum_sq(data: NDArray[np.float32]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -23,10 +29,10 @@ def sum_sq(data: cpp.arr("float")) -> float:
     return s;
     """
 
-print(sum_sq(np.array([1, 2, 3], np.float32)))  # 14.0
+print(sum_sq(np.array([1, 2, 3], dtype=np.float32)))  # 14.0
 ```
 
-Run `pixi run python kernel.py`. It prints `14.0`. The annotations supply a typed
+Run `pixi run python kernel.py`. It prints `14.0`. The annotation supplies a typed
 array pointer and element count; the docstring is compiled as C++.
 
 The compiled function is cached between runs. Use `@cpp(nogil=True)` when

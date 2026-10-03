@@ -107,7 +107,7 @@ separate recipes. The project keeps one recipe per package, so update every vers
 when bumping the suite:
 
 ```bash
-recipe/bump_version.sh 0.3.0
+recipe/bump_version.sh 0.4.0
 ```
 
 ## Release

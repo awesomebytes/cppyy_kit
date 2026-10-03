@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: ros-jazzy-dbow-kit
   # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -28,8 +28,8 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.3.0
-    - ros-jazzy-cv-kit ==0.3.0
+    - cppyy-kit ==0.4.0
+    - ros-jazzy-cv-kit ==0.4.0
     - opencv >=4,<5
 
 tests:

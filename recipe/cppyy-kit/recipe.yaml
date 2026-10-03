@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: cppyy-kit
   # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.3.0"
+  version: "0.4.0"
 
 package:
   name: ${{ name }}
@@ -19,7 +19,7 @@ build:
   # Pure-Python (JITs C++ at runtime via cppyy, nothing compiled at build time)
   # -> noarch python wrapper; package compatibility follows cppyy's runtime deps.
   noarch: python
-  number: 2
+  number: 0
 
 requirements:
   host:
@@ -29,6 +29,7 @@ requirements:
   run:
     - python 3.12.*
     - cppyy >=3.5,<4
+    - numpy
 
   # The x86_64 conda-forge Cling 6.32.8 package segfaults at interpreter
   # startup with the currently selected GCC/G++ 15.3 and libgcc/libstdcxx 16.2.

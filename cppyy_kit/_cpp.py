@@ -7,30 +7,51 @@ executed) and its **annotations drive the marshaling**. On first call the functi
 is compiled once into a cached ``.so`` (``cppdef_cached``). Later runs load that
 library from the cache.
 
+    import numpy as np
+    from numpy.typing import NDArray
+
     @cpp
-    def saxpy(y: "float*", x: "float*", n: int, a: float) -> None:
-        "for (std::size_t i = 0; i < n; ++i) y[i] += a * x[i];"
+    def sum_sq(data: NDArray[np.float32]) -> float:
+        '''
+        double s = 0;
+        for (std::size_t i = 0; i < data_size; ++i) {
+            s += data[i] * data[i];
+        }
+        return s;
+        '''
 
-    saxpy(y_np, x_np, y_np.size, 2.0)      # numpy arrays cross as raw pointers
+    print(sum_sq(np.array([1, 2, 3], dtype=np.float32)))  # 14.0
 
-Annotation and argument conversion (the §6 "pass raw addresses" pattern):
+Numeric Python and NumPy scalar annotations pass values by value. Python ``int``,
+``float``, ``bool`` and ``complex`` map to C++ ``int``, ``double``, ``bool`` and
+``std::complex<double>``. Supported NumPy scalar types use their matching C++ numeric
+types. The same numeric types can annotate ``list[T]``, ``tuple[T, ...]``, or
+``Sequence[T]``. Sequences are copied to contiguous temporary storage for each call.
 
-* ``int`` / ``float`` / ``bool``: scalar, passed by value (``int`` / ``double`` / ``bool``).
-* a **verbatim C++ type string** ending in ``*`` (``"float*"``, ``"const int*"``):
-  the argument is taken as a buffer: a NumPy array (its ``.ctypes.data``) or an int
-  address crosses as ``uintptr_t`` and the body gets the typed pointer.
-* ``cpp.arr("float")``: a NumPy array passes as **pointer + size**. The body sees
-  ``name`` (``float*``) and ``name_size`` (``std::size_t``, the array's element
-  count). This is the numpy→(pointer,size) convenience for array kernels.
-* any other verbatim string: use it as the C++ parameter type and pass the value through.
-* return ``None`` maps to ``void``. Return ``int``/``float``/``bool`` or a verbatim string to use that type.
+``NDArray[T]`` and ``numpy.ndarray[shape, numpy.dtype[T]]`` borrow a NumPy buffer.
+They require an exact supported dtype, native byte order, alignment, C-contiguous
+layout, and writable storage. The C++ body sees ``name`` as a typed pointer and
+``name_size`` as its element count. An unannotated ndarray or numeric scalar infers
+its dtype at the call site. Unannotated homogeneous numeric lists and tuples infer
+their element type; empty or mixed sequences need an explicit annotation. Inferred
+calls cache one compiled specialization per concrete argument types.
+
+Return ``None`` or omit a return annotation for ``void``. Numeric Python and NumPy
+scalar return annotations select the C++ return type. Under
+``from __future__ import annotations``, Python annotations are resolved from the
+function's globals. Literal string annotations remain verbatim C++ type strings.
+
+Advanced buffer forms remain available. A **verbatim C++ type string** ending in
+``*`` (``"float*"``, ``"const int*"``) passes a raw buffer address. ``cpp.arr("float")``
+passes a buffer address and size. Other verbatim strings specify a C++ parameter
+type and pass the value through.
 
 Calls bind against the original Python signature before compilation or marshaling,
 so defaults and keyword arguments work and invalid calls raise ``TypeError`` early.
 Keyword-only and variadic parameters are rejected at decoration time.
 
-Only the types listed above are marshaled. Other types raise an error at decoration time.
-Compose with real libraries via ``@cpp(include_paths=..., libraries=...)``.
+Unsupported annotations and dtypes raise clear errors. Compose with real libraries
+via ``@cpp(include_paths=..., libraries=...)``.
 
 ``@cpp(nogil=True)`` releases the GIL (``Py_BEGIN_ALLOW_THREADS``) around **only** the
 compiled body. Argument and result marshaling stay under the lock, so plain Python
@@ -40,9 +61,13 @@ threads that call the kernel can run their C++ code in parallel (see
 or write the ``.so`` cache. Use this option for debugging (see docs/FREEZE.md, "Debugging:
 turning the caches off").
 """
+import __future__
+import builtins
+import collections.abc
 import hashlib
 import inspect
 import threading
+import typing
 
 
 class _Arr:
@@ -54,6 +79,230 @@ class _Arr:
 
 
 _SCALAR = {int: "int", float: "double", bool: "bool"}
+_COMPILE_LOCK = threading.RLock()
+
+
+class _Numeric:
+    __slots__ = ("kind", "dtype", "cpp_type")
+
+    def __init__(self, kind, dtype, cpp_type):
+        self.kind, self.dtype, self.cpp_type = kind, dtype, cpp_type
+
+
+_REGISTERED = {}
+
+
+def _numpy_type(dtype):
+    """Return the supported NumPy dtype and matching C++ type."""
+    import numpy as np
+    dt = np.dtype(dtype)
+    if not dt.isnative or dt.hasobject or dt.fields or dt.subdtype:
+        raise TypeError("unsupported NumPy dtype %s; use native-endian numeric data" % dt)
+    table = {
+        "bool": "bool", "int8": "std::int8_t", "uint8": "std::uint8_t",
+        "int16": "std::int16_t", "uint16": "std::uint16_t",
+        "int32": "std::int32_t", "uint32": "std::uint32_t",
+        "int64": "std::int64_t", "uint64": "std::uint64_t",
+        "float32": "float", "float64": "double",
+        "complex64": "std::complex<float>", "complex128": "std::complex<double>",
+    }
+    cpp_type = table.get(dt.name)
+    if cpp_type is None:
+        raise TypeError(
+            "unsupported NumPy dtype %s; supported dtypes are bool, 8/16/32/64-bit "
+            "integers, float32/64, and complex64/128" % dt)
+    return dt, cpp_type
+
+
+def _dtype_for_type(tp):
+    """Map a Python or NumPy numeric annotation to a concrete NumPy dtype."""
+    import numpy as np
+    if tp is bool:
+        return _numpy_type(np.bool_)
+    if tp is int:
+        dt, _ = _numpy_type(np.intc)
+        return dt, "int"
+    if tp is float:
+        return _numpy_type(np.float64)
+    if tp is complex:
+        return _numpy_type(np.complex128)
+    try:
+        return _numpy_type(np.dtype(tp))
+    except (TypeError, ValueError):
+        raise TypeError("unsupported numeric annotation %r" % (tp,))
+
+
+def _eval_annotation(value, fn):
+    """Resolve postponed Python annotations while retaining C++ type strings."""
+    if not isinstance(value, str):
+        return value
+    if not fn.__code__.co_flags & __future__.annotations.compiler_flag:
+        return value
+    try:
+        return eval(value, fn.__globals__, vars(builtins))
+    except (NameError, SyntaxError, TypeError, AttributeError):
+        return value
+
+
+def _annotation_spec(annotation, fn, parameter):
+    """Normalize the supported Python annotation forms to a marshaling spec."""
+    ann = _eval_annotation(annotation, fn)
+    if ann is None or ann is inspect.Signature.empty:
+        return None
+    if isinstance(ann, _Arr):
+        return ann
+    if isinstance(ann, str):
+        return ann
+    if ann in _SCALAR:
+        return ann
+
+    import numpy as np
+    if ann is complex:
+        dt, cpp_type = _dtype_for_type(complex)
+        return _Numeric("scalar", dt, cpp_type)
+    if isinstance(ann, type) and issubclass(ann, np.generic):
+        dt, cpp_type = _dtype_for_type(ann)
+        return _Numeric("scalar", dt, cpp_type)
+    origin = typing.get_origin(ann)
+    args = typing.get_args(ann)
+    is_ndarray_alias = (
+        getattr(ann, "__name__", None) == "NDArray" and
+        str(getattr(ann, "__module__", "")).startswith("numpy.")) or (
+        getattr(origin, "__name__", None) == "NDArray" and
+        str(getattr(origin, "__module__", "")).startswith("numpy."))
+    if ann is np.ndarray or origin is np.ndarray or is_ndarray_alias:
+        dtype = None
+        # ndarray[shape, dtype[T]] is NumPy's parameterized spelling.
+        if is_ndarray_alias and len(args) == 1:
+            dtype = args[0]
+        elif len(args) == 2:
+            dtype_args = typing.get_args(args[1])
+            dtype = dtype_args[0] if dtype_args else None
+            if dtype is typing.Any:
+                dtype = None
+        elif len(args) == 1 and args[0] is not typing.Any:
+            dtype_args = typing.get_args(args[0])
+            dtype = dtype_args[0] if dtype_args else args[0]
+        if dtype is typing.Any:
+            dtype = None
+        if dtype is None:
+            return _Numeric("array", None, None)
+        dt, cpp_type = _dtype_for_type(dtype)
+        return _Numeric("array", dt, cpp_type)
+    if origin is np.dtype:
+        raise TypeError("%s annotation describes a dtype, not an array" % parameter)
+
+    sequence_origins = (list, tuple, collections.abc.Sequence, typing.List,
+                        typing.Tuple, typing.Sequence)
+    if ann in (list, tuple, collections.abc.Sequence, typing.List,
+               typing.Tuple, typing.Sequence):
+        return _Numeric("sequence", None, None)
+    if origin in sequence_origins:
+        if origin in (tuple, typing.Tuple):
+            if len(args) != 2 or args[1] is not Ellipsis:
+                raise TypeError("%s: tuple annotations must use tuple[T, ...]" % parameter)
+            element = args[0]
+        elif len(args) == 1:
+            element = args[0]
+        else:
+            raise TypeError("%s: sequence annotation needs one numeric element type" % parameter)
+        if element is typing.Any:
+            return _Numeric("sequence", None, None)
+        dt, cpp_type = _dtype_for_type(element)
+        return _Numeric("sequence", dt, cpp_type)
+    raise _err("parameter %r" % parameter, ann)
+
+
+def _numeric_scalar(value):
+    """Return (dtype, C++ type, plain Python value) for a numeric scalar."""
+    import numpy as np
+    if isinstance(value, np.generic):
+        dt, cpp_type = _numpy_type(value.dtype)
+        return dt, cpp_type, value.item()
+    if type(value) is bool:
+        dt, cpp_type = _dtype_for_type(bool)
+    elif type(value) is int:
+        dt, cpp_type = _dtype_for_type(int)
+    elif type(value) is float:
+        dt, cpp_type = _dtype_for_type(float)
+    elif type(value) is complex:
+        dt, cpp_type = _dtype_for_type(complex)
+    else:
+        raise TypeError("cannot infer a C++ numeric type from %s" % type(value).__name__)
+    return dt, cpp_type, value
+
+
+def _infer_value(value, parameter):
+    """Infer a supported scalar, ndarray, or homogeneous sequence argument."""
+    import numpy as np
+    if isinstance(value, np.ndarray):
+        dt, cpp_type = _numpy_type(value.dtype)
+        return _Numeric("array", dt, cpp_type)
+    if isinstance(value, collections.abc.Sequence) and not isinstance(
+            value, (str, bytes, bytearray)):
+        if not value:
+            raise TypeError(
+                "cannot infer element type of empty %s for %s; add a numeric "
+                "annotation" % (type(value).__name__, parameter))
+        kinds = []
+        for item in value:
+            dt, cpp_type, _ = _numeric_scalar(item)
+            kinds.append((dt, cpp_type))
+        if any(item != kinds[0] for item in kinds[1:]):
+            raise TypeError("cannot infer a homogeneous numeric type for %s; annotate the sequence" % parameter)
+        return _Numeric("sequence", *kinds[0])
+    dt, cpp_type, plain = _numeric_scalar(value)
+    return _Numeric("scalar", dt, cpp_type)
+
+
+def _array_for_sequence(value, spec, parameter):
+    """Make a checked owned contiguous array for a typed or inferred sequence."""
+    import numpy as np
+    if not isinstance(value, collections.abc.Sequence) or isinstance(value, (str, bytes, bytearray)):
+        raise TypeError("%s must be a numeric sequence" % parameter)
+    if spec.dtype is None:
+        spec = _infer_value(value, parameter)
+    dtype = spec.dtype
+    items = list(value)
+    if not items and dtype is None:
+        raise TypeError("cannot infer element type of empty sequence for %s" % parameter)
+    for item in items:
+        if isinstance(item, (list, tuple, dict, set)) or isinstance(item, (str, bytes, bytearray)):
+            raise TypeError("%s must contain flat numeric values" % parameter)
+        _validate_numeric_value(item, dtype, parameter)
+    try:
+        arr = np.asarray(items, dtype=dtype)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise TypeError("%s cannot be represented as %s: %s" % (parameter, dtype, exc))
+    return np.ascontiguousarray(arr)
+
+
+def _validate_numeric_value(value, dtype, parameter):
+    import numpy as np
+    plain = value.item() if isinstance(value, np.generic) else value
+    if np.issubdtype(dtype, np.bool_):
+        valid = type(plain) is bool
+    elif np.issubdtype(dtype, np.integer):
+        valid = isinstance(plain, int)
+    elif np.issubdtype(dtype, np.floating):
+        valid = isinstance(plain, (int, float))
+    elif np.issubdtype(dtype, np.complexfloating):
+        valid = isinstance(plain, (int, float, complex))
+    else:
+        valid = False
+    if not valid:
+        raise TypeError("%s contains a value incompatible with %s" % (parameter, dtype))
+    if np.issubdtype(dtype, np.integer):
+        bounds = np.iinfo(dtype)
+        if not bounds.min <= plain <= bounds.max:
+            raise TypeError("%s integer value %r is outside the range of %s" %
+                            (parameter, plain, dtype))
+    return plain
+
+
+def _scalar_argument(value, spec, parameter):
+    plain = _validate_numeric_value(value, spec.dtype, parameter)
+    return spec.dtype.type(plain).item()
 
 
 def _ret_type(ann):
@@ -61,6 +310,14 @@ def _ret_type(ann):
         return "void"
     if ann in _SCALAR:
         return _SCALAR[ann]
+    if ann in (complex,):
+        return "std::complex<double>"
+    try:
+        import numpy as np
+        if isinstance(ann, type) and issubclass(ann, np.generic):
+            return _numpy_type(np.dtype(ann))[1]
+    except (ImportError, TypeError):
+        pass
     if isinstance(ann, str):
         return ann.strip()
     raise _err("return", ann)
@@ -69,7 +326,8 @@ def _ret_type(ann):
 def _err(where, ann):
     return TypeError(
         "cppyy_kit.cpp: cannot marshal %s annotation %r. Use int/float/bool, a "
-        "verbatim C++ type string, or cpp.arr('T')." % (where, ann))
+        "supported numeric NumPy/sequence annotation, a verbatim C++ type string, "
+        "or cpp.arr('T')." % (where, ann))
 
 
 class _CppFunc:
@@ -99,44 +357,144 @@ class _CppFunc:
         if not body:
             raise ValueError("cppyy_kit.cpp: %s has no docstring -- the docstring is "
                              "the C++ body." % self._name)
-        self._plan = _build_plan(self._name, fn, body, nogil=self._nogil)
+        self._body = body
+        self._plans = {}
+        self._impls = {}
+        self._plan = _build_plan(self._name, fn, body, nogil=self._nogil,
+                                 options=self._opts)
+        self._static = all(spec is not None and
+                           not (isinstance(spec, _Numeric) and spec.dtype is None)
+                           for spec in self._plan["specs"])
         self._impl = None          # resolved cppyy callable (lazy)
         self._lock = threading.Lock()  # first-use compile is thread-safe (see _ensure)
         self.__name__ = self._name
         self.__doc__ = fn.__doc__
 
-    def _ensure(self):
+    def _ensure(self, plan):
         """Compile and resolve the kernel once. The double-checked lock handles
         concurrent first calls. Without the lock, each thread could run ``cppdef``
         and Cling would report a redefinition. After ``_impl`` is set, calls return
         before acquiring the lock."""
-        if self._impl is not None:          # fast path: no lock once compiled
-            return
+        key = plan["key"]
+        if key in self._impls:
+            return self._impls[key]
         with self._lock:
-            if self._impl is not None:      # re-check under the lock
-                return
+            if key in self._impls:
+                return self._impls[key]
             import cppyy
             from . import cache
-            src, decls, cpp_name = self._plan["source"], self._plan["decls"], self._plan["cpp_name"]
-            cache.cppdef_cached(src, decls=decls, name="cpp_" + self._name,
-                                cached=self._cached, **self._opts)
-            self._impl = getattr(cppyy.gbl.cppyy_kit_cpp, cpp_name)
+            src, decls, cpp_name = plan["source"], plan["decls"], plan["cpp_name"]
+            # cppyy's interpreter namespace is process-global. Serialize registration
+            # across wrappers as well as across specializations of one wrapper.
+            with _COMPILE_LOCK:
+                registration_key = (src, decls, repr(sorted(
+                    (key, repr(value)) for key, value in self._opts.items())))
+                impl = _REGISTERED.get(registration_key)
+                if impl is None:
+                    cache.cppdef_cached(src, decls=decls, name="cpp_" + self._name,
+                                        cached=self._cached, **self._opts)
+                    impl = getattr(cppyy.gbl.cppyy_kit_cpp, cpp_name)
+                    _REGISTERED[registration_key] = impl
+                elif self._cached and cache.caching_enabled():
+                    # A previous cached=False wrapper may already have registered
+                    # this exact source in Cling. Build the disk artifact without
+                    # re-registering its definition.
+                    from . import _compile
+                    try:
+                        cache.prebuild(src, decls=decls, name="cpp_" + self._name,
+                                       **self._opts)
+                    except _compile.CompileError as exc:
+                        _compile._stderr(
+                            "[cppyy_kit] compile cache build failed for %s (%s); "
+                            "running uncached this session." % (self._name, exc))
+            self._impls[key] = impl
+            if self._static and self._impl is None:
+                self._impl = impl
+            return impl
 
     def __call__(self, *args, **kwargs):
         bound = self.__signature__.bind(*args, **kwargs)
         bound.apply_defaults()
-        marshaled = []
-        for kind, name in zip(self._plan["marshal"], self._plan["params"]):
+        specs = []
+        values = []
+        for name, original_spec in zip(self._plan["params"], self._plan["specs"]):
             arg = bound.arguments[name]
-            if kind == "scalar":
+            spec = original_spec if original_spec is not None else _infer_value(arg, name)
+            if isinstance(spec, _Numeric):
+                if spec.kind == "array":
+                    if spec.dtype is None:
+                        inferred = _infer_value(arg, name)
+                        if inferred.kind != "array":
+                            raise TypeError("%s must be a NumPy ndarray" % name)
+                        spec = inferred
+                    _validate_array(arg, spec, name, writable=True)
+                elif spec.kind == "sequence":
+                    if spec.dtype is None:
+                        inferred = _infer_value(arg, name)
+                        if inferred.kind != "sequence":
+                            raise TypeError("%s must be a numeric sequence" % name)
+                        spec = inferred
+                    arg = _array_for_sequence(arg, spec, name)
+                elif spec.kind == "scalar":
+                    arg = _scalar_argument(arg, spec, name)
+            specs.append(spec)
+            values.append(arg)
+        plan_key = tuple(_spec_key(spec) for spec in specs)
+        plan = self._plans.get(plan_key)
+        if plan is None:
+            plan = _build_plan(self._name, self._fn, self._body,
+                               nogil=self._nogil, specs=specs,
+                               options=self._opts)
+            self._plans[plan_key] = plan
+        marshaled = []
+        for spec, name, arg in zip(specs, plan["params"], values):
+            if isinstance(spec, _Numeric):
+                if spec.kind in ("array", "sequence"):
+                    marshaled.extend((_address(arg), int(arg.size)))
+                else:
+                    marshaled.append(arg)
+            elif isinstance(spec, _Arr):
+                if not _is_array_like(arg):
+                    raise TypeError("%s must be a NumPy array for cpp.arr" % name)
+                marshaled.extend((_address(arg), int(arg.size)))
+            elif isinstance(spec, str) and spec.strip().endswith("*"):
+                marshaled.append(_address(arg))
+            else:
                 marshaled.append(arg)
-            elif kind == "ptr":
-                marshaled.append(_address(arg))
-            elif kind == "arr":
-                marshaled.append(_address(arg))
-                marshaled.append(int(getattr(arg, "size", len(arg))))
-        self._ensure()
-        return self._impl(*marshaled)
+        impl = self._ensure(plan)
+        return impl(*marshaled)
+
+
+def _spec_key(spec):
+    if isinstance(spec, _Numeric):
+        kind = "buffer" if spec.kind in ("array", "sequence") else spec.kind
+        return ("numeric", kind, spec.dtype.str if spec.dtype is not None else None,
+                spec.cpp_type)
+    if isinstance(spec, _Arr):
+        return ("arr", spec.elem)
+    return ("annotation", spec)
+
+
+def _is_array_like(arg):
+    return hasattr(arg, "ctypes") and hasattr(arg, "size")
+
+
+def _validate_array(arg, spec, name, writable):
+    import numpy as np
+    if not isinstance(arg, np.ndarray):
+        raise TypeError("%s must be a NumPy ndarray" % name)
+    dt, cpp_type = _numpy_type(arg.dtype)
+    if spec.dtype is not None and dt != spec.dtype:
+        raise TypeError("%s has dtype %s; annotation requires %s" % (name, dt, spec.dtype))
+    if not arg.dtype.isnative:
+        raise TypeError("%s must use native-endian dtype" % name)
+    if not arg.flags.aligned or not arg.flags.c_contiguous:
+        raise TypeError("%s must be aligned and C-contiguous" % name)
+    if writable and not arg.flags.writeable:
+        raise TypeError("%s is read-only; writable numeric array parameters are required" % name)
+    return arg
+
+
 
 
 def _address(arg):
@@ -174,15 +532,22 @@ def _nogil_wrapper(ret, entry, real_name, sig, call_args):
     return "%s %s(%s) {\n%s\n}" % (ret, entry, sig, inner)
 
 
-def _build_plan(name, fn, body, nogil=False):
+def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
     ann = getattr(fn, "__annotations__", {})
     params = [p.name for p in inspect.signature(fn).parameters.values()
               if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
     cpp_params, call_args, injects, marshal = [], [], [], []
-    for p in params:
-        if p not in ann:
-            raise TypeError("cppyy_kit.cpp: parameter %r of %s is not annotated." % (p, name))
-        a = ann[p]
+    if specs is None:
+        specs = [_annotation_spec(ann.get(p, inspect.Signature.empty), fn, p)
+                 for p in params]
+    concrete = []
+    for p, a in zip(params, specs):
+        if a is None:
+            # This placeholder only builds the dispatch template. Calls always
+            # replace it with a concrete numeric spec before compilation.
+            cpp_type = "int"
+            a = _Numeric("scalar", None, cpp_type)
+        concrete.append(a)
         if isinstance(a, _Arr):
             cpp_params.append("uintptr_t %s__addr" % p)
             cpp_params.append("std::size_t %s_size" % p)
@@ -190,6 +555,19 @@ def _build_plan(name, fn, body, nogil=False):
             call_args.append("%s_size" % p)
             injects.append("  %s* %s = reinterpret_cast<%s*>(%s__addr);" % (a.elem, p, a.elem, p))
             marshal.append("arr")
+        elif isinstance(a, _Numeric):
+            t = a.cpp_type or "int"
+            if a.kind in ("array", "sequence"):
+                cpp_params.extend(("uintptr_t %s__addr" % p,
+                                   "std::size_t %s_size" % p))
+                call_args.extend(("%s__addr" % p, "%s_size" % p))
+                injects.append("  %s* %s = reinterpret_cast<%s*>(%s__addr);" %
+                               (t, p, t, p))
+                marshal.append("arr")
+            else:
+                cpp_params.append("%s %s" % (t, p))
+                call_args.append(p)
+                marshal.append("scalar")
         elif isinstance(a, str) and a.strip().endswith("*"):
             t = a.strip()
             cpp_params.append("uintptr_t %s__addr" % p)
@@ -206,13 +584,18 @@ def _build_plan(name, fn, body, nogil=False):
             marshal.append("scalar")
         else:
             raise _err("parameter %r" % p, a)
-    ret = _ret_type(ann.get("return"))
+    ret_annotation = _eval_annotation(ann.get("return"), fn)
+    ret = _ret_type(ret_annotation)
     sig = ", ".join(cpp_params)
     # Unique C++ symbol (name + body hash) so two @cpp fns never ODR-clash in the ns.
     # nogil is folded in so the same function defined both with and without it gets
     # distinct symbols (and distinct cache artifacts).
+    settings = repr(sorted((key, repr(value)) for key, value in
+                           (options or {}).items()))
+    spec_text = repr(tuple(_spec_key(s) for s in concrete))
     digest = hashlib.sha256(
-        (name + ret + sig + body + ("|nogil" if nogil else "")).encode()).hexdigest()[:8]
+        (name + ret + sig + body + spec_text + settings +
+         ("|nogil" if nogil else "")).encode()).hexdigest()[:12]
     real_name = "%s_%s" % (name, digest)
     real_def = "%s %s(%s) {\n%s\n%s\n}" % (ret, real_name, sig, "\n".join(injects), body)
     if nogil:
@@ -220,18 +603,19 @@ def _build_plan(name, fn, body, nogil=False):
         # Python.h first, per CPython convention; the wrapper needs it for the GIL API.
         entry = real_name + "_nogil"
         body_src = real_def + "\n" + _nogil_wrapper(ret, entry, real_name, sig, call_args)
-        includes = "#include <Python.h>\n#include <cstdint>\n#include <cstddef>\n"
+        includes = "#include <Python.h>\n#include <cstdint>\n#include <cstddef>\n#include <complex>\n"
     else:
         entry = real_name
         body_src = real_def
-        includes = "#include <cstdint>\n#include <cstddef>\n"
+        includes = "#include <cstdint>\n#include <cstddef>\n#include <complex>\n"
     source = "%snamespace cppyy_kit_cpp {\n%s\n}\n" % (includes, body_src)
     # Bodiless declaration of the entry point cppyy resolves (the kernel stays inside
     # the .so on a cache hit). The wrapper's signature is plain POD -> no Python.h here.
-    decls = ("#include <cstdint>\n#include <cstddef>\nnamespace cppyy_kit_cpp { %s %s(%s); }\n"
+    decls = ("#include <cstdint>\n#include <cstddef>\n#include <complex>\nnamespace cppyy_kit_cpp { %s %s(%s); }\n"
              % (ret, entry, sig))
     return {"source": source, "decls": decls, "cpp_name": entry, "marshal": marshal,
-            "params": params}
+            "params": params, "specs": specs,
+            "key": tuple(_spec_key(s) for s in concrete)}
 
 
 def cpp(func=None, *, name=None, include_paths=(), library_paths=(), libraries=(),

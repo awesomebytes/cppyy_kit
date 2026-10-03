@@ -17,6 +17,13 @@ and keeping objects alive.
 
 ## Try both examples
 
+The numeric `@cpp` annotations below are new in `cppyy-kit` 0.4.0. Published
+0.3.x packages do not support them. Until 0.4.0 is published, use this source
+checkout: run `pixi run -e bt python tree.py` for the tree example and
+`pixi run python kernel.py` for the numeric example. See
+[source-checkout instructions](getting-started.md#run-repository-demos-or-develop-the-kits).
+After publication, use `pixi add "cppyy-kit>=0.4.0" numpy` for the numeric example.
+
 Install [Pixi](https://pixi.sh/latest/installation/), then create an environment
 for the two examples below:
 
@@ -63,10 +70,11 @@ Save this as `kernel.py`:
 
 ```python
 import numpy as np
+from numpy.typing import NDArray
 from cppyy_kit import cpp
 
 @cpp
-def sum_sq(data: cpp.arr("float")) -> float:
+def sum_sq(data: NDArray[np.float32]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -75,12 +83,12 @@ def sum_sq(data: cpp.arr("float")) -> float:
     return s;
     """
 
-print(sum_sq(np.array([1, 2, 3], np.float32)))  # 14.0
+print(sum_sq(np.array([1, 2, 3], dtype=np.float32)))  # 14.0
 ```
 
-Run `pixi run python kernel.py`. It prints `14.0`. `cpp.arr("float")` passes the
-NumPy array to C++ as a pointer and an element count. The function is compiled
-on first use; later runs can load it from the compile cache.
+Run `pixi run python kernel.py`. It prints `14.0`. The annotation selects a C++
+`float` pointer and element count. The function is compiled on first use; later
+runs can load it from the compile cache.
 
 For independent work in Python threads, `@cpp(nogil=True)` releases Python's
 interpreter lock during the C++ function. See the [parallel example](https://github.com/awesomebytes/cppyy_kit/blob/main/examples/parallel_demo/parallel_demo.py).

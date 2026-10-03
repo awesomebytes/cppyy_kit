@@ -107,11 +107,13 @@ def test_compiles_once_reused():
     assert inc._impl is impl        # not rebuilt
 
 
-def test_unannotated_parameter_raises():
+def test_unsupported_unannotated_parameter_raises_before_compilation():
+    @cpp
+    def bad(x):
+        """return 1;"""
     with pytest.raises(TypeError):
-        @cpp
-        def bad(x) -> int:
-            """return x;"""
+        bad(object())
+    assert bad._impl is None
 
 
 def test_missing_docstring_raises():

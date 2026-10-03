@@ -16,8 +16,8 @@ def test_all_suite_release_metadata_matches_exact_tag():
     versions = verify_release_version.metadata_versions(ROOT)
 
     assert len(versions) == 23
-    assert set(versions.values()) == {"0.3.0"}
-    assert verify_release_version.verify(ROOT, "v0.3.0") == "0.3.0"
+    assert set(versions.values()) == {"0.4.0"}
+    assert verify_release_version.verify(ROOT, "v0.4.0") == "0.4.0"
 
 
 @pytest.mark.parametrize("tag", ["v0.1.0", "v0.2", "0.2.0", "v0.3.0-rc1", "v9.9.9"])
