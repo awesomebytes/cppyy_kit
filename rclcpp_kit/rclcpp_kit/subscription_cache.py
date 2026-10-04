@@ -104,6 +104,7 @@ def make_subscription(node, cpp_type_str, header, topic, qos, cpp_callback):
             so_path, _, _ = _cache.artifact_paths(
                 args["code"], args["decls"], name=args["name"],
                 include_paths=args["include_paths"], libraries=args["libraries"],
+                library_paths=args["library_paths"],
                 directory=args["directory"])
             if os.path.exists(so_path):
                 # Hit: load the prebuilt .so; the template is already instantiated.

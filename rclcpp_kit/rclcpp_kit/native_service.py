@@ -50,6 +50,7 @@ def _compile_native_glue(
         compile_options["name"],
         compile_options["include_paths"],
         compile_options["libraries"],
+        library_paths=compile_options.get("library_paths", ()),
         directory=compile_options["directory"],
     )[0]
     was_cached = os.path.exists(so_path)

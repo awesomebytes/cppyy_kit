@@ -73,16 +73,18 @@ passed in locked Pixi environments:
 
 | Check | Observed result |
 |---|---|
-| Default test task | 368 passed, 161 optional skips; 13.70 seconds |
+| Final default test task | 369 passed, 161 optional skips; 12.95 seconds |
 | PCL native adapter | 2 passed; 7.10 seconds |
 | OpenCV new and existing vision suites | 40 passed, no skips; 51.18 seconds |
 | Full OMPL kit suite | 21 passed; 6.28 seconds |
 | Native component example | 17 passed, including standalone driver parity |
 | Independent cache/compiler rerun | 25 passed; publication-failure retry included |
-| Lint and strict documentation build | Passed; documentation build under one second |
-| Core/rclcpp artifact build and recipe tests | Passed; 63 seconds |
+| Lint and strict documentation build | Passed; lint 1.55 seconds, documentation build 0.87 seconds |
+| Final core/rclcpp artifact build and recipe tests | Passed; 60 seconds |
 | Fresh external Pixi installation | Guides, diagnostics, numeric kernels and serialized same-handle publication passed; 8 seconds |
-| Complete suite guide resources | 11 actual Conda artifacts, 23 exact byte comparisons and CLI reads outside checkout; 2.4 seconds |
+| Complete suite guide resources | 11 actual Conda artifacts, 23 exact byte comparisons and CLI reads outside checkout; 2.5 seconds |
+| ROS cache caller regressions | 45 passed; 70.24 seconds |
+| Mocked subscription units followed by native regressions | 34 passed with subscription cache disabled; 17.35 seconds; 5 passed with normal cache; 3.50 seconds |
 
 The nine other wrapper artifacts were built with native recipe tests skipped.
 Their resource checks establish packaged guide delivery, not native bringup for
@@ -99,6 +101,19 @@ CI now executes focused PCL, OpenCV and OMPL native regressions on x86_64,
 alongside the existing x86_64/ARM64 core/rclcpp, installed-package and sanitizer
 lanes. Optional capability skips in the default environment are not counted as
 native validation. Pull-request checks gate upstream merge.
+
+The first pull-request run exposed six ROS callers that omitted library search
+paths when calculating artifact names. These callers now use the same options
+as compilation. A new core regression checks path consistency across lookup,
+prebuild and runtime loading. Two existing subscription unit tests also passed
+fake message types into a real native callable template, affecting later tests
+in the same process. They now mock that boundary while retaining the signature
+and owning-copy assertions. Independent review confirmed both corrections.
+The final installed rclcpp artifact contains all six corrected modules.
+
+The first final local run failed an existing 50 ms jitter benchmark threshold
+(79.93 Hz versus an expected 500 to 1500 Hz). Its isolated rerun passed, followed
+by the complete default suite. The benchmark code and assertions were unchanged.
 
 The 0.4.0 artifacts remain local. Channel publication is a separate release step.
 DBoW2 native packaging remains incomplete: its noarch wrapper and guides do not

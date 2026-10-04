@@ -176,6 +176,24 @@ def test_library_paths_and_argument_boundaries_are_in_key(tmp_path):
         cache.artifact_paths("x", link_args=("a", "b|c"), **kwargs))
 
 
+def test_artifact_paths_match_prebuild_and_runtime_link_options(tmp_path):
+    ns = _unique()
+    code, decls = _snippet(ns)
+    options = {
+        "decls": decls,
+        "name": "explicit_link_options",
+        "library_paths": (str(tmp_path / "lib-first"), str(tmp_path / "lib-second")),
+        "link_args": ("-Wl,--as-needed",),
+        "defines": ("CPPYY_KIT_ARTIFACT_TEST=1",),
+        "directory": str(tmp_path),
+    }
+    expected = cache.artifact_paths(code, **options)[0]
+    assert cache.prebuild(code, **options) == expected
+    result = cache.cppdef_cached(code, **options)
+    assert result["cached"] is True and result["so"] == expected
+    assert int(getattr(cppyy.gbl, ns).triple(6)) == 18
+
+
 def test_warm_artifact_needs_no_compiler(tmp_path, monkeypatch):
     ns = _unique()
     code, decls = _snippet(ns)

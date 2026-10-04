@@ -37,3 +37,23 @@
   installed-package and sanitizer checks remain enabled.
 - Kept package artifacts and validation logs local. Upstream checks and merge
   are tracked in the pull request; no channel upload is part of this work.
+
+## Pull-request corrections
+
+- The initial pull-request run passed lint, default tests and all three native
+  domain jobs. The x86_64 ROS suite failed, so the obsolete run was cancelled.
+- Corrected six ROS artifact lookups to include library paths, matching
+  compilation. The trampoline lookup also includes its toolchain paths.
+- Reproduced three later failures caused by a mocked subscription unit compiling
+  fake types into Cling. Corrected two unit mocks without changing production
+  initialization or weakening their assertions.
+- The locked CI environment passed 45 cache/native tests, 34 tests with the
+  subscription cache disabled and 5 normal-cache checks. Independent review
+  passed three additional focused checks and found no remaining issues.
+- Rebuilt core/rclcpp artifacts in 60 seconds. A fresh external installation
+  passed native checks in 8 seconds. All eleven artifacts passed 23 exact guide
+  resource comparisons and CLI checks in 2.5 seconds. Preserved initial artifacts.
+- Final default task passed 369 tests with 161 optional skips in 12.95 seconds;
+  lint passed in 1.55 seconds and strict docs built in 0.87 seconds. An initial
+  jitter timing threshold failed, then its isolated and full-suite reruns passed.
+  The benchmark and its assertions were unchanged.
