@@ -61,7 +61,7 @@ PYTHONPATH = "$PIXI_PROJECT_ROOT:$PIXI_PROJECT_ROOT/bt_kit:$PIXI_PROJECT_ROOT/pc
 # env), so it starts rclcpp and DDS rather than skipping. It runs in its own env
 # via `pixi run -e rclcpp test-rclcpp` and the `test-tf` task. Feature environments
 # run each kit's tests.
-test = "pytest cppyy_kit/tests bt_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests examples/parallel_demo/test_parallel.py"
+test = "pytest cppyy_kit/tests bt_kit/tests pcl_kit/tests ompl_kit/tests nav2_kit/tests moveit_kit/tests control_kit/tests cv_kit/tests wbc_kit/tests jitter_bench/tests examples/parallel_demo/test_parallel.py examples/native_component"
 # flake8 over every kit package (incl. its demos/ + tests/) and the shared scripts.
 lint = "flake8 cppyy_kit rclcpp_kit bt_kit pcl_kit ompl_kit nav2_kit moveit_kit control_kit cv_kit dbow_kit wbc_kit ik_bench jitter_bench retarget_pipeline scripts skills examples"
 clean = "rm -rf build"
@@ -157,7 +157,7 @@ demo-ompl-path = "python ompl_kit/demos/d02_publish_path.py"
 # Compare Python callbacks, Python subclasses, and native JIT-compiled C++ checkers.
 bench-ompl = "python ompl_kit/demos/bench_ompl_validity.py"
 # ompl_kit tests (gate on OMPL headers). The base cppyy_kit layer is covered by test-bt.
-test-ompl = "pytest ompl_kit/tests/test_ompl_kit.py -v"
+test-ompl = "pytest ompl_kit/tests -v"
 
 # Compare RRT-Connect on one RoboPlan UR5 scene through both Python interfaces.
 [feature.roboplan.dependencies]
@@ -265,7 +265,7 @@ libboost-headers = "*"  # headers-only: lets gtsam headers JIT via cppyy
 # Fetch/patch/compile DBoW2 from source into build/vendor/ (not on conda-forge). Run once.
 build-dbow2 = "python dbow_kit/cpp/build_dbow2.py"
 # cv_kit + dbow_kit + loop-closure test suites. Auto-skip without OpenCV/DBoW2/rerun.
-test-vision = "pytest cv_kit/tests/test_vision_kits.py cv_kit/tests/test_vision_loop.py cv_kit/tests/test_vision_viz.py cv_kit/tests/test_webcam_demo.py -v"
+test-vision = "pytest cv_kit/tests/test_image_buffers.py cv_kit/tests/test_vision_kits.py cv_kit/tests/test_vision_loop.py cv_kit/tests/test_vision_viz.py cv_kit/tests/test_webcam_demo.py -v"
 # Datasets (shared tooling under scripts/datasets/).
 dataset-synthetic = "python scripts/datasets/dataset_publisher.py --synthetic"
 dataset-tum = "python scripts/datasets/download_tum_rgbd.py"

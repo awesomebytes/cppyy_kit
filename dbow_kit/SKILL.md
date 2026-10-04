@@ -1,14 +1,27 @@
-# dbow_kit
+# dbow_kit API reference
 
 Use DBoW2 from Python through cppyy for ORB place recognition. It is useful when
 you want to compare image descriptors against a vocabulary without maintaining a
-separate Python binding. Pair it with [`cv_kit`](../cv_kit/SKILL.md), which
+separate Python binding. Pair it with
+[`cv_kit`](https://awesomebytes.github.io/cppyy_kit/cv_kit/SKILL/), which
 provides C++ ORB descriptors.
 
-The published Pixi package is `ros-jazzy-dbow-kit`. For package setup and the
-supported Pixi environment, start with the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/).
+`ns = dbow_kit.bringup_dbow()` loads DBoW2 and returns the C++ helper namespace
+`rclcppyy_dbow`, including `OrbVocabulary` and `OrbDatabase` typedefs.
 
-## Install and try the demo
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-dbow-kit` and run scripts with
+`pixi run python your_script.py`. See the
+[kit overview](https://awesomebytes.github.io/cppyy_kit/dbow_kit/WHY/).
+
+The current package recipe installs the Python wrapper and guides, but does not
+include the DBoW2 shared library and headers. `bringup_dbow()` resolves those files
+under the checkout's `build/vendor` directory. The standalone installed package
+cannot bring up DBoW2 yet. Use the repository build and demo commands below for a
+working native setup.
+
+## Repository demo
 
 From this repository checkout, DBoW2's source is built once in the `vision`
 environment, then the existing loop demo exercises vocabulary training,
@@ -22,7 +35,8 @@ pixi run -e vision demo-vision-loop
 
 The deterministic synthetic sequence reports 19 confirmed revisits in 200
 frames and needs no dataset download. See the [vision loop-closure
-tutorial](../docs/tutorials/vision_loop_closure.md) for the stages and the
+tutorial](https://awesomebytes.github.io/cppyy_kit/docs/tutorials/vision_loop_closure/)
+for the stages and the
 optional real-data route.
 
 ## API shapes
@@ -38,5 +52,6 @@ optional real-data route.
 - `load_vocabulary(path)` accepts a vocabulary file such as `ORBvoc.txt`; the
   first load also writes a binary cache beside the text file.
 
-The [DBoW2 report](REPORT.md) and [`cv_kit/REPORT.md`](../cv_kit/REPORT.md)
+The [DBoW2 report](https://awesomebytes.github.io/cppyy_kit/dbow_kit/REPORT/) and
+[OpenCV report](https://awesomebytes.github.io/cppyy_kit/cv_kit/REPORT/)
 document build and benchmark details.

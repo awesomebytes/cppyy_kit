@@ -141,6 +141,20 @@ pixi run -e bt test-bt
 pixi run lint
 ```
 
+## Read task and library guides
+
+The current checkout and 0.4.0 packages provide guides for Python acceleration,
+loading a new C++ library and working with an existing compiled component:
+
+```bash
+pixi run python -m cppyy_kit guide
+pixi run python -m cppyy_kit guide existing-cpp
+pixi run python -m cppyy_kit guide bt_kit api
+pixi run python -m cppyy_kit status --environment
+```
+
+See [task guides and environment checks](docs/GUIDES.md) for the reading order.
+
 ## Preview the documentation
 
 From the repository checkout:

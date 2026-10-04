@@ -28,33 +28,77 @@ See docs/COMMON_PATTERNS.md for the full catalog and supporting measurements.
 import atexit
 import contextlib
 import inspect
+import importlib as _importlib
 import os
 import subprocess
 import sys
+import threading as _threading
 import time
 
-# Activate a prebuilt Cling PCH for this environment, if one exists. This must run
-# before the first `import cppyy` below. Cling reads CLING_STANDARD_PCH at startup,
-# so changing it later has no effect. autopch imports only the standard library and
-# imports cppyy_backend lazily. That import does not initialize Cling.
+# Package import stays usable for guidance and environment inspection without
+# starting Cling, installing auto-PCH hooks, or enabling the boundary tracer.
 from . import autopch  # noqa: E402
-autopch.setup()
-
-import cppyy  # noqa: E402
-
-# The compile cache and the boundary tracer are the two M2 base features. Imported
-# here so `cppyy_kit.cppdef_cached` / `cppyy_kit.trace` are top-level; these
-# submodules import only stdlib + cppyy (+ freeze lazily), so no import cycle.
 from . import _compile  # noqa: F401,E402  (direct-compile recipe; re-exported for kits)
-from . import trace  # noqa: F401,E402
-from .cache import (  # noqa: F401,E402
-    cppdef_cached, prebuild, cache_info, clear_cache, cache_dir,
-    disable_caching, enable_caching, caching_disabled, caching_enabled)
 from .autopch import register_pch_headers  # noqa: F401,E402  (auto-PCH kit hook)
 from .require import require, RequireError  # noqa: F401,E402
-from ._cpp import cpp  # noqa: F401,E402
 from .nogil import nogil, run_async  # noqa: F401,E402
 from . import capability  # noqa: F401,E402
+
+_RUNTIME_LOCK = _threading.RLock()
+_RUNTIME_READY = False
+_SHUTDOWN_REGISTERED = False
+
+_NATIVE_EXPORTS = {
+    "cppyy": (None, None),
+    "trace": ("trace", None),
+    "cache": ("cache", None),
+    "cpp": ("_cpp", "cpp"),
+    **{name: ("cache", name) for name in (
+        "cppdef_cached", "prebuild", "cache_info", "clear_cache", "cache_dir",
+        "disable_caching", "enable_caching", "caching_disabled", "caching_enabled")},
+}
+
+
+def _ensure_runtime():
+    """Initialize native support once, preserving PCH and exit-hook order."""
+    global cppyy, trace, _RUNTIME_READY, _SHUTDOWN_REGISTERED
+    with _RUNTIME_LOCK:
+        if _RUNTIME_READY:
+            return
+        # Cling reads CLING_STANDARD_PCH during its first import.
+        autopch.setup()
+        cppyy = _importlib.import_module("cppyy")
+        trace = _importlib.import_module(".trace", __name__)
+        # Register after cppyy so resource teardown runs before Cling teardown.
+        # Pure cleanup may already have registered it before native startup.
+        if _SHUTDOWN_REGISTERED:
+            atexit.unregister(shutdown)
+        atexit.register(shutdown)
+        _SHUTDOWN_REGISTERED = True
+        _RUNTIME_READY = True
+
+
+def __getattr__(name):
+    target = _NATIVE_EXPORTS.get(name)
+    if target is None:
+        raise AttributeError("module %r has no attribute %r" % (__name__, name))
+    module_name, attribute = target
+    # Decorating a Python function is pure Python; Cling starts when the
+    # decorated function first resolves its native implementation.
+    if module_name != "_cpp":
+        _ensure_runtime()
+    # Do not hold the startup lock while waiting for a submodule import lock:
+    # another thread importing that submodule directly may need startup itself.
+    module = (cppyy if module_name is None else
+              _importlib.import_module("." + module_name, __name__))
+    value = module if attribute is None else getattr(module, attribute)
+    with _RUNTIME_LOCK:
+        globals()[name] = value
+        return value
+
+
+def __dir__():
+    return sorted(set(globals()) | set(_NATIVE_EXPORTS))
 
 
 class CppyyKitError(Exception):
@@ -84,6 +128,7 @@ def load_libraries(sonames, search_paths=()):
     by soname. ``add_library_path`` alone is not enough. ``search_paths`` (e.g.
     ``$CONDA_PREFIX/lib``) are added to that search path first.
     """
+    _ensure_runtime()
     for path in search_paths:
         cppyy.add_library_path(path)
     span = trace.span("load_libraries", sonames=list(sonames), search_paths=list(search_paths))
@@ -121,6 +166,7 @@ def std_function(signature, pyfunc):
     lifetime with ``keep_alive``. C++ invokes the callback on its calling thread.
     cppyy acquires the GIL before entering Python and does not retain the callable.
     """
+    _ensure_runtime()
     span = trace.span("std_function", signature=signature)
     wrapper = cppyy.gbl.std.function[signature](pyfunc)
     span.done()
@@ -224,6 +270,7 @@ def callback(fn, signature=None, owner=None):
     GIL before entering Python.
     """
     sig = signature if signature is not None else _infer_signature(fn)
+    _ensure_runtime()
     span = trace.span("callback", signature=sig, owner=owner is not None)
     wrapper = cppyy.gbl.std.function[sig](fn)
     span.done()
@@ -403,8 +450,13 @@ def register_teardown(callback):
     given callable is registered at most once; the callback should itself be
     safe to call a single time (see ``rclcppyy.shutdown_rclcpp`` for the
     guarded-once pattern)."""
-    if callback not in _TEARDOWN:
-        _TEARDOWN.append(callback)
+    global _SHUTDOWN_REGISTERED
+    with _RUNTIME_LOCK:
+        if not _SHUTDOWN_REGISTERED:
+            atexit.register(shutdown)
+            _SHUTDOWN_REGISTERED = True
+        if callback not in _TEARDOWN:
+            _TEARDOWN.append(callback)
 
 
 def shutdown():
@@ -425,4 +477,7 @@ def shutdown():
             pass
 
 
-atexit.register(shutdown)
+# Keep lazy reexports visible to import-star and the stub generator. Preserve the
+# public names that were available before native startup became lazy.
+__all__ = sorted({name for name in globals() if not name.startswith("_")}
+                 | set(_NATIVE_EXPORTS))

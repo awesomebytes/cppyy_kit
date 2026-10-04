@@ -451,6 +451,13 @@ def test_subscription_dispatches_an_owning_cpp_copy(monkeypatch):
         "function",
         FunctionTemplate(),
     )
+    # Fake message types must stay outside the native callable template.
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
+    )
     monkeypatch.setattr(
         direct_entities.subscription_cache,
         "make_subscription",
@@ -523,6 +530,13 @@ def test_subscription_message_info_keeps_cpp_copy_and_lowers_rmw_metadata(
         direct_entities.cppyy.gbl.std,
         "function",
         FunctionTemplate(),
+    )
+    # Fake message types must stay outside the native callable template.
+    monkeypatch.setattr(
+        direct_entities, "_pinned_std_function",
+        lambda signature, pyfunc: (
+            direct_entities.cppyy.gbl.std.function[signature](pyfunc)
+        ),
     )
     monkeypatch.setattr(
         direct_entities,

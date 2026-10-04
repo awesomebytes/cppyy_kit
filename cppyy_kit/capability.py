@@ -111,7 +111,10 @@ def _detect_compile_cache():
     compiler on PATH and cppyy's toolchain (libcppyy)."""
     import shutil
     from . import _compile
-    cxx = _compile.compiler()
+    try:
+        cxx = _compile.compiler_command()[0]
+    except _compile.CompileError as exc:
+        return (False, str(exc))
     if shutil.which(cxx) is None:
         return (False, "no C++ compiler (%s) on PATH" % cxx)
     try:

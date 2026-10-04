@@ -305,9 +305,9 @@ def warmup(with_ros=False):
 
 
 def _as_f32(array):
-    """Coerce to a C-contiguous float32 ndarray (copies only if needed)."""
+    """Coerce to an aligned C-contiguous float32 array (copy when needed)."""
     import numpy as np
-    return np.ascontiguousarray(array, dtype=np.float32)
+    return np.require(array, dtype=np.float32, requirements=["C", "A"])
 
 
 def cloud_from_numpy(array):

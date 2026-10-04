@@ -15,6 +15,7 @@ storage. Keep the message or Mat that owns the storage alive while using the vie
 For ROS messages, use the Mat inside the owning callback."""
 import ctypes
 import os
+import sys
 
 import cppyy
 
@@ -166,9 +167,10 @@ def _glue():
 def msg_to_mat(image_msg):
     """Wrap a C++ ROS Image data buffer as a `cv::Mat` without copying it.
 
-The Mat refers to the message's data vector, so keep the message alive while using
-the Mat. Use it within the callback that owns the message. Unsupported encodings
-raise `ValueError`."""
+The Mat retains the message that owns its data vector. Do not resize that vector
+while using the Mat. Dimensions, row step and payload length must agree. For
+16-bit encodings, recorded byte order must match the host. Unsupported encodings
+or malformed buffers raise `ValueError`."""
     bringup_cv()
     glue = _glue()
     enc = str(image_msg.encoding)
@@ -176,23 +178,39 @@ raise `ValueError`."""
         raise ValueError(
             "cv_kit.msg_to_mat: unsupported encoding %r (known: %s)"
             % (enc, ", ".join(sorted(_ENCODING))))
-    const_name, _bpp = _ENCODING[enc]
+    const_name, bpp = _ENCODING[enc]
+    height, width, step = int(image_msg.height), int(image_msg.width), int(image_msg.step)
+    if not (0 <= height <= 2**31 - 1 and 0 <= width <= 2**31 - 1):
+        raise ValueError("image dimensions must fit nonnegative C++ int values")
+    if step < width * bpp:
+        raise ValueError("image step is smaller than its pixel row")
+    if bpp == 2 and step % 2:
+        raise ValueError("16-bit image step must be a multiple of two bytes")
+    if int(glue.vec_size(image_msg.data)) != height * step:
+        raise ValueError("image data length must equal height * step")
+    recorded_endian = image_msg.is_bigendian
+    endian = ord(recorded_endian) if isinstance(recorded_endian, str) else int(recorded_endian)
+    if endian not in (0, 1):
+        raise ValueError("image is_bigendian must be 0 or 1")
+    if bpp == 2 and bool(endian) != (sys.byteorder == "big"):
+        raise ValueError("16-bit image byte order must match the host")
     type_int = int(getattr(glue, const_name))
     addr = int(glue.vec_data_addr(image_msg.data))
-    step = int(image_msg.step)
-    mat = glue.mat_from_buffer(int(image_msg.height), int(image_msg.width),
-                               type_int, addr, step)
-    # Pin the message on the Mat so the buffer cannot be freed while the view is
-    # used (best-effort: a cppyy proxy may reject the attribute).
+    if height and width and not addr:
+        raise ValueError("nonempty image has a null data buffer")
+    mat = glue.mat_from_buffer(height, width, type_int, addr, step)
+    # Retain the message so the buffer remains alive with this Mat.
     cppyy_kit.keep_alive(mat, image_msg)
     return mat
 
 
 def mat_to_msg(mat, msg=None, encoding=None):
-    """Copy an 8-bit ``cv::Mat`` into a C++ ``sensor_msgs::msg::Image``.
+    """Copy a ``cv::Mat`` into a C++ ``sensor_msgs::msg::Image``.
 
     The forward Image-to-Mat adapter aliases storage; this reverse direction is
     an explicit row-aware C++ copy because the message must own its output buffer.
+    The selected encoding must match the pixel size. A 16-bit output records the
+    host byte order.
     """
     glue = _glue()
     channels = int(mat.channels())
@@ -214,7 +232,7 @@ def mat_to_msg(mat, msg=None, encoding=None):
     msg.height = int(mat.rows)
     msg.width = int(mat.cols)
     msg.encoding = selected
-    msg.is_bigendian = 0
+    msg.is_bigendian = int(expected_size == 2 and sys.byteorder == "big")
     msg.step = int(mat.cols) * elem_size
     glue.copy_mat_to_vec(mat, msg.data)
     return msg
@@ -277,24 +295,36 @@ def numpy_to_mat(array):
 
 
 def mat_to_numpy(mat, copy=True):
-    """Extract a ``cv::Mat`` (8-bit, 1 or 3 channel) to a NumPy array.
+    """Extract a two-dimensional unsigned 8-bit ``cv::Mat`` to NumPy.
 
     ``copy=True`` (default) is a private copy, safe after the Mat is gone.
     ``copy=False`` is a zero-copy view that **aliases** the Mat's storage (respecting
-    its row ``step``) -- keep the Mat (and any message it aliases) alive while the
-    view is used. Returns ``(H,W)`` for 1 channel, ``(H,W,C)`` otherwise.
+    its row ``step``) and retains the Mat and its pinned owners. Do not reallocate
+    that storage while using the view. Returns ``(H,W)`` for 1 channel and
+    ``(H,W,C)`` for multiple channels, including 3-channel and 4-channel images.
+    Other pixel depths raise ``ValueError``. Empty Mats return empty arrays.
     """
     import numpy as np
     glue = _glue()
+    if int(mat.depth()) != int(glue.CV_8U_):
+        raise ValueError("mat_to_numpy requires unsigned 8-bit pixels")
+    if int(mat.dims) not in (0, 2):
+        raise ValueError("mat_to_numpy requires a two-dimensional Mat")
     rows, cols = int(mat.rows), int(mat.cols)
     ch = int(mat.channels())
+    shape = (rows, cols, ch) if ch > 1 else (rows, cols)
+    if not rows or not cols:
+        return np.empty(shape, dtype=np.uint8)
     step = int(glue.mat_step(mat))
     addr = int(glue.mat_data_addr(mat))
-    total = rows * step
+    row_bytes = cols * ch
+    if step < row_bytes or not addr:
+        raise ValueError("nonempty Mat has an invalid row step or null data buffer")
+    # A submatrix need not own padding after its final row.
+    total = (rows - 1) * step + row_bytes
     buf = (ctypes.c_uint8 * total).from_address(addr)
-    view = np.frombuffer(buf, dtype=np.uint8).reshape(rows, step)
-    view = view[:, : cols * ch]
-    view = view.reshape(rows, cols, ch) if ch > 1 else view.reshape(rows, cols)
+    strides = (step, ch, 1) if ch > 1 else (step, 1)
+    view = np.ndarray(shape, dtype=np.uint8, buffer=buf, strides=strides)
     if copy:
         return view.copy()
     cppyy_kit.keep_alive(buf, mat)

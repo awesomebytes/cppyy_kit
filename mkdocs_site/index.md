@@ -133,6 +133,16 @@ lists their package names.
 
 ## Learn more
 
+Read the packaged instructions for a task or installed kit:
+
+```bash
+pixi run python -m cppyy_kit guide accelerate
+pixi run python -m cppyy_kit guide ompl_kit api
+```
+
+These commands require 0.4.0 or the current checkout. See
+[task guides and environment checks](docs/GUIDES.md).
+
 - [Using callbacks, arrays, and C++ objects](docs/COMMON_PATTERNS.md).
 - [Reusing compiled code and cached headers](docs/FREEZE.md) to reduce startup work.
 - [rclcppyy](https://github.com/awesomebytes/rclcppyy) to use these ROS C++ APIs

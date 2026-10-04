@@ -23,6 +23,7 @@ esac
 output_dir="$(cd "$requested_output" && pwd)"
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
+cp "$repo_root/scripts/ci/check_installed_workflows.py" "$workdir/"
 
 cat >"$workdir/pixi.toml" <<EOF
 [workspace]
@@ -169,5 +170,6 @@ PY
 (
   cd "$workdir"
   unset PYTHONPATH
+  pixi run python check_installed_workflows.py
   pixi run python smoke.py
 )

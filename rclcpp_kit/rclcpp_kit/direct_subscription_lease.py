@@ -382,6 +382,7 @@ def _compile_glue(code: str, options: dict[str, Any]) -> None:
         options["name"],
         options["include_paths"],
         options["libraries"],
+        library_paths=options["library_paths"],
         directory=options["directory"],
     )[0]
     try:

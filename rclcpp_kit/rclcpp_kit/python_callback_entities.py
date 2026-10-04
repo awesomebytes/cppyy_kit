@@ -53,6 +53,7 @@ def _compile(code: str, declarations: str, name: str, packages: tuple[str, ...])
         code, declarations, name,
         options["include_paths"] + tuple(toolchain["include_paths"]),
         libraries, tuple(toolchain["link_args"]),
+        library_paths=options["library_paths"] + tuple(toolchain["link_paths"]),
         directory=options["directory"])[0]
     existed = os.path.exists(artifact)
     cppyy_kit.prebuild(code, **options)

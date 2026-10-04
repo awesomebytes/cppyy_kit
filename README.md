@@ -133,6 +133,20 @@ lists their package names.
 - [All benchmark results](docs/benchmarks.md): measurements and commands for
   startup, data processing, callbacks, and control loops.
 
+## Read task guides
+
+Read the guide for your task, or give its output to a coding agent:
+
+```bash
+pixi run python -m cppyy_kit guide
+pixi run python -m cppyy_kit guide accelerate
+pixi run python -m cppyy_kit guide ompl_kit api
+```
+
+Other task topics are `bring-library` and `existing-cpp`. Installed kits include
+their overview and API reference. These commands are new in 0.4.0; published
+0.3.x packages do not provide them. See [guide discovery and environment checks](docs/GUIDES.md).
+
 ## Learn more
 
 - [Using callbacks, arrays, and C++ objects](docs/COMMON_PATTERNS.md).

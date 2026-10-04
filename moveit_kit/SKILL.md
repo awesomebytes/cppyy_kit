@@ -1,20 +1,21 @@
-# moveit_kit, cheat sheet for a coding agent
+# moveit_kit API reference
 
-You are writing Python that drives **MoveIt 2**, the C++ motion-planning framework, through `moveit_kit`. The kit **mirrors MoveIt's C++ API**: it returns the
-real `moveit` namespace and you use `moveit.core.RobotState`,
-`planning_scene::PlanningScene`, `RobotState::setFromIK`, a real OMPL `PlannerManager`
-exactly as in the MoveIt C++ tutorials. The kit provides helpers for staged
-bringup, the plugin/parameter bootstrap (loading the KDL/OMPL plugins via pluginlib and
-assembling node parameters from config YAMLs), an Eigen pose helper, and ordered
-teardown. You do **not** need to know cppyy.
+Use MoveIt 2 robot models, kinematics, and planning from Python.
+`moveit_kit.bringup_moveit()` returns the C++ `moveit` namespace. The kit adds
+staged header loading, KDL/OMPL plugin setup, parameter helpers, Eigen poses, and
+ordered teardown.
 
-(For *why* this exists and the moveit_py contrast, see [WHY.md](WHY.md); for the plugin/
-parameter bring-up mechanics and benchmarks, see [REPORT.md](REPORT.md).)
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-moveit-kit` and run scripts with
+`pixi run python your_script.py`. The Panda examples also require
+`pixi add ros-jazzy-moveit-resources-panda-description ros-jazzy-moveit-resources-panda-moveit-config`.
+See the [kit overview](https://awesomebytes.github.io/cppyy_kit/moveit_kit/WHY/) and
+[binding report](https://awesomebytes.github.io/cppyy_kit/moveit_kit/REPORT/).
+Commands using `pixi run -e moveit` require this repository checkout.
 
-**Requires** the `moveit` pixi env: `pixi run -e moveit python your_script.py`. The kit
-is built around the **panda** test model (`moveit_resources_panda_*`).
+## Usage requirements
 
-**Golden rules**
 - Bringup is **staged and idempotent**. `moveit_kit.bringup_moveit()` = the *parse* layer
   (RobotModel/RobotState/PlanningScene/FCL, no node, no plugins). Add
   `with_kinematics=True` for KDL IK, `with_planning=True` for OMPL planning. The heavy
@@ -153,8 +154,9 @@ pub = node.create_publisher(DisplayTrajectory, "display_planned_path", 10)
 msg = moveit_kit.display_trajectory(r, scene, model_id="panda")   # C++ message
 pub.publish(msg)                                        # rclcppyy publishes it directly
 ```
-`moveit_kit/demos/d02_plan_pose_goal.py` is a complete example
-(`pixi run -e moveit demo-moveit-plan`); open `rviz2` on `/display_planned_path`.
+The [pose-goal example](https://github.com/awesomebytes/cppyy_kit/blob/main/moveit_kit/demos/d02_plan_pose_goal.py)
+is a complete script. From this repository checkout, run
+`pixi run -e moveit demo-moveit-plan`; open `rviz2` on `/display_planned_path`.
 
 ---
 

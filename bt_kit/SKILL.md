@@ -1,24 +1,26 @@
 # bt_kit API reference
 
-You are writing Python that drives **BehaviorTree.CPP v4** (a C++ behavior-tree
-engine) through `bt_kit`. The kit **mirrors the C++ API**, the same
-`BehaviorTreeFactory`, `registerSimpleAction`, `createTreeFromText`,
-`tickWhileRunning` you know from the official BT.CPP tutorials, so write it the way
-you'd write the C++ tutorial, with the leaf callbacks in Python. You do **not** need
-to know cppyy; the kit handles cppyy setup.
+Use BehaviorTree.CPP v4 from Python. `bt_kit.bringup_bt()` returns the C++ `BT`
+namespace, including `BehaviorTreeFactory` and `NodeStatus`. The kit adds Python
+callbacks and port helpers to the factory API.
 
-(For *why* this exists and the C++-vs-Python comparison, see [WHY.md](WHY.md).)
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-bt-kit` and run scripts with `pixi run python your_script.py`.
+See the [kit overview](https://awesomebytes.github.io/cppyy_kit/bt_kit/WHY/) for
+examples and measurements. Commands using `pixi run -e bt` require this repository
+checkout and its Pixi configuration.
 
-**Requires** the `bt` pixi env: `pixi run -e bt python your_script.py`.
+## Usage requirements
 
-**Basic rules**
 - Call `bt = bt_kit.bringup_bt()` once; it returns the `BT` namespace.
 - A leaf is `def fn(node): ...; return status`. Status is `bt.NodeStatus.SUCCESS`
   (exactly like C++) or the shortcut `bt_kit.SUCCESS`, also `FAILURE`, `RUNNING`.
   Returning `None` means SUCCESS; a `bool` maps True→SUCCESS, False→FAILURE.
 - The **XML is the official BT.CPP XML, verbatim.** XML node tags must match the
   names you register.
-- Ports are **string-typed** in v0; read/write them via the `node` argument.
+- A list of port names declares string ports; a dictionary declares typed ports
+  (Pattern 2). Read and write them through the `node` argument.
 - Keep the `tree` (and the `factory`) referenced while you tick.
 
 ---
@@ -200,10 +202,11 @@ def main():
     # ... build and tick your real trees; first tick is already fast ...
     # bt_kit.warmup()             # only helps on the JIT fallback path
 ```
-Composes with the Cling PCH: the header parse (~0.9 s) is cut automatically by the
-zero-config auto-PCH on the second run (nothing to set; `freeze-bt-run` is the
-explicit manual path), and the cache cuts the wrapper JIT, together the fastest cold
-start (~0.43 s end-to-end for t01; see docs/FREEZE.md §4, §8 and COMMON_PATTERNS §36).
+The Cling precompiled header cache can also reduce header parsing on later runs.
+The `freeze-bt-run` task is a manual alternative in this repository checkout.
+See [cached headers](https://awesomebytes.github.io/cppyy_kit/docs/FREEZE/) and
+[compile cache usage](https://awesomebytes.github.io/cppyy_kit/docs/COMMON_PATTERNS/#compile-cache)
+for timing conditions and cache requirements.
 
 ## Common errors
 - **Don't** subclass BT C++ node classes in Python (`class X(BT.StatefulActionNode)`)

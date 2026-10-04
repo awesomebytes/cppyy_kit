@@ -11,8 +11,15 @@
 #                 branch below)
 #   - others    : import smoke
 set -uo pipefail
-cd "$(dirname "$0")/.."
-OUT="$PWD/output"
+caller_pwd="$PWD"
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+requested_output="${1:-$repo_root/output}"
+case "$requested_output" in
+  /*) ;;
+  *) requested_output="$caller_pwd/$requested_output" ;;
+esac
+OUT="$(cd "$requested_output" && pwd)" || exit 1
+cd "$repo_root"
 PASS=0; FAIL=0; RESULTS=""
 
 # Prove against the native host platform by default. PIXI_PLATFORM is an escape
@@ -33,6 +40,9 @@ esac
 prove() {
   local conda_name="$1" import_name="$2" extra="$3" channel_set="${4:-robostack}"
   local wd; wd="$(mktemp -d)"
+  cp "$repo_root/scripts/ci/check_installed_workflows.py" "$wd/"
+  local discovery_args=(--kit "$import_name")
+  if [ "$import_name" = "cppyy_kit" ]; then discovery_args=(--core-only); fi
   local chan_list
   if [ "$channel_set" = "conda-forge" ]; then
     # wbc-kit is standalone and ROS-free. crocoddyl/pinocchio pin a libboost line
@@ -54,6 +64,8 @@ LD_LIBRARY_PATH = "\$CONDA_PREFIX/lib"
 RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
 ROS_AUTOMATIC_DISCOVERY_RANGE = "LOCALHOST"
 ROS_DOMAIN_ID = "53"
+CPPYY_KIT_NO_AUTOPCH = "1"
+PYTHONPATH = ""
 
 [dependencies]
 ${conda_name} = "*"
@@ -70,7 +82,8 @@ PY
   local t0=$SECONDS
   # Fresh workspace has no lockfile; pixi run solves + installs from the channels
   # then runs the smoke. (No --locked: there is nothing to lock against yet.)
-  if ( cd "$wd" && env PYTHONPATH= pixi run python smoke.py ); then
+  if ( cd "$wd" && env PYTHONPATH= pixi run python check_installed_workflows.py "${discovery_args[@]}" &&
+       env PYTHONPATH= pixi run python smoke.py ); then
     RESULTS="${RESULTS}\n  PASS  ${conda_name}  ($((SECONDS - t0))s)"; PASS=$((PASS+1))
   else
     RESULTS="${RESULTS}\n  FAIL  ${conda_name}  ($((SECONDS - t0))s)"; FAIL=$((FAIL+1))
