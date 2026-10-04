@@ -41,10 +41,9 @@ scalar return annotations select the C++ return type. Under
 ``from __future__ import annotations``, Python annotations are resolved from the
 function's globals. Literal string annotations remain verbatim C++ type strings.
 
-Advanced buffer forms remain available. A **verbatim C++ type string** ending in
-``*`` (``"float*"``, ``"const int*"``) passes a raw buffer address. ``cpp.arr("float")``
-passes a buffer address and size. Other verbatim strings specify a C++ parameter
-type and pass the value through.
+Advanced raw-pointer forms remain available. A **verbatim C++ type string** ending
+in ``*`` (``"float*"``, ``"const int*"``) passes a raw buffer address. Other verbatim
+strings specify a C++ parameter type and pass the value through.
 
 Calls bind against the original Python signature before compilation or marshaling,
 so defaults and keyword arguments work and invalid calls raise ``TypeError`` early.
@@ -68,14 +67,6 @@ import hashlib
 import inspect
 import threading
 import typing
-
-
-class _Arr:
-    """Marker: a NumPy array parameter marshaled as (typed pointer, size)."""
-    __slots__ = ("elem",)
-
-    def __init__(self, elem):
-        self.elem = str(elem)
 
 
 _SCALAR = {int: "int", float: "double", bool: "bool"}
@@ -149,8 +140,6 @@ def _annotation_spec(annotation, fn, parameter):
     ann = _eval_annotation(annotation, fn)
     if ann is None or ann is inspect.Signature.empty:
         return None
-    if isinstance(ann, _Arr):
-        return ann
     if isinstance(ann, str):
         return ann
     if ann in _SCALAR:
@@ -326,8 +315,8 @@ def _ret_type(ann):
 def _err(where, ann):
     return TypeError(
         "cppyy_kit.cpp: cannot marshal %s annotation %r. Use int/float/bool, a "
-        "supported numeric NumPy/sequence annotation, a verbatim C++ type string, "
-        "or cpp.arr('T')." % (where, ann))
+        "supported numeric NumPy/sequence annotation, or a verbatim C++ type "
+        "string." % (where, ann))
 
 
 class _CppFunc:
@@ -453,10 +442,6 @@ class _CppFunc:
                     marshaled.extend((_address(arg), int(arg.size)))
                 else:
                     marshaled.append(arg)
-            elif isinstance(spec, _Arr):
-                if not _is_array_like(arg):
-                    raise TypeError("%s must be a NumPy array for cpp.arr" % name)
-                marshaled.extend((_address(arg), int(arg.size)))
             elif isinstance(spec, str) and spec.strip().endswith("*"):
                 marshaled.append(_address(arg))
             else:
@@ -470,13 +455,7 @@ def _spec_key(spec):
         kind = "buffer" if spec.kind in ("array", "sequence") else spec.kind
         return ("numeric", kind, spec.dtype.str if spec.dtype is not None else None,
                 spec.cpp_type)
-    if isinstance(spec, _Arr):
-        return ("arr", spec.elem)
     return ("annotation", spec)
-
-
-def _is_array_like(arg):
-    return hasattr(arg, "ctypes") and hasattr(arg, "size")
 
 
 def _validate_array(arg, spec, name, writable):
@@ -548,14 +527,7 @@ def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
             cpp_type = "int"
             a = _Numeric("scalar", None, cpp_type)
         concrete.append(a)
-        if isinstance(a, _Arr):
-            cpp_params.append("uintptr_t %s__addr" % p)
-            cpp_params.append("std::size_t %s_size" % p)
-            call_args.append("%s__addr" % p)
-            call_args.append("%s_size" % p)
-            injects.append("  %s* %s = reinterpret_cast<%s*>(%s__addr);" % (a.elem, p, a.elem, p))
-            marshal.append("arr")
-        elif isinstance(a, _Numeric):
+        if isinstance(a, _Numeric):
             t = a.cpp_type or "int"
             if a.kind in ("array", "sequence"):
                 cpp_params.extend(("uintptr_t %s__addr" % p,
@@ -630,6 +602,3 @@ def cpp(func=None, *, name=None, include_paths=(), library_paths=(), libraries=(
         return _CppFunc(fn, name, include_paths, library_paths, libraries, std,
                         nogil, cached)
     return decorate(func) if func is not None else decorate
-
-
-cpp.arr = _Arr     # so callers write cpp.arr("float") for a numpy pointer+size param

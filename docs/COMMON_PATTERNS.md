@@ -706,17 +706,17 @@ sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
   Multidimensional C-contiguous arrays are accepted and exposed as one flat typed
   pointer plus the total element count; shape and strides are not passed to C++.
   Dtype or layout mismatches and read-only arrays passed to mutable arguments
-  raise errors; arrays are never silently copied to satisfy the annotation. For
-  lower-level pointer work, the existing `cpp.arr("T")` pointer-and-size notation
-  remains available; `std::string` arguments remain supported as well.
+  raise errors; arrays are never silently copied to satisfy the annotation.
+  `std::string` arguments remain supported as well.
 - **Specialization and returns.** A concrete argument specialization is compiled
   and cached once, then reused across calls, array lengths, and later sessions.
   Keep a return annotation explicit when returning a value; omitting it returns
   `void`.
 - **The low-level pointer form remains available.** A verbatim `"T*"` annotation
   takes a NumPy array address or an integer address and hands the body a typed
-  pointer (the `reinterpret_cast` is injected). Use `cpp.arr("T")` when the
-  generated body should also receive `name_size`.
+  pointer (the `reinterpret_cast` is injected). This advanced form does not
+  validate a NumPy buffer's dtype or layout. Add a separate length parameter
+  when the C++ body needs the element count.
 - **Calls follow Python binding rules.** Defaults and keyword arguments work;
   missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
   C++ kernel is compiled. Keyword-only and variadic parameters are rejected when
