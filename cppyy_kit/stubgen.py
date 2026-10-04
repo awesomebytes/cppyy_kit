@@ -16,7 +16,6 @@ avoids guessing C++ types. Add more specific types by hand when needed. Regenera
 the stub when the kit API changes; tests can compare it with the checked-in file."""
 import inspect
 import sys
-import typing
 
 _CONST_TYPES = {int: "int", float: "float", bool: "bool", str: "str", bytes: "bytes"}
 
@@ -71,15 +70,12 @@ def stub_module(module):
         mod = getattr(obj, "__module__", None)
         return mod is not None and (mod == name or mod.startswith(name + "."))
 
-    funcs, classes, consts, aliases = [], [], [], []
+    funcs, classes, consts = [], [], []
     for attr in sorted(dir(module)):
         if attr.startswith("_"):
             continue
         obj = getattr(module, attr)
-        if (name == "cppyy_kit" and attr == "ConstNDArray" and
-                typing.get_origin(obj) is typing.Annotated):
-            aliases.append("from ._array_annotations import ConstNDArray as ConstNDArray")
-        elif inspect.isfunction(obj):
+        if inspect.isfunction(obj):
             if _ours(obj):
                 funcs.append((attr, obj))
         elif inspect.isclass(obj):
@@ -93,9 +89,8 @@ def stub_module(module):
         "# Stubs the kit's public Python surface (names + arity, Any-typed). The C++",
         "# namespace a bringup returns is dynamic (cppyy proxies) and is not stubbed.",
         "from typing import Any",
+        "",
     ]
-    out.extend(aliases)
-    out.append("")
     for cname, cval in consts:
         out.append("%s: %s" % (cname, cval))
     if consts:

@@ -8,10 +8,11 @@ is compiled once into a cached ``.so`` (``cppdef_cached``). Later runs load that
 library from the cache.
 
     import numpy as np
-    from cppyy_kit import ConstNDArray, cpp
+    from cppyy_kit.numpy_types import NDArray
+    from cppyy_kit import cpp
 
     @cpp
-    def sum_sq(data: ConstNDArray[np.float64]) -> float:
+    def sum_sq(data: NDArray[np.float64]) -> float:
         '''
         double s = 0;
         for (std::size_t i = 0; i < data_size; ++i) {
@@ -30,10 +31,11 @@ types. The same numeric types can annotate ``list[T]``, ``tuple[T, ...]``, or
 
 ``NDArray[T]`` and ``numpy.ndarray[shape, numpy.dtype[T]]`` borrow a NumPy buffer.
 They require an exact supported dtype, native byte order, alignment, C-contiguous
-layout, and writable storage. ``ConstNDArray[T]`` borrows an array as ``const T*``
-and accepts read-only or writable storage. The C++ body sees ``name`` as a typed
-pointer and ``name_size`` as its element count. An unannotated ndarray or numeric
-scalar infers its dtype at the call site. Unannotated homogeneous numeric lists and tuples infer
+layout, and writable storage. ``ConstNDArray[T]`` from ``cppyy_kit.numpy_types``
+borrows an array as ``const T*`` and accepts read-only or writable storage. The C++
+body sees ``name`` as a typed pointer and ``name_size`` as its element count. An
+unannotated ndarray or numeric scalar infers its dtype at the call site. Unannotated
+homogeneous numeric lists and tuples infer
 their element type; empty or mixed sequences need an explicit annotation. Inferred
 calls cache one compiled specialization per concrete argument types.
 
@@ -145,7 +147,7 @@ def _annotation_spec(annotation, fn, parameter):
     const_array = False
     if typing.get_origin(ann) is typing.Annotated:
         annotated_args = typing.get_args(ann)
-        from ._array_annotations import _CONST_NDARRAY
+        from .numpy_types import _CONST_NDARRAY
         if len(annotated_args) < 2 or not any(
                 metadata is _CONST_NDARRAY for metadata in annotated_args[1:]):
             raise _err("parameter %r" % parameter, ann)

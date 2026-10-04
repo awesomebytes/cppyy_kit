@@ -32,10 +32,6 @@ import os
 import subprocess
 import sys
 import time
-from typing import TYPE_CHECKING as _TYPE_CHECKING
-
-if _TYPE_CHECKING:
-    from ._array_annotations import ConstNDArray  # noqa: F401
 
 # Activate a prebuilt Cling PCH for this environment, if one exists. This must run
 # before the first `import cppyy` below. Cling reads CLING_STANDARD_PCH at startup,
@@ -430,14 +426,3 @@ def shutdown():
 
 
 atexit.register(shutdown)
-
-
-def __getattr__(name):
-    if name == "ConstNDArray":
-        from ._array_annotations import ConstNDArray as const_ndarray
-        return const_ndarray
-    raise AttributeError("module %r has no attribute %r" % (__name__, name))
-
-
-def __dir__():
-    return sorted(set(globals()) | {"ConstNDArray"})

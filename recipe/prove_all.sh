@@ -106,7 +106,8 @@ from pathlib import Path
 import sys
 import numpy as np
 from numpy.typing import NDArray
-from cppyy_kit import ConstNDArray, cpp
+from cppyy_kit import cpp
+from cppyy_kit.numpy_types import ConstNDArray
 
 installed_package = Path(cppyy_kit.__file__).resolve()
 assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_package

@@ -57,7 +57,8 @@ import time
 import numpy as np
 from numpy.typing import NDArray
 import cppyy_kit
-from cppyy_kit import ConstNDArray, cpp
+from cppyy_kit import cpp
+from cppyy_kit.numpy_types import ConstNDArray
 import rclpy
 from rcl_interfaces.msg import ParameterEvent
 from rclpy.context import Context

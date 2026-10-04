@@ -65,6 +65,6 @@ def test_cppyy_kit_reexports_captured():
     import cppyy_kit
     text = _valid_python(stubgen.stub_module(cppyy_kit))
     for sym in ("def cppdef_cached(", "def require(", "def cpp(", "def nogil(",
-                "def callback(", "class HandleRegistry:",
-                "from ._array_annotations import ConstNDArray as ConstNDArray"):
+                "def callback(", "class HandleRegistry:"):
         assert sym in text, "missing %r" % sym
+    assert "ConstNDArray" not in text

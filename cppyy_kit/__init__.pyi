@@ -2,7 +2,6 @@
 # Stubs the kit's public Python surface (names + arity, Any-typed). The C++
 # namespace a bringup returns is dynamic (cppyy proxies) and is not stubbed.
 from typing import Any
-from ._array_annotations import ConstNDArray as ConstNDArray
 
 def cache_dir() -> Any: ...
 def cache_info(directory = ...) -> Any: ...

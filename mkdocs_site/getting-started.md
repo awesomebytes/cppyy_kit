@@ -62,10 +62,11 @@ Save this as `kernel.py`:
 
 ```python
 import numpy as np
-from cppyy_kit import ConstNDArray, cpp
+from cppyy_kit.numpy_types import NDArray
+from cppyy_kit import cpp
 
 @cpp
-def sum_sq(data: ConstNDArray[np.float64]) -> float:
+def sum_sq(data: NDArray[np.float64]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -84,8 +85,8 @@ pixi run python kernel.py
 ```
 
 The script prints `14.0`, the sum of the squared array elements. `@cpp` compiles
-the C++ body in the docstring. The `ConstNDArray[np.float64]` annotation supplies
-a `const double*` pointer and an element count; `data_size` is available inside
+the C++ body in the docstring. The `NDArray[np.float64]` annotation supplies a
+writable `double*` pointer and an element count; `data_size` is available inside
 the C++ body.
 
 On first use, cppyy compiles the required code. Compatible cached code can be

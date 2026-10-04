@@ -125,10 +125,13 @@ flowchart LR
 
 For an inline kernel, `@cpp` puts the C++ body in the function docstring and uses
 annotations to choose scalar or array conversion. For example, the README's
-`sum_sq` uses `ConstNDArray[np.float64]` to pass a read-only `const double*` view;
-the first call compiles and later runs may load the cached code. Array buffers have
-layout and dtype requirements, while sequence arguments copy into temporary owned
-storage. See the [current interface guide](docs/COMMON_PATTERNS.md) and
+`sum_sq` imports `NDArray` from `cppyy_kit.numpy_types` and uses it to pass a
+writable `double*` buffer; the first call compiles and later runs may load the
+cached code. Array buffers have layout
+and dtype requirements, while sequence arguments copy into temporary owned
+storage. For a read-only kernel, `ConstNDArray[np.float64]` passes a
+`const double*`; import it from the same module. See the
+[current interface guide](docs/COMMON_PATTERNS.md) and
 [README example](README.md#2-write-a-c-function-in-python). New annotation forms
 should be labelled source-checkout-only until their version is published.
 

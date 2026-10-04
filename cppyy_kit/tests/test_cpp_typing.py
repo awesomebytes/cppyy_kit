@@ -6,10 +6,15 @@ import threading
 import typing
 
 import numpy as np
-from numpy.typing import NDArray
+import numpy.typing as npt
 import pytest
 
-from cppyy_kit import ConstNDArray, cache, cpp
+from cppyy_kit import cache, cpp
+from cppyy_kit.numpy_types import (ArrayLike, ConstNDArray, DTypeLike, NDArray,
+                                   bool_, complex64, complex128, float32, float64,
+                                   int8, int16, int32, int64, intc, intp, uint8,
+                                   uint16, uint32, uint64, uintp)
+from cppyy_kit import numpy_types
 
 
 def _count_compiles(monkeypatch):
@@ -582,7 +587,8 @@ def test_const_ndarray_nogil_warm_cache(tmp_path):
     env["CPPYY_KIT_CACHE_DIR"] = str(tmp_path)
     script = (
         "import numpy as np\n"
-        "from cppyy_kit import ConstNDArray, cpp\n"
+        "from cppyy_kit import cpp\n"
+        "from cppyy_kit.numpy_types import ConstNDArray\n"
         "@cpp(name='const_ndarray_warm', cached=True, nogil=True)\n"
         "def total(values: ConstNDArray[np.float64]) -> float:\n"
         "    'double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;'\n"
@@ -604,17 +610,39 @@ def test_const_ndarray_nogil_warm_cache(tmp_path):
     assert warm.returncode == 0, warm.stderr
 
 
-def test_const_ndarray_package_export_is_lazy():
+def test_numpy_types_exports_ndarray_and_const_alias():
+    assert NDArray is npt.NDArray
+    assert ArrayLike is npt.ArrayLike
+    assert DTypeLike is npt.DTypeLike
+    for name, exported in (
+            ("bool_", bool_), ("int8", int8), ("int16", int16),
+            ("int32", int32), ("int64", int64), ("uint8", uint8),
+            ("uint16", uint16), ("uint32", uint32), ("uint64", uint64),
+            ("float32", float32), ("float64", float64),
+            ("complex64", complex64), ("complex128", complex128),
+            ("intc", intc), ("intp", intp), ("uintp", uintp)):
+        assert exported is getattr(np, name)
+    assert hasattr(ConstNDArray, "__metadata__")
+    assert set(numpy_types.__all__) == {
+        "ArrayLike", "ConstNDArray", "DTypeLike", "NDArray", "bool_", "int8",
+        "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64",
+        "float32", "float64", "complex64", "complex128", "intc", "intp", "uintp",
+    }
+
+
+def test_numpy_types_import_is_lazy_from_package():
     script = (
         "import sys\n"
+        "import cppyy_kit\n"
         "from cppyy_kit import cpp\n"
         "assert 'numpy' not in sys.modules\n"
         "@cpp(cached=False)\n"
         "def add(a: int, b: float) -> float:\n"
         "    'return a + b;'\n"
         "assert 'numpy' not in sys.modules\n"
-        "from cppyy_kit import ConstNDArray\n"
+        "from cppyy_kit.numpy_types import ConstNDArray, NDArray\n"
         "assert 'numpy' in sys.modules\n"
+        "assert not hasattr(cppyy_kit, 'ConstNDArray')\n"
     )
     result = subprocess.run([sys.executable, "-c", script], text=True,
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
