@@ -1,10 +1,18 @@
-# wbc_kit quick reference
+# wbc_kit API reference
 
 Use Crocoddyl's DDP solver from Python with cppyy. To put a custom action model in
 the DDP loop without Python calls or a separate CMake build, write it in inline C++.
 In the unicycle benchmark, the C++ model ran about 21 times faster than the
-Python-derived model and reached the same cost. Use the standalone environment with
-`pixi run -e wbc ...`.
+Python-derived model and reached the same cost.
+`wbc_kit.bringup_crocoddyl()` returns the C++ `crocoddyl` namespace.
+
+Create a separate Pixi project with the `https://prefix.dev/awesomebytes` and
+`conda-forge` channels, then install `pixi add wbc-kit`. Run scripts with
+`pixi run python your_script.py`. Crocoddyl and ROS packages require incompatible
+Boost versions in the current package set; use separate environments.
+See [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+and the [kit overview](https://awesomebytes.github.io/cppyy_kit/wbc_kit/WHY/).
+Commands using `pixi run -e wbc` require this repository checkout.
 
 ## Use this kit when
 
@@ -54,8 +62,9 @@ import cppyy
 model = cppyy.gbl.mywbc.make()         # native C++ model; hand to a C++-built solve
 ```
 
-The complete model and FDDP driver are in `wbc_kit/wbc_kit/cpp/unicycle_model.cpp`.
-Run the demo and benchmark with `pixi run -e wbc demo-wbc-lower`.
+See the [complete model and FDDP driver](https://github.com/awesomebytes/cppyy_kit/blob/main/wbc_kit/wbc_kit/cpp/unicycle_model.cpp).
+From this repository checkout, run the demo and benchmark with
+`pixi run -e wbc demo-wbc-lower`.
 
 ## Notes
 

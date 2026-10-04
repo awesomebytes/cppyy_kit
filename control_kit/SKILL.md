@@ -1,9 +1,18 @@
 # control_kit API reference
 
 Use `control_kit` to write a ros2_control controller in Python and run it inside a
-real `controller_manager::ControllerManager` in-process. Requires the pixi `control` env
-(`pixi run -e control ...`) and rclcpp initialized. See [REPORT.md](REPORT.md) for the
-implementation and measurements; see [WHY.md](WHY.md) for the stock workflow.
+`controller_manager::ControllerManager` in-process. `control_kit.bringup_control()`
+returns the C++ `controller_interface` namespace. Initialize rclcpp before creating
+a controller manager.
+
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-control-kit` and run scripts with
+`pixi run python your_script.py`. Stock controller examples also need
+`pixi add ros-jazzy-ros2-controllers`. See the
+[kit overview](https://awesomebytes.github.io/cppyy_kit/control_kit/WHY/) and
+[binding report](https://awesomebytes.github.io/cppyy_kit/control_kit/REPORT/).
+Commands using `pixi run -e control` require this repository checkout.
 
 ## Bring-up
 
@@ -30,8 +39,8 @@ rig = ck.make_controller_manager(urdf, update_rate=100)   # real ControllerManag
 #                           parameters=None) -> ControlRig
 ```
 
-`rig.cm` is the **real** `controller_manager::ControllerManager`, call any of its methods
-directly (`is_resource_manager_initialized()`, `get_update_rate()`, `get_loaded_controllers()`,
+`rig.cm` is the C++ `controller_manager::ControllerManager`. Use its native methods
+(`is_resource_manager_initialized()`, `get_update_rate()`, `get_loaded_controllers()`,
 `read`/`update`/`write`, ...).
 
 ## ControlRig methods
@@ -122,7 +131,9 @@ rig.run(seconds=2.0, rate_hz=100)
 # teardown is automatic (registered atexit): deactivate + drop the CM before rclcpp shutdown
 ```
 
-## Tasks
+## Repository tasks
+
+Run these from this repository checkout:
 
 ```
 pixi run -e control demo-control-rig      # d01: CM + mock HW + stock C++ controller (Stages 1-2)
@@ -133,8 +144,10 @@ pixi run -e control test-control          # the test suite (auto-skips without r
 
 ## Fewer missed deadlines (real-time knobs)
 
-The jitter benchmark measured these unprivileged knobs on this rig's 1 kHz loop
-(~2.4 µs median wakeup on a stock kernel, [report](../docs/jitter_bench/REPORT.md)):
+This example requires the repository checkout's `jitter_bench` module. The jitter
+benchmark measured these unprivileged knobs on this rig's 1 kHz loop
+(~2.4 µs median wakeup on a stock kernel,
+[report](https://awesomebytes.github.io/cppyy_kit/docs/jitter_bench/REPORT/)):
 
 ```python
 from jitter_bench.harness import apply_timerslack, try_mlockall, apply_affinity

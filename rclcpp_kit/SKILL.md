@@ -1,25 +1,33 @@
-# rclcpp_kit usage guide for coding agents
+# rclcpp_kit API reference
 
-You are writing Python that drives **ROS 2 core (rclcpp + tf2 + rosbag2)** through
-`rclcpp_kit`, via cppyy. The kit **mirrors the C++ API** and handles header loading,
-symbol resolution, message conversion, and ordered teardown. It is
-the capability layer every ROS-touching kit builds on; it is **not** the rclcppyy
-drop-in accelerator (that's the separate `rclcppyy` product, which re-exports this).
+Use ROS 2 C++ nodes, messages, tf2, and rosbag2 from Python.
+`rclcpp_kit.bringup_rclcpp()` returns the C++ `rclcpp` namespace. The kit adds
+message conversion, node adapters, managed native entities, and ordered teardown.
+The separate [rclcppyy](https://github.com/awesomebytes/rclcppyy) package supplies
+an rclpy-style drop-in interface.
 
-(For the reasons for this package and the TF measurements, see [WHY.md](WHY.md) /
-[REPORT.md](REPORT.md).)
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-rclcpp-kit ros-jazzy-std-msgs` and run scripts with
+`pixi run python your_script.py`. TF examples also need
+`pixi add ros-jazzy-tf2-ros ros-jazzy-tf2-msgs`; bag examples need
+`pixi add ros-jazzy-rosbag2-cpp ros-jazzy-rosbag2-storage-default-plugins`, plus the
+storage plugin for the chosen format (for MCAP, `ros-jazzy-rosbag2-storage-mcap`).
+Install the message/service packages used by other examples as needed.
+See the [kit overview](https://awesomebytes.github.io/cppyy_kit/rclcpp_kit/README/)
+and [binding report](https://awesomebytes.github.io/cppyy_kit/rclcpp_kit/REPORT/).
+Commands using `pixi run -e rclcpp` require this repository checkout.
 
-**Requires** the ROS core, present in the default `ros-base` env. Its own env is
-`rclcpp`: `pixi run -e rclcpp python your_script.py`.
+## Usage requirements
 
-**Key rules**
 - Call `rclcpp = rclcpp_kit.bringup_rclcpp()` once. It returns the real `rclcpp`
   namespace and is idempotent. The first call JITs `rclcpp/rclcpp.hpp` (a few
   seconds). Call it at startup because it parses headers.
 - A plain `rclcpp.Node` accepts **both** calling conventions: rclpy-style
   (`node.create_publisher(String, "topic", 10)`, Python messages auto-converted to
   C++) and native rclcpp template syntax (`node.create_publisher[CppMsgT]("topic", 10)`,
-  zero-overhead). Same for `create_subscription` / `create_timer`.
+  using C++ messages directly). See the corresponding node adapters for
+  subscription and timer signatures.
 - Message classes: hand either a Python message class (`std_msgs.msg.String`) or a
   cppyy C++ class (`cppyy.gbl.std_msgs.msg.String`). The kit resolves both.
 - Let teardown happen: `cppyy_kit.shutdown()` runs at interpreter exit and releases
@@ -213,7 +221,8 @@ service protocol rather than mirroring it.
 ## Limits and binding details
 - **Bringup is a header-parse cost, once.** `bringup_rclcpp()` JITs the rclcpp
   headers on the first call; subsequent calls are no-ops. Freeze (PCH) removes the
-  parse, not per-signature JIT compilation. See `docs/FREEZE.md`.
+  parse, not per-signature JIT compilation. See
+  [cached headers](https://awesomebytes.github.io/cppyy_kit/docs/FREEZE/).
 - **`tf2_ros::Buffer` is deliberately avoided.** Its overloaded lookup/canTransform
   mis-resolve under cppyy and crash; the kit uses the plain `tf2::BufferCore` with
   unambiguous `cppdef` accessors. Use `tf.TransformListener`, not raw `tf2_ros::Buffer`.
@@ -239,4 +248,5 @@ service protocol rather than mirroring it.
   load/unload requests before explicit close. Ordered session teardown already
   stops native executor threads before releasing the container and loaded nodes.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
-  ROS library, `cppyy_kit.load_libraries([...])` it first (see cppyy_kit's SKILL).
+  ROS library, load it first with `cppyy_kit.load_libraries([...])`. See
+  [library loading](https://awesomebytes.github.io/cppyy_kit/docs/COMMON_PATTERNS/).

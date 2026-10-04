@@ -556,8 +556,10 @@ environment match. A kit can include a prebuilt artifact with
   on-demand template member instantiations from arbitrary user calls
   (`node.getInput[T]` for a new `T`) are not cached, they stay JIT unless routed
   through their own cached helper. Artifacts are env-version-tagged + gitignored
-  (same lifecycle as the PCH); a cppyy/compiler/source change is a cache miss, and
-  a corrupt/stale `.so` on load is discarded and rebuilt, never wedging a run.
+  and include source, declarations, compile options, include paths and library
+  paths in their identity. Included header contents and compiler/runtime changes
+  are not discovered automatically. Clear the compile cache after those changes
+  and restart the process. A library that fails to load is rebuilt when possible.
 - **Disable the cache for debugging.** To rule the cache out when a kernel
   misbehaves, bypass it so `cppdef_cached` is a plain in-memory `cppyy.cppdef` (no
   `.so` read/write): per call `cppdef_cached(..., cached=False)` / `@cpp(cached=False)`;
@@ -643,6 +645,15 @@ verifies the checksum, unpacks it, and registers the cache directory. Later call
 can reuse the cached headers offline. Supported inputs are a single header, a
 `.zip` archive, or a `.tar.gz` archive; use `strip_prefix` to remove an archive's
 top-level directory.
+
+Fetched entries are keyed by URL, checksum, header and strip prefix. Downloads
+and extraction use staging and a shared lock; complete entries are published
+atomically. Offline hits validate the recorded file hashes and can be read from
+read-only storage. Different source pins coexist. The include directory is now
+`<cache>/<name>/<request hash>/include`; old unverified entries are fetched again.
+Unsafe archive paths, links and special entries are rejected. Installed headers
+still take priority and are not checked against a requested download checksum.
+
 - **Policy, not convenience:** prefer the conda-forge package for anything on it
   (Eigen, fmt, nlohmann_json). Reach for `url=` only for the unpackaged or an exact
   pinned version, the same version-pinning practice as the §21 vendored-source builds, without
@@ -1046,6 +1057,12 @@ The Cling PCH that reduces a kit's header-parse cost (FREEZE.md) can be built ma
 or through `cppyy_kit.autopch`. Auto-PCH schedules a build on first use and stores it
 under `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch`. A compatible artifact can be loaded
 in later processes when the startup hook is installed and the cache is enabled.
+
+Importing `cppyy_kit`, printing packaged guides and inspecting an environment
+do not initialize Cling or install a startup hook. Native setup runs when a C++
+helper first needs it. Register native resource cleanup after constructing the
+resource; runtime setup then preserves cleanup-before-Cling teardown order.
+
 - **Startup activation uses a `.pth` file.** In environments that process the hook,
   it runs before user imports. The `.pth` calls a standalone bootstrap
   (`cppyy_kit._autopch_boot`,

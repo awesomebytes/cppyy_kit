@@ -264,8 +264,10 @@ trampoline instead.
 on-demand template instantiations triggered by arbitrary user calls (e.g.
 `node.getInput[T](key)` for a new `T`), and the call wrappers cppyy makes to reach
 the kit's entry points, are not cached by this. Artifacts are env-version-tagged and
-gitignored, same lifecycle as the PCH (§3): a cppyy/compiler/source change is a
-cache miss, not a silent ABI mismatch. When the compiler/CPyCppyy toolchain
+gitignored. Source, declarations, options, include paths, library paths and the
+cppyy version tag participate in the compile key. Included header contents and
+compiler/runtime replacements are not checked automatically. Clear the compile
+cache after those changes and restart the process. When the compiler/CPyCppyy toolchain
 is unavailable the kit falls back to the JIT registration path (a one-time notice),
 so the cache is a pure optimisation, never a correctness dependency.
 
@@ -350,10 +352,10 @@ This allows the hook to set the variable before cppyy initializes Cling.
   version for the cache key, not cppyy itself), respects `CPPYY_KIT_NO_AUTOPCH=1` and
   any already-set `CLING_STANDARD_PCH`, and never raises (a broken bootstrap would
   otherwise print on every `python` start).
-* **`cppyy_kit` self-installs the `.pth`** on first import (a one-time notice), and
+* **`cppyy_kit` self-installs the `.pth`** on first native use (a one-time notice), and
   refreshes it if out of date. `python -m cppyy_kit.autopch --uninstall` removes it;
   `--status` shows install + cache state.
-* **`cppyy_kit`'s own import** (`autopch.setup()`) reads the marker and prints a
+* **Native initialization** (`autopch.setup()`) reads the marker and prints a
   user-facing line, `cppyy_kit: Cling PCH loaded from <path>`. Before the `.pth`
   exists, `setup()` can activate from the manifest if cppyy has not yet been imported.
 
@@ -428,9 +430,10 @@ costs and have different switches:
 | **auto-PCH** (§8) | the header *parse* at bringup | `${XDG_CACHE_HOME:-~/.cache}/cppyy_kit/pch/*.pch` | `CPPYY_KIT_NO_AUTOPCH=1` (env, before launch) |
 | **compile cache** (§4, `cppdef_cached`) | cppyy's first-use call-wrapper *JIT* (kernel `.so`s, incl. `@cpp`) | `$CPPYY_KIT_CACHE_DIR` or `<cwd>/build/cppyy_kit_cache/` | `CPPYY_KIT_NO_CACHE=1` (env) · `cppyy_kit.disable_caching()` (runtime) · `cached=False` (per call) |
 
-Both are content-addressed and self-invalidating, so a *stale* artifact is normally a
-cache miss (rebuild), never a silent wrong answer. Use these switches when you suspect a cache problem, need to debug a miscompiled
-kernel, or need to step through source code.
+Source and configuration changes included in a cache key cause a cache miss.
+The compile cache does not detect changes to included header contents or the
+compiler/runtime automatically. Use these switches when investigating a stale
+artifact, a miscompiled kernel, or stepping through source code.
 
 ### Decision tree
 
@@ -470,6 +473,7 @@ kernel, or need to step through source code.
   --prune` trims to the newest per environment (keeping any a live manifest references);
   deleting the dir is safe (the next run falls back to JIT and reschedules a build).
 
-Both caches key on the cppyy/compiler versions and the source, so upgrading cppyy or
-editing the C++ already causes a cache miss. Use these switches to force a bypass
-while debugging.
+The compile cache keys on the cppyy version tag and supplied source/options.
+Clear it after replacing included headers or the compiler/runtime. The PCH has
+its own environment/header key described in §8. Use these switches to bypass
+either cache while debugging.

@@ -1,29 +1,20 @@
-# nav2_kit, cheat sheet for a coding agent
+# nav2_kit API reference
 
-You are writing Python that composes **your own navigation stack from Nav2's
-algorithm cores** through `nav2_kit`, **no lifecycle servers, no
-pluginlib** (and no tf for the pure cores). Python owns the loop; Nav2's C++ owns the
-math. The kit **mirrors Nav2's own C++ API**: `bringup_nav2()` returns the real
-`nav2_costmap_2d` and `nav2_navfn_planner` namespaces, and you use `Costmap2D`, `NavFn`
-as in the C++. The kit provides helpers for cppyy setup (bringup, the NumPy↔charmap
-memcpy, raw-pointer I/O). You do **not** need to know cppyy.
+Use Nav2 algorithm components from Python. `nav2_kit.bringup_nav2()` returns the
+C++ `nav2_costmap_2d` and `nav2_navfn_planner` namespaces. The kit adds NumPy grid
+conversion and planning helpers. Smac 2D and Regulated Pure Pursuit use in-process
+lifecycle nodes, initialized by their helpers (Patterns 6–9). Hybrid-A\* is not
+exposed; see the [binding report](https://awesomebytes.github.io/cppyy_kit/nav2_kit/REPORT/).
 
-**Lifecycle support.** Two cores that were previously blocked now work,
-because the kit can construct a real `rclcpp_lifecycle::LifecycleNode` in-process
-(`nav2_kit.lifecycle_node(...)`): **Smac 2D** (`nav2_kit.smac_plan_2d(...)`) and the
-**real RegulatedPurePursuit controller** (`nav2_kit.RPPController(...)`). These need
-rclcpp initialized (the kit does it) and an in-process `nav2_kit.costmap_ros(...)` where
-noted; they are opt-in and lazy (they do NOT slow the pure `bringup_nav2()` cores).
-Patterns 6–9 below. (Hybrid-A\* is NOT surfaced, a flaky OMPL-under-Cling crash; see
-the REPORT.)
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-nav2-kit numpy` and run scripts with
+`pixi run python your_script.py`. See the
+[kit overview](https://awesomebytes.github.io/cppyy_kit/nav2_kit/WHY/) for examples.
+Commands using `pixi run -e nav2` require this repository checkout.
 
-(For *why* this exists and a stock-Nav2 comparison, see [WHY.md](WHY.md); for the
-feasibility matrix, Smac/RPP limitations, and benchmarks, see
-[REPORT.md](REPORT.md).)
+## Usage requirements
 
-**Requires** the `nav2` pixi env: `pixi run -e nav2 python your_script.py`.
-
-**Golden rules**
 - Call `nav2_kit.bringup_nav2()` once; it returns `(nav2_costmap_2d,
   nav2_navfn_planner)`. Idempotent (~70 ms, once). Call `nav2_kit.warmup()` during
   init to move the one-time first-use JIT off your first real call.
@@ -59,7 +50,7 @@ if path is not None:
     print(path.shape, path[0], path[-1])             # (N,2) float32, start..goal
 ```
 `plan_navfn` returns `None` when there is no plan. See
-`nav2_kit/demos/d01_plan_grid.py`.
+[grid-planning example](https://github.com/awesomebytes/cppyy_kit/blob/main/nav2_kit/demos/d01_plan_grid.py).
 
 ---
 
@@ -71,11 +62,10 @@ cns, nns = nav2_kit.bringup_nav2()
 cm = cns.Costmap2D(100, 100, 0.05, 0.0, 0.0, 0)      # Nav2's own ctor, verbatim
 cm.setCost(10, 20, nav2_kit.LETHAL_OBSTACLE)
 print(ord(cm.getCost(10, 20)))                       # 254  (note the ord())
-wx, wy = cppyy.gbl.std.ref(...)                      # or: cm.mapToWorld(mx,my,wx,wy)
 nav = nns.NavFn(100, 100)                            # the planner algorithm, no node
 ```
-`Costmap2D` and `NavFn` are the real C++ classes; every method
-(`getSizeInCellsX`, `mapToWorld`, `worldToMap`, `resizeMap`, …) is available.
+`Costmap2D` and `NavFn` are C++ classes. Methods such as `getSizeInCellsX`,
+`mapToWorld`, `worldToMap`, and `resizeMap` use their C++ argument conventions.
 
 ---
 
@@ -119,7 +109,10 @@ node = rclcpp.Node("planner")
 node.create_publisher(Path, "plan", 1).publish(msg)
 ```
 `nav_msgs/OccupancyGrid` works the same way (fill `info` + `data`); see the full
-showcase `nav2_kit/demos/d02_own_nav_stack.py` (map + plan + `TwistStamped`).
+showcase
+[navigation example](https://github.com/awesomebytes/cppyy_kit/blob/main/nav2_kit/demos/d02_own_nav_stack.py)
+(map + plan + `TwistStamped`). ROS visualization needs `ros-jazzy-nav-msgs` and
+`ros-jazzy-geometry-msgs`.
 
 ---
 

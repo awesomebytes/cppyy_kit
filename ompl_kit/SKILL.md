@@ -1,28 +1,27 @@
-# ompl_kit, cheat sheet for a coding agent
+# ompl_kit API reference
 
-You are writing Python that drives the **Open Motion Planning Library (OMPL)**, a
-C++ sampling-based motion planner, through `ompl_kit`. The kit
-**mirrors OMPL's C++ API**: `bringup_ompl()` returns the real `ompl::base` /
-`ompl::geometric` namespaces (the conventional `ob` / `og`) and you use
-`ob.RealVectorStateSpace`, `og.SimpleSetup`, `og.RRTConnect`,
-`setStateValidityChecker`, `setStartAndGoalStates`, `solve`, `getSolutionPath`
-exactly as in the OMPL C++ tutorials. The kit provides helpers for cppyy setup,
-(bringup, the validity `std::function` signature, the `as` keyword, RNG seeding,
-path extraction). You do **not** need to know cppyy.
+Use OMPL state spaces and geometric planners from Python.
+`ob, og = ompl_kit.bringup_ompl()` returns the C++ `ompl::base` and
+`ompl::geometric` namespaces. The kit adds Python validity callbacks, state casts,
+RNG seeding, and path extraction.
 
-(For *why* this exists and the C++-vs-Python comparison, see [WHY.md](WHY.md); for
-the cross-inheritance mechanics and benchmarks, see [REPORT.md](REPORT.md).)
+In a Pixi project configured with the channels in
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/), install
+`pixi add ros-jazzy-ompl-kit` and run scripts with `pixi run python your_script.py`.
+See the [kit overview](https://awesomebytes.github.io/cppyy_kit/ompl_kit/WHY/) and
+[binding report](https://awesomebytes.github.io/cppyy_kit/ompl_kit/REPORT/).
+Commands using `pixi run -e ompl` require this repository checkout.
 
-**Requires** the `ompl` pixi env: `pixi run -e ompl python your_script.py`.
+## Usage requirements
 
-**Golden rules**
 - Call `ob, og = ompl_kit.bringup_ompl()` once; it returns the base and geometric
   namespaces. Pass `with_geometric=False` if you only need state spaces (skips the
   ~60 ms planner JIT). Bringup is idempotent (~0.5 s, once).
 - Wrap a raw space/planner/checker in the library `Ptr` to hand it to OMPL:
   `ob.StateSpacePtr(space)`, `ob.PlannerPtr(planner)`,
-  `ob.StateValidityCheckerPtr(checker)`. The wrap **transfers ownership**, safe, no
-  double-free.
+  `ob.StateValidityCheckerPtr(checker)`. Construct one shared owner for each raw
+  object and reuse it. Keep Python callbacks and subclass instances pinned for
+  the duration of C++ use.
 - The validity checker is the planner's inner-loop callback. Two ways: a Python
   function via `ompl_kit.validity_checker(fn)`, or a Python subclass of
   `ob.StateValidityChecker`. Both are shown below.
@@ -67,7 +66,7 @@ if ss.solve(1.0):
 ```
 `validity_checker(fn, owner=ss)` wraps `fn` as OMPL's
 `std::function<bool(const State*)>` and pins it on `ss`. See
-`ompl_kit/demos/d01_first_plan.py`.
+[first-plan example](https://github.com/awesomebytes/cppyy_kit/blob/main/ompl_kit/demos/d01_first_plan.py).
 
 ---
 
@@ -156,7 +155,9 @@ checker = cppyy.gbl.CppCircleChecker(ss.getSpaceInformation())
 cppyy_kit.keep_alive(ss, checker)
 ss.setStateValidityChecker(ob.StateValidityCheckerPtr(checker))
 ```
-`bench_ompl_validity.py` (`pixi run -e ompl bench-ompl`) measures Python vs this.
+From this repository checkout, `pixi run -e ompl bench-ompl` compares Python and
+C++ validity callbacks. See the
+[benchmark source](https://github.com/awesomebytes/cppyy_kit/blob/main/ompl_kit/demos/bench_ompl_validity.py).
 
 ---
 
@@ -187,7 +188,8 @@ for x, y in waypoints:
 node = rclcpp.Node("planner")
 node.create_publisher(Path, "plan", 10).publish(msg)
 ```
-See `ompl_kit/demos/d02_publish_path.py`.
+This example also needs `ros-jazzy-rclcpp-kit` and `ros-jazzy-nav-msgs`. See the
+[ROS path example](https://github.com/awesomebytes/cppyy_kit/blob/main/ompl_kit/demos/d02_publish_path.py).
 
 ---
 
@@ -203,8 +205,9 @@ See `ompl_kit/demos/d02_publish_path.py`.
 - **Seed before solving** with `ompl_kit.set_seed(n)`; a seed set after the first
   sample is ignored (OMPL warns). Re-seeding in one process is unreliable, use a
   fresh process per reproducible run.
-- Wrap raws in the library `Ptr` (`ob.StateSpacePtr`, `ob.PlannerPtr`) to pass them
-  to OMPL; the wrap transfers ownership (no double-free).
+- Wrap raw objects in the library `Ptr` (`ob.StateSpacePtr`, `ob.PlannerPtr`) to
+  pass them to OMPL. Reuse that shared owner rather than constructing independent
+  shared pointers to the same raw object.
 - `path_to_list(path, dim)` needs the space dimension (the path doesn't carry it),
   and reads real-vector coordinates; read compound waypoints via `as_state`.
 - Only RRTConnect/RRTstar are pre-included; any other planner is one

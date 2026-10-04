@@ -46,9 +46,9 @@ about:
   summary: "Use DBoW2 place recognition and loop closure from Python"
   description: |
     dbow_kit exposes DBoW2 (Bags of Binary Words) to Python through cppyy.
-    DBoW2 has no Python binding and is not on conda-forge. The build step
-    compiles the vendored source in dbow_kit/cpp/build_dbow2.py and creates the
-    shared library used by this Python wrapper.
+    This package contains the Python wrapper and its guides. DBoW2 itself is
+    currently built separately from this repository's vendored-source script.
+    The noarch package does not contain that native library or its headers.
 
 extra:
   recipe-maintainers:

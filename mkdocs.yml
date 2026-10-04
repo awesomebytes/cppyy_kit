@@ -88,6 +88,8 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Tutorials:
+    - Configure and test native C++: docs/tutorials/native_component.md
+    - OMPL Python validity checker: docs/tutorials/ompl_callbacks.md
     - RoboPlan vs OMPL on UR5: docs/tutorials/roboplan_ompl_ur5.md
     - Visual Loop Closure: docs/tutorials/vision_loop_closure.md
   - Kits:
@@ -147,6 +149,7 @@ nav:
     - Skill: skills/cppyy-accelerate/SKILL.md
     - Walkthrough: skills/cppyy-accelerate/WALKTHROUGH.md
   - Reference:
+    - Task guides and environment checks: docs/GUIDES.md
     - The Patterns: docs/COMMON_PATTERNS.md
     - Startup cache: docs/FREEZE.md
   - Maintainers and design:
