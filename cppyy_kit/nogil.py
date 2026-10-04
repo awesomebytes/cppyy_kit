@@ -28,10 +28,6 @@ Rules:
 """
 import threading
 
-import cppyy
-
-from . import cache
-
 _SHIM = r"""
 #include <Python.h>
 #include <functional>
@@ -65,12 +61,16 @@ def _ensure():
     first ``nogil()`` calls may arrive from several threads at once. Without the
     lock each would re-run the ``cppdef``, and Cling would emit a "redefinition"
     error. Once built, the shim can be called without acquiring the lock."""
-    global _READY
+    global _READY, cppyy, cache
     if _READY:                       # fast path: no lock once the shim exists
         return
     with _LOCK:
         if _READY:                   # re-check under the lock
             return
+        from . import _ensure_runtime
+        _ensure_runtime()
+        import cppyy
+        from . import cache
         cache.cppdef_cached(_SHIM, decls=_DECLS, name="nogil_shim", trampoline=True)
         _READY = True
 

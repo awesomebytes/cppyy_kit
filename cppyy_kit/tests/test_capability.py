@@ -75,3 +75,28 @@ def test_base_compile_cache_registered():
     st = capability.status()
     assert "compile_cache" in st
     assert st["compile_cache"]["available"] is True
+
+
+@pytest.mark.parametrize("selection, executable", [
+    ('"/compiler path/c++" -std=c++17', "/compiler path/c++"),
+    ("ccache c++", "ccache"),
+    ("", "c++"),
+])
+def test_compile_cache_checks_selected_command_executable(monkeypatch, selection, executable):
+    import shutil
+    from cppyy_kit import _compile
+
+    checked = []
+    monkeypatch.setenv("CXX", selection)
+    monkeypatch.setattr(shutil, "which", lambda command: checked.append(command) or command)
+    monkeypatch.setattr(_compile, "cppyy_toolchain", lambda: {})
+    assert capability._detect_compile_cache() == (True, "")
+    assert checked == [executable]
+
+
+@pytest.mark.parametrize("selection", ['"unterminated', "   "])
+def test_compile_cache_reports_invalid_compiler_selection(monkeypatch, selection):
+    monkeypatch.setenv("CXX", selection)
+    ok, detail = capability._detect_compile_cache()
+    assert ok is False
+    assert "CXX" in detail

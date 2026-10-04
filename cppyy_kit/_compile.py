@@ -10,9 +10,11 @@ These libraries convert C++ objects to Python proxies and call Python callables.
 """
 import glob
 import os
+import shlex
 import subprocess
 import sys
 import sysconfig
+import tempfile
 
 
 class CompileError(RuntimeError):
@@ -22,6 +24,20 @@ class CompileError(RuntimeError):
 def compiler():
     """The env's C++ compiler ($CXX, else ``c++``)."""
     return os.environ.get("CXX") or "c++"
+
+
+def compiler_command():
+    """Parse the compiler command, including launchers such as ``ccache c++``.
+
+    Arguments follow shell quoting rules, but execution does not use a shell.
+    """
+    try:
+        command = shlex.split(compiler())
+    except ValueError as exc:
+        raise CompileError("invalid CXX command: %s" % exc) from exc
+    if not command:
+        raise CompileError("CXX command is empty")
+    return command
 
 
 def cppyy_toolchain():
@@ -51,43 +67,46 @@ def compile_shared(sources, out_path, include_paths=(), library_paths=(),
     so the result resolves its dependencies without ``LD_LIBRARY_PATH``. Raises
     ``CompileError`` with the compiler stderr on failure. Returns ``out_path``.
 
-    The output is written atomically (compiled to ``out_path + .tmp`` then
+    The output is written atomically (compiled to a unique temporary file then
     renamed) so an interrupted/failed compile never leaves a half-written .so that
     a later run would mistake for a valid cache entry.
     """
     if isinstance(sources, str):
         sources = [sources]
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
-    tmp = out_path + ".tmp.%d" % os.getpid()
-    cmd = [compiler(), "-shared", "-fPIC", "-std=" + std]
+    cmd = compiler_command() + ["-shared", "-fPIC", "-std=" + std]
     if opt:
         cmd.append(opt)
     cmd += ["-D" + d for d in defines]
     cmd += ["-I" + p for p in include_paths]
     cmd += list(extra_flags)
     cmd += list(sources)
-    cmd += ["-o", tmp]
     cmd += ["-L" + p for p in library_paths]
     cmd += ["-l" + lib for lib in libraries]
     cmd += ["-Wl,-rpath," + p for p in library_paths]
     cmd += list(link_args)
+    fd, tmp = tempfile.mkstemp(prefix=os.path.basename(out_path) + ".tmp.",
+                               dir=os.path.dirname(os.path.abspath(out_path)))
+    os.close(fd)
+    # Let the compiler create the unique output with its normal umask-based
+    # permissions, so packaged libraries remain readable by other users.
+    os.unlink(tmp)
+    cmd += ["-o", tmp]
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-    except OSError as exc:
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+        except OSError as exc:
+            raise CompileError(
+                "compiler invocation failed (%s):\n%s" % (exc, " ".join(cmd))) from exc
+        if proc.returncode != 0:
+            raise CompileError("compile failed (%d):\n%s\n%s"
+                               % (proc.returncode, " ".join(cmd), proc.stderr.strip()))
+        os.replace(tmp, out_path)
+    finally:
         try:
             os.unlink(tmp)
         except OSError:
             pass
-        raise CompileError(
-            "compiler invocation failed (%s):\n%s" % (exc, " ".join(cmd))) from exc
-    if proc.returncode != 0:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise CompileError("compile failed (%d):\n%s\n%s"
-                           % (proc.returncode, " ".join(cmd), proc.stderr.strip()))
-    os.replace(tmp, out_path)
     return out_path
 
 

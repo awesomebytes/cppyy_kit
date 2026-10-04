@@ -22,27 +22,35 @@ uses plain ``cppyy.cppdef`` instead. It remains functional but does not use the
 cache, and emits one notice. Supported forms are ``extern "C"`` functions and
 free functions or classes with out-of-line methods.
 
-Artifacts use an environment and version tagged filename. They live in a
-gitignored build directory and are rebuilt when cppyy, the compiler, or the source
-changes. A mismatch causes a cache miss. A package can include a prebuilt ``.so``
-to avoid compilation on its first run.
+Artifacts use an environment and version tagged filename. Source, declarations,
+cppyy version, and explicit compile/link options determine the key. Compiler and
+header contents are not probed on a hit. After changing a toolchain or a header
+in place, call ``clear_cache()`` and start a new process. A package can include
+prebuilt artifacts to avoid compilation on its first run.
 """
 import contextlib
 import hashlib
 import json
 import os
+import tempfile
+import threading
 import time
 
-import cppyy
+from . import _ensure_runtime
 
-from . import _compile
-from . import trace
+_ensure_runtime()
+import cppyy  # noqa: E402 - native runtime setup must precede this import
+
+from . import _compile  # noqa: E402
+from . import trace  # noqa: E402
+from ._filelock import file_lock  # noqa: E402
 
 _LOADED = set()          # so_paths already load_library'd this process (idempotent)
 _APPLIED = {}            # so_path -> result, for one-cppdef-per-process idempotency
 _NO_DECLS_WARNED = set()  # names warned about the missing-decls degrade (dedup)
 _INCLUDED = set()        # include paths already put on cppyy's search path (dedup)
 _RUNTIME_DISABLED = False  # process-wide runtime bypass (disable_caching / context mgr)
+_SESSION_LOCK = threading.RLock()  # native registration and per-process state
 
 
 # --- Debugging options: bypass the .so compile cache ----------------------
@@ -114,22 +122,23 @@ def cache_dir():
     return os.path.join(base, _version_tag())
 
 
-def _signature(code, decls, include_paths, libraries, link_args, defines, std):
-    """Stable hash of everything that affects the compiled artifact's validity."""
-    h = hashlib.sha256()
-    for part in (code, decls or "", std, _version_tag(),
-                 "|".join(include_paths), "|".join(libraries),
-                 "|".join(link_args), "|".join(defines)):
-        h.update(part.encode("utf-8"))
-        h.update(b"\0")
-    return h.hexdigest()
+def _signature(code, decls, include_paths, library_paths, libraries, link_args,
+               defines, std):
+    """Hash explicit build inputs, without requiring an installed compiler."""
+    inputs = [code, decls or "", std, _version_tag(),
+              [os.path.abspath(p) for p in include_paths],
+              [os.path.abspath(p) for p in library_paths],
+              list(libraries), list(link_args), list(defines)]
+    return hashlib.sha256(json.dumps(inputs, ensure_ascii=True,
+                                    separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 def artifact_paths(code, decls=None, name=None, include_paths=(), libraries=(),
-                   link_args=(), defines=(), std="c++17", directory=None):
+                   link_args=(), defines=(), std="c++17", directory=None,
+                   library_paths=()):
     """Return the ``(so_path, header_path, meta_path)`` for a cppdef cache entry.
     The result is deterministic. Use it in prebuild steps and trace manifests."""
-    key = _signature(code, decls, tuple(include_paths), tuple(libraries),
+    key = _signature(code, decls, tuple(include_paths), tuple(library_paths), tuple(libraries),
                      tuple(link_args), tuple(defines), std)
     stem = ("%s_%s" % (name, key[:12])) if name else key
     directory = directory or cache_dir()
@@ -178,6 +187,15 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     def _ms():
         return round((time.perf_counter() - t0) * 1000, 3)
 
+    def _apply_loaded():
+        # Declaration errors do not imply that the library is corrupt.
+        cppyy.cppdef(decls)
+        trace.record("cppdef_cached", name=name, cached=True, so=so_path,
+                     duration_ms=_ms())
+        result = {"cached": True, "so": so_path, "header": header_path}
+        _APPLIED[so_path] = result
+        return result
+
     # Debugging options: per-call cached=False, the process-wide runtime
     # toggle (disable_caching), or the CPPYY_KIT_NO_CACHE=1 env kill-switch all make
     # this behave like cppyy.cppdef: no .so read and no .so write. See
@@ -225,72 +243,107 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
         return {"cached": False, "reason": "no-decls", "so": None}
 
     so_path, header_path, meta_path = artifact_paths(
-        code, decls, name, include_paths, libraries, link_args, defines, std, directory)
+        code, decls, name, include_paths, libraries, link_args, defines, std, directory,
+        library_paths=library_paths)
 
     # Idempotent per process: a second call with the same code/decls must not
     # re-cppdef the declarations (a Cling redefinition error), regardless of whether
     # the first call was a hit or a miss.
-    if so_path in _APPLIED:
-        return _APPLIED[so_path]
+    with _SESSION_LOCK:
+        if so_path in _APPLIED:
+            return _APPLIED[so_path]
+        # Published entries are immutable. A warm read needs no writable lock
+        # beside the artifacts, so packages can ship them in read-only prefixes.
+        if _complete(so_path, header_path, meta_path):
+            try:
+                _load(so_path)
+            except Exception:
+                pass  # Recheck and recover while holding the build lock below.
+            else:
+                return _apply_loaded()
 
-    # --- cache hit ---------------------------------------------------------
-    if os.path.exists(so_path):
-        try:
-            _load(so_path)
-            cppyy.cppdef(decls)
-            trace.record("cppdef_cached", name=name, cached=True, so=so_path,
-                         duration_ms=_ms())
-            result = {"cached": True, "so": so_path, "header": header_path}
+        with file_lock(so_path + ".lock"):
+            if _complete(so_path, header_path, meta_path):
+                try:
+                    _load(so_path)
+                except Exception as exc:
+                    _compile._stderr("[cppyy_kit] cached .so %s failed to load (%s); rebuilding."
+                                     % (so_path, exc))
+                    os.unlink(so_path)
+                    _LOADED.discard(so_path)
+                else:
+                    return _apply_loaded()
+
+            # Define in Cling for this process, then build for later processes.
+            cppyy.cppdef(code)
+            try:
+                _build(code, decls, so_path, header_path, meta_path,
+                       include_paths, library_paths, libraries, link_args, defines, std, name)
+                trace.record("cppdef_cached", name=name, cached=False, reason="miss-built",
+                             so=so_path, duration_ms=_ms())
+                result = {"cached": False, "reason": "miss-built", "so": so_path, "header": header_path}
+            except (_compile.CompileError, OSError) as exc:
+                # Record the fallback: code is already defined in Cling.
+                _compile._stderr("[cppyy_kit] compile cache build failed for %s (%s); "
+                                 "running uncached this session." % (name or "cppdef", exc))
+                trace.record("cppdef_cached", name=name, cached=False, reason="build-failed",
+                             duration_ms=_ms())
+                result = {"cached": False, "reason": "build-failed", "so": None}
             _APPLIED[so_path] = result
             return result
-        except Exception as exc:  # corrupt / ABI-stale .so -> discard and rebuild
-            _compile._stderr("[cppyy_kit] cached .so %s failed to load (%s); rebuilding."
-                             % (so_path, exc))
-            for path in (so_path, header_path, meta_path):
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
-            _LOADED.discard(so_path)
 
-    # --- cache miss --------------------------------------------------------
-    # Make it work THIS run exactly like cppyy.cppdef, then build the .so so the
-    # next run is warm. (A ship-warm package build calls prebuild() instead, so
-    # even this run's users never pay the miss.)
-    cppyy.cppdef(code)
+
+def _complete(so_path, header_path, meta_path):
+    return all(os.path.isfile(path) for path in (so_path, header_path, meta_path))
+
+
+def _write_atomic(path, contents):
+    fd, tmp = tempfile.mkstemp(prefix=os.path.basename(path) + ".tmp.",
+                               dir=os.path.dirname(os.path.abspath(path)))
+    # Recreate with normal file permissions filtered through the caller's umask.
+    # Changing the process umask would race other threads.
+    os.close(fd)
+    os.unlink(tmp)
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
     try:
-        _build(code, decls, so_path, header_path, meta_path,
-               include_paths, library_paths, libraries, link_args, defines, std, name)
-        trace.record("cppdef_cached", name=name, cached=False, reason="miss-built",
-                     so=so_path, duration_ms=_ms())
-        result = {"cached": False, "reason": "miss-built", "so": so_path, "header": header_path}
-        _APPLIED[so_path] = result
-        return result
-    except _compile.CompileError as exc:
-        # The .so is an optimization; a failed build must not break the run (we
-        # already cppdef'd). Surface it once and carry on uncached.
-        _compile._stderr("[cppyy_kit] compile cache build failed for %s (%s); "
-                         "running uncached this session." % (name or "cppdef", exc))
-        trace.record("cppdef_cached", name=name, cached=False, reason="build-failed",
-                     duration_ms=_ms())
-        return {"cached": False, "reason": "build-failed", "so": None}
+        with os.fdopen(fd, "w") as fh:
+            fh.write(contents)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
 
 
 def _build(code, decls, so_path, header_path, meta_path, include_paths,
            library_paths, libraries, link_args, defines, std, name):
+    """Build and publish while the caller holds the artifact's file lock."""
     directory = os.path.dirname(so_path)
     os.makedirs(directory, exist_ok=True)
+    # An incomplete old entry must not become a hit if this rebuild is interrupted
+    # after publishing its header/metadata but before publishing the new library.
+    try:
+        os.unlink(so_path)
+    except FileNotFoundError:
+        pass
     src = so_path[:-3] + ".cpp"
-    with open(src, "w") as fh:
-        fh.write(code if code.endswith("\n") else code + "\n")
-    _compile.compile_shared(
-        src, so_path, include_paths=include_paths, library_paths=library_paths,
-        libraries=libraries, link_args=link_args, std=std, defines=defines)
-    with open(header_path, "w") as fh:
-        fh.write(decls if decls.endswith("\n") else decls + "\n")
-    with open(meta_path, "w") as fh:
-        json.dump({"name": name, "tag": _version_tag(), "so": os.path.basename(so_path),
-                   "libraries": list(libraries), "std": std}, fh, indent=2)
+    _write_atomic(src, code if code.endswith("\n") else code + "\n")
+    fd, staged_so = tempfile.mkstemp(prefix=os.path.basename(so_path) + ".build.",
+                                    dir=directory)
+    os.close(fd)
+    try:
+        _compile.compile_shared(
+            src, staged_so, include_paths=include_paths, library_paths=library_paths,
+            libraries=libraries, link_args=link_args, std=std, defines=defines)
+        _write_atomic(header_path, decls if decls.endswith("\n") else decls + "\n")
+        _write_atomic(meta_path, json.dumps(
+            {"name": name, "tag": _version_tag(), "so": os.path.basename(so_path),
+             "libraries": list(libraries), "library_paths": list(library_paths),
+             "std": std}, indent=2))
+        # Publish the library last: its existence signals a complete entry.
+        os.replace(staged_so, so_path)
+    finally:
+        if os.path.exists(staged_so):
+            os.unlink(staged_so)
 
 
 def prebuild(code, decls=None, **kwargs):
@@ -313,11 +366,14 @@ def prebuild(code, decls=None, **kwargs):
         lp += tuple(tc["link_paths"])
         la += tuple(tc["link_args"])
     so_path, header_path, meta_path = artifact_paths(
-        code, decls, kwargs.get("name"), inc, libs, la, defs, std, kwargs.get("directory"))
-    if os.path.exists(so_path):
+        code, decls, kwargs.get("name"), inc, libs, la, defs, std, kwargs.get("directory"),
+        library_paths=lp)
+    if _complete(so_path, header_path, meta_path):
         return so_path
-    _build(code, decls, so_path, header_path, meta_path, inc, lp, libs, la, defs, std,
-           kwargs.get("name"))
+    with file_lock(so_path + ".lock"):
+        if not _complete(so_path, header_path, meta_path):
+            _build(code, decls, so_path, header_path, meta_path, inc, lp, libs, la, defs, std,
+                   kwargs.get("name"))
     return so_path
 
 
@@ -350,6 +406,9 @@ def clear_cache(directory=None):
     if not os.path.isdir(directory):
         return 0
     for fn in os.listdir(directory):
+        # Locks retain their inode so concurrent users keep sharing one lock.
+        if fn.endswith(".lock"):
+            continue
         try:
             os.unlink(os.path.join(directory, fn))
             n += 1

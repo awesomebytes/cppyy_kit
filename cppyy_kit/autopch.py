@@ -14,7 +14,7 @@ automatic PCH use without extra configuration and regardless of import order:
     to this env's PCH if one is built (``cppyy_kit._autopch_boot.activate``). Cling
     reads the variable when it initialises, so the PCH is active whether or not the
     program imports cppyy before cppyy_kit. cppyy_kit self-installs that ``.pth`` on
-    first import; ``python -m cppyy_kit.autopch --uninstall`` removes it.
+    first native use; ``python -m cppyy_kit.autopch --uninstall`` removes it.
   * The first time a kit parses headers that are not in the PCH, it uses JIT.
     A PCH build starts in the background at interpreter exit, so the next run
     loads the PCH. When the build completes, the cache removes older artifacts
@@ -287,7 +287,12 @@ def register_pch_headers(headers, include_paths=(), force_symbols=None, std="c++
         schedule a one-time background PCH build at interpreter exit, so the NEXT run
         loads it. This run continues on the JIT path.
 
-    Never blocks and never raises into the caller."""
+    Initializes native support before recording headers. Recording never waits
+    for a PCH build, and errors scheduling the optimization do not escape."""
+    if _disabled or _user_override:
+        return
+    from . import _ensure_runtime
+    _ensure_runtime()
     if _disabled or _user_override:
         return
     headers = list(headers)

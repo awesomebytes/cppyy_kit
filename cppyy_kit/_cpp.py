@@ -388,6 +388,8 @@ class _CppFunc:
         with self._lock:
             if key in self._impls:
                 return self._impls[key]
+            from . import _ensure_runtime
+            _ensure_runtime()
             import cppyy
             from . import cache
             src, decls, cpp_name = plan["source"], plan["decls"], plan["cpp_name"]
