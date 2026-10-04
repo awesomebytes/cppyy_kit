@@ -12,6 +12,7 @@ import time
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 import cppyy_kit
 from cppyy_kit import cpp
@@ -73,7 +74,7 @@ def test_verbatim_scalar_type_and_double_return():
 
 def test_array_pointer_plus_size():
     @cpp
-    def sum_sq(data: cpp.arr("float")) -> float:
+    def sum_sq(data: NDArray[np.float32]) -> float:
         """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"""
     arr = np.array([1, 2, 3, 4], dtype=np.float32)
     assert abs(float(sum_sq(arr)) - 30.0) < 1e-4
@@ -146,7 +147,7 @@ def test_nogil_void_mutates_in_place():
 
 def test_nogil_array_pointer_plus_size():
     @cpp(nogil=True)
-    def sum_sq_ng(data: cpp.arr("double")) -> float:  # noqa: F821
+    def sum_sq_ng(data: NDArray[np.float64]) -> float:
         """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i]*data[i]; return s;"""
     arr = np.array([1, 2, 3, 4], dtype=np.float64)
     assert abs(float(sum_sq_ng(arr)) - 30.0) < 1e-9

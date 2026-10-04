@@ -67,3 +67,4 @@ def test_cppyy_kit_reexports_captured():
     for sym in ("def cppdef_cached(", "def require(", "def cpp(", "def nogil(",
                 "def callback(", "class HandleRegistry:"):
         assert sym in text, "missing %r" % sym
+    assert "ConstNDArray" not in text

@@ -667,11 +667,11 @@ packages do not support it; use the source checkout until 0.4.0 is published
 
 ```python
 import numpy as np
-from numpy.typing import NDArray
+from cppyy_kit.numpy_types import NDArray
 from cppyy_kit import cpp
 
 @cpp
-def sum_sq(data: NDArray[np.float32]) -> float:
+def sum_sq(data: NDArray[np.float64]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -680,9 +680,13 @@ def sum_sq(data: NDArray[np.float32]) -> float:
     return s;
     """
 
-sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
+sum_sq(np.array([1, 2, 3], dtype=np.float64))  # 14.0
 ```
-- **Input annotation forms.** For arrays, prefer `numpy.typing.NDArray[T]`; a
+- **Input annotation forms.** `cppyy_kit.numpy_types` groups NumPy typing names:
+  `NDArray`, `ArrayLike`, `DTypeLike`, `ConstNDArray`, and supported numeric
+  scalar dtype names. For explicit array dtypes in `@cpp`, use `NDArray[T]` for
+  writable arrays or `ConstNDArray[T]` for read-only pointers. `ArrayLike` and
+  `DTypeLike` are general NumPy hints, not marshaled `@cpp` parameter types. A
   dtype-specific `np.ndarray` annotation works too. Numeric inputs may also be
   annotated as `list[T]`/`typing.List[T]`, homogeneous `tuple[T, ...]`, or
   `Sequence[T]` from `collections.abc`/`typing`. An omitted input annotation or
@@ -701,22 +705,47 @@ sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
   `@cpp(nogil=True)`. C++ mutations to that temporary buffer are not copied back
   to the Python list or tuple. Typed empty sequences work; an untyped empty,
   heterogeneous or nested sequence, and an unsupported dtype raise clear errors.
-- **Array layout and ownership.** A typed `NDArray` borrows existing storage
+- **Array layout and ownership.** Typed `NDArray` inputs borrow existing storage
   without a copy only when it is native-endian, aligned, and C-contiguous.
   Multidimensional C-contiguous arrays are accepted and exposed as one flat typed
   pointer plus the total element count; shape and strides are not passed to C++.
-  Dtype or layout mismatches and read-only arrays passed to mutable arguments
-  raise errors; arrays are never silently copied to satisfy the annotation. For
-  lower-level pointer work, the existing `cpp.arr("T")` pointer-and-size notation
-  remains available; `std::string` arguments remain supported as well.
+  Dtype or layout mismatches raise errors; arrays are never silently copied to
+  satisfy the annotation. `NDArray[T]` emits a mutable pointer and requires
+  writable storage.
+  `std::string` arguments remain supported as well.
+- **Read-only array input.** For a kernel that only reads its buffer, import
+  `ConstNDArray` from `cppyy_kit.numpy_types` and annotate the array as
+  `ConstNDArray[T]`. It emits `const T*`, accepts read-only or writable arrays,
+  and enforces the same dtype and layout checks without copying:
+
+  ```python
+  import numpy as np
+  from cppyy_kit import cpp
+  from cppyy_kit.numpy_types import ConstNDArray
+
+  @cpp
+  def sum_readonly(data: ConstNDArray[np.float64]) -> float:
+      """
+      double s = 0;
+      for (std::size_t i = 0; i < data_size; ++i) {
+          s += data[i] * data[i];
+      }
+      return s;
+      """
+
+  values = np.array([1, 2, 3], dtype=np.float64)
+  values.flags.writeable = False
+  print(sum_readonly(values))  # 14.0
+  ```
 - **Specialization and returns.** A concrete argument specialization is compiled
   and cached once, then reused across calls, array lengths, and later sessions.
   Keep a return annotation explicit when returning a value; omitting it returns
   `void`.
 - **The low-level pointer form remains available.** A verbatim `"T*"` annotation
   takes a NumPy array address or an integer address and hands the body a typed
-  pointer (the `reinterpret_cast` is injected). Use `cpp.arr("T")` when the
-  generated body should also receive `name_size`.
+  pointer (the `reinterpret_cast` is injected). This advanced form does not
+  validate a NumPy buffer's dtype or layout. Add a separate length parameter
+  when the C++ body needs the element count.
 - **Calls follow Python binding rules.** Defaults and keyword arguments work;
   missing, extra, duplicate, or unexpected arguments raise `TypeError` before the
   C++ kernel is compiled. Keyword-only and variadic parameters are rejected when
