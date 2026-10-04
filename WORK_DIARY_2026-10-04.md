@@ -8,3 +8,18 @@
 - Proposed `Annotated[NDArray[T], "const"]` for read-only numeric inputs. This would generate `const T*`, retain dtype and layout checks, and accept both writable and read-only storage. The proposal is not implemented.
 - The untracked RosCon rehearsal still uses published 0.3.x packages. Its environment and executable examples need updating together before it uses the new annotation API. No RosCon files were included in this change.
 - Changes are on the local `feat/array-annotations` branch. No push or release publication was made.
+
+## Const array annotations and example precision
+
+- Added the public `ConstNDArray[T]` alias with a lazy package export. It uses NumPy's array typing, generates `const T*`, and accepts writable or read-only buffers. Mutable `NDArray[T]` continues to require writable storage.
+- Retained dtype, native byte order, alignment, and C-contiguous layout checks. Constness remains part of inferred specializations and cache keys. Builtin scalar decoration remains NumPy-free.
+- Updated the generated public typing stub and stub generator to preserve the generic alias as an explicit re-export. Installed-package proofs now exercise a read-only float64 input through the public alias.
+- Changed the six introductory sum-of-squares examples to `ConstNDArray[np.float64]`. Float32 remains supported and tested; its smaller storage is useful for some workloads, but this example has no measured reason to narrow ordinary Python floating-point values.
+- Validation: 105 focused tests passed in 5.58 seconds; the full default suite passed with 206 passed and 135 optional skips in 9.81 seconds. Lint and strict docs passed, and the exact README kernel printed `14.0`. After the explicit stub re-export adjustment, the three stub tests passed in 0.30 seconds and targeted lint passed.
+- Built the 0.4.0 core packages locally in about 57 seconds. Fresh installed-environment proofs passed in about 5 seconds, including read-only numeric input and same-handle serialized publication.
+
+## Ideas for using cppyy_kit with AI coding tools
+
+- Added `CPPYY_KIT_WITH_AI.md` as a separate review draft. It covers alternatives, fewer manually maintained files, ordinary C++ and existing libraries, Python workflow tests, profiling, conversion and compilation costs, extraction into a native project, and suitable demonstration ideas.
+- Checked alternative-tool descriptions against their official documentation. The author's priority for functional and integration tests is labelled directly, with focused boundary unit tests retained as complementary checks.
+- Reviewed the draft's claims and local links. It stays outside the published site until the user reviews it alongside the talk.

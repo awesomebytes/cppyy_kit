@@ -106,7 +106,7 @@ from pathlib import Path
 import sys
 import numpy as np
 from numpy.typing import NDArray
-from cppyy_kit import cpp
+from cppyy_kit import ConstNDArray, cpp
 
 installed_package = Path(cppyy_kit.__file__).resolve()
 assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_package
@@ -115,6 +115,13 @@ assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_p
 def sum_sq(data: NDArray[np.float32]) -> float:
     """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
 assert sum_sq(np.array([1, 2, 3], dtype=np.float32)) == 14.0
+
+@cpp(cached=False)
+def readonly_sum_sq(data: ConstNDArray[np.float64]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
+readonly_data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+readonly_data.setflags(write=False)
+assert readonly_sum_sq(readonly_data) == 14.0
 
 @cpp(cached=False)
 def total(values: list[float]) -> float:
@@ -131,7 +138,7 @@ for dtype, size in ((np.float32, 4), (np.float64, 8)):
     values = np.array([1.25, 2.75], dtype=dtype)
     assert inferred_total(values) == 4.0
     assert inferred_size(values) == size
-print("  installed numeric @cpp API OK (NDArray, typed sequence, inferred float32/64)")'
+print("  installed numeric @cpp API OK (NDArray, ConstNDArray, typed sequence, inferred float32/64)")'
 
 BRINGUP='from rclcpp_kit.bringup_rclcpp import bringup_rclcpp
 r = bringup_rclcpp()

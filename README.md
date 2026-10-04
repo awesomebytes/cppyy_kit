@@ -74,11 +74,10 @@ Save this as `kernel.py`:
 
 ```python
 import numpy as np
-from numpy.typing import NDArray
-from cppyy_kit import cpp
+from cppyy_kit import ConstNDArray, cpp
 
 @cpp
-def sum_sq(data: NDArray[np.float32]) -> float:
+def sum_sq(data: ConstNDArray[np.float64]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -87,12 +86,12 @@ def sum_sq(data: NDArray[np.float32]) -> float:
     return s;
     """
 
-print(sum_sq(np.array([1, 2, 3], dtype=np.float32)))  # 14.0
+print(sum_sq(np.array([1, 2, 3], dtype=np.float64)))  # 14.0
 ```
 
 Run `pixi run python kernel.py`. It prints `14.0`. The annotation selects a C++
-`float` pointer and element count. The function is compiled on first use; later
-runs can load it from the compile cache.
+`const double*` pointer and element count. The function is compiled on first use;
+later runs can load it from the compile cache.
 
 For independent work in Python threads, `@cpp(nogil=True)` releases Python's
 interpreter lock during the C++ function. See the [parallel example](examples/parallel_demo/parallel_demo.py).

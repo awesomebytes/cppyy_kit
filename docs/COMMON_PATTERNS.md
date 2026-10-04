@@ -667,11 +667,10 @@ packages do not support it; use the source checkout until 0.4.0 is published
 
 ```python
 import numpy as np
-from numpy.typing import NDArray
-from cppyy_kit import cpp
+from cppyy_kit import ConstNDArray, cpp
 
 @cpp
-def sum_sq(data: NDArray[np.float32]) -> float:
+def sum_sq(data: ConstNDArray[np.float64]) -> float:
     """
     double s = 0;
     for (std::size_t i = 0; i < data_size; ++i) {
@@ -680,10 +679,11 @@ def sum_sq(data: NDArray[np.float32]) -> float:
     return s;
     """
 
-sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
+sum_sq(np.array([1, 2, 3], dtype=np.float64))  # 14.0
 ```
-- **Input annotation forms.** For arrays, prefer `numpy.typing.NDArray[T]`; a
-  dtype-specific `np.ndarray` annotation works too. Numeric inputs may also be
+- **Input annotation forms.** For writable arrays, use `numpy.typing.NDArray[T]`;
+  use `ConstNDArray[T]` when C++ should receive a const pointer. A dtype-specific
+  `np.ndarray` annotation works too. Numeric inputs may also be
   annotated as `list[T]`/`typing.List[T]`, homogeneous `tuple[T, ...]`, or
   `Sequence[T]` from `collections.abc`/`typing`. An omitted input annotation or
   bare `np.ndarray` infers a supported numeric type from the value. Use an
@@ -701,12 +701,15 @@ sum_sq(np.array([1, 2, 3], dtype=np.float32))  # 14.0
   `@cpp(nogil=True)`. C++ mutations to that temporary buffer are not copied back
   to the Python list or tuple. Typed empty sequences work; an untyped empty,
   heterogeneous or nested sequence, and an unsupported dtype raise clear errors.
-- **Array layout and ownership.** A typed `NDArray` borrows existing storage
-  without a copy only when it is native-endian, aligned, and C-contiguous.
+- **Array layout and ownership.** Typed `NDArray` and `ConstNDArray` inputs borrow
+  existing storage without a copy only when it is native-endian, aligned, and
+  C-contiguous.
   Multidimensional C-contiguous arrays are accepted and exposed as one flat typed
   pointer plus the total element count; shape and strides are not passed to C++.
-  Dtype or layout mismatches and read-only arrays passed to mutable arguments
-  raise errors; arrays are never silently copied to satisfy the annotation.
+  Dtype or layout mismatches raise errors; arrays are never silently copied to
+  satisfy the annotation. `NDArray[T]` emits a mutable pointer and requires
+  writable storage. `ConstNDArray[T]` emits `const T*` and accepts read-only or
+  writable storage after the same dtype and layout checks.
   `std::string` arguments remain supported as well.
 - **Specialization and returns.** A concrete argument specialization is compiled
   and cached once, then reused across calls, array lengths, and later sessions.

@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 import pytest
 
-from cppyy_kit import cache, cpp
+from cppyy_kit import ConstNDArray, cache, cpp
 
 
 def _count_compiles(monkeypatch):
@@ -477,3 +477,146 @@ def test_cross_wrapper_cached_false_then_true_persists_for_next_process(tmp_path
                            timeout=90)
     assert child.returncode == 0, child.stderr
     assert len(list(tmp_path.rglob("*.so"))) == 1
+
+
+def test_const_ndarray_borrows_readonly_and_writable_buffers():
+    @cpp(cached=False)
+    def total(values: ConstNDArray[np.float32]) -> float:
+        """double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;"""
+
+    values = np.array([1, 2, 3], dtype=np.float32)
+    assert float(total(values)) == 6.0
+    readonly = values.copy()
+    readonly.flags.writeable = False
+    assert float(total(readonly)) == 6.0
+    plan = next(iter(total._plans.values()))
+    assert "const float* values" in plan["source"]
+
+
+def test_const_ndarray_bare_alias_infers_dtype():
+    @cpp(cached=False)
+    def element_size(values: ConstNDArray) -> int:
+        """return sizeof(values[0]);"""
+
+    values = np.ones(2, dtype=np.float32)
+    values.flags.writeable = False
+    assert int(element_size(values)) == 4
+    plan = next(iter(element_size._plans.values()))
+    assert "const float* values" in plan["source"]
+
+
+def test_const_ndarray_future_annotation_resolves():
+    namespace = {"cpp": cpp, "ConstNDArray": ConstNDArray, "np": np}
+    exec("from __future__ import annotations\n"
+         "@cpp(cached=False)\n"
+         "def element_size(values: ConstNDArray[np.float32]) -> int:\n"
+         "    'return sizeof(values[0]);'\n", namespace)
+    values = np.ones(2, dtype=np.float32)
+    values.flags.writeable = False
+    assert int(namespace["element_size"](values)) == 4
+
+
+def test_const_ndarray_keeps_dtype_and_layout_validation():
+    @cpp(cached=False)
+    def total(values: ConstNDArray[np.float32]) -> float:
+        """return 0;"""
+
+    with pytest.raises(TypeError):
+        total(np.ones(2, dtype=np.float64))
+    with pytest.raises(TypeError):
+        total(np.ones(4, dtype=np.float32)[::2])
+    with pytest.raises(TypeError):
+        total(np.ones(2, dtype=np.float16))
+    assert not total._impls
+
+
+def test_mutable_ndarray_still_rejects_readonly():
+    @cpp(cached=False)
+    def total(values: NDArray[np.float32]) -> float:
+        """return 0;"""
+
+    values = np.ones(2, dtype=np.float32)
+    values.flags.writeable = False
+    with pytest.raises(TypeError, match="read-only"):
+        total(values)
+    _assert_no_specialization(total)
+
+
+def test_const_ndarray_pointer_cannot_be_written_by_cpp(tmp_path):
+    from cppyy_kit import _compile
+
+    @cpp(cached=False)
+    def invalid(values: ConstNDArray[np.float32]) -> None:
+        """values[0] = 1;"""
+
+    source = invalid._plan["source"]
+    compiler = _compile.compiler()
+    result = subprocess.run(
+        [compiler, "-std=c++17", "-fsyntax-only", "-x", "c++", "-"],
+        input=source, text=True, capture_output=True, timeout=30)
+    assert result.returncode != 0
+    assert "const float* values" in source
+
+
+def test_const_ndarray_has_distinct_mutable_specialization():
+    @cpp(cached=False, name="const_mutable_split_%d" % os.getpid())
+    def read_only(values: ConstNDArray[np.float32]) -> float:
+        """return values[0];"""
+
+    @cpp(cached=False, name="const_mutable_split_%d" % os.getpid())
+    def mutable(values: NDArray[np.float32]) -> float:
+        """return values[0];"""
+
+    values = np.array([2.5], dtype=np.float32)
+    assert float(read_only(values)) == 2.5
+    assert float(mutable(values)) == 2.5
+    const_plan = next(iter(read_only._plans.values()))
+    mutable_plan = next(iter(mutable._plans.values()))
+    assert const_plan["cpp_name"] != mutable_plan["cpp_name"]
+    assert "const float* values" in const_plan["source"]
+    assert "float* values" in mutable_plan["source"]
+
+
+def test_const_ndarray_nogil_warm_cache(tmp_path):
+    env = os.environ.copy()
+    env["CPPYY_KIT_CACHE_DIR"] = str(tmp_path)
+    script = (
+        "import numpy as np\n"
+        "from cppyy_kit import ConstNDArray, cpp\n"
+        "@cpp(name='const_ndarray_warm', cached=True, nogil=True)\n"
+        "def total(values: ConstNDArray[np.float64]) -> float:\n"
+        "    'double s = 0; for (std::size_t i = 0; i < values_size; ++i) s += values[i]; return s;'\n"
+        "values = np.array([1., 2., 3.], dtype=np.float64)\n"
+        "values.flags.writeable = False\n"
+        "assert float(total(values)) == 6.0\n"
+    )
+    cold = subprocess.run([sys.executable, "-c", script], env=env, text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90)
+    assert cold.returncode == 0, cold.stderr
+    assert len(list(tmp_path.rglob("*.so"))) == 1
+    warm_script = (
+        "from cppyy_kit import cache\n"
+        "def fail_build(*args, **kwargs): raise AssertionError('cold build')\n"
+        "cache._build = fail_build\n" + script
+    )
+    warm = subprocess.run([sys.executable, "-c", warm_script], env=env, text=True,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90)
+    assert warm.returncode == 0, warm.stderr
+
+
+def test_const_ndarray_package_export_is_lazy():
+    script = (
+        "import sys\n"
+        "from cppyy_kit import cpp\n"
+        "assert 'numpy' not in sys.modules\n"
+        "@cpp(cached=False)\n"
+        "def add(a: int, b: float) -> float:\n"
+        "    'return a + b;'\n"
+        "assert 'numpy' not in sys.modules\n"
+        "from cppyy_kit import ConstNDArray\n"
+        "assert 'numpy' in sys.modules\n"
+    )
+    result = subprocess.run([sys.executable, "-c", script], text=True,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            timeout=30)
+    assert result.returncode == 0, result.stderr

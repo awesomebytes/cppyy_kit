@@ -57,7 +57,7 @@ import time
 import numpy as np
 from numpy.typing import NDArray
 import cppyy_kit
-from cppyy_kit import cpp
+from cppyy_kit import ConstNDArray, cpp
 import rclpy
 from rcl_interfaces.msg import ParameterEvent
 from rclpy.context import Context
@@ -87,6 +87,13 @@ assert installed_package.is_relative_to(Path(sys.prefix).resolve()), installed_p
 def sum_sq(data: NDArray[np.float32]) -> float:
     """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
 assert sum_sq(np.array([1, 2, 3], dtype=np.float32)) == 14.0
+
+@cpp(cached=False)
+def readonly_sum_sq(data: ConstNDArray[np.float64]) -> float:
+    """double s = 0; for (std::size_t i = 0; i < data_size; ++i) s += data[i] * data[i]; return s;"""
+readonly_data = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+readonly_data.setflags(write=False)
+assert readonly_sum_sq(readonly_data) == 14.0
 
 @cpp(cached=False)
 def total(values: list[float]) -> float:
