@@ -6,12 +6,9 @@ passing callbacks and arrays, and keeping objects alive.
 
 ## Write a C++ function
 
-The numeric annotations below are new in `cppyy-kit` 0.4.0. Published 0.3.x
-packages do not support them. Before 0.4.1 is published, use a clone of this
-repository: save the example below as `kernel.py` in the checkout root, then
-run `pixi run python kernel.py` from that root. For standalone use after
-publication, follow [Getting Started](../getting-started.md) and install
-`cppyy-kit>=0.4.1` with `pixi add`.
+Install `cppyy-kit>=0.4.1` and NumPy in a Pixi project using the `awesomebytes`
+and `conda-forge` channels. See [Getting Started](../getting-started.md) for setup.
+Save this example as `kernel.py`, then run `pixi run python kernel.py`.
 
 ```python
 import numpy as np

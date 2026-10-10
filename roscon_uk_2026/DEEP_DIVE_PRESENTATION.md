@@ -573,9 +573,10 @@ asking what the robot data means and what the program should do next.
 
 The original five-stage agents took roughly 42 to 220 seconds when successful,
 and setup failures remain in the evidence. Guide discovery and environment
-diagnostics are now implemented in the 0.4.0 source. We have also evaluated
-the new-library recipe. Publication, fresh evaluation of the migrated rehearsal
-and repeated runs remain on [the plan](PLAN.md).
+diagnostics are included in published 0.4.1. The migrated source rehearsal and
+new-library recipe passed their documented correctness checks. Fresh agent
+trials, repeated measurements and the full talk-host rehearsal remain on
+[the plan](PLAN.md).
 
 The same tools also help around existing C++ software: Python can validate
 configuration, test resets and chunking, compare trial settings and generate
@@ -621,8 +622,9 @@ activation, including its CXX setting. ROS execution needs local DDS communicati
 The guidance command prints text or a path for the user to give the agent.
 It installs no skills or agent configuration. `python -m cppyy_kit guide`
 reads packaged task and kit resources without native startup. These commands
-are new in 0.4.0; use this checkout until 0.4.1 is published. Installed
-artifact checks are recorded in the [integration report](../EXPERIMENT_INTEGRATION_2026-10-04.md).
+are included in published 0.4.1. This rehearsal deliberately uses checkout
+source. Public-channel verification and a standalone installed-package run
+are recorded in the [release record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md).
 Environment diagnostics locate the compiler, runtime versions and development
 headers; they do not load Cling, check binary compatibility or prove local DDS
 communication. Rehearse native import and ROS playback separately. See

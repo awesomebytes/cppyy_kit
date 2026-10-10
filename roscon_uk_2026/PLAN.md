@@ -84,11 +84,11 @@ ROS playback, controller-manager execution with mock hardware and headless
 webcam tracking. These results remain historical evidence, separate from the
 migrated current-source rehearsal.
 
-Since that evaluation, 0.4.0 source implements task and kit guide resources,
-the explicit discovery command and environment diagnostics. Actual local
-Conda artifacts passed guide-resource and installed core/rclcpp checks in the
-[integration report](../EXPERIMENT_INTEGRATION_2026-10-04.md). Publication is a
-separate release step. Diagnostics locate the compiler, runtime and development
+Published 0.4.1 includes task and kit guide resources, the explicit discovery
+command and environment diagnostics. Public package bytes and a standalone
+NumPy/BehaviorTree.CPP project are verified in the
+[release record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md).
+Diagnostics locate the compiler, runtime and development
 headers; native initialization, binary compatibility and DDS communication
 still require execution checks.
 
@@ -111,25 +111,24 @@ The [AI entry point](../CPPYY_KIT_WITH_AI.md) and
 follow-up direction: Python configuration, testing and experimentation around
 existing C++ software.
 
+The [current source rehearsal](CURRENT_REHEARSAL.md) passed six migration
+checks, 35 acceptance checks, recorded-data parity for 2,735 observations,
+actual ROS playback, mock controller execution and 64 independent nanoflann
+comparisons. Publication is complete. These checks remain distinct from fresh
+agent evaluation and the physical-camera/full talk rehearsal.
+
 The next work, in order:
 
-1. Validate the migrated NumPy annotations, current-source environment and
-   rehearsal runner. Run the synthetic checks, actual-recording comparison,
-   ROS playback, mock controller and headless camera checks separately. Record
-   any unavailable hardware or middleware check as an open gate.
-2. Run environment diagnostics and verify Pixi activation, compiler selection,
+1. Run environment diagnostics and verify Pixi activation, compiler selection,
    writable native cache and kit imports on the talk host. Check DDS with actual
    playback. Preserve failure evidence rather than assuming diagnostics prove
    the runtime works.
-3. Publish and verify 0.4.1 artifacts through the authorized release workflow.
-   Check the public package install in a fresh Pixi project before describing
-   the new guide commands as published. The source rehearsal remains explicit.
-4. Evaluate the corrected task-first guidance with fresh sessions. Repeat each
+2. Evaluate the corrected task-first guidance with fresh sessions. Repeat each
    prompt three times and run changed-requirement cases. Treat speed
    and correctness as separate criteria. Keep unsuccessful trials.
-5. Rehearse webcam mouse interaction and the whole presentation on the talk host.
+3. Rehearse webcam mouse interaction and the whole presentation on the talk host.
    Prepare saved solutions and recorded runs for time-limited live attempts.
-6. Rehearse the prepared nanoflann segment with its separate environment. Apply
+4. Rehearse the prepared nanoflann segment with its separate environment. Apply
    the index to verified recorded positions only as a later extension. Add
    calibrated FK and recorded-image analysis when their input/frame contracts
    are verified. Keep the five original milestone evaluations identifiable.

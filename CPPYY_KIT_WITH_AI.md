@@ -15,27 +15,27 @@ and a check on the expected result.
 
 ### Set up the current workflow
 
-The numeric annotations and `guide` commands below are new in **0.4.0**. The
-[integration record](https://github.com/awesomebytes/cppyy_kit/blob/main/EXPERIMENT_INTEGRATION_2026-10-04.md#validation-and-upstream-status)
-records local 0.4.0 artifacts, with channel publication still a separate step.
-The 0.4.0 upload stopped before publication;
-[0.4.1 is pending the release gates](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md).
-Published 0.3.x packages do not provide these interfaces. Until 0.4.1 publication,
-use this source checkout and its locked Pixi environment.
-
-**Repository checkout commands:** run from the `cppyy_kit` repository root.
+Install [Pixi](https://pixi.sh/latest/installation/), then create a project with
+the published **0.4.1** package and NumPy:
 
 ```bash
-pixi install --locked
+pixi init cppyy-example -c https://prefix.dev/awesomebytes -c conda-forge
+cd cppyy-example
+pixi add "cppyy-kit>=0.4.1" numpy
 pixi run python -m cppyy_kit guide
 pixi run python -m cppyy_kit status --environment
 ```
 
-The first command installs the repository environment. `guide` lists the task
-topics and installed kit names. `status --environment` reports the selected
-compiler, runtime versions, development headers, and `libcppyy`; it does not
-load Cling or prove binary compatibility. Keep compilation and execution inside
-Pixi so the selected compiler and libraries belong to the same environment.
+The base package is ROS-free and supports Linux x86_64 and ARM64 with Python
+3.12. Native library availability varies by kit. Pixi installs cppyy and the selected C++
+toolchain. The [release record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md) documents public-channel byte
+verification and a fresh installed-package run. Published 0.3.x packages do not
+provide the numeric annotations or guide commands used here.
+
+`guide` lists task topics and supported kit/package names. `status --environment` reports
+the compiler, runtime versions, development headers and `libcppyy`. These commands
+do not load Cling or prove binary compatibility. Keep compilation and execution
+inside Pixi so the compiler and libraries belong to the same environment.
 
 Read the relevant instructions before asking an agent to edit code:
 
@@ -43,22 +43,23 @@ Read the relevant instructions before asking an agent to edit code:
 pixi run python -m cppyy_kit guide accelerate
 pixi run python -m cppyy_kit guide bring-library
 pixi run python -m cppyy_kit guide existing-cpp
-pixi run -e ompl python -m cppyy_kit guide ompl_kit api
 ```
 
-These commands print documentation without loading the native library. After
-0.4.1 is published, the same commands can read the packaged guides in a
-standalone environment. Install the required kit there first. See
-[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/) for installed-package setup and
-[guide discovery](docs/GUIDES.md) for the command reference. Repository demos
-and their feature environments require this checkout.
+Kit API guides require the corresponding package. With `ros-jazzy-ompl-kit`
+installed, `pixi run python -m cppyy_kit guide ompl_kit api` prints its API guide.
+See [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/)
+for kit setup and [guide discovery](docs/GUIDES.md) for the command reference.
+
+Repository demos require a clone of this repository. From its root, use
+`pixi install --locked` and the documented feature environment. These checkout
+commands are separate from the installed-package project above.
 
 ### Give the agent a concrete request
 
 For a Python operation, replace the paths and workload in this request:
 
 ```text
-Read `pixi run python -m cppyy_kit guide accelerate`. Work in this checkout.
+Read `pixi run python -m cppyy_kit guide accelerate`. Work in this project.
 Profile my pipeline.py on recording.npz using Pixi. Keep its public Python API
 and outputs. Run test_pipeline.py before editing. Move one measured operation
 to C++ using cppyy_kit, then run the same tests. Report the changed operation,
@@ -77,7 +78,7 @@ run, rather than assuming generated structs match the native API.
 
 ### Accelerate an array operation
 
-Save this as `kernel.py` in the repository root:
+Save this as `kernel.py` in the project directory:
 
 ```python
 import numpy as np
@@ -113,7 +114,14 @@ thread-safe native work are still required.
 
 ### Call an existing library
 
-Save this as `tree.py` in the repository root:
+Add BehaviorTree.CPP to the project:
+
+```bash
+pixi workspace channel add robostack-jazzy
+pixi add ros-jazzy-bt-kit
+```
+
+Save this as `tree.py` in the project directory:
 
 ```python
 import bt_kit
@@ -128,7 +136,7 @@ tree = factory.create_tree_from_text("""
 print(tree.tickWhileRunning() == bt.NodeStatus.SUCCESS)
 ```
 
-Run `pixi run -e bt python tree.py`. It prints `True`. BehaviorTree.CPP owns
+Run `pixi run python tree.py`. It prints `True`. BehaviorTree.CPP owns
 and ticks the tree; Python configures and calls the engine. There is no separate
 per-method Python binding file in this example. See [bt_kit](bt_kit/WHY.md) for
 Python actions and conditions, or the [OMPL callback tutorial](docs/tutorials/ompl_callbacks.md)
@@ -142,7 +150,7 @@ dependencies and a defined ownership contract.
 
 ### Configure and test an existing C++ component
 
-Run the included smoother from the repository root:
+**Repository checkout required:** run the included smoother from the repository root:
 
 ```bash
 pixi run python examples/native_component/component.py
@@ -180,7 +188,7 @@ acceptance checks, agent attempts, and original environment conditions.
 | ROS replay callback | 2.835 ms | 0.497 ms | Median callback execution |
 
 These are historical measurements from the recorded 0.3.0 environment. They
-are not new 0.4.0 benchmarks. The query excludes MCAP loading and decoding;
+are not benchmarks of 0.4.1. The query excludes MCAP loading and decoding;
 the callback timing excludes transport and complete end-to-end delay. Failed
 agent attempts and environment repairs remain part of the evidence. Fresh-agent
 completion is useful evidence for that scaffold, not a general reliability rate.

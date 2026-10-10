@@ -3,14 +3,10 @@
 Run an existing C++ library and an inline C++ function from Python. The two
 examples below use one Pixi environment.
 
-The numeric `@cpp` annotations below are new in `cppyy-kit` 0.4.0. Published
-0.3.x packages do not support them. Before 0.4.1 is published, use a clone of
-this repository: first save the tree and kernel examples below as `tree.py` and
-`kernel.py` in the checkout root, then run `pixi run -e bt python tree.py` and
-`pixi run python kernel.py` from that root. See
-[Run repository demos or develop the kits](#run-repository-demos-or-develop-the-kits)
-for checkout setup. After publication, create a standalone project and add
-`cppyy-kit>=0.4.1` with `pixi add`.
+The numeric annotations and packaged task guides require `cppyy-kit` 0.4.1
+or later, available from the `awesomebytes` channel. The examples below run in
+a standalone project. See [Run repository demos or develop the kits](#run-repository-demos-or-develop-the-kits)
+for checkout setup.
 
 ## Set up the environment
 
@@ -143,7 +139,7 @@ pixi run lint
 
 ## Read task and library guides
 
-The current checkout and forthcoming 0.4.1 packages provide guides for Python acceleration,
+Published 0.4.1 packages and the current checkout provide guides for Python acceleration,
 loading a new C++ library and working with an existing compiled component:
 
 ```bash

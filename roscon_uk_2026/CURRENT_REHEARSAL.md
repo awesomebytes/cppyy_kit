@@ -5,8 +5,8 @@ The recorded checks used suite 0.4.0 source at `e792866`. The rehearsal activate
 source through Pixi
 `PYTHONPATH`. It installs native dependencies and compiler tooling, without an
 installed `cppyy-kit` or domain-kit package. It does not demonstrate a published
-0.4.1 installation. The pending 0.4.1 release changes packaging metadata and
-version-bound proof helpers; see the [release incident record](../RELEASE_0.4.1_2026-10-10.md).
+0.4.1 installation. The separate [release record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md) documents
+public-channel verification and a standalone installed-package proof.
 
 From `roscon_uk_2026/`:
 

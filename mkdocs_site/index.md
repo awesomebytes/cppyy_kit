@@ -17,14 +17,10 @@ and keeping objects alive.
 
 ## Try both examples
 
-The numeric `@cpp` annotations below are new in `cppyy-kit` 0.4.0. Published
-0.3.x packages do not support them. Before 0.4.1 is published, use a clone of
-this repository: first save the tree and kernel examples below as `tree.py` and
-`kernel.py` in the checkout root, then run `pixi run -e bt python tree.py` and
-`pixi run python kernel.py` from that root. See the
-[source-checkout instructions](getting-started.md#run-repository-demos-or-develop-the-kits).
-After publication, create a standalone environment with
-`pixi add "cppyy-kit>=0.4.1" ros-jazzy-bt-kit numpy`.
+The numeric annotations and packaged task guides require `cppyy-kit` 0.4.1
+or later. Version 0.4.1 is published on the `awesomebytes` channel; its
+[release record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md) includes exact public-channel verification
+and fresh installed-package examples.
 
 Install [Pixi](https://pixi.sh/latest/installation/), then create an environment
 for the two examples below:
@@ -140,7 +136,7 @@ pixi run python -m cppyy_kit guide accelerate
 pixi run python -m cppyy_kit guide ompl_kit api
 ```
 
-These commands use the current checkout or forthcoming 0.4.1 packages. See
+These commands are included in published 0.4.1 packages. See
 [task guides and environment checks](docs/GUIDES.md).
 
 - [Using callbacks, arrays, and C++ objects](docs/COMMON_PATTERNS.md).

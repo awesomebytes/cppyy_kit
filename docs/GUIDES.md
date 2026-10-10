@@ -24,8 +24,10 @@ The command lists kit import names and their Pixi package names. A missing kit
 produces an installation message. Printing a guide does not import its C++
 library. The packaged references come from the same documents as this website.
 
-These commands were added in the 0.4.0 source API. Until 0.4.1 is published, run them from
-the [source checkout](https://awesomebytes.github.io/cppyy_kit/getting-started/#run-repository-demos-or-develop-the-kits).
+These commands are included in published `cppyy-kit` 0.4.1 or later. Create a
+Pixi project with the `awesomebytes` and `conda-forge` channels, then run
+`pixi add "cppyy-kit>=0.4.1"`. Kit guides require their own installed packages;
+see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
 ## Check an environment before compiling
 

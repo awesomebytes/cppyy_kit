@@ -672,9 +672,10 @@ For a small hot kernel you'd otherwise hand-write as a `cppdef` helper plus manu
 drive marshaling**; on first call it compiles once into a cached `.so`
 (`cppdef_cached`, §23) and loads it thereafter.
 
-The numeric annotation API is new in `cppyy-kit` 0.4.0. Published 0.3.x
-packages do not support it; use the source checkout until 0.4.1 is published
-(see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/#run-repository-demos-or-develop-the-kits)).
+The numeric annotation API requires published `cppyy-kit` 0.4.1 or later.
+Install it with `pixi add "cppyy-kit>=0.4.1"` in a project using the
+`awesomebytes` and `conda-forge` channels; see
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/).
 
 ```python
 import numpy as np
