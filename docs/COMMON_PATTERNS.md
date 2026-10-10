@@ -673,7 +673,7 @@ drive marshaling**; on first call it compiles once into a cached `.so`
 (`cppdef_cached`, §23) and loads it thereafter.
 
 The numeric annotation API is new in `cppyy-kit` 0.4.0. Published 0.3.x
-packages do not support it; use the source checkout until 0.4.0 is published
+packages do not support it; use the source checkout until 0.4.1 is published
 (see [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/#run-repository-demos-or-develop-the-kits)).
 
 ```python

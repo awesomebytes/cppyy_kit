@@ -121,7 +121,7 @@ The next work, in order:
    writable native cache and kit imports on the talk host. Check DDS with actual
    playback. Preserve failure evidence rather than assuming diagnostics prove
    the runtime works.
-3. Publish and verify 0.4.0 artifacts through the authorized release workflow.
+3. Publish and verify 0.4.1 artifacts through the authorized release workflow.
    Check the public package install in a fresh Pixi project before describing
    the new guide commands as published. The source rehearsal remains explicit.
 4. Evaluate the corrected task-first guidance with fresh sessions. Repeat each

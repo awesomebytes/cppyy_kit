@@ -3,7 +3,7 @@ schema_version: 1
 context:
   name: ros-jazzy-pcl-kit
   # Keep this version in sync across recipe/*/recipe.yaml (see recipe/README.md).
-  version: "0.4.0"
+  version: "0.4.1"
 
 package:
   name: ${{ name }}
@@ -28,8 +28,8 @@ requirements:
     - setuptools >=61
   run:
     - python
-    - cppyy-kit ==0.4.0
-    - ros-jazzy-rclcpp-kit ==0.4.0
+    - cppyy-kit ==0.4.1
+    - ros-jazzy-rclcpp-kit ==0.4.1
     - pcl
     - ros-jazzy-pcl-conversions
 

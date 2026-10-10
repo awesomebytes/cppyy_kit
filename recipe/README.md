@@ -107,7 +107,7 @@ separate recipes. The project keeps one recipe per package, so update every vers
 when bumping the suite:
 
 ```bash
-recipe/bump_version.sh 0.4.0
+pixi run -e pkg bash recipe/bump_version.sh 0.4.1
 ```
 
 ## Release
@@ -136,3 +136,10 @@ and uploads the remaining identities. If a full rebuild produces different
 bytes for an already-published filename, verification fails deliberately: remove
 the invalid remote artifact or increment the affected recipe build number. Never
 bypass this with `--skip-existing`.
+
+The 0.4.0 attempt stopped before upload after detecting an existing ARM bridge
+identity with different metadata bytes. The 0.4.1 attempt increments the bridge
+build number and reruns the normal release gates. See the
+[release incident record](../RELEASE_0.4.1_2026-10-10.md). The version helper also
+updates suite versions in the workflow SBOM matrix; the bridge retains its
+independent upstream version and build number.

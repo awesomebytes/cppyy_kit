@@ -15,6 +15,7 @@ esac
 mkdir -p "$requested_output"
 output_dir="$(cd "$requested_output" && pwd)"
 cd "$repo_root"
+suite_version=$(python -c 'import tomllib; print(tomllib.load(open("pixi.toml", "rb"))["workspace"]["version"])')
 
 channels=(-c conda-forge)
 case "$(uname -m)" in
@@ -30,13 +31,13 @@ case "$(uname -m)" in
     ;;
 esac
 
-echo "Building cppyy-kit 0.4.0 into $output_dir"
+echo "Building cppyy-kit $suite_version into $output_dir"
 rattler-build build \
   --recipe recipe/cppyy-kit/recipe.yaml \
   "${channels[@]}" \
   --output-dir "$output_dir"
 
-echo "Building ros-jazzy-rclcpp-kit 0.4.0 against the local base artifact"
+echo "Building ros-jazzy-rclcpp-kit $suite_version against the local base artifact"
 rattler-build build \
   --recipe recipe/ros-jazzy-rclcpp-kit/recipe.yaml \
   -c "file://$output_dir" \
@@ -45,11 +46,11 @@ rattler-build build \
   --output-dir "$output_dir"
 
 mapfile -t artifacts < <(
-  find "$output_dir" -name 'cppyy-kit-0.4.0-*.conda' -o \
-    -name 'ros-jazzy-rclcpp-kit-0.4.0-*.conda' | sort
+  find "$output_dir" -name "cppyy-kit-$suite_version-*.conda" -o \
+    -name "ros-jazzy-rclcpp-kit-$suite_version-*.conda" | sort
 )
 if [ "${#artifacts[@]}" -lt 2 ]; then
-  echo "Expected both 0.4.0 package artifacts in $output_dir" >&2
+  echo "Expected both $suite_version package artifacts in $output_dir" >&2
   exit 1
 fi
 printf 'Built artifact: %s\n' "${artifacts[@]}"

@@ -40,7 +40,7 @@ about the numeric interface, agent tooling, and presentation assets:
 | 2026-10-04 | `148fcf5` | NumPy annotations and simpler examples; removed `cpp.arr` |
 | 2026-10-05 | `9449f51` | Installed task/kit guides, environment diagnostics, coordinated fetch/build artifacts, buffer fixes, native-component and OMPL callback tutorials |
 
-The source manifest is version 0.4.0. The
+The source manifest is version 0.4.1. The
 [integration ledger](https://github.com/awesomebytes/cppyy_kit/blob/main/EXPERIMENT_INTEGRATION_2026-10-04.md#validation-and-upstream-status)
 records local artifacts and fresh installed core/rclcpp checks. Its final default
 suite passed 369 tests with 161 optional skips; PCL, OpenCV, OMPL and native
@@ -48,6 +48,11 @@ component checks ran separately. Nine wrapper artifacts skipped native recipe
 tests: their guide-resource proof is not native bringup proof for every kit.
 The ledger records channel publication as separate work. These are recorded
 October integration results, not tests rerun for the presentation update.
+
+The 0.4.0 upload stopped before publication because the ARM bridge reused an
+existing package identity with changed metadata bytes. Version 0.4.1 uses bridge
+build 3 and is pending the normal release gates; see the
+[release incident record](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md).
 
 Next work, in order:
 

@@ -15,6 +15,7 @@ esac
 
 caller_pwd="$PWD"
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+suite_version=$(python -c 'import sys, tomllib; print(tomllib.load(open(sys.argv[1], "rb"))["workspace"]["version"])' "$repo_root/pixi.toml")
 requested_output="${1:-$repo_root/output}"
 case "$requested_output" in
   /*) ;;
@@ -43,7 +44,7 @@ CPPYY_KIT_NO_AUTOPCH = "1"
 PYTHONPATH = ""
 
 [dependencies]
-ros-jazzy-rclcpp-kit = "==0.4.0"
+ros-jazzy-rclcpp-kit = "==$suite_version"
 ros-jazzy-rmw-cyclonedds-cpp = "*"
 EOF
 

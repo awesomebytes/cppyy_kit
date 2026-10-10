@@ -18,7 +18,9 @@ and a check on the expected result.
 The numeric annotations and `guide` commands below are new in **0.4.0**. The
 [integration record](https://github.com/awesomebytes/cppyy_kit/blob/main/EXPERIMENT_INTEGRATION_2026-10-04.md#validation-and-upstream-status)
 records local 0.4.0 artifacts, with channel publication still a separate step.
-Published 0.3.x packages do not provide these interfaces. Until publication,
+The 0.4.0 upload stopped before publication;
+[0.4.1 is pending the release gates](https://github.com/awesomebytes/cppyy_kit/blob/main/RELEASE_0.4.1_2026-10-10.md).
+Published 0.3.x packages do not provide these interfaces. Until 0.4.1 publication,
 use this source checkout and its locked Pixi environment.
 
 **Repository checkout commands:** run from the `cppyy_kit` repository root.
@@ -45,7 +47,7 @@ pixi run -e ompl python -m cppyy_kit guide ompl_kit api
 ```
 
 These commands print documentation without loading the native library. After
-0.4.0 is published, the same commands can read the packaged guides in a
+0.4.1 is published, the same commands can read the packaged guides in a
 standalone environment. Install the required kit there first. See
 [Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/) for installed-package setup and
 [guide discovery](docs/GUIDES.md) for the command reference. Repository demos

@@ -7,7 +7,7 @@ name = "cppyy_kit_ws"
 # two channels and finds local kits, including rclcpp_kit, through PYTHONPATH.)
 channels = ["robostack-jazzy", "conda-forge"]
 platforms = ["linux-64"]
-version = "0.4.0"
+version = "0.4.1"
 
 # Default environment. Uses the same default as rclcppyy (ros-base + cyclonedds +
 # cppyy + toolchain + test/lint tooling): the base cppyy_kit package is ROS-free,
@@ -424,10 +424,11 @@ test-retarget = "pytest retarget_pipeline/tests/test_retarget.py -v"
 
 # --- pkg: rattler-build packaging of the kit suite --------------
 # Standalone (no-default-feature) so the packaging tooling doesn't drag the
-# ROS/cppyy stack. Recipes live in recipe/<pkg>/; the driver builds all ten in
+# ROS/cppyy stack. Python reads release metadata and rattler-build builds all 11 in
 # dependency order into ./output (gitignored) and runs the fresh-env artifact
 # proof for each. See recipe/README.md.
 [feature.pkg.dependencies]
+python = "3.12.*"
 rattler-build = ">=0.68,<0.69"
 
 [feature.pkg.tasks]
@@ -493,7 +494,7 @@ rclcpp = { features = ["rclcpp"], solve-group = "default" }
 cudabuild = { features = ["cudabuild"], no-default-feature = true }
 # Integrated GPU vision: the vision stack + CUDA runtime so cv_kit auto-detects cv::cuda.
 vision-cuda = { features = ["vision", "cudabuild"], solve-group = "default" }
-# Packaging env: rattler-build only; standalone, no ROS/cppyy stack.
+# Packaging env: Python + rattler-build; standalone, no ROS/cppyy stack.
 pkg = { features = ["pkg"], no-default-feature = true }
 # Docs env: mkdocs-material only; standalone, no ROS/cppyy stack.
 docs = { features = ["docs"], no-default-feature = true }

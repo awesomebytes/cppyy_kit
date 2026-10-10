@@ -621,7 +621,7 @@ activation, including its CXX setting. ROS execution needs local DDS communicati
 The guidance command prints text or a path for the user to give the agent.
 It installs no skills or agent configuration. `python -m cppyy_kit guide`
 reads packaged task and kit resources without native startup. These commands
-are new in 0.4.0; use this checkout until that version is published. Installed
+are new in 0.4.0; use this checkout until 0.4.1 is published. Installed
 artifact checks are recorded in the [integration report](../EXPERIMENT_INTEGRATION_2026-10-04.md).
 Environment diagnostics locate the compiler, runtime versions and development
 headers; they do not load Cling, check binary compatibility or prove local DDS

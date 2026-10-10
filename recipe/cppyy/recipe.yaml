@@ -14,7 +14,7 @@ source:
     - 0001-do-not-rebuild-allDict.patch
 
 build:
-  number: 2
+  number: 3
   skip:
     - not aarch64
   script: ${{ PYTHON }} -m pip install . --no-deps -vv

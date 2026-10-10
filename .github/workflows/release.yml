@@ -4,8 +4,9 @@ name: Release
 # architecture-scoped cppyy 3.5.0 ARM64 bridge, prove each from an isolated
 # channel, then upload them to the prefix.dev channel `awesomebytes`.
 #
-# A prior OIDC upload from this repository succeeded. The 0.4.0 workflow is
-# untested; if upload fails, check prefix.dev authorization for this repo and
+# A prior OIDC upload from this repository succeeded. The 0.4.0 upload
+# preflight caught an ARM package identity collision; 0.4.1 increments that
+# bridge build number. If upload fails, check prefix.dev authorization and
 # workflow (`awesomebytes/cppyy_kit`, `release.yml`).
 #
 # Authentication: OIDC trusted publishing (no API token stored). `id-token:
@@ -103,7 +104,7 @@ jobs:
         uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           pixi-version: v0.70.0
-          # Only the packaging env (rattler-build); it pulls no ROS/cppyy stack.
+          # Packaging metadata/build tools only; it pulls no ROS/cppyy stack.
           environments: pkg
 
       # Builds the 11 packages in dependency order into ./output, chaining the
@@ -233,45 +234,45 @@ jobs:
           - name: cppyy
             version: "3.5.0"
             platform: linux-aarch64
-            build: py312h7e7ac48_2
+            build: py312h7e7ac48_3
             dependencies: >-
               python cpycppyy cppyy-backend cppyy-cling libstdcxx libgcc
               python_abi
           - name: cppyy-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy numpy
           - name: ros-jazzy-bt-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-behaviortree-cpp
           - name: ros-jazzy-control-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control
           - name: ros-jazzy-cv-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit opencv
           - name: ros-jazzy-dbow-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-cv-kit opencv
           - name: ros-jazzy-moveit-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-moveit
               ros-jazzy-ament-index-python
           - name: ros-jazzy-nav2-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
@@ -281,19 +282,19 @@ jobs:
               ros-jazzy-nav2-regulated-pure-pursuit-controller
               ros-jazzy-nav2-msgs
           - name: ros-jazzy-ompl-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit ros-jazzy-ompl
           - name: ros-jazzy-pcl-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
               python cppyy-kit ros-jazzy-rclcpp-kit pcl
               ros-jazzy-pcl-conversions
           - name: ros-jazzy-rclcpp-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
@@ -303,7 +304,7 @@ jobs:
               ros-jazzy-composition-interfaces ros-jazzy-lifecycle-msgs
               ros-jazzy-ament-index-python
           - name: wbc-kit
-            version: "0.4.0"
+            version: "0.4.1"
             platform: noarch
             build: pyh4616a5c_0
             dependencies: python cppyy-kit crocoddyl

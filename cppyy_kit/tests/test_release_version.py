@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import re
+import tomllib
 
 import pytest
 import yaml
@@ -15,13 +16,15 @@ SPEC.loader.exec_module(verify_release_version)
 
 def test_all_suite_release_metadata_matches_exact_tag():
     versions = verify_release_version.metadata_versions(ROOT)
+    with (ROOT / "pixi.toml").open("rb") as stream:
+        version = tomllib.load(stream)["workspace"]["version"]
 
     assert len(versions) == 23
-    assert set(versions.values()) == {"0.4.0"}
-    assert verify_release_version.verify(ROOT, "v0.4.0") == "0.4.0"
+    assert set(versions.values()) == {version}
+    assert verify_release_version.verify(ROOT, "v" + version) == version
 
 
-@pytest.mark.parametrize("tag", ["v0.1.0", "v0.2", "0.2.0", "v0.3.0-rc1", "v9.9.9"])
+@pytest.mark.parametrize("tag", ["v0.1.0", "v0.2", "0.2.0", "v0.3.0-rc1", "v0.4.0", "v9.9.9"])
 def test_suite_release_rejects_arbitrary_or_stale_tag(tag):
     with pytest.raises(ValueError, match="release tag mismatch"):
         verify_release_version.verify(ROOT, tag)
@@ -72,6 +75,7 @@ def test_release_requires_dual_arch_source_and_sanitizer_preflight():
         }
         expected_names = set(item["dependencies"].split())
         assert item["version"] == recipe["context"]["version"]
+        assert item["build"].endswith("_" + str(recipe["build"]["number"]))
         if item["name"] == "cppyy":
             assert expected_names == declared_names | {
                 "libstdcxx", "libgcc", "python_abi"}

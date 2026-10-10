@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 
 
 PACKAGES = {
@@ -29,11 +30,13 @@ CORE_TOPICS = ("accelerate", "bring-library", "existing-cpp")
 
 
 def main(argv=None):
+    repo = Path(__file__).resolve().parents[2]
+    with (repo / "pixi.toml").open("rb") as stream:
+        version = tomllib.load(stream)["workspace"]["version"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("channel", type=Path)
-    parser.add_argument("--version", default="0.4.0")
+    parser.add_argument("--version", default=version)
     args = parser.parse_args(argv)
-    repo = Path(__file__).resolve().parents[2]
     started = time.monotonic()
     sources = {
         topic: repo / "cppyy_kit" / "agent_guides" / (topic + ".md")

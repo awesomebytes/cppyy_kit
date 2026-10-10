@@ -1,10 +1,12 @@
 # Current source rehearsal
 
 Validated on 10 October 2026. These commands require this repository checkout.
-The rehearsal activates the suite's current 0.4.0 source through Pixi
+The recorded checks used suite 0.4.0 source at `e792866`. The rehearsal activates
+source through Pixi
 `PYTHONPATH`. It installs native dependencies and compiler tooling, without an
 installed `cppyy-kit` or domain-kit package. It does not demonstrate a published
-0.4.0 installation.
+0.4.1 installation. The pending 0.4.1 release changes packaging metadata and
+version-bound proof helpers; see the [release incident record](../RELEASE_0.4.1_2026-10-10.md).
 
 From `roscon_uk_2026/`:
 

@@ -31,6 +31,11 @@ The package build number is the bridge recipe revision. Increment it whenever
 the recipe, patch, or dependency construction changes; do not replace an
 existing package identity with different content.
 
+The 0.4.0 suite release stopped before upload because revised recipe description
+metadata reused the already-published bridge build 2 identity. The 0.4.1 suite
+uses bridge build 3. The previous artifact remains intact; see the
+[release incident record](../../RELEASE_0.4.1_2026-10-10.md).
+
 ## Native proof
 
 Run this on a clean native ARM64 checkout:

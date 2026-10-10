@@ -7,10 +7,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 
 
 def main():
     repo = Path(__file__).resolve().parents[2]
+    with (repo / "pixi.toml").open("rb") as stream:
+        suite_version = tomllib.load(stream)["workspace"]["version"]
     build = repo / "build" / "packaged-guide-proof"
     build.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix="run-", dir=build))
@@ -29,7 +32,7 @@ def main():
     env = dict(os.environ)
     env["CPPYY_KIT_NO_AUTOPCH"] = "1"
     env.update(SRC_DIR=str(source), PYTHON=str(python_shim), PKG_NAME="cppyy-kit",
-               PKG_IMPORT="cppyy_kit", PKG_WHERE=".", PKG_VERSION="0.4.0")
+               PKG_IMPORT="cppyy_kit", PKG_WHERE=".", PKG_VERSION=suite_version)
     result = subprocess.run(["bash", str(repo / "recipe" / "_build_kit.sh")],
                             env=env, text=True, capture_output=True, timeout=180)
     (run / "install.txt").write_text(result.stdout + result.stderr)
