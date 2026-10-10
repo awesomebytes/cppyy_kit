@@ -1,0 +1,9 @@
+Implemented only `validate_and_export` in [candidate.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/config_sol_high_01/candidate.py). It validates before native loading, maps all three fields, and exports resolved defaults.
+
+Read both guides. Ran:
+
+```bash
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/.pixi/envs/default/bin/python -m roscon_uk_2026.next_steps.reverse_core.check_exercise --module candidate
+```
+
+Exit code: `0`. All acceptance checks passed: validation order, field/units mapping, default export, and native-loader replay.

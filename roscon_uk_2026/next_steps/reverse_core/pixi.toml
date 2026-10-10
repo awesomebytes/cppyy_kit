@@ -1,0 +1,24 @@
+[workspace]
+name = "reverse-core-demo"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.14"
+cppyy = "==3.5.0"
+numpy = "==2.5.3"
+pydantic = "==2.13.5"
+pytest = "==8.4.2"
+cxx-compiler = "==1.11.0"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../../.."
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[tasks]
+check = "python -m pytest tests -q"
+demo = "python -m roscon_uk_2026.next_steps.reverse_core.demo"

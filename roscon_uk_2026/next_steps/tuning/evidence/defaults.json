@@ -1,0 +1,72 @@
+{
+  "number": 0,
+  "resolved_config": {
+    "tau_s": 0.08,
+    "max_gap_s": 0.5,
+    "frame_id": "world"
+  },
+  "status": "COMPLETE",
+  "training": {
+    "position_rmse_m": 0.049856422794819874,
+    "mean_alignment_lag_s": 0.075,
+    "episodes": [
+      {
+        "episode_id": "synthetic-pose-v1-seed-0-n-500",
+        "position_rmse_m": 0.07207672638703862,
+        "samples": 500,
+        "alignment": {
+          "lag_s": 0.075,
+          "resolution_s": 0.005,
+          "at_upper_bound": false,
+          "max_lag_s": 0.3,
+          "common_samples": 399,
+          "aligned_rmse_m": 0.02486647937366769
+        }
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-1-n-500",
+        "position_rmse_m": 0.034471637895361285,
+        "samples": 500,
+        "alignment": {
+          "lag_s": 0.075,
+          "resolution_s": 0.005,
+          "at_upper_bound": false,
+          "max_lag_s": 0.3,
+          "common_samples": 397,
+          "aligned_rmse_m": 0.014963222458786174
+        }
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-2-n-500",
+        "position_rmse_m": 0.047542509465772695,
+        "samples": 500,
+        "alignment": {
+          "lag_s": 0.07,
+          "resolution_s": 0.005,
+          "at_upper_bound": false,
+          "max_lag_s": 0.3,
+          "common_samples": 399,
+          "aligned_rmse_m": 0.02718470763451137
+        }
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-3-n-500",
+        "position_rmse_m": 0.036041823808172,
+        "samples": 500,
+        "alignment": {
+          "lag_s": 0.08,
+          "resolution_s": 0.005,
+          "at_upper_bound": false,
+          "max_lag_s": 0.3,
+          "common_samples": 398,
+          "aligned_rmse_m": 0.019813800570369144
+        }
+      }
+    ],
+    "timing_s": {
+      "reset": 0.002899514976888895,
+      "process_including_adapter": 0.0005484160501509905,
+      "metrics": 0.008940117986639962
+    }
+  }
+}

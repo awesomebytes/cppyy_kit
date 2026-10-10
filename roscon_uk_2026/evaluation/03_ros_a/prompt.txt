@@ -1,0 +1,12 @@
+Accelerate rolling_query() in this existing rclpy node with cppyy_kit. Read the
+supplied kernel guide. Keep the subscription, topic, QoS depth, recorded time
+handling, window reset semantics, returned arrays, and callback behavior.
+Use one native call per window. Do not change tests or other files. Run the
+acceptance tests and compare against the original Python query on randomized
+windows. Measure first-call and warmed query times. Do not claim that these
+offline checks establish ROS delivery; a separate replay check follows.
+Work only in the task directory.
+
+Python: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python
+Check: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python -m pytest test_node.py -q
+Read /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md before editing.

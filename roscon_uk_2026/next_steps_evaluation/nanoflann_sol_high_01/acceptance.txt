@@ -1,0 +1,1 @@
+PASS: 64 oracle comparisons; eligibility, distance units, owned lifetime, empty batches, invalid inputs, repeated close and teardown

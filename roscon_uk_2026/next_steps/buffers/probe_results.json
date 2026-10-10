@@ -1,0 +1,25 @@
+{
+  "compiler_command": [
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+    "-std=c++17",
+    "-O2",
+    "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers",
+    "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/.pixi/envs/default/include/eigen3",
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/build/probe.cpp",
+    "-o",
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/build/probe"
+  ],
+  "compile_seconds": 1.0295336060225964,
+  "compiler_returncode": 0,
+  "compiler_stderr": "",
+  "direct": {
+    "returncode": 0,
+    "stdout": "50001 201703",
+    "stderr": ""
+  },
+  "cling": {
+    "returncode": 0,
+    "stdout": "50001 201703\n",
+    "stderr": ""
+  }
+}

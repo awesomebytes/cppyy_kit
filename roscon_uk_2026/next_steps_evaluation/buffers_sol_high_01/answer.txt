@@ -1,0 +1,13 @@
+Implemented only the two C++ docstring bodies in [candidate.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/buffers_sol_high_01/candidate.py). Both validate element counts before mapping. Transform uses row-major Eigen maps. Filter preserves order and rejects nonfinite rows. Neither forwards to saved kernels.
+
+Acceptance command:
+
+```bash
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/.pixi/envs/default/bin/python -m pytest /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/buffers/test_buffers.py -q
+```
+
+Result: **31 passed in 0.92 seconds**, with this candidate confirmed active. No failures or corrective edits were needed.
+
+Also ran the guide’s `probe.py` through the specified Python, redirecting temporary build files into the permitted directory. Compiler, executable, and Cling checks returned zero in **1.61 seconds**. Temporary files were removed.
+
+Storage contracts remain intact: compatible input is borrowed, output uses separate allocations, and the filtered prefix retains its storage. Necessary input copies remain controlled by `copy=True`. Eigen maps live only during each call; native code retains no pointers. Acceptance checks were unchanged.

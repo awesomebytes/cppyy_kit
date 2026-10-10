@@ -1,0 +1,5 @@
+.pixi/
+build/
+__pycache__/
+.pytest_cache/
+.hypothesis/

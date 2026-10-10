@@ -1,0 +1,15 @@
+{
+  "skeleton_returncode": 1,
+  "skeleton_seconds": 0.5635594389750622,
+  "skeleton_stderr": "Traceback (most recent call last):\n  File \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ceres_manif/build/exercise/acceptance.py\", line 106, in <module>\n    if __name__==\"__main__\": main(\"jit\" if \"--jit\" in __import__('sys').argv else \"compiled\")\n                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ceres_manif/build/exercise/acceptance.py\", line 26, in main\n    api.evaluate(p,q,x,r,jac)\ncppyy.gbl.std.runtime_error: void calibration::evaluate(const double* source, const double* target, const double* x, double* residual, double* jacobian) =>\n    runtime_error: residual evaluation failed\n",
+  "checksums": {
+    "acceptance.py": "09fb77e34e780aaf84c1cb18d7affe03c450ea5487ab34fccc3df91439c9f3b4",
+    "calibration.py": "58becb31405bc7141788473a12810718689c4dfc3802cefed559dcb07fa75270",
+    "adapter.cpp": "b3489748d03fa91983d4474dd51ccc6d2771355e1f82aa3e09db6ac823e511e6",
+    "adapter.hpp": "b9b4c8213caaf53060b8b8cb0f313ffdddabac0a2c94586754136c25f67ae64d"
+  },
+  "fresh_agent_evaluated": false,
+  "saved_solution_returncode": 0,
+  "saved_solution_seconds": 0.528752057987731,
+  "saved_solution_stderr": ""
+}

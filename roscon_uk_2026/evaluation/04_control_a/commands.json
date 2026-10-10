@@ -1,0 +1,50 @@
+[
+  {
+    "command": "/bin/bash -lc \"cat /home/sapf/playground/ros_project/cppyy_kit/control_kit/SKILL.md && cat /home/sapf/playground/ros_project/cppyy_kit/control_kit/demos/d02_python_controller.py && sed -n '1,260p' controller.py && sed -n '1,260p' test_controller.py && rg -n \\\"1000|trial|tracking error|late intervals|p99|GenericSystem\\\" .\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc \"rg --files /home/sapf/playground/ros_project/cppyy_kit -g 'pyproject.toml' -g '__init__.py' -g 'pixi.toml' | rg '(control_kit|rclcpp_kit|pixi.toml)' | head -80 && /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -c 'import sys; print(\\\"\\\\n\\\".join(sys.path))' && ls -la /home/sapf/playground/ros_project/cppyy_kit\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'PYTHONPATH=/home/sapf/playground/ros_project/cppyy_kit/control_kit:/home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc 'PYTHONPATH=/home/sapf/playground/ros_project/cppyy_kit/control_kit:/home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit:/home/sapf/playground/ros_project/cppyy_kit/cppyy_kit /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc \"find /home/sapf/playground/ros_project/cppyy_kit/cppyy_kit -maxdepth 2 -type f | head -30 && sed -n '1,180p' /home/sapf/playground/ros_project/cppyy_kit/pixi.toml | rg -n -C 3 'PYTHONPATH|control|cppyy-kit' && find /home/sapf/playground/ros_project/cppyy_kit -path '*/cppyy_kit/__init__.py' -print\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'PYTHONPATH=/home/sapf/playground/ros_project/cppyy_kit:/home/sapf/playground/ros_project/cppyy_kit/control_kit:/home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc 'XDG_CACHE_HOME=/tmp/codex-cache PYTHONPATH=/home/sapf/playground/ros_project/cppyy_kit:/home/sapf/playground/ros_project/cppyy_kit/control_kit:/home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '380,435p' /home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit/rclcpp_kit/bringup_rclcpp.py && sed -n '1,115p' /home/sapf/playground/ros_project/cppyy_kit/control_kit/control_kit/__init__.py && env | sort | rg 'ROS|RMW|CYCLONE|DBUS|XDG|HOME|AMENT|COLCON' && rg -n 'ROS_LOCALHOST_ONLY|RMW_IMPLEMENTATION|init\\\\(' /home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit/rclcpp_kit/bringup_rclcpp.py\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'XDG_CACHE_HOME=/tmp/codex-cache ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST ROS_DOMAIN_ID=79 PYTHONPATH=/home/sapf/playground/ros_project/cppyy_kit:/home/sapf/playground/ros_project/cppyy_kit/control_kit:/home/sapf/playground/ros_project/cppyy_kit/rclcpp_kit /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/control/bin/python controller.py --rate 1000 --seconds 3'",
+    "exit_code": 129
+  },
+  {
+    "command": "/bin/bash -lc 'git diff -- controller.py && git status --short'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '35,65p' controller.py && git rev-parse --show-toplevel && git status --short --untracked-files=no\"",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "command": "/bin/bash -lc \"cat /home/sapf/playground/ros_project/cppyy_kit/control_kit/SKILL.md && cat /home/sapf/playground/ros_project/cppyy_kit/control_kit/demos/d02_python_controller.py && pwd && rg --files -g 'controller.py' -g 'test_controller.py' -g 'AGENTS.md' -g '*.py'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'cat controller.py && cat test_controller.py && rg --files'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/control/bin/python -m pytest test_controller.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/control/bin/python controller.py --rate 1000 --seconds 3'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git status --short && git diff -- controller.py'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"find . -maxdepth 2 -type f -printf '%P\\\\n' | sort && git rev-parse --show-toplevel\"",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "case": "nanoflann",
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "agent_seconds": 513.4232476659818,
+  "agent_exit_code": 0,
+  "timed_out": false,
+  "acceptance_exit_code": 0,
+  "initial_exit_code": 1,
+  "checks_unchanged": true,
+  "check_sha256": {
+    "roscon_uk_2026/next_steps/nanoflann/acceptance.py": "cdccbef7fe2be5e15cb111b9d2d5af0433b0f973fd5d02ade0119211667923af"
+  },
+  "candidate_sha256": "91bac4d2d1e71aeed93eec066d2300a8a058535e31ac3463425e47d6bd640ead",
+  "command_count": 24,
+  "failed_commands": 4,
+  "usage": [
+    {
+      "input_tokens": 510072,
+      "cached_input_tokens": 459264,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 15584,
+      "reasoning_output_tokens": 1247
+    }
+  ],
+  "human_logic_repairs": 0,
+  "context": "checkout scaffolding with documented helpers; saved solutions excluded"
+}

@@ -1,0 +1,14 @@
+{
+  "validated_date": "2026-10-10",
+  "environment": "current source checkout; GCC14.3/cppyy3.5",
+  "main_pixi_lock_sha256": "542d617ca6363d7757a85f2c1c843238a423d30f4c802552988ba789be0f15de",
+  "nanoflann_pixi_lock_sha256": "6235ece1bf1ab06a781fa7ede7359ba2bb5964e1a974d99b8390f8800e77bede",
+  "solutions_sha256": {
+    "control_native.py": "ffae4c456d85ef1438701e631949e960027a52fd4d6c0d763f7deca66dc1a6fc",
+    "mcap_native.py": "39c63c1ef193de54100b433f7a021b18b63c28c93ecc16015e9e82ba5b7cafa7",
+    "python_baseline.py": "b3b79406ee4f74c6fbb30a7419a30646b13d2d5da5f4df56a1cf177ed33f15bc",
+    "python_native.py": "8e93091c607b1d360c1a8368963b514829ad06266f65eec7d9fad21579eb89b7",
+    "ros_native.py": "01081fd75057715fc14163a6ceadea51c023e0a76dcb1842ff7710c46629d428",
+    "webcam_native.py": "9da2cf9b6698fbaa3a7f837b1f26ae44546851cd93ea35c8a261da1340321257"
+  }
+}

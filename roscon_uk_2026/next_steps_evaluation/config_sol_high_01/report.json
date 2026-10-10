@@ -1,0 +1,28 @@
+{
+  "case": "config",
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "agent_seconds": 34.61082277802052,
+  "agent_exit_code": 0,
+  "timed_out": false,
+  "acceptance_exit_code": 0,
+  "initial_exit_code": 1,
+  "checks_unchanged": true,
+  "check_sha256": {
+    "roscon_uk_2026/next_steps/reverse_core/check_exercise.py": "973f256809b3c188cd90690784e870a680d07bc53742466f46b873764694f07c"
+  },
+  "candidate_sha256": "7e6dc779a4acb7a919cf86c481c278405361dd02815907ad346d1d28f51d9487",
+  "command_count": 6,
+  "failed_commands": 0,
+  "usage": [
+    {
+      "input_tokens": 51522,
+      "cached_input_tokens": 42368,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 749,
+      "reasoning_output_tokens": 88
+    }
+  ],
+  "human_logic_repairs": 0,
+  "context": "checkout scaffolding with documented helpers; saved solutions excluded"
+}

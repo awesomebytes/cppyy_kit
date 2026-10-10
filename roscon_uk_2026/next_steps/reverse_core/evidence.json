@@ -1,0 +1,65 @@
+{
+  "episode_id": "synthetic-pose-v1-seed-0-n-500",
+  "synthetic": true,
+  "samples": 500,
+  "config": {
+    "tau_s": 0.08,
+    "max_gap_s": 0.5,
+    "frame_id": "world"
+  },
+  "input_position_rmse_m": 0.08259891457920916,
+  "filtered_position_rmse_m": 0.07207672638703862,
+  "driver_max_abs_difference_m": 0.0,
+  "gap_resets": 1,
+  "native_library": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/build/a187682d11903cac/libreverse_pose.so",
+  "native_driver": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/build/a187682d11903cac/pose_filter_driver",
+  "timings": {
+    "episode_generation_s": 0.003994831000454724,
+    "compilation_s": 3.203029637981672,
+    "native_loading_s": 0.2371395929949358,
+    "first_construction_s": 0.028057226008968428,
+    "first_python_validated_replay_s": 0.011140391987282783,
+    "driver_export_process_read_s": 0.00966573497862555,
+    "warmed_python_validated_batch": {
+      "median_s": 1.6012010746635497e-05,
+      "p95_s": 1.8294315668754277e-05,
+      "repetitions": 100
+    },
+    "warmed_direct_native_batch": {
+      "median_s": 5.363006494008005e-06,
+      "p95_s": 6.216585461515931e-06,
+      "repetitions": 100
+    },
+    "validation_contiguous": {
+      "median_s": 3.643013769760728e-06,
+      "p95_s": 4.743729368783532e-06,
+      "repetitions": 100
+    },
+    "validation_with_noncontiguous_copy": {
+      "median_s": 7.218492100946605e-06,
+      "p95_s": 7.883943908382207e-06,
+      "repetitions": 100
+    }
+  },
+  "native_estimator_size_bytes": 104,
+  "process_peak_rss_kib": 227828,
+  "versions": {
+    "python": "3.12.14",
+    "numpy": "2.5.3",
+    "pydantic": "2.13.5",
+    "pytest": "8.4.2",
+    "cppyy": "3.5.0",
+    "local_cppyy_kit": "/home/sapf/playground/ros_project/cppyy_kit/cppyy_kit/__init__.py",
+    "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+    "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39"
+  },
+  "source_sha256": {
+    "__init__.py": "5d8ff7ab3870f71a83bd124c6285b1fcb539b383d310c5fdcf5b99a1bbe18b0a",
+    "demo.py": "852d68879401f0b0ad07bdb1b46aabb849d3084916045a5aa5ed31f80009a67f",
+    "native/pose_filter.hpp": "db89b35d9fbb6fc0db3fc1d485b723e04bc425ffaede576fb8742185596089c1",
+    "native/pose_filter.cpp": "97e85221ae71d435a137fac98623ac3f9d7b82d6adfc9371d2ef3e3fc5191212",
+    "native/driver.cpp": "30202aa995162348a5d7200a711cb8b9fac0e3b26a4d7a59d6ddf70f7258107e",
+    "pixi.toml": "897d242f5d1b4d68cb719b00bcbf4380c2cac148682b26615d87177b55232971",
+    "pixi.lock": "d9d10ca92a42a766bf2731b572d46894308e031304edc02a6b5740a54ea16cb5"
+  }
+}

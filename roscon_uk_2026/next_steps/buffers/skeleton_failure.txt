@@ -1,0 +1,14 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_________________ test_filter_boundary_order_and_all_rejected __________________
+test_buffers.py:58: in test_filter_boundary_order_and_all_rejected
+    result = b.process(points, np.eye(3), np.zeros(3), 1)
+buffers.py:165: in process
+    transform_kernel(source, r, t, transformed)
+../../../cppyy_kit/_cpp.py:469: in __call__
+    return impl(*marshaled)
+E   cppyy.gbl.std.logic_error: void cppyy_kit_cpp::transform_kernel_675c703829d4(uintptr_t points__addr, std::size_t points_size, uintptr_t rotation__addr, std::size_t rotation_size, uintptr_t translation__addr, std::size_t translation_size, uintptr_t output__addr, std::size_t output_size) =>
+E       logic_error: implement transform_kernel
+=========================== short test summary info ============================
+FAILED test_buffers.py::test_filter_boundary_order_and_all_rejected - cppyy.g...
+1 failed, 30 deselected in 0.85s

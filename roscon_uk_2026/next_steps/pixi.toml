@@ -1,0 +1,34 @@
+[workspace]
+name = "cppyy-kit-next-steps-integration"
+channels = ["robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.14"
+cppyy = "==3.5.0"
+numpy = "==2.5.3"
+pydantic = "==2.13.5"
+pytest = "==8.4.2"
+hypothesis = "*"
+optuna = "*"
+mcap = "*"
+ros-jazzy-mcap-vendor = "==0.26.11"
+pip = "*"
+setuptools = "<81"
+cxx-compiler = "==1.11.0"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[pypi-dependencies]
+mcap-ros2-support = "==0.5.7"
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../.."
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[tasks]
+check-reverse = "python -m pytest reverse_core/tests generated_tests/test_filter.py tuning/test_tuning.py reports/test_report.py reports/test_integration.py -q"
+check-guides = "python -m pytest ../../cppyy_kit/tests/test_guides.py -q"
+prove-guides = "python ../scripts/verify_packaged_guides.py"

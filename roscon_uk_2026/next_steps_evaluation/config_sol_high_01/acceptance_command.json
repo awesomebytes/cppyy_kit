@@ -1,0 +1,7 @@
+[
+  "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/.pixi/envs/default/bin/python",
+  "-m",
+  "roscon_uk_2026.next_steps.reverse_core.check_exercise",
+  "--module",
+  "candidate"
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "command": "/bin/bash -lc \"sed -n '1,240p' /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md && printf '\\\\n--- motion rule ---\\\\n' && sed -n '1,240p' /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/examples/01_python/task.py && printf '\\\\n--- task files ---\\\\n' && rg --files -g 'AGENTS.md' -g 'analyze.py' -g 'test_analyze.py'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"cat analyze.py && printf '\\\\n--- tests ---\\\\n' && sed -n '1,260p' test_analyze.py && printf '\\\\n--- status ---\\\\n' && git status --short\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"rg -n 'cpp\\\\.arr|@cpp\\\\(' /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026 -g '*.py' | head -60\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_analyze.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python analyze.py /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/data/hiw_pillow_episode_0002.mcap'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import numpy as np; from analyze import load_poses; _,t,s=load_poses(\\\"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/data/hiw_pillow_episode_0002.mcap\\\"); dt=np.diff(t); print(\\\"max_speed\\\", [float(np.max(np.linalg.norm(np.diff(s[:,o:o+3],axis=0),axis=1)/dt)) for o in (0,6)]); print(\\\"position_ranges\\\", [(s[:,o:o+3].min(axis=0).tolist(),s[:,o:o+3].max(axis=0).tolist()) for o in (0,6)])'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import numpy as np; from analyze import load_poses; _,t,s=load_poses(\\\"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/data/hiw_pillow_episode_0002.mcap\\\"); d=np.diff(s[:,[0,1,2]],axis=0); v=np.linalg.norm(d,axis=1)/np.diff(t); print(\\\"above .02\\\",int((v>=.02).sum()),\\\"of\\\",len(v)); mask=v>=.02; edges=np.diff(np.r_[False,mask,False].astype(int)); runs=[b-a for a,b in zip(np.flatnonzero(edges==1),np.flatnonzero(edges==-1))]; print(\\\"longest qualifying run s\\\",max(runs,default=0)*float(np.median(np.diff(t)))); print(\\\"median dt\\\",float(np.median(np.diff(t))))'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git diff -- analyze.py && git status --short --untracked-files=no'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"git rev-parse --show-toplevel; git status --short --untracked-files=all | head -30; git check-ignore -v analyze.py || true; sed -n '1,120p' analyze.py\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python - <<'PY'\nimport numpy as np\nfrom analyze import load_poses, sweep\n_, t, states = load_poses('/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/data/hiw_pillow_episode_0002.mcap')\nthresholds = np.linspace(.02, .20, 41)\nactual = sweep(t, states, thresholds)\ncounts = np.zeros((len(thresholds), 2), dtype=np.int32)\nseconds = np.zeros((len(thresholds), 2), dtype=np.float64)\nfor k, enter in enumerate(thresholds):\n    for hand, offset in enumerate((0, 6)):\n        active = False\n        candidate = None\n        for i in range(1, len(t)):\n            speed = np.linalg.norm(states[i, offset:offset+3] - states[i-1, offset:offset+3]) / (t[i] - t[i-1])\n            if active:\n                if speed < enter / 2:\n                    active, candidate = False, None\n                else:\n                    seconds[k, hand] += t[i] - t[i-1]\n            elif speed >= enter:\n                if candidate is None:\n                    candidate = i\n                if t[i] - t[candidate] >= .12:\n                    active = True\n                    counts[k, hand] += 1\n                    seconds[k, hand] += t[i] - t[i-1]\n            else:\n                candidate = None\nnp.testing.assert_array_equal(actual[0], counts)\nnp.testing.assert_allclose(actual[1], seconds)\nprint('native sweep matches direct motion-rule reference for all 41 thresholds and both hands')\nPY\"",
+    "exit_code": 0
+  }
+]

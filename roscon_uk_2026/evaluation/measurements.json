@@ -1,0 +1,50 @@
+{
+  "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+  "processor": "x86_64",
+  "random_windows": 30,
+  "hold_values": [
+    0,
+    0.02,
+    0.12
+  ],
+  "python_samples": 250000,
+  "python_baseline": {
+    "first_call_ms": 28.862000006483868,
+    "warm_median_ms": 29.283933006809093
+  },
+  "python_native": {
+    "first_call_ms": 2.6591789937810972,
+    "warm_median_ms": 1.4764249935979024
+  },
+  "python_speedup": 19.834351987937453,
+  "mcap_samples": 2735,
+  "decode_ms": 191.1684890073957,
+  "hold_seconds": 0.02,
+  "mcap_python": {
+    "first_call_ms": 25.499737996142358,
+    "warm_median_ms": 24.75383000273723
+  },
+  "mcap_native": {
+    "first_call_ms": 1.334373009740375,
+    "warm_median_ms": 1.1355150054441765
+  },
+  "mcap_speedup": 21.79965027679607,
+  "counts_at_0_02_mps": [
+    89,
+    82
+  ],
+  "counts_at_0_0785_mps": [
+    18,
+    21
+  ],
+  "ros_window_python": {
+    "first_call_ms": 1.6769509966252372,
+    "warm_median_ms": 1.627314995857887
+  },
+  "ros_window_native": {
+    "first_call_ms": 0.11690999963320792,
+    "warm_median_ms": 0.07963099051266909
+  },
+  "ros_window_speedup": 20.435699535835678,
+  "cache_condition": "shared cppyy initialization and existing kernel artifacts; first call is not a clean-cache build"
+}

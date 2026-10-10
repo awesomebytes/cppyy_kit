@@ -1,0 +1,12 @@
+{
+  "dataset": "BitRobot/HIW-500",
+  "revision": "c35830b9fcccf444c0318560466d0e35c7285675",
+  "license": "CC-BY-4.0",
+  "attribution": "BitRobot, Unitree, and Hugging Face. HIW-500: Humanoids In-the-Wild Dataset for Robot Learning (2026).",
+  "source": "https://huggingface.co/datasets/BitRobot/HIW-500",
+  "path": "Move-The-Pillow-To-The-Sofa-From-Floor/episode_2026-02-24_10-05-40/episode_0002/episode_0002.mcap",
+  "bytes": 173838627,
+  "sha256": "672e3eeb139a2307e89fe2c55152db08061abf15985189e574ea8832a4d4a069",
+  "local_name": "hiw_pillow_episode_0002.mcap",
+  "sidecar_path": "Move-The-Pillow-To-The-Sofa-From-Floor/episode_2026-02-24_10-05-40/episode_0002/info.json"
+}

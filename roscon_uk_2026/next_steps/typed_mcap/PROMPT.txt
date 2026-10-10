@@ -1,0 +1,12 @@
+Read roscon_uk_2026/next_steps/typed_mcap/GUIDE.md and skeleton.py in this checkout.
+Implement count_speed_above(batch, threshold_m_s=0.3) in a new solution module.
+Extract poses with the supplied typed MCAP adapter. Preserve uint64 timestamps
+until subtracting adjacent samples. Validate inputs before accessing pointers.
+Skip duplicate timestamps and reject decreasing timestamps. Count intervals with
+Euclidean Cartesian speed strictly greater than the threshold, in metres/second.
+Use one native batch loop through cppyy or cppyy_kit. Declare aligned-copy rules.
+Do not change schemas, extractor, fixtures, or acceptance checks. Do not use JSON
+inside ROS String messages. Use the existing Pixi ros environment and do not
+install packages globally. Run check_query.py against the solution. Save exact
+commands, versions, compilation and warmed query time. State that the supplied
+extractor supports only the documented PoseStamped and rgb8/bgr8 Image schemas.

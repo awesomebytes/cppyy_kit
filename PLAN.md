@@ -8,10 +8,16 @@ ahead-of-time compilation. Documentation also supports coding agents.
 
 **Presentation target: ROSCon UK 2026.** Show this workflow:
 
-> Write a plain Python prototype. Add rclcppyy and kits. Test the result. Apply
-> AOT through freeze or lowering. Compare benchmark results while keeping code
-> changes small. Demonstrate the `cppyy-accelerate` skill on a Python package
-> and report measurements before and after the change.
+> Keep a Python experiment around real robotics inputs. Ask an agent to read
+> the task guide, profile the computation, and make one measured change using
+> `@cpp` or an existing C++ library. Check outputs and report warm operation,
+> first-use, and complete pipeline costs separately. Show configuration and
+> testing of existing C++ software from Python as another entry point.
+
+Freeze and lowering remain supported follow-up topics. They are not required
+to demonstrate the prototyping workflow. In `rclcppyy`, the compatible default
+preserves stock `rclpy` behavior; acceleration claims require evidence for the
+selected explicit native profile or fused operation.
 
 **Origin:** this project extracts and expands the kit suite proven in
 [rclcppyy](https://github.com/awesomebytes/rclcppyy) (7 spikes, 7 GOs, 22
@@ -22,6 +28,49 @@ evaluation history.
 
 ---
 
+## Current status and next work (2026-10-10)
+
+The July milestone entries below preserve the original implementation history.
+The following merged commits and integration record supersede pending wording
+about the numeric interface, agent tooling, and presentation assets:
+
+| Date | Commit | Delivered |
+|---|---|---|
+| 2026-10-03 | `4bd206e` | Numeric `@cpp` kernels and updated user guides |
+| 2026-10-04 | `148fcf5` | NumPy annotations and simpler examples; removed `cpp.arr` |
+| 2026-10-05 | `9449f51` | Installed task/kit guides, environment diagnostics, coordinated fetch/build artifacts, buffer fixes, native-component and OMPL callback tutorials |
+
+The source manifest is version 0.4.0. The
+[integration ledger](https://github.com/awesomebytes/cppyy_kit/blob/main/EXPERIMENT_INTEGRATION_2026-10-04.md#validation-and-upstream-status)
+records local artifacts and fresh installed core/rclcpp checks. Its final default
+suite passed 369 tests with 161 optional skips; PCL, OpenCV, OMPL and native
+component checks ran separately. Nine wrapper artifacts skipped native recipe
+tests: their guide-resource proof is not native bringup proof for every kit.
+The ledger records channel publication as separate work. These are recorded
+October integration results, not tests rerun for the presentation update.
+
+Next work, in order:
+
+1. Align ROSCon examples, prompts, instructions, and their locked environment
+   with `NDArray`/`ConstNDArray` and the current task-guide workflow. Preserve
+   original 0.3.0 solutions and measurements as historical evidence.
+2. Make [AI-assisted prototyping](CPPYY_KIT_WITH_AI.md) the task-first entry
+   point for acceleration, new libraries, and existing C++ components.
+3. Add a compact existing-library composition example to the talk, using the
+   retained nanoflann index and its measured comparison with SciPy.
+4. Repeat fresh-agent trials and the presentation acceptance checks in the
+   updated environment. Rehearse the full talk, GUI interaction, and fallbacks.
+5. Publish only after the release's fresh-artifact gates pass, and update the
+   package instructions once channel installation is verified.
+
+ROSCon assets are under `roscon_uk_2026/` in this checkout. Their inclusion in
+Git is separate from the merged implementation commits above. See the
+[presentation plan](https://github.com/awesomebytes/cppyy_kit/blob/main/roscon_uk_2026/PLAN.md)
+and evaluation records there; do not promote historical timings to new 0.4.0
+results without running the relevant workloads.
+
+---
+
 ## Package suite
 
 | Package | Conda name | Depends on | Contents |
@@ -29,7 +78,7 @@ evaluation history.
 | `cppyy_kit` | `cppyy-kit` (distro-free) | cppyy | library loading, lifetime, callbacks, `HandleRegistry`, warmup, first-use reporting, teardown, probes, compile cache, `require()`, `@cpp`, `nogil`, stubs, freeze and vendored-source tools, capability reporting |
 | `rclcpp_kit` | `ros-jazzy-rclcpp-kit` | cppyy_kit, ros-jazzy-rclcpp | rclcpp bringup, C++ message resolution/conversion, serialization, rosbag2, **tf**, executor/node helpers, rclcpp PCH recipe |
 | `bt_kit` `pcl_kit` `ompl_kit` `nav2_kit` `moveit_kit` `control_kit` `cv_kit` `dbow_kit` | `ros-jazzy-<name>-kit` (ROS dependencies where needed) | cppyy_kit (+ rclcpp_kit for ROS APIs) | native library APIs and Python helpers |
-| (separate repo) `rclcppyy` | `ros-jazzy-rclcppyy` | rclcpp-kit | the drop-in rclpy accelerator product; slims to monkeypatching + brand |
+| (separate repo) `rclcppyy` | `ros-jazzy-rclcppyy` | rclcpp-kit | compatibility-first rclpy interface, explicit native profiles, and managed/fused C++ operations |
 
 **Kit contents:** Python package, optional `cpp/` sources (shims, L2 nodes,
 vendored builds, freeze recipes), `SKILL.md` with API usage for coding agents,
@@ -89,10 +138,15 @@ Each kit has a `SKILL.md`; COMMON_PATTERNS is the shared usage guide.
   accelerated ~306-417 Hz at half CPU; cold→warm headers 1.8→0.0 s;
   bridge env pending next suite release]).
 
-### M3: rclcppyy slim + first suite release
-- In the rclcppyy repo: replace moved internals with rclcpp_kit imports +
-  deprecation shims; 0.2.0; parity proof = its own bench/test suite unchanged.
-- Release the full suite to prefix.dev (artifact-proven, working).
+### M3: rclcppyy integration and suite releases
+- Suite extraction and a published 0.3.x baseline are established. `rclcppyy`
+  imports the shared kit implementation and now distinguishes the compatible
+  default from explicit native profiles. Its own environment pins the older
+  suite source revision; sibling checkout edits do not automatically update it.
+- Current 0.4.0 artifacts have local installed-package evidence in the October
+  integration ledger. Channel publication and verification remain separate.
+- Preserve each product's own behavior and backend checks when updating its
+  dependency pin. Do not infer product parity from core tests alone.
 
 ### M4: Documentation site LIVE (2026-07-11)
 
@@ -109,16 +163,24 @@ the API, a strict build, and automatic deployment.
   suite reality; tone/naming sweep (0 person refs, 0 milestone tags in all
   user-facing md; ledgers exempt).
 
-### M5: Coding-agent acceleration tooling
-- Develop a **`cppyy-accelerate` skill** with supporting scripts. It profiles
-  Python code, maps measured hotspots to kits and patterns, applies a small
-  change, runs the relevant tests, and reports before-and-after measurements.
+### M5: Coding-agent workflows implemented; repeated evaluation ongoing
+- `skills/cppyy-accelerate/` contains the profiling skill, scripts, and worked
+  example. It maps measured hotspots to kits and patterns, checks behavior, and
+  reports before/after measurements.
+- 0.4.0 packages three task guides (`accelerate`, `bring-library`, `existing-cpp`)
+  and kit references, readable through `python -m cppyy_kit guide`. Environment
+  diagnostics do not start Cling. See [guide commands](docs/GUIDES.md).
+- ROSCon experiments preserve fresh-agent successes, failures, acceptance
+  hashes, and environment repairs. They establish the recorded scaffolds'
+  feasibility; repeated current-version reliability remains to be evaluated.
 
 ### M6: ROSCon demo track (parallel work after M1)
-- **6a End-to-end demo**: one compact example shown from prototype through:
-  plain-Python prototype → kits (minimal diff) → tests → freeze/L2 → benchmark
-  table. Candidate: evolve the vision pipeline or a purpose-built compact demo;
-  decision after 6b is complete.
+- **6a End-to-end deep dive**: implemented material under `roscon_uk_2026/`
+  covers motion detection, recorded-data queries, ROS callbacks, mock control,
+  and webcam tracking, with saved agent solutions and historical 0.3.0 evidence.
+  Current API/environment migration, fresh evaluation, and full rehearsal are
+  pending verification. Add library composition using nanoflann; retain a
+  direct native-binding control so the comparison attributes gains correctly.
 - **6b Live webcam demo** DONE (2026-07-12: live A/B display in Rerun; kit implementation 4.3 ms / 231 fps vs Python implementation 66 ms / 15 fps, or 15.4× at VGA; live camera comparison 12-13× with zero dropped frames. Pure OpenCV operations measured about 1.1×. Both comparisons appear on screen. TF and images use rclcpp_kit. The demo falls back to synthetic input when no webcam is available. Instructions are in docs/webcam_demo/REPORT.md): live webcam visual-odometry comparison: webcam → cv_kit (ORB/optical flow, CUDA if present) → pose/track →
   TF via rclcpp_kit → live Rerun; a CPU overlay comparing use with a plain
   Python/cv2-loop baseline. It runs with a laptop webcam and falls back to
@@ -220,9 +282,13 @@ the API, a strict build, and automatic deployment.
   mc_rtc were unavailable through conda-forge and robostack. QP bindings cover
   the tested use case, so no cppyy kit is needed. See the [WBC report](docs/wbc/REPORT.md).
 
-### M7: Presentation assets (near conference)
-- Slide-ready numbers/tables, demo run-books (what to type live, fallbacks),
-  rehearsal checklist. Placeholder until M6 stabilizes.
+### M7: Presentation assets exist; current-version rehearsal pending
+- `roscon_uk_2026/DEEP_DIVE_PRESENTATION.md`, task guides, solutions, acceptance
+  checks, and evaluation records exist in the checkout. The October integration
+  deliberately excluded presentation/experiment files from its commits.
+- Update commands, lock, agent prompts, and API examples together. Keep the
+  historical evidence intact. Verify current tasks, repeat agent trials, then
+  rehearse the full presentation including GUI interaction and recorded fallbacks.
 
 ---
 

@@ -1,0 +1,21 @@
+Work in roscon_uk_2026/next_steps/nanoflann in this existing repository checkout.
+Read README.md, LIBRARY_RECIPE.md and skeleton.py. Use the existing Pixi lock.
+Complete skeleton.py as build/agent_solution.py. Put any new native files in
+build/agent_native/. Do not read index.py or native.cpp, which are the saved
+solution. Do not copy implementation logic from acceptance.py or benchmark.py.
+Use cppyy_kit.require to discover nanoflann, with the recipe's pinned URL and
+checksum fallback. Use cppyy_kit.prebuild and cppdef_cached with declarations
+to expose a custom retained C++ class. Do not create a new nanoflann kit.
+Build one native-owned immutable index over 3D positions, integer frame IDs and
+confidence. Reuse it for batch exact k-nearest eligible neighbors and their
+mean centroid. Apply confidence, inclusive spatial radius and temporal-exclusion
+predicates during native tree traversal. Order all results by squared distance
+then original point index. Handle ties, duplicates, empty point/query arrays,
+k > point count, invalid values, Python input mutation/resize/release, and close.
+Keep the acceptance checks unchanged. Run your uncertain template/first-call
+probe in a subprocess before using it in a persistent Python session. Run:
+NN_SOLUTION=build/agent_solution.py pixi run check
+Report the exact commands, dependency versions, test output, startup/build/query
+and conversion costs, and any limitations. Do not change the core package,
+shared manifests, agent settings, or files outside this experiment. Do not
+create worktrees or another checkout. Do not install skills or use global pip.

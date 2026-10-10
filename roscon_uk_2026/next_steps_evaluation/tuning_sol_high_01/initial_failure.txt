@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tuning/check_solution.py", line 54, in <module>
+    check(parser.parse_args().implementation)
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tuning/check_solution.py", line 23, in check
+    actual = candidate.replay_trial(config, episodes, estimator)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/tuning_sol_high_01/candidate.py", line 11, in replay_trial
+    raise NotImplementedError("implement native replay, isolation and metrics")
+NotImplementedError: implement native replay, isolation and metrics

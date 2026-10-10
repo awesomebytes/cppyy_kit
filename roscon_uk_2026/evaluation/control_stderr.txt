@@ -1,0 +1,36 @@
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/20da49f2fa958ce2.pch
+[INFO] [1791063061.123533568] [controller_manager]: Using Steady (Monotonic) clock for triggering controller manager cycles.
+[INFO] [1791063061.125303951] [controller_manager]: Enforcing command limits is disabled. Command limits from URDF will be ignored.
+[INFO] [1791063061.132289847] [controller_manager]: Loading hardware 'MockSystem' 
+[INFO] [1791063061.134449296] [controller_manager]: Loaded hardware 'MockSystem' from plugin 'mock_components/GenericSystem'
+[INFO] [1791063061.135521517] [controller_manager]: Initialize hardware 'MockSystem' 
+[INFO] [1791063061.141295469] [controller_manager]: Successful initialization of hardware 'MockSystem'
+[WARN] [1791063061.142399037] [pal_statistics]: Unable to register entity state_interface.elbow/position in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143404344] [pal_statistics]: Unable to register entity state_interface.elbow/velocity in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143413216] [pal_statistics]: Unable to register entity state_interface.shoulder/position in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143419301] [pal_statistics]: Unable to register entity state_interface.shoulder/velocity in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143440824] [pal_statistics]: Unable to register entity command_interface.elbow/position in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143449329] [pal_statistics]: Unable to register entity command_interface.elbow/position.is_limited in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143457417] [pal_statistics]: Unable to register entity command_interface.shoulder/position in ros2_control, as the registry is not found. Try initializing it!
+[WARN] [1791063061.143463372] [pal_statistics]: Unable to register entity command_interface.shoulder/position.is_limited in ros2_control, as the registry is not found. Try initializing it!
+[INFO] [1791063061.151801083] [controller_manager]: Subscribing to '/robot_description' topic for robot description.
+[INFO] [1791063061.152897772] [controller_manager]: Activating component 'MockSystem'.
+[INFO] [1791063061.152930468] [resource_manager]: 'configure' hardware 'MockSystem' 
+[INFO] [1791063061.152946541] [resource_manager]: Successful 'configure' of hardware 'MockSystem'
+[INFO] [1791063061.152954570] [resource_manager]: 'activate' hardware 'MockSystem' 
+[INFO] [1791063061.152963240] [resource_manager]: Successful 'activate' of hardware 'MockSystem'
+[INFO] [1791063061.152988333] [controller_manager]: Registering statistics for : MockSystem
+[cppyy_kit] control_kit.make_controller_manager JIT-compiled a call wrapper on first use (338 ms). Call control_kit.warmup() once during init/startup to move this one-time cost off the first live call. Silence: RCLCPPYY_JIT_NOTICE=0.
+[INFO] [1791063061.918391397] [controller_manager]: Controller 'tracking' node arguments: 
+[INFO] [1791063061.995969148] [controller_manager]: Configuring controller: 'tracking'
+[INFO] [1791063062.220107787] [controller_manager]: Activating controllers: [ tracking ]
+[INFO] [1791063062.289561313] [controller_manager]: Successfully switched controllers!
+[WARN] [1791063062.402336002] [controller_manager]: Overrun might occur, Total time : 111969.372 us (Expected < 1000.000 us) --> Read time : 5.084 us, Update time : 111952.121 us, Write time : 12.167 us
+[WARN] [1791063063.488386373] [controller_manager]: Overrun might occur, Total time : 1169.744 us (Expected < 1000.000 us) --> Read time : 12.456 us, Update time : 1149.456 us, Write time : 7.832 us
+[WARN] [1791063064.656206574] [controller_manager]: Overrun might occur, Total time : 1924.819 us (Expected < 1000.000 us) --> Read time : 13.539 us, Update time : 1905.896 us, Write time : 5.384 us
+[INFO] [1791063065.615108699] [controller_manager]: Deactivating controllers: [ tracking ]
+[INFO] [1791063065.616482376] [controller_manager]: Successfully switched controllers!
+[INFO] [1791063065.687840239] [controller_manager.pal_statistics]: Async messages lost 0
+[INFO] [1791063065.687999598] [controller_manager.pal_statistics]: publish_async_failures_ 1
+[INFO] [1791063065.691872008] [controller_manager.pal_statistics]: Async messages lost 0
+[INFO] [1791063065.691975266] [controller_manager.pal_statistics]: publish_async_failures_ 2

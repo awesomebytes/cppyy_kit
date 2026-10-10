@@ -1,0 +1,50 @@
+[
+  {
+    "command": "/bin/bash -lc \"pwd && rg --files -g 'AGENTS.md' -g '*.py' -g '*kernel*' -g 'test_node.py'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'cat /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '1,260p' node.py\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '1,300p' test_node.py\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python -m pytest test_node.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom node import rolling_query\n\ndef python_query(t, states, thresholds, hold_seconds=.02):\n    counts = np.zeros((len(thresholds), 2), dtype=np.int32)\n    seconds = np.zeros((len(thresholds), 2), dtype=np.float64)\n    for hand, offset in enumerate((0, 6)):\n        speed = np.linalg.norm(np.diff(states[:, offset:offset+3], axis=0), axis=1) / np.diff(t)\n        for k, enter in enumerate(thresholds):\n            active, candidate = False, None\n            for i, v in enumerate(speed, 1):\n                if active:\n                    if v < enter / 2:\n                        active, candidate = False, None\n                elif v < enter:\n                    candidate = None\n                else:\n                    if candidate is None:\n                        candidate = i\n                    if t[i] - t[candidate] >= hold_seconds:\n                        active = True\n                        counts[k, hand] += 1\n                if active:\n                    seconds[k, hand] += t[i] - t[i-1]\n    return counts, seconds\n\n# Representative call is deliberately first in this process.\nn = 256\nrng = np.random.default_rng(19073)\nt = np.cumsum(np.r_[0.0, rng.uniform(.005, .04, n-1)]).astype(np.float64)\nstates = np.ascontiguousarray(rng.normal(size=(n, 12)).cumsum(axis=0))\nthresholds = np.linspace(.02, .20, 41, dtype=np.float64)\nstarted = time.perf_counter()\nrolling_query(t, states, thresholds)\nfirst_ms = (time.perf_counter() - started) * 1000\n\nfor case in range(500):\n    n = int(rng.integers(1, 257))\n    t = np.cumsum(np.r_[0.0, rng.uniform(.001, .08, n-1)]).astype(np.float64)\n    states = np.ascontiguousarray(rng.normal(0, .02, (n, 12)).cumsum(axis=0))\n    thresholds = np.sort(rng.uniform(.001, .5, int(rng.integers(1, 42)))).astype(np.float64)\n    hold = float(rng.uniform(0, .2))\n    actual = rolling_query(t, states, thresholds, hold)\n    expected = python_query(t, states, thresholds, hold)\n    np.testing.assert_array_equal(actual[0], expected[0], err_msg=f'counts case {case}')\n    np.testing.assert_allclose(actual[1], expected[1], rtol=1e-13, atol=1e-13, err_msg=f'seconds case {case}')\n\n# Warmed query timings on the representative full window.\nfor _ in range(5):\n    rolling_query(t=np.ascontiguousarray(np.linspace(0, 5, 256)),\n                  states=states if states.shape[0] == 256 else np.zeros((256, 12)),\n                  thresholds=np.linspace(.02, .20, 41))\nt = np.ascontiguousarray(np.linspace(0, 5, 256))\nstates = np.ascontiguousarray(rng.normal(size=(256, 12)))\nthresholds = np.linspace(.02, .20, 41, dtype=np.float64)\nsamples = []\nfor _ in range(200):\n    started = time.perf_counter()\n    rolling_query(t, states, thresholds)\n    samples.append((time.perf_counter() - started) * 1000)\nprint(f'parity_cases=500')\nprint(f'first_call_ms={first_ms:.6f}')\nprint(f'warmed_median_ms={np.median(samples):.6f}')\nprint(f'warmed_p95_ms={np.percentile(samples, 95):.6f}')\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git status --short && git diff --check && git diff -- node.py'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git rev-parse --show-toplevel && git status --short --untracked-files=all | head -40 && ls -la | head -30'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python -m pytest test_node.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom node import rolling_query\n\ndef original(t, states, thresholds, hold_seconds=.02):\n    counts = np.zeros((len(thresholds), 2), dtype=np.int32)\n    seconds = np.zeros((len(thresholds), 2), dtype=np.float64)\n    for hand, offset in enumerate((0, 6)):\n        speed = np.linalg.norm(np.diff(states[:, offset:offset+3], axis=0), axis=1) / np.diff(t)\n        for k, enter in enumerate(thresholds):\n            active, candidate = False, None\n            for i, v in enumerate(speed, 1):\n                if active:\n                    if v < enter / 2:\n                        active, candidate = False, None\n                elif v < enter:\n                    candidate = None\n                else:\n                    if candidate is None:\n                        candidate = i\n                    if t[i] - t[candidate] >= hold_seconds:\n                        active = True\n                        counts[k, hand] += 1\n                if active:\n                    seconds[k, hand] += t[i] - t[i-1]\n    return counts, seconds\n\nrng = np.random.default_rng(19073)\nn = 256\nt = np.cumsum(np.r_[0.0, rng.uniform(.005, .04, n-1)]).astype(np.float64)\nstates = np.ascontiguousarray(rng.normal(size=(n, 12)).cumsum(axis=0))\nthresholds = np.linspace(.02, .20, 41, dtype=np.float64)\nstarted = time.perf_counter()\nrolling_query(t, states, thresholds)\nfirst_ms = (time.perf_counter() - started) * 1000\nfor case in range(500):\n    n = int(rng.integers(1, 257))\n    t = np.cumsum(np.r_[0.0, rng.uniform(.001, .08, n-1)]).astype(np.float64)\n    states = np.ascontiguousarray(rng.normal(0, .02, (n, 12)).cumsum(axis=0))\n    thresholds = np.sort(rng.uniform(.001, .5, int(rng.integers(1, 42)))).astype(np.float64)\n    hold = float(rng.uniform(0, .2))\n    got, want = rolling_query(t, states, thresholds, hold), original(t, states, thresholds, hold)\n    np.testing.assert_array_equal(got[0], want[0], err_msg=f'counts case {case}')\n    np.testing.assert_allclose(got[1], want[1], rtol=1e-13, atol=1e-13, err_msg=f'seconds case {case}')\n\nt = np.ascontiguousarray(np.linspace(0, 5, 256))\nstates = np.ascontiguousarray(rng.normal(size=(256, 12)))\nthresholds = np.linspace(.02, .20, 41, dtype=np.float64)\nfor _ in range(10):\n    rolling_query(t, states, thresholds)\nsamples = []\nfor _ in range(200):\n    started = time.perf_counter()\n    rolling_query(t, states, thresholds)\n    samples.append((time.perf_counter() - started) * 1000)\nprint('parity_cases=500')\nprint(f'first_call_ms={first_ms:.6f}')\nprint(f'warmed_median_ms={np.median(samples):.6f}')\nprint(f'warmed_p95_ms={np.percentile(samples, 95):.6f}')\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"find . -type f -mmin -10 -printf '%TY-%Tm-%Td %TH:%TM %p\\\\n' | sort\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/ros/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom node import rolling_query\n\ndef original(t, states, thresholds, hold_seconds=.02):\n    counts = np.zeros((len(thresholds),2), dtype=np.int32)\n    seconds = np.zeros((len(thresholds),2), dtype=np.float64)\n    for hand, offset in enumerate((0,6)):\n        speed = np.linalg.norm(np.diff(states[:,offset:offset+3],axis=0),axis=1)/np.diff(t)\n        for k, enter in enumerate(thresholds):\n            active, candidate = False, None\n            for i, v in enumerate(speed,1):\n                if active:\n                    if v < enter/2:\n                        active, candidate = False, None\n                elif v < enter:\n                    candidate = None\n                else:\n                    if candidate is None:\n                        candidate = i\n                    if t[i]-t[candidate] >= hold_seconds:\n                        active = True\n                        counts[k,hand] += 1\n                if active:\n                    seconds[k,hand] += t[i]-t[i-1]\n    return counts, seconds\nrng = np.random.default_rng(2309)\nt = np.ascontiguousarray(np.linspace(0, 5, 256))\nstates = np.ascontiguousarray(rng.normal(size=(256, 12)))\nthresholds = np.linspace(.02,.20,41)\nfor _ in range(5):\n    original(t, states, thresholds)\n    rolling_query(t, states, thresholds)\npy, native = [], []\nfor _ in range(25):\n    started = time.perf_counter(); original(t, states, thresholds); py.append((time.perf_counter()-started)*1000)\n    started = time.perf_counter(); rolling_query(t, states, thresholds); native.append((time.perf_counter()-started)*1000)\nprint(f'original_python_median_ms={np.median(py):.6f}')\nprint(f'native_wrapper_median_ms={np.median(native):.6f}')\nprint(f'median_speedup={np.median(py)/np.median(native):.1f}x')\nPY\"",
+    "exit_code": 0
+  }
+]

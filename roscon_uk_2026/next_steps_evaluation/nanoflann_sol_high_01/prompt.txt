@@ -1,0 +1,9 @@
+Complete /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/nanoflann_sol_high_01/candidate.py. Implement the retained native Index. Put new native sources under this evaluation directory's build/.
+Read the listed guides explicitly. Their original working-directory instructions are replaced by this one: work only in /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/nanoflann_sol_high_01. Do not edit other files outside it or change acceptance checks.
+Do not read saved solutions, index.py, native.cpp/native.hpp implementation bodies, solution.py, or forward to saved missing-logic implementations. You may use documented scaffold helpers and installed dependency headers. Do not inspect or print credentials or the complete environment. Do not create worktrees, another checkout, install skills, change settings, or spawn agents.
+Read: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/README.md
+Read: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/LIBRARY_RECIPE.md
+Read: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/PROMPT.txt
+Python: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/.pixi/envs/default/bin/python
+Acceptance argv (run directly): ["/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/.pixi/envs/default/bin/python", "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/acceptance.py"]
+Preserve contracts. Run the checks and fix actual logic failures without changing them. Report commands and results. This is an implementation completion exercise, not a speed guarantee.

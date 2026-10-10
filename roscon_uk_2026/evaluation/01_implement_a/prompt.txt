@@ -1,0 +1,9 @@
+Implement motion_mask in task.py according to its docstring. Keep its signature
+and the supplied validation. Do not change the tests or other files. Run the
+acceptance tests and the 250,000-sample example. Report the results and timing.
+This is Cartesian motion-event detection for finding useful intervals in robot
+demonstrations. Work only in the supplied task directory. Use the interpreter
+and pytest command provided by the evaluation runner.
+
+Python: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python
+Check: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_task.py -q

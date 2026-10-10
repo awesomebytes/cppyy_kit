@@ -1,0 +1,11 @@
+Implement track() in tracker.py using cppyy_kit and the supplied kernel guide.
+Preserve exact integer SSD scoring, row-major tie breaking, clipping, dtype
+validation, and return values. Keep capture and GUI boilerplate. Do not change
+tests or other files. Run synthetic acceptance tests and report first-call and
+warmed timings for an 11x11 template and +/-8-pixel search. Camera hardware is
+not required for this agent evaluation. Do not describe synthetic results as a
+live camera test. Work only in the task directory.
+
+Python: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python
+Check: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python -m pytest test_tracker.py -q
+Read /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md before editing.

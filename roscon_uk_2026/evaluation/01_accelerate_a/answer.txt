@@ -1,0 +1,5 @@
+Updated [task.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/01_accelerate_a/task.py) to run the speed calculation and motion state machine in one native call. The existing validation and `int32` output allocation remain in Python.
+
+Python syntax compilation passed. The runner’s pytest command could not verify correctness: Python segfaulted with exit code 139 while importing `cppyy`, before test collection. A direct `cppyy` import also segfaulted, including with cppyy_kit’s automatic PCH disabled.
+
+First-call compilation time and warmed operation time are **unavailable** because the native kernel could not run in this environment.

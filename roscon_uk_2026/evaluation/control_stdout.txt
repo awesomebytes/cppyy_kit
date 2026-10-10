@@ -1,0 +1,2 @@
+rclcpp C++ headers loaded (0.0s)
+RESULT {"cycles": 3000, "target_hz": 1000, "elapsed_s": 3.0341247399919666, "achieved_hz": 988.7530200910405, "interval_p99_ms": 3.8873300235718484, "late_intervals": 203, "tail_max_error_rad": 0.01600831491344123, "hardware": "mock_components/GenericSystem"}

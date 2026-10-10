@@ -1,0 +1,10 @@
+{
+  "received": 2735,
+  "expected": 2735,
+  "counts_sha256": "ae5d195de29cfd665c50521ec164ff2fc2f4fe0c105c0f256104a8e6ecbb91d8",
+  "callback_median_ms": 0.4972159949829802,
+  "callback_p99_ms": 1.206269039248582,
+  "playback_rate": 4,
+  "recorded_time_semantics": true,
+  "offline_counts_hash_match": true
+}

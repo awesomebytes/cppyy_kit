@@ -1,0 +1,9 @@
+Implemented only `replay_trial`, `ask_and_tell`, and `select_training` in [candidate.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/tuning_sol_high_01/candidate.py).
+
+Validation:
+
+- Ran the provided acceptance argv directly: passed.
+- Ran the unchanged independent checks via `python -B -`, bound to the repaired functions: **9 passed**.
+- Ran additional inline checks for unequal episode weighting, batch/reset counts, instance cleanup, and selection ties: passed.
+
+Acceptance checks were not modified.

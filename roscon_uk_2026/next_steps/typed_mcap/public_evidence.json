@@ -1,0 +1,54 @@
+{
+  "housing": {
+    "provenance": {
+      "url": "https://huggingface.co/datasets/cortexdatalabs/MCAP-Housing/resolve/1a6b8967d43febbd54ece889b248ebac5b2ad6de/Lighting%20a%20stove.mcap",
+      "sha256": "ea615ff07096543a55680fa90a1108403cad49ba7c0c39924e0a185f45aec287",
+      "bytes": 4194304,
+      "range": "bytes=0-4194303",
+      "source_file_bytes": 1541317776,
+      "source_lfs_sha256": "2f8846208b2e6817f034350e38aaf7dd2e90a5ba12fe391c579b2b14b26fcc3a",
+      "license": "CC-BY-NC-4.0",
+      "required_attribution": "This work uses the MCAP-Housing dataset (Cortex Data Labs, 2025).",
+      "source": "https://huggingface.co/datasets/cortexdatalabs/MCAP-Housing/tree/1a6b8967d43febbd54ece889b248ebac5b2ad6de",
+      "license_source": "https://huggingface.co/datasets/cortexdatalabs/MCAP-Housing/blob/1a6b8967d43febbd54ece889b248ebac5b2ad6de/README.md",
+      "slice_sha256": "55011300536525a5b08596556c7c12a34820047fb4644453fa3ea8cfe6613962",
+      "slice_bytes": 8295959,
+      "original_cdr_sha256": "20278467620a1b5c9c79cf5c7ee4f2a61cf853bfdc37360d51bc9c3801d48401",
+      "log_time_ns": 16666666,
+      "publish_time_ns": 16666666,
+      "converted_topic": "/camera/depth/colorized",
+      "messages": 1,
+      "retained_topic_index": 1,
+      "complete_prefix_bytes": 3965163,
+      "conversion_decompression_write_ms": 46.93330998998135,
+      "verification": "range checksum verified; full source LFS checksum reported by source, full source not downloaded"
+    },
+    "width": 1920,
+    "height": 1440,
+    "encoding": "bgr8",
+    "frame_id": "camera",
+    "header_time_ns": 16666666,
+    "pixel_sha256": "9180616b15cabfc08b3701c336b60d6008b30cbf32db90a7fc34a56ae40c4474",
+    "parity": "exact timestamps, headers, dimensions and every byte",
+    "native_first_total_ms": 440.0514650042169,
+    "native_components_ms": {
+      "container_io_parse_ms": 5.326148,
+      "cdr_decode_append_ms": 3.34883,
+      "decompression_ms": 0.0,
+      "numpy_owned_copy_ms": 40.641872998094186
+    },
+    "python_decoder_ms": 13.443149015074596
+  },
+  "rosbag2_cdr": {
+    "decoded_messages": 7,
+    "schema_names": [
+      "test_msgs/msg/Arrays",
+      "test_msgs/msg/BasicTypes"
+    ],
+    "native_rejection": "    runtime_error: unsupported topic schema or encoding"
+  },
+  "bagel": {
+    "python_rejection": "Parsing for type time is not implemented",
+    "native_rejection": "    runtime_error: schema layout differs from supported ROS 2 definition"
+  }
+}

@@ -1,0 +1,30 @@
+[workspace]
+name = "native-filter-generated-tests"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+cppyy = ">=3.5,<4"
+numpy = ">=2,<3"
+pydantic = ">=2,<3"
+hypothesis = "==6.168.3"
+pytest = ">=8,<9"
+gxx_linux-64 = "==14.3.0"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+# This demonstration imports the user's checkout. No installed-package claim.
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../../..:$PIXI_PROJECT_ROOT/..:$PIXI_PROJECT_ROOT"
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+CPPYY_KIT_NO_AUTOPCH = "1"
+
+[tasks]
+check = "python -m pytest -q test_filter.py"
+find-fault = "python find_fault.py"
+reproduce = "python reproducer.py"
+guide = "python guide.py"
+measure = "python measure.py"

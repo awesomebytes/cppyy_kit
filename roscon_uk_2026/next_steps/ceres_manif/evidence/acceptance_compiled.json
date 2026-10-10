@@ -1,0 +1,74 @@
+{
+  "autodiff_max_absolute_errors": [
+    8.801781525846764e-11,
+    1.7432766341585193e-10,
+    2.2659296661231565e-10
+  ],
+  "manif_right_jacobian_max_absolute_error": 1.3141343568889852e-10,
+  "recovery": {
+    "noise": {
+      "termination": 0,
+      "iterations": 5,
+      "usable": true,
+      "converged": true,
+      "initial_cost": 57.026590144630404,
+      "final_cost": 0.00946967241156334,
+      "solve_seconds": 0.0005269050598144531,
+      "boundary_inclusive_seconds": 0.003697139007272199,
+      "objective_checked": 0.009469672411563344,
+      "translation_error_m": 0.0005446709408474969,
+      "rotation_error_rad": 0.0004849198858046057,
+      "x": [
+        0.3004090651017855,
+        -0.20027526727522119,
+        0.5002314305586936,
+        0.24967886151853025,
+        -0.3503365277005868,
+        0.18015073597291842
+      ]
+    },
+    "outliers_huber": {
+      "termination": 0,
+      "iterations": 5,
+      "usable": true,
+      "converged": true,
+      "initial_cost": 4.950379356850746,
+      "final_cost": 0.4837619957300614,
+      "solve_seconds": 0.0004971027374267578,
+      "boundary_inclusive_seconds": 0.0005979060078971088,
+      "objective_checked": 0.48376199573006123,
+      "translation_error_m": 0.0003775712081734149,
+      "rotation_error_rad": 0.001158894514225947,
+      "x": [
+        0.30033757711965664,
+        -0.20014321540567587,
+        0.5000899502812833,
+        0.24931571719611303,
+        -0.3509408985073816,
+        0.17988822220052933
+      ]
+    }
+  },
+  "failed_solver": {
+    "termination": 1,
+    "iterations": 1,
+    "usable": true,
+    "converged": false,
+    "initial_cost": 4.950379356850746,
+    "final_cost": 4.950379356850746,
+    "solve_seconds": 7.796287536621094e-05,
+    "boundary_inclusive_seconds": 0.00015303702093660831,
+    "objective_checked": 4.95037935685075,
+    "translation_error_m": 0.6164414002968976,
+    "rotation_error_rad": 0.46626172907499064,
+    "x": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "checks_passed": true
+}

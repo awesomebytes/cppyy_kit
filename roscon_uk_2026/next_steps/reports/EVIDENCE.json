@@ -1,0 +1,357 @@
+{
+  "measurement": "one local process; cached native builds; first report then two warmed reports",
+  "import_s": 0.07583529897965491,
+  "fixture_generation_s": 0.04275347202201374,
+  "peak_rss_kib": 228180,
+  "runs": [
+    {
+      "elapsed_s": 0.48134758399100974,
+      "stages_s": {
+        "metadata_io_and_dataset_hash": 0.00041079698712565005,
+        "native_build_or_cache": 0.0026468400028534234,
+        "typed_pose_and_truth_extraction": 0.3639994309924077,
+        "validation_and_input_conversion": 0.0007663239957764745,
+        "native_load_and_construction": 0.04042084701359272,
+        "native_batch_and_output_conversion": 0.00742099600029178,
+        "native_snapshot_and_close": 0.008546965982532129,
+        "error_computation_and_window_ranking": 0.0008415699994657189,
+        "image_metadata_extraction_and_integer_join": 0.013687007973203436,
+        "selected_image_payload_extraction_and_png_encoding": 0.0007793050026521087,
+        "html_render": 0.0006175539747346193,
+        "html_and_trace_write": 0.000489856000058353
+      },
+      "extractor_ms": {
+        "setup": {
+          "adapter_build_or_cache_ms": 0.03557698801159859,
+          "cppyy_load_declarations_ms": 249.42662598914467
+        },
+        "poses": {
+          "container_io_parse_ms": 0.32713899999999996,
+          "cdr_decode_append_ms": 0.02396100000000004,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 23.340729996562004
+        },
+        "truth": {
+          "container_io_parse_ms": 0.26976199999999995,
+          "cdr_decode_append_ms": 0.022578000000000015,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.09805199806578457
+        },
+        "image_headers": {
+          "container_io_parse_ms": 0.32141,
+          "cdr_decode_append_ms": 0.008097000000000002,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 13.211754994699731
+        },
+        "selected_payloads": [
+          {
+            "container_io_parse_ms": 0.200902,
+            "cdr_decode_append_ms": 0.000854,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.04796299617737532
+          },
+          {
+            "container_io_parse_ms": 0.064957,
+            "cdr_decode_append_ms": 0.0005,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.02011001924984157
+          },
+          {
+            "container_io_parse_ms": 0.05789,
+            "cdr_decode_append_ms": 0.000446,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.017273006960749626
+          },
+          {
+            "container_io_parse_ms": 0.056841,
+            "cdr_decode_append_ms": 0.000264,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.015976984286680818
+          },
+          {
+            "container_io_parse_ms": 0.055297000000000006,
+            "cdr_decode_append_ms": 0.000289,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.015803991118445992
+          }
+        ]
+      }
+    },
+    {
+      "elapsed_s": 0.02427555699250661,
+      "stages_s": {
+        "metadata_io_and_dataset_hash": 0.0001199489925056696,
+        "native_build_or_cache": 0.0028985610115341842,
+        "typed_pose_and_truth_extraction": 0.0004902389773633331,
+        "validation_and_input_conversion": 0.0005025400023441762,
+        "native_load_and_construction": 8.52819939609617e-05,
+        "native_batch_and_output_conversion": 4.737399285659194e-05,
+        "native_snapshot_and_close": 1.2198986951261759e-05,
+        "error_computation_and_window_ranking": 0.0005274910072330385,
+        "image_metadata_extraction_and_integer_join": 0.0001727539929561317,
+        "selected_image_payload_extraction_and_png_encoding": 0.0005072409985587001,
+        "html_render": 0.002426682010991499,
+        "html_and_trace_write": 0.0016822799807414412
+      },
+      "extractor_ms": {
+        "setup": {
+          "adapter_build_or_cache_ms": 0.03557698801159859,
+          "cppyy_load_declarations_ms": 249.42662598914467
+        },
+        "poses": {
+          "container_io_parse_ms": 0.18698900000000002,
+          "cdr_decode_append_ms": 0.025886,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.06842301809228957
+        },
+        "truth": {
+          "container_io_parse_ms": 0.12335199999999998,
+          "cdr_decode_append_ms": 0.02699900000000004,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.012993987184017897
+        },
+        "image_headers": {
+          "container_io_parse_ms": 0.08662199999999999,
+          "cdr_decode_append_ms": 0.003960000000000002,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.03438300336711109
+        },
+        "selected_payloads": [
+          {
+            "container_io_parse_ms": 0.058741,
+            "cdr_decode_append_ms": 0.00048,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.018266990082338452
+          },
+          {
+            "container_io_parse_ms": 0.056502,
+            "cdr_decode_append_ms": 0.000417,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.015205994714051485
+          },
+          {
+            "container_io_parse_ms": 0.055069999999999994,
+            "cdr_decode_append_ms": 0.000301,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.01468299888074398
+          },
+          {
+            "container_io_parse_ms": 0.054601000000000004,
+            "cdr_decode_append_ms": 0.000191,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.013517012121155858
+          },
+          {
+            "container_io_parse_ms": 0.055143,
+            "cdr_decode_append_ms": 0.000263,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.015328987501561642
+          }
+        ]
+      }
+    },
+    {
+      "elapsed_s": 0.028772759018465877,
+      "stages_s": {
+        "metadata_io_and_dataset_hash": 0.000452458014478907,
+        "native_build_or_cache": 0.0035273089888505638,
+        "typed_pose_and_truth_extraction": 0.001535229996079579,
+        "validation_and_input_conversion": 0.0018972050165757537,
+        "native_load_and_construction": 0.0002248859964311123,
+        "native_batch_and_output_conversion": 0.00011988001642748713,
+        "native_snapshot_and_close": 2.9803981306031346e-05,
+        "error_computation_and_window_ranking": 0.00184297701343894,
+        "image_metadata_extraction_and_integer_join": 0.0005186119815334678,
+        "selected_image_payload_extraction_and_png_encoding": 0.0015150349936448038,
+        "html_render": 0.0025231199979316443,
+        "html_and_trace_write": 0.0016226099978666753
+      },
+      "extractor_ms": {
+        "setup": {
+          "adapter_build_or_cache_ms": 0.03557698801159859,
+          "cppyy_load_declarations_ms": 249.42662598914467
+        },
+        "poses": {
+          "container_io_parse_ms": 0.5556329999999998,
+          "cdr_decode_append_ms": 0.09249800000000014,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.1789370144251734
+        },
+        "truth": {
+          "container_io_parse_ms": 0.469955,
+          "cdr_decode_append_ms": 0.08553100000000001,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.06464199395850301
+        },
+        "image_headers": {
+          "container_io_parse_ms": 0.276774,
+          "cdr_decode_append_ms": 0.011214999999999996,
+          "decompression_ms": 0.0,
+          "numpy_owned_copy_ms": 0.08705700747668743
+        },
+        "selected_payloads": [
+          {
+            "container_io_parse_ms": 0.167826,
+            "cdr_decode_append_ms": 0.001507,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.06660199142061174
+          },
+          {
+            "container_io_parse_ms": 0.162102,
+            "cdr_decode_append_ms": 0.001621,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.05967498873360455
+          },
+          {
+            "container_io_parse_ms": 0.15676,
+            "cdr_decode_append_ms": 0.001138,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.05707301897928119
+          },
+          {
+            "container_io_parse_ms": 0.148073,
+            "cdr_decode_append_ms": 0.001025,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.05530801718123257
+          },
+          {
+            "container_io_parse_ms": 0.14747500000000002,
+            "cdr_decode_append_ms": 0.000961,
+            "decompression_ms": 0.0,
+            "numpy_owned_copy_ms": 0.0534839928150177
+          }
+        ]
+      }
+    }
+  ],
+  "windows": [
+    {
+      "start_ns": 1700000005300000000,
+      "end_ns": 1700000005500000000,
+      "score": 0.018884633464289015,
+      "samples": 20,
+      "representative_ns": 1700000005440000000,
+      "representative_index": 544,
+      "image": {
+        "query_ns": 1700000005440000000,
+        "image_index": 44,
+        "image_ns": 1700000005400000000,
+        "delta_ns": -40000000,
+        "status": "matched",
+        "frame_id": "map"
+      }
+    },
+    {
+      "start_ns": 1700000000740000000,
+      "end_ns": 1700000000940000000,
+      "score": 0.01683574618238537,
+      "samples": 20,
+      "representative_ns": 1700000000830000000,
+      "representative_index": 83,
+      "image": {
+        "query_ns": 1700000000830000000,
+        "image_index": 8,
+        "image_ns": 1700000000800000000,
+        "delta_ns": -30000000,
+        "status": "matched",
+        "frame_id": "map"
+      }
+    },
+    {
+      "start_ns": 1700000005790000000,
+      "end_ns": 1700000005990000000,
+      "score": 0.016803876998302415,
+      "samples": 20,
+      "representative_ns": 1700000005850000000,
+      "representative_index": 585,
+      "image": {
+        "query_ns": 1700000005850000000,
+        "image_index": 48,
+        "image_ns": 1700000005800000000,
+        "delta_ns": -50000000,
+        "status": "matched",
+        "frame_id": "map"
+      }
+    },
+    {
+      "start_ns": 1700000002840000000,
+      "end_ns": 1700000003040000000,
+      "score": 0.016802689664348947,
+      "samples": 20,
+      "representative_ns": 1700000003020000000,
+      "representative_index": 302,
+      "image": {
+        "query_ns": 1700000003020000000,
+        "image_index": 20,
+        "image_ns": 1700000003000000000,
+        "delta_ns": -20000000,
+        "status": "matched",
+        "frame_id": "map"
+      }
+    },
+    {
+      "start_ns": 1700000003050000000,
+      "end_ns": 1700000003250000000,
+      "score": 0.01654610093880473,
+      "samples": 20,
+      "representative_ns": 1700000003240000000,
+      "representative_index": 324,
+      "image": {
+        "query_ns": 1700000003240000000,
+        "image_index": 22,
+        "image_ns": 1700000003200000000,
+        "delta_ns": -40000000,
+        "status": "matched",
+        "frame_id": "map"
+      }
+    }
+  ],
+  "dataset_sha256": "9f83e482182ae1fc96dbeb633e341ab67706ff916ac8170b3be11e6bf8545561",
+  "config": {
+    "tau_s": 0.08,
+    "max_gap_s": 0.5,
+    "frame_id": "map"
+  },
+  "config_sha256": "eacab3477ca948e700b7cb70f06001755951edc09403c9969a7e1f923df782b9",
+  "versions": {
+    "python": "3.12.14",
+    "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+    "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+    "mcap_cpp_vendor": "0.26.11 (locked ros-jazzy-mcap-vendor)",
+    "cppyy_kit": "repository source; source hash recorded",
+    "numpy": "2.5.3",
+    "cppyy": "3.5.0",
+    "pydantic": "2.13.5",
+    "mcap": "1.5.0",
+    "mcap-ros2-support": "0.5.7"
+  },
+  "source_sha256": {
+    "roscon_uk_2026/next_steps/reports/report.py": "559b8f3b6a392e89d9ecb4bf8cd70b65d54d09ade8cf7e73b0564137c3c8123a",
+    "roscon_uk_2026/next_steps/reports/report_core.py": "2fddc4d64cfcb76d3552d9cf278d95d66e4a235647667ad9895ba0e710ec3d8d",
+    "cppyy_kit/__init__.py": "625b6fda1665581ffea23a40fb3cd5bf7d799ddff3495326042c508af21becd4",
+    "roscon_uk_2026/next_steps/typed_mcap/check_public.py": "944e277bce837267468f266c69ef4fe5bf1c543cedee7121317edda9c116e20d",
+    "roscon_uk_2026/next_steps/typed_mcap/compare_rosbag.py": "a131ff55748170e2f368e3bfd7902e4264a4f1ebccd4874896b32580af041af5",
+    "roscon_uk_2026/next_steps/typed_mcap/extract.py": "2640b4e3404d41da75416072415e74e0ad87a0e3c26c20ecb3513bd140dcce89",
+    "roscon_uk_2026/next_steps/typed_mcap/fetch_public.py": "ef01c618279a0ba281fc0d345a29b88492ffe7e143177c31b5119fad92c6b583",
+    "roscon_uk_2026/next_steps/typed_mcap/measure.py": "887dc2bc3e5c700a340be2a1ac6e10ffc1cd0b5f2f23b0b557a64240e09d5062",
+    "roscon_uk_2026/next_steps/typed_mcap/schemas.py": "b128004488c27fb5c93c1faab2f2739c4e2f650586fdb7779119ec7b598832ef",
+    "roscon_uk_2026/next_steps/typed_mcap/test_extract.py": "0f0ee212a9e1d320c6d27ebee51e041639937df6ed94c0545e26a09c938a0655",
+    "roscon_uk_2026/next_steps/typed_mcap/native.cpp": "3a2c771f0b74bebe82686901a2aa474c5a444670a35ee60cc88305a9743457d5",
+    "roscon_uk_2026/next_steps/typed_mcap/native.hpp": "88a046bbbbc2526951009f77c1d615a7be7ac018965b12aa6c6950380c5c0db9",
+    "roscon_uk_2026/next_steps/reports/pixi.lock": "5de52a86b5e18e1ee1643a87d781e77a16fad3c64aca5439c0bf5d5d3b58042d",
+    "roscon_uk_2026/next_steps/reverse_core/__init__.py": "5d8ff7ab3870f71a83bd124c6285b1fcb539b383d310c5fdcf5b99a1bbe18b0a",
+    "roscon_uk_2026/next_steps/reverse_core/check_exercise.py": "973f256809b3c188cd90690784e870a680d07bc53742466f46b873764694f07c",
+    "roscon_uk_2026/next_steps/reverse_core/demo.py": "852d68879401f0b0ad07bdb1b46aabb849d3084916045a5aa5ed31f80009a67f",
+    "roscon_uk_2026/next_steps/reverse_core/skeleton.py": "9a8d9c5bb05ec0edd4c57ce7227915c1598bffe7da098072c56e6fb037566c2a",
+    "roscon_uk_2026/next_steps/reverse_core/solution.py": "43b8917afc5d77455e52ddb010d2bf8521200c952b8e086d95916b39efe56c1b",
+    "roscon_uk_2026/next_steps/reverse_core/native/driver.cpp": "30202aa995162348a5d7200a711cb8b9fac0e3b26a4d7a59d6ddf70f7258107e",
+    "roscon_uk_2026/next_steps/reverse_core/native/pose_filter.cpp": "97e85221ae71d435a137fac98623ac3f9d7b82d6adfc9371d2ef3e3fc5191212",
+    "roscon_uk_2026/next_steps/reverse_core/native/pose_filter.hpp": "db89b35d9fbb6fc0db3fc1d485b723e04bc425ffaede576fb8742185596089c1"
+  },
+  "native_library_sha256": "b43d3ea8924e9f86341f1b083ed79338e408743e2470aea731afd2c862c647af",
+  "acceptance_checks_sha256": {
+    "test_report.py": "8408ab688a95c68c8c20d28b11106393ad061640dd7f138134a7d9f488f08803",
+    "test_integration.py": "599711b21e405801a6766ee02098e3a159ba968f3e8c0130c83525907b584ac2"
+  },
+  "agent_evaluation": "not run; skeleton checks intentionally fail until logic is completed"
+}

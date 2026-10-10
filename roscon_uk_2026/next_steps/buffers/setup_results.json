@@ -1,0 +1,14 @@
+{
+  "command": [
+    "pixi",
+    "install",
+    "--locked",
+    "-m",
+    "roscon_uk_2026/next_steps/buffers/pixi.toml"
+  ],
+  "elapsed_seconds": 0.039138424006523564,
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "\u2714 The default environment has been installed.\n",
+  "condition": "Lock already resolved and packages already installed. Initial cold solve/download/install time was not captured."
+}

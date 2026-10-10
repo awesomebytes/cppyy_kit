@@ -1,0 +1,26 @@
+[
+  {
+    "command": "/bin/bash -lc \"cat /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md && printf '\\\\n--- task.py ---\\\\n' && sed -n '1,240p' task.py && printf '\\\\n--- files ---\\\\n' && rg --files -g '\"'!*.pyc'\"'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '1,260p' test_task.py && cat prompt.txt\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_task.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom task import motion_mask, synthetic\n\ndef reference(t, xyz, enter_speed=0.08, exit_speed=0.04, hold_seconds=0.12):\n    t = np.ascontiguousarray(t, dtype=np.float64)\n    xyz = np.ascontiguousarray(xyz, dtype=np.float64)\n    n = len(t)\n    mask = np.zeros(n, dtype=np.int32)\n    if n < 2:\n        return mask\n    speed = np.linalg.norm(np.diff(xyz, axis=0), axis=1) / np.diff(t)\n    candidate = -1\n    active = False\n    for i, current_speed in enumerate(speed, start=1):\n        if active:\n            if current_speed < exit_speed:\n                active = False\n                candidate = -1\n            else:\n                mask[i] = 1\n        elif current_speed < enter_speed:\n            candidate = -1\n        else:\n            if candidate < 0:\n                candidate = i\n            if t[i] - t[candidate] >= hold_seconds:\n                active = True\n                mask[i] = 1\n    return mask\n\nt, xyz = synthetic()\nstart = time.perf_counter()\ngot = motion_mask(t, xyz)\nfirst_ms = (time.perf_counter() - start) * 1000\nexpected = reference(t, xyz)\nnp.testing.assert_array_equal(got, expected)\n\ntimes = []\nfor _ in range(7):\n    start = time.perf_counter()\n    got = motion_mask(t, xyz)\n    times.append((time.perf_counter() - start) * 1000)\nnp.testing.assert_array_equal(got, expected)\nprint(f\\\"samples={len(t)} output_dtype={got.dtype} exact_match=True\\\")\nprint(f\\\"first_call_ms={first_ms:.3f}\\\")\nprint(f\\\"warmed_ms_median={np.median(times):.3f} warmed_ms_min={min(times):.3f}\\\")\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git diff --check && git diff -- task.py'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"git status --short && sed -n '1,115p' task.py\"",
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,12 @@
+Implemented `TrackingController.update()` in [controller.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/04_control_b/controller.py). It advances time using the supplied period, reads both claimed position interfaces, applies the documented tracking law, writes both commands, and records samples.
+
+The acceptance test passed: `1 passed in 8.03s`.
+
+Three-second, 1000 Hz trial results:
+
+- Achieved rate: **996.4 Hz**
+- p99 cycle interval: **1.461 ms**
+- Late intervals: **29**
+- Tail maximum tracking error: **0.01494 rad**
+
+The hardware is `mock_components/GenericSystem`. These measured scheduling results are not a hard real-time guarantee.

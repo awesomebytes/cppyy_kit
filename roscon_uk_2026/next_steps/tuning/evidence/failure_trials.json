@@ -1,0 +1,32 @@
+[
+  {
+    "number": 0,
+    "resolved_config": {
+      "tau_s": 0.005971636530499643,
+      "max_gap_s": 0.5,
+      "frame_id": "world"
+    },
+    "status": "FAIL",
+    "error_type": "ValueError",
+    "error": "deliberate test-only replay failure",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tuning/tune.py\", line 94, in record_trial\n    record[\"training\"] = evaluate(config, episodes)\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<stdin>\", line 13, in fail\nValueError: deliberate test-only replay failure\n",
+    "optuna_params": {
+      "tau_s": 0.005971636530499643
+    }
+  },
+  {
+    "number": 1,
+    "resolved_config": {
+      "tau_s": 0.1816230336344081,
+      "max_gap_s": 0.5,
+      "frame_id": "world"
+    },
+    "status": "FAIL",
+    "error_type": "ValueError",
+    "error": "deliberate test-only replay failure",
+    "traceback": "Traceback (most recent call last):\n  File \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tuning/tune.py\", line 94, in record_trial\n    record[\"training\"] = evaluate(config, episodes)\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<stdin>\", line 13, in fail\nValueError: deliberate test-only replay failure\n",
+    "optuna_params": {
+      "tau_s": 0.1816230336344081
+    }
+  }
+]

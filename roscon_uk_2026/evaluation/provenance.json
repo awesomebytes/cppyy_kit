@@ -1,0 +1,52 @@
+{
+  "evaluated_utc": "2026-10-03T21:32:30.694004+00:00",
+  "repository_commit": "7300147bfef8bfaa2278c9871a59f175f2628989",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "host_cpu": "Intel(R) Core(TM) Ultra 9 285H",
+  "runs": [
+    "01_implement_a",
+    "01_accelerate_a",
+    "01_accelerate_b",
+    "01_accelerate_c",
+    "01_accelerate_d",
+    "02_mcap_a",
+    "03_ros_a",
+    "04_control_a",
+    "04_control_b",
+    "05_webcam_a"
+  ],
+  "raw_transcripts": "eval_runs (ignored; retained locally)",
+  "solutions": {
+    "python_baseline": {
+      "run": "01_implement_a",
+      "source_file": "task.py",
+      "sha256": "b3b79406ee4f74c6fbb30a7419a30646b13d2d5da5f4df56a1cf177ed33f15bc"
+    },
+    "python_native": {
+      "run": "01_accelerate_c",
+      "source_file": "task.py",
+      "sha256": "e915313ebe59d86d1294874482a0d983cc44970643ff0436e356c55478635c1f"
+    },
+    "mcap_native": {
+      "run": "02_mcap_a",
+      "source_file": "analyze.py",
+      "sha256": "ea663ec720e1ee478c72c371febb9360789a253e1f3b14adf9e21c8fd804b304"
+    },
+    "ros_native": {
+      "run": "03_ros_a",
+      "source_file": "node.py",
+      "sha256": "3f48fcd41c37111b915e0e44c74f5b80bdd06afcac0af6e9e63e6a95aec4c149"
+    },
+    "control_native": {
+      "run": "04_control_b",
+      "source_file": "controller.py",
+      "sha256": "ffae4c456d85ef1438701e631949e960027a52fd4d6c0d763f7deca66dc1a6fc"
+    },
+    "webcam_native": {
+      "run": "05_webcam_a",
+      "source_file": "tracker.py",
+      "sha256": "82b0450e8b33a704bf1678140fc3e649824939c7cb1d5831c6ab370e2ade6e25"
+    }
+  }
+}

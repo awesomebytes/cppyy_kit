@@ -1,0 +1,25 @@
+{
+  "status": "PASS",
+  "cycles": 3200,
+  "elapsed_s": 3.2111573230067734,
+  "callbacks": 3201,
+  "target_update_ticks": [
+    0,
+    400,
+    900
+  ],
+  "tail_max_reference_error_rad": 5.405685163384355e-09,
+  "callback_p50_us": 35.86,
+  "callback_p99_us": 177.928,
+  "generator_dt_s": 0.001,
+  "manager_period_min_s": 0.000573332,
+  "manager_period_max_s": 0.060761469,
+  "manager_period_p50_s": 0.000999189,
+  "hardware": "mock_components/GenericSystem",
+  "versions": {
+    "ros-jazzy-control-kit": "0.3.0",
+    "cppyy": "3.5.0",
+    "numpy": "2.5.3"
+  },
+  "scope": "Python callback; native reference advances 1 ms per callback independently of wall time; no plant dynamics or real-time claim"
+}

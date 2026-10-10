@@ -1,0 +1,14 @@
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/detail/_intrusive_list_node.h:29:8: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/detail/_task.h:143:66: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/blocked_range.h:91:9: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/partitioner.h:201:35: optimized: basic block part vectorized using 4 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/blocked_range.h:91:9: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/partitioner.h:233:17: optimized: basic block part vectorized using 2 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:68:14: optimized: loop vectorized using 32 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:68:14: optimized: loop vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:65:64: optimized: basic block part vectorized using 4 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:32:5: optimized: basic block part vectorized using 32 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:32:5: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/task_arena.h:219:11: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp:37:23: optimized: basic block part vectorized using 16 byte vectors
+/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include/oneapi/tbb/task_arena.h:72:42: optimized: basic block part vectorized using 16 byte vectors

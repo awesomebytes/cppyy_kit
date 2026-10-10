@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/check_exercise.py", line 60, in <module>
+    main()
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/check_exercise.py", line 56, in main
+    check(args.module)
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/check_exercise.py", line 27, in check
+    module.validate_and_export(invalid, directory / "invalid.cfg")
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/config_sol_high_01/candidate.py", line 12, in validate_and_export
+    raise NotImplementedError("validate values, adapt existing Config fields, export resolved settings")
+NotImplementedError: validate values, adapt existing Config fields, export resolved settings

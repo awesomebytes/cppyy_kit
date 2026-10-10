@@ -1,0 +1,6 @@
+{
+  "returncode": 0,
+  "stdout": "{\"cost\": 2.649518772677031e-27, \"cplusplus\": 201703, \"eigen_max_align_bytes\": 16, \"glibcxx_cxx11_abi\": 1}\n",
+  "stderr": "",
+  "seconds": 2.1152640509826597
+}

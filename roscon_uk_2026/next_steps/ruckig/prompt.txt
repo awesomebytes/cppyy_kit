@@ -1,0 +1,23 @@
+Read GUIDE.md, tracking.hpp, and test_acceptance.py in roscon_uk_2026/next_steps/ruckig.
+Complete Session::step in .build/candidate.cpp copied from skeleton/tracking.cpp.
+Do not read or copy the saved tracking.cpp solution. Do not change the checker,
+header, existing state setters, source pins, or shared repository files.
+
+Use the retained Ruckig Community generator, input, and output. Validate the
+measured vector before any state changes. Advance by the configured dt, preserve
+reference velocity and acceleration across changing targets, and pass accepted
+output back into the persistent input. Return the native sample and tracking
+commands. Implement rate = clip(new_velocity + kp*(new_position-measured),
+-max_velocity,+max_velocity), command = measured + dt*rate, in C++.
+
+Preserve accepted state on a numerical failure. Invalidate the solver cache and
+raise a descriptive std::runtime_error. Preserve Working/Finished and
+new_calculation semantics. Record native elapsed nanoseconds. The generator's
+nonzero terminal acceleration is not a hold. Do not claim hardware dynamics or
+real-time guarantees.
+
+Run, from this experiment directory:
+TRACKING_SOURCE="$PWD/.build/candidate.cpp" pixi run check
+The independent checker must remain unchanged. Report commands, failed checks,
+repairs, passing checks, and remaining limitations. Do not install skills or use
+Git worktrees. Do not run pip outside Pixi.

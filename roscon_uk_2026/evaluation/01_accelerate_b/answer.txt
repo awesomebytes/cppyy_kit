@@ -1,0 +1,8 @@
+Implemented the whole-input C++ motion state machine in [task.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/01_accelerate_b/task.py). Python still validates inputs and allocates the `int32` output.
+
+The supplied tests pass: **12 passed**. The 250,000-sample result also matched the previous sequential algorithm.
+
+- First call, including compilation: **443.629 ms**
+- Warmed operation average: **2.055 ms** across 7 calls
+
+The direct interpreter invocation hit a native import segmentation fault without Pixi’s environment activation. Running the supplied interpreter and pytest command under `pixi run` passed.

@@ -1,185 +1,255 @@
-# Why cppyy_kit still helps when AI writes code
+# Prototype Python and C++ robotics software with a coding agent
 
-## Core argument
+Use Python for inputs, configuration, tests, visualization, and experiment
+control. Use cppyy and `cppyy_kit` to call existing C++ libraries or move a
+measured operation to C++. Give the agent the task guide, your actual inputs,
+and a check on the expected result.
 
-AI tools can write C++, Python, build files, and bindings. That reduces the cost of
-typing boilerplate, but it does not remove the native library, compiler, packaging,
-ABI, conversion, or lifetime decisions behind that code. A useful tool should reduce
-the number of artifacts that must be created and kept in sync, and make it easier to
-test the result from the Python workflow that already exists.
+## Choose the task
 
-`cppyy_kit` is a small set of conveniences around cppyy: library setup, callbacks,
-array conversion, lifetime helpers, and cached C++ functions. cppyy parses C++
-headers and creates bindings at run time. The `@cpp` helper adds a focused way to
-write a C++ function in a Python file, describe its arguments with annotations, and
-compile/cache it when first called. This leaves Python in charge of files, devices,
-ROS nodes, and experiment control, while C++ handles computation identified by profiling.
-Its value is clearest when Python already owns the workflow and a particular
-operation needs direct access to C++ code or libraries.
-
-## What the alternatives solve
-
-| Family | Typical fit | Cost to account for |
+| What you want to do | Guide | First useful result |
 |---|---|---|
-| [Numba](https://numba.readthedocs.io/en/stable/user/jit.html) | Compile eligible Python functions, often numerical loops, with JIT specialization. | The supported Python and data model is constrained by compilation mode. It is a strong fit when the computation can stay in that model. |
-| [Cython](https://cython.readthedocs.io/en/latest/src/quickstart/overview.html) | Add static types to Python-like code, expose C/C++ libraries, or build extension modules. | Generated C/C++ and a compiled extension become part of the package workflow. Cython is also a good long-term choice for maintained modules. |
-| [Pythran](https://pythran.readthedocs.io/en/latest/) | Ahead-of-time compile a supported subset of Python, especially numerical code, to a native module. | Source annotations, supported-subset constraints, and a native-module build step. |
-| [Taichi](https://docs.taichi-lang.org/docs/kernel_function) | Write parallel kernels in its Python-embedded language for CPU/GPU execution. | Kernel scope and type rules differ from ordinary Python; it is useful when its execution model and backends fit. |
-| [JAX](https://docs.jax.dev/en/latest/jit-compilation.html) | Compile array computations through `jax.jit`, with specialization and accelerator support. | The computation needs to fit JAX tracing and array semantics; first compilation and specialization matter. |
-| [pybind11](https://pybind11.readthedocs.io/en/stable/) or [nanobind](https://nanobind.readthedocs.io/en/latest/) | Build a deliberate Python API around C++ functions and classes. | Write binding declarations, build an extension, and package and maintain the result. This is often right for a stable public module. |
-| [CPython C API](https://docs.python.org/3/extending/extending.html) | Implement an extension module or Python-facing native types at a low level. | Fine-grained control comes with explicit conversion, reference, error, and build responsibilities. |
-| [`ctypes`](https://docs.python.org/3/library/ctypes.html) | Call functions in shared libraries through a C-compatible ABI. | It needs exported C-compatible functions and explicit signatures. It cannot directly bind arbitrary C++ classes, templates, or overloaded methods. |
+| Accelerate a Python operation | `accelerate` | Matching outputs and measured before/after costs |
+| Bring a C++ library into a Python experiment | `bring-library` | A real library call with explicit dependencies and ownership |
+| Configure, test, or tune existing C++ software | `existing-cpp` | Validated settings and a reproducible native run from Python |
 
-These families overlap, but they do not have the same goal. `Numba`, Cython,
-Pythran, Taichi, and JAX provide different ways to express computation for a
-compiler. pybind11, nanobind, and the CPython API expose native code as a Python
-module. `ctypes` calls a C interface. cppyy is useful when the desired code is
-already C++, when an installed library is the target, or when the experiment itself
-is easiest to keep as ordinary Python plus a short C++ body.
+### Set up the current workflow
 
-For a conventional extension, an author may create C++ implementation files,
-binding declarations or C wrappers, build configuration, and Python packaging, then
-keep those pieces aligned as the API changes. Build tools can include CMake,
-setuptools, scikit-build, or Meson; not every route needs CMake. A `ctypes` design
-may avoid extension-module glue, but still needs a shared library with a C ABI and
-careful signatures. cppyy can read headers for a compatible installed library and
-generate bindings at runtime, so a project may not need a separate binding layer
-for each experiment. It still needs a working compiler/runtime, headers, libraries,
-and compatible binaries. Its runtime binding generation is not the absence of
-binding work in every sense.
+The numeric annotations and `guide` commands below are new in **0.4.0**. The
+[integration record](https://github.com/awesomebytes/cppyy_kit/blob/main/EXPERIMENT_INTEGRATION_2026-10-04.md#validation-and-upstream-status)
+records local 0.4.0 artifacts, with channel publication still a separate step.
+Published 0.3.x packages do not provide these interfaces. Until publication,
+use this source checkout and its locked Pixi environment.
 
-## Practical reasons to use it
+**Repository checkout commands:** run from the `cppyy_kit` repository root.
 
-### Keep experiments close to their real inputs
-
-- Test a kernel on arrays, messages, point clouds, or images produced by the real
-  Python application, instead of first creating a separate test executable.
-- Change a threshold, cost function, interpolation rule, or planner parameter in
-  the same script that launches the experiment.
-- Compare several candidate formulas or planner settings without changing the
-  surrounding node, file reader, visualizer, and logging path.
-- Keep camera, ROS, UI, and orchestration code in Python when those parts are not
-  the measured bottleneck.
-- Use existing C++ classes directly when a library already has the behavior needed.
-  A wrapper can be added for awkward conversions or ownership, but every method
-  does not need a hand-written Python binding.
-
-### Change one operation at a time
-
-- Start with one profiled loop or operation, not a broad rewrite. The
-  [acceleration workflow](skills/cppyy-accelerate/SKILL.md) profiles first,
-  keeps the old computation as a reference, then tests and measures the replacement.
-- A compact experiment can give an AI coding tool fewer separate artifacts and file
-  contracts to coordinate: the Python call site, annotations, and C++ body are
-  visible together, which makes the proposed change easier to review.
-- The existing Python implementation and its functional tests constrain the change
-  with concrete inputs and expected behavior. An AI tool can help propose edge
-  cases or edits, while the test remains the check on the result.
-- The native body uses ordinary C++ syntax and can work with C++ headers and
-  existing algorithms. That gives an AI tool repository code and familiar C++ APIs
-  to adapt instead of asking it to express every kernel in a new syntax.
-- Keep the public Python call shape stable while moving only the implementation of
-  the selected operation.
-- **Author's testing priority:** for behavior-preserving experiments, I prioritize
-  functional and integration tests from the existing Python workflow. They exercise
-  actual inputs and the surrounding pipeline, making a useful reference for both
-  changes written by people or AI tools.
-- Add small unit tests for the boundary itself: dtype and layout checks, conversion
-  errors, lifetime behavior, and cache key behavior. These complement the workflow
-  tests and define focused contracts an AI coding tool can help exercise and a
-  reviewer can inspect.
-- Compare numerical outputs with exact equality where appropriate, otherwise state
-  a tolerance. Test empty inputs, non-contiguous arrays, read-only arrays, precision
-  boundaries, and repeated calls when those conditions are part of the API.
-- Benchmark the end-to-end operation as well as the kernel. Include Python-to-C++
-  conversion, copies, and result conversion; measure first-use compilation
-  separately from warm calls. A faster loop can lose overall if the boundary costs
-  dominate.
-- Use the compile cache to avoid recompiling unchanged function bodies in later
-  runs. Automatic precompiled headers can reduce header parsing for supported
-  setups, but neither removes compiler requirements or all first-use costs. See
-  [cache and PCH behavior](docs/FREEZE.md).
-- If the prototype proves valuable, move it into a normal C++ library or extension
-  later. The function body is already C++, but extraction still requires choosing
-  headers and dependencies, making generated values such as `data_size` explicit
-  C++ parameters, defining a stable API, adding bindings or a C ABI, and packaging
-  it.
-
-The code remains native code. cppyy cannot make arbitrary invalid C++ safe from
-process crashes. Buffer validation can reject unsupported arrays, but it cannot
-settle every ownership question for C++ objects that outlive Python references.
-Those boundaries still deserve direct tests and clear ownership rules.
-
-## A small workflow
-
-```mermaid
-flowchart LR
-    A[Python baseline and integration test] --> B[Profile representative run]
-    B --> C[Write one C++ kernel or call an existing library]
-    C --> D[Test outputs and edge cases from Python]
-    D --> E[Measure kernel and end-to-end costs]
-    E --> F{Useful and maintainable?}
-    F -->|Yes| G[Keep inline, or extract to a packaged native API]
-    F -->|No| H[Keep the baseline]
+```bash
+pixi install --locked
+pixi run python -m cppyy_kit guide
+pixi run python -m cppyy_kit status --environment
 ```
 
-For an inline kernel, `@cpp` puts the C++ body in the function docstring and uses
-annotations to choose scalar or array conversion. For example, the README's
-`sum_sq` imports `NDArray` from `cppyy_kit.numpy_types` and uses it to pass a
-writable `double*` buffer; the first call compiles and later runs may load the
-cached code. Array buffers have layout
-and dtype requirements, while sequence arguments copy into temporary owned
-storage. For a read-only kernel, `ConstNDArray[np.float64]` passes a
-`const double*`; import it from the same module. See the
-[current interface guide](docs/COMMON_PATTERNS.md) and
-[README example](README.md#2-write-a-c-function-in-python). New annotation forms
-should be labelled source-checkout-only until their version is published.
+The first command installs the repository environment. `guide` lists the task
+topics and installed kit names. `status --environment` reports the selected
+compiler, runtime versions, development headers, and `libcppyy`; it does not
+load Cling or prove binary compatibility. Keep compilation and execution inside
+Pixi so the selected compiler and libraries belong to the same environment.
 
-## Claims and evidence
+Read the relevant instructions before asking an agent to edit code:
 
-Good claims are narrow: a named operation, named baseline, input size, environment,
-correctness condition, timing method, and whether the run is cold or warm. Existing
-examples include the [webcam tracker report](docs/webcam_demo/REPORT.md), which compares
-a C++ patch-tracking kernel with a Python loop, and the
-[benchmark collection](docs/benchmarks.md), which records commands and workload details.
-They show benefits for those workloads and configurations. Other programs need
-their own profile and comparison.
+```bash
+pixi run python -m cppyy_kit guide accelerate
+pixi run python -m cppyy_kit guide bring-library
+pixi run python -m cppyy_kit guide existing-cpp
+pixi run -e ompl python -m cppyy_kit guide ompl_kit api
+```
 
-The clearest demonstration is an existing workflow before and after one measured
-hot path moves to C++. Show matching outputs, the code difference, warm and cold
-costs, and the total pipeline timing. If the example compares against a library
-that already performs work in C++, include that control too; orchestration alone
-may account for only a small difference. Do not present a kernel-only microbenchmark
-as an end-to-end result.
+These commands print documentation without loading the native library. After
+0.4.0 is published, the same commands can read the packaged guides in a
+standalone environment. Install the required kit there first. See
+[Getting Started](https://awesomebytes.github.io/cppyy_kit/getting-started/) for installed-package setup and
+[guide discovery](docs/GUIDES.md) for the command reference. Repository demos
+and their feature environments require this checkout.
 
-## Demonstration ideas
+### Give the agent a concrete request
 
-- **Inline kernel:** start with a Python/NumPy per-point or per-keypoint loop, keep
-  its functional test, then compare the same run with one `@cpp` implementation.
-  Report conversion time and total frame time alongside kernel timing.
-- **Existing library:** load a C++ library and its headers from Python, then call a
-  real operation with no per-method binding file. Show where a thin helper is still
-  needed for conversion or lifetime.
-- **Parameter search:** run multiple candidate cost or threshold settings against
-  one fixed dataset, with Python handling the sweep and C++ handling the repeated
-  kernel. Report the dataset and repeat count.
-- **Extraction path:** take a successful prototype and identify the concrete work
-  needed to package it as a stable extension. This makes the prototype-to-product
-  boundary visible without claiming extraction is automatic.
+For a Python operation, replace the paths and workload in this request:
 
-## When another approach fits better
+```text
+Read `pixi run python -m cppyy_kit guide accelerate`. Work in this checkout.
+Profile my pipeline.py on recording.npz using Pixi. Keep its public Python API
+and outputs. Run test_pipeline.py before editing. Move one measured operation
+to C++ using cppyy_kit, then run the same tests. Report the changed operation,
+numerical tolerance, warm operation and total pipeline costs, input conversions,
+and first-use compilation separately. Keep the baseline for comparison. Do not
+claim a speedup unless the measured operation and complete pipeline support it.
+```
 
-- Use Numba or JAX when the operation fits their supported Python or array model and
-  their compiler and execution model match the target workload.
-- Prefer pybind11, nanobind, Cython, or another built extension when the interface
-  is stable and public, and a packaged module with a predictable runtime is useful
-  to downstream users.
-- Use `ctypes` when the library already exposes a small, stable C ABI. For a C++
-  API, a C-compatible wrapper and shared library must exist or be created.
-- cppyy still needs a compatible compiler/runtime, headers, native libraries, and
-  environment. Account for those dependencies and first-use compilation when
-  choosing it.
+For a library task, use `bring-library` and name the library version, headers,
+real operation, and expected result. For existing C++ software, use `existing-cpp`
+and name the compiled implementation, settings, inputs, and behavioral checks.
+Ask for an explicit mapping into existing native settings and a reproducible
+run, rather than assuming generated structs match the native API.
 
-Choose examples from measured repository reports and link the exact report and
-command. Report measured conditions and costs so readers can judge whether the
-same approach fits their workflow.
+## Try three small workflows
+
+### Accelerate an array operation
+
+Save this as `kernel.py` in the repository root:
+
+```python
+import numpy as np
+from cppyy_kit import cpp
+from cppyy_kit.numpy_types import ConstNDArray
+
+@cpp
+def sum_sq(data: ConstNDArray[np.float64]) -> float:
+    """
+    double s = 0;
+    for (std::size_t i = 0; i < data_size; ++i) {
+        s += data[i] * data[i];
+    }
+    return s;
+    """
+
+print(sum_sq(np.array([1, 2, 3], dtype=np.float64)))
+```
+
+Run `pixi run python kernel.py`. It prints `14.0`. The annotation supplies a
+`const double*` and the generated `data_size` element count. The first call
+compiles the function; subsequent calls use it, and later processes can reuse
+the compiled artifact. This tiny example demonstrates the interface, not a
+performance gain.
+
+Use `NDArray[np.float64]` for writable native access. Both forms require the
+documented dtype, alignment, and layout; they do not silently normalize
+unsupported arrays. Normalize explicitly when a copy is acceptable, and include
+that cost in the comparison. Read [numeric arguments](docs/COMMON_PATTERNS.md)
+before adapting this to images, tensors, or point clouds. `@cpp(nogil=True)`
+releases the interpreter lock around the C++ body; independent ownership and
+thread-safe native work are still required.
+
+### Call an existing library
+
+Save this as `tree.py` in the repository root:
+
+```python
+import bt_kit
+
+bt = bt_kit.bringup_bt()
+factory = bt.BehaviorTreeFactory()
+tree = factory.create_tree_from_text("""
+<root BTCPP_format="4">
+  <BehaviorTree ID="MainTree"><AlwaysSuccess/></BehaviorTree>
+</root>
+""")
+print(tree.tickWhileRunning() == bt.NodeStatus.SUCCESS)
+```
+
+Run `pixi run -e bt python tree.py`. It prints `True`. BehaviorTree.CPP owns
+and ticks the tree; Python configures and calls the engine. There is no separate
+per-method Python binding file in this example. See [bt_kit](bt_kit/WHY.md) for
+Python actions and conditions, or the [OMPL callback tutorial](docs/tutorials/ompl_callbacks.md)
+for a native planner with a Python validity checker.
+
+For a library without a kit, cppyy can load its shared library and include
+compatible headers. The `bring-library` guide covers environment discovery,
+version pinning, `require()` for fetched headers, and compiled adapters for
+headers that Cling cannot parse. A kit or adapter still needs the native
+dependencies and a defined ownership contract.
+
+### Configure and test an existing C++ component
+
+Run the included smoother from the repository root:
+
+```bash
+pixi run python examples/native_component/component.py
+pixi run python -m pytest examples/native_component/test_component.py -q
+```
+
+The script prints:
+
+```text
+[0.0, 1.0, 2.5]
+{'initialized': True, 'value': 2.5, 'samples': 3}
+[4.0]
+{"alpha": 0.5}
+```
+
+The tests check independent expected outputs, reset, rejected inputs, instance
+isolation, cleanup, and agreement with a standalone C++ driver. Python maps
+validated settings into the existing C++ type. One retained native instance
+holds the state across batches. The [complete tutorial](docs/tutorials/native_component.md)
+shows the source/declaration split, settings export, driver command, and optional
+test-generation or tuning experiments. It claims no speedup for this small
+arithmetic example.
+
+## Build an example around real robotics inputs
+
+The [ROSCon deep dive](https://github.com/awesomebytes/cppyy_kit/blob/main/roscon_uk_2026/DEEP_DIVE_PRESENTATION.md) follows motion
+detection, recorded-data queries, ROS callbacks, a mock controller, and webcam
+tracking. Its [evaluation record](https://github.com/awesomebytes/cppyy_kit/blob/main/roscon_uk_2026/EVALUATION.md) preserves inputs,
+acceptance checks, agent attempts, and original environment conditions.
+
+| Recorded operation | Python | Native | Scope |
+|---|---:|---:|---|
+| Motion mask, 250,000 Cartesian observations | 29.28 ms | 1.48 ms | Median of seven warmed calls |
+| Recorded-data threshold sweep, 2,735 observations and 41 thresholds | 24.75 ms | 1.14 ms | Query after decoding, two hands |
+| ROS replay callback | 2.835 ms | 0.497 ms | Median callback execution |
+
+These are historical measurements from the recorded 0.3.0 environment. They
+are not new 0.4.0 benchmarks. The query excludes MCAP loading and decoding;
+the callback timing excludes transport and complete end-to-end delay. Failed
+agent attempts and environment repairs remain part of the evidence. Fresh-agent
+completion is useful evidence for that scaffold, not a general reliability rate.
+
+The [nanoflann experiment](https://github.com/awesomebytes/cppyy_kit/blob/main/roscon_uk_2026/next_steps/nanoflann/RESULTS.md)
+demonstrates a second useful route: retain an index in C++ and combine search,
+metadata filtering, and centroid computation in one call. With 50,000 indexed
+positions, 2,000 queries, and k=8, the warmed native call measured **3.19 ms**
+against **31.49 ms** for the adaptive SciPy composition. Direct unfiltered
+search was much closer: native with centroid **1.95 ms**, SciPy without centroid
+**2.32 ms**. The benefit belongs to the measured composition. The report records
+copies, build/import costs, dependencies, and independent brute-force checks.
+It is a checkout experiment, not an installed-package proof.
+
+For ML work, use these routes for measured preprocessing, native algorithms,
+and Python/C++ integration around the model. These examples do not establish
+faster model inference, GPU interoperability, or zero-copy transfer for arbitrary
+framework tensors.
+
+With `rclcppyy`, select and measure the relevant explicit native profile or fused
+operation. Its default compatibility profile preserves stock `rclpy` behavior.
+Enabling that default alone is not a performance result. See its
+[backend selection guide](https://github.com/awesomebytes/rclcppyy/blob/main/docs/backend-selection.md).
+
+## What the agent should verify
+
+Start from representative inputs and an existing functional or integration test.
+Move one measured operation, then compare outputs exactly or with a stated
+numerical tolerance. Check empty inputs, layouts, read-only access, lifetime,
+and repeated calls where those conditions belong to the API. Keep a reference
+implementation so later changes can repeat the comparison.
+
+Measure the complete operation including conversions, allocation, and copies.
+Report startup, first-use compilation, warm calls, total pipeline cost, and agent
+elapsed time separately. Include a maintained native Python binding as a control
+when one already performs the same computation. Record versions, workload,
+command, repeat count, and units. [Benchmark reports](docs/benchmarks.md) and
+the [webcam report](docs/webcam_demo/REPORT.md) show this reporting style.
+
+For retained native objects, define the owner and cleanup. Keep borrowed arrays
+and callbacks alive and do not reallocate borrowed storage. Stop and join workers
+before releasing owners. Buffer validation cannot make arbitrary C++ memory
+access safe; tests must cover the actual boundary used by the application.
+
+## Why cppyy_kit helps when AI writes code
+
+An agent can write C++, Python, build files, and bindings. The compiler, ABI,
+conversion, packaging, and lifetime decisions still exist. cppyy exposes compatible
+C++ APIs at runtime; the kits handle library setup and recurring boundary tasks.
+For `@cpp`, the call site, annotations, and ordinary C++ body are visible in one
+Python file. This reduces the separate artifacts an experiment must coordinate
+and lets the agent test native work with inputs from the existing Python workflow.
+
+Caching can reduce repeated compilation, and automatic PCH can reduce supported
+header-parsing costs. Neither removes the compiler/runtime dependencies or every
+first-use cost. See [cache and PCH behavior](docs/FREEZE.md).
+
+A useful prototype can later become a maintained C++ library or extension.
+Extraction still needs explicit parameters for generated sizes such as
+`data_size`, headers, dependencies, a stable API, bindings or a C ABI, and
+packaging. It is not automatic application compilation.
+
+## Choose another tool when its model fits
+
+| Route | Useful fit | Work to account for |
+|---|---|---|
+| Numba, Pythran, or Cython | Supported Python-style numerical computation | Supported types and language subset; compilation and packaging depend on the tool |
+| JAX or Taichi | Array or kernel workloads that fit their compiler and execution model | Tracing or kernel semantics, specialization, and compilation costs |
+| pybind11, nanobind, Cython, or CPython C API | A deliberate, stable Python API for native code | Binding declarations, extension builds, and maintained packaging |
+| `ctypes` | A small existing C-compatible ABI | Exported C functions, signatures, conversions, and ownership |
+| cppyy with cppyy_kit | Ordinary C++ libraries or focused native work in a Python experiment | Compatible runtime, headers, binaries, first-use costs, and ownership |
+
+Choose using the actual workload and deployment requirements. Keep the simpler
+baseline when native boundary and startup costs outweigh the measured gain.

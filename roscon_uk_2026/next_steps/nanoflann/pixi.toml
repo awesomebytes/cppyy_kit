@@ -1,0 +1,27 @@
+[workspace]
+name = "nanoflann-experiment"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.13"
+cppyy = "==3.5.0"
+cxx-compiler = "==1.11.0"
+numpy = "==2.5.3"
+scipy = "==1.17.1"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+# Current checkout; original measurements used the earlier environment.
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../../.."
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[tasks]
+probe = "python probe.py"
+check = "python acceptance.py"
+demo = "python demo.py"
+benchmark = "python benchmark.py"
+guide = "cat LIBRARY_RECIPE.md"

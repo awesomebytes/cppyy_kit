@@ -1,0 +1,8 @@
+{
+  "samples": 600,
+  "imports_setup_ms": 299.9922889866866,
+  "first_rosbag_decode_ms": 940.652184013743,
+  "warm_rosbag_decode_median_ms": 21.804663992952555,
+  "parity": "exact recorded times, Cartesian positions and xyzw orientations",
+  "scope": "existing rosbag2_cpp C++ container + rclcpp CDR serializer; Python per-message loop, serialized bytes copies and native objects included"
+}

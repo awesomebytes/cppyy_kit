@@ -1,0 +1,6 @@
+Implemented `track()` in [tracker.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/05_webcam_a/tracker.py:1) with a cppyy_kit kernel. It preserves integer SSD scoring, row-major tie breaking, clipping, validation, strided-frame support, and the `(x, y)` return value.
+
+- Requested check: **4 passed**.
+- Synthetic reference checks: **5 passed**, including ties, clipping, strided frames, and a very large search value.
+- Timing on synthetic 640×480 frames, 11×11 template, ±8 search: **cold first call 545.818 ms**; **warmed median 0.026 ms**, p95 **0.035 ms**. Cold timing includes kernel compilation.
+- No live camera test was run.

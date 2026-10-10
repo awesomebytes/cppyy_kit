@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-04",
+  "python": "3.12.13",
+  "packages": {
+    "numpy": "2.5.1",
+    "cppyy": "3.5.0",
+    "pytest": "7.4.4"
+  },
+  "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+  "eigen_header_semver_integer": 50001,
+  "native_cplusplus": 201703,
+  "core_package_path": "/home/sapf/playground/ros_project/cppyy_kit/cppyy_kit",
+  "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+  "cpu_count": 16,
+  "blas_thread_environment": {
+    "OPENBLAS_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1"
+  },
+  "input": {
+    "rows": 100000,
+    "dtype": "<f8",
+    "shape": [
+      100000,
+      3
+    ],
+    "strides_bytes": [
+      24,
+      8
+    ],
+    "coordinate_unit": "metres",
+    "filter_radius_metres": 1.4,
+    "retained_rows": 36994
+  },
+  "startup": {
+    "module_import_s": 0.35949597001308575,
+    "native_header_load_s": 0.5398746209975798,
+    "first_wrapper_call_compile_plus_small_execution_s": {
+      "transform": 0.06460604598396458,
+      "filter": 0.049127625999972224,
+      "energy": 0.04220621899003163,
+      "pointer": 0.006174024019856006
+    }
+  },
+  "conversion": {
+    "borrow_validate_and_close_full_input_s": 4.347600042819977e-05,
+    "readonly_borrow_validate_and_close_full_input_s": 4.371299291960895e-05,
+    "strided_reject_s": 6.019836291670799e-07,
+    "strided_copy_validate_and_close_half_input_s": 0.00016050500562414527,
+    "float32_copy_validate_and_close_full_input_s": 0.00011845098924823105,
+    "rigid_parameters_s": 2.3400993086397648e-05,
+    "dlpack_import_borrow_validate_and_close_s": 0.0001114519836846739
+  },
+  "runtime_median_21_calls": {
+    "transform_reused_output_s": 0.00019734998932108283,
+    "filter_reused_output_s": 0.0005081060226075351,
+    "energy_selected_view_s": 2.017899532802403e-05,
+    "three_kernels_reused_outputs_s": 0.0008367649861611426,
+    "public_process_retained_lease_s": 0.002152331988327205,
+    "public_process_new_lease_s": 0.0020764439832419157,
+    "numpy_vectorized_pipeline_s": 0.006450785003835335
+  },
+  "sharing": {
+    "borrow_input_native_pointer_equal": true,
+    "readonly_native_pointer_equal": true,
+    "strided_copy_pointer_different": true,
+    "strided_copy_shares_memory": false,
+    "filter_prefix_native_pointer_equal": true,
+    "filter_prefix_shares_storage": true,
+    "transformed_shares_input": false,
+    "filtered_shares_transformed": false,
+    "cpu_dlpack_device": [
+      1,
+      0
+    ],
+    "cpu_dlpack_import_pointer_equal": true,
+    "cpu_dlpack_native_pointer_equal": true,
+    "cpu_dlpack_import_writeable": true,
+    "cpu_dlpack_producer_survives_gc": true,
+    "cpu_dlpack_producer_released_after_close": true
+  },
+  "correctness": {
+    "max_transform_absolute_error": 0.0,
+    "max_selected_absolute_error": 0.0,
+    "energy_absolute_error": 3.637978807091713e-11
+  },
+  "memory": {
+    "input_bytes": 2400000,
+    "each_full_native_output_bytes": 2400000,
+    "retained_view_logical_bytes": 887856,
+    "process_peak_rss_kib_includes_cling_and_benchmarks": 299340
+  },
+  "check_sha256": "673f485a60a3be449bf8e92a7d18e90f7c26e16ab37e61ded4c922263f30e049"
+}

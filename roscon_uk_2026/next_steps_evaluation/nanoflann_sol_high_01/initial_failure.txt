@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/acceptance.py", line 146, in <module>
+    run()
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/acceptance.py", line 66, in run
+    with Index(points, pf, confidence) as index:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps_evaluation/nanoflann_sol_high_01/candidate.py", line 16, in __init__
+    raise NotImplementedError("Build and retain the native index")
+NotImplementedError: Build and retain the native index

@@ -1,0 +1,7 @@
+Accelerate motion_mask in task.py using cppyy_kit. Preserve its signature,
+validation, thresholds, event timing, and output dtype. Read the explicit kernel
+guide supplied by the runner. Move the sequential computation into one native
+call over the whole input, keeping Python for validation and output allocation.
+Do not change tests or other files. Verify correctness and report warmed operation
+time separately from first-call compilation time. Work only in the supplied task
+directory. Use the interpreter and pytest command provided by the runner.

@@ -1,0 +1,266 @@
+{
+  "cases": {
+    "exact": {
+      "native": {
+        "termination": 0,
+        "iterations": 5,
+        "usable": true,
+        "converged": true,
+        "initial_cost": 56.95694765866289,
+        "final_cost": 1.1775569014221047e-28,
+        "solve_seconds": 0.0005581378936767578,
+        "boundary_inclusive_seconds": 0.005742745008319616,
+        "objective_checked": 1.1258495342751962e-28,
+        "translation_error_m": 8.794620319638102e-16,
+        "rotation_error_rad": 5.953312170681638e-16,
+        "x": [
+          0.3000000000000005,
+          -0.19999999999999996,
+          0.4999999999999993,
+          0.2500000000000005,
+          -0.34999999999999976,
+          0.1799999999999998
+        ]
+      },
+      "scipy": {
+        "seconds": 0.0030638019961770624,
+        "success": true,
+        "status": 1,
+        "nfev": 5,
+        "cost": 1.2595581836292522e-30,
+        "objective_checked": 1.2595581836292522e-30,
+        "x": [
+          0.3,
+          -0.2,
+          0.5,
+          0.24999999999999994,
+          -0.3499999999999999,
+          0.17999999999999997
+        ]
+      },
+      "parameter_difference": 1.066334393690002e-15
+    },
+    "noise": {
+      "native": {
+        "termination": 0,
+        "iterations": 5,
+        "usable": true,
+        "converged": true,
+        "initial_cost": 57.026590144630404,
+        "final_cost": 0.00946967241156334,
+        "solve_seconds": 0.0005261898040771484,
+        "boundary_inclusive_seconds": 0.0045518499973695725,
+        "objective_checked": 0.009469672411563344,
+        "translation_error_m": 0.0005446709408474969,
+        "rotation_error_rad": 0.0004849198858046057,
+        "x": [
+          0.3004090651017855,
+          -0.20027526727522119,
+          0.5002314305586936,
+          0.24967886151853025,
+          -0.3503365277005868,
+          0.18015073597291842
+        ]
+      },
+      "scipy": {
+        "seconds": 0.002959411998745054,
+        "success": true,
+        "status": 2,
+        "nfev": 6,
+        "cost": 0.00946967241156333,
+        "objective_checked": 0.00946967241156333,
+        "x": [
+          0.30040906510244375,
+          -0.2002752672755006,
+          0.5002314305602551,
+          0.24967886150595953,
+          -0.35033652770482443,
+          0.18015073598028017
+        ]
+      },
+      "parameter_difference": 1.5268447936109405e-11
+    },
+    "outliers_linear": {
+      "native": {
+        "termination": 0,
+        "iterations": 5,
+        "usable": true,
+        "converged": true,
+        "initial_cost": 63.36663772421681,
+        "final_cost": 6.596746767570225,
+        "solve_seconds": 0.0005121231079101562,
+        "boundary_inclusive_seconds": 0.0006054149998817593,
+        "objective_checked": 6.596746767570227,
+        "translation_error_m": 0.005223860299098973,
+        "rotation_error_rad": 0.015433518275088135,
+        "x": [
+          0.2984365202498475,
+          -0.19562194015974288,
+          0.5023826119135296,
+          0.2361877351820684,
+          -0.35688410408539073,
+          0.17794611122836138
+        ]
+      },
+      "scipy": {
+        "seconds": 0.002461708994815126,
+        "success": true,
+        "status": 2,
+        "nfev": 6,
+        "cost": 6.596746767569609,
+        "objective_checked": 6.596746767569609,
+        "x": [
+          0.29843651163249085,
+          -0.19562194928760573,
+          0.5023826037239018,
+          0.2361877125566605,
+          -0.35688403626047677,
+          0.1779460417671255
+        ]
+      },
+      "parameter_difference": 1.0080495050822077e-07
+    },
+    "outliers_huber": {
+      "native": {
+        "termination": 0,
+        "iterations": 5,
+        "usable": true,
+        "converged": true,
+        "initial_cost": 4.950379356850746,
+        "final_cost": 0.4837619957300614,
+        "solve_seconds": 0.0005340576171875,
+        "boundary_inclusive_seconds": 0.0006357649981509894,
+        "objective_checked": 0.48376199573006123,
+        "translation_error_m": 0.0003775712081734149,
+        "rotation_error_rad": 0.001158894514225947,
+        "x": [
+          0.30033757711965664,
+          -0.20014321540567587,
+          0.5000899502812833,
+          0.24931571719611303,
+          -0.3509408985073816,
+          0.17988822220052933
+        ]
+      },
+      "scipy": {
+        "seconds": 0.007030869019217789,
+        "success": true,
+        "status": 2,
+        "nfev": 11,
+        "cost": 0.4837619957300608,
+        "objective_checked": 0.4837619957300608,
+        "x": [
+          0.3003375770993943,
+          -0.20014321558531598,
+          0.500089951275883,
+          0.24931571933662897,
+          -0.3509408981325895,
+          0.1798882216004939
+        ]
+      },
+      "parameter_difference": 2.4706739225229234e-09
+    }
+  },
+  "timings": {
+    "mode": "compiled",
+    "adapter_compile_seconds": 8.954017351003131,
+    "adapter_load_seconds": 0.25977449599304236,
+    "library": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ceres_manif/build/libcalibration_8cbf2a0b9962f20e.so",
+    "warm_native_median_seconds": 0.0005735110025852919,
+    "warm_single_evaluation_boundary_seconds": 2.532250015065074e-06,
+    "explicit_noncontiguous_copy_seconds": 1.1082200217060745e-06
+  },
+  "versions": {
+    "ceres-solver": [
+      {
+        "version": "2.2.0",
+        "build": "cpugplhc142d66_210"
+      }
+    ],
+    "manif": [
+      {
+        "version": "0.0.5",
+        "build": "hca8cc02_6"
+      }
+    ],
+    "eigen": [
+      {
+        "version": "3.4.0",
+        "build": "h54a6638_2"
+      }
+    ],
+    "gcc_linux-64": [
+      {
+        "version": "14.3.0",
+        "build": "h50e9bb6_28"
+      }
+    ],
+    "gxx_linux-64": [
+      {
+        "version": "14.3.0",
+        "build": "h3ba8f88_28"
+      }
+    ],
+    "libgcc": [
+      {
+        "version": "15.2.0",
+        "build": "he0feb66_20"
+      }
+    ],
+    "libstdcxx": [
+      {
+        "version": "15.2.0",
+        "build": "h934c35e_20"
+      }
+    ],
+    "python": [
+      {
+        "version": "3.12.13",
+        "build": "h8ab3286_1_cpython"
+      }
+    ],
+    "numpy": [
+      {
+        "version": "2.5.3",
+        "build": "py312he827f4e_0"
+      }
+    ],
+    "scipy": [
+      {
+        "version": "1.17.1",
+        "build": "py312h54fa4ab_1"
+      }
+    ],
+    "cppyy": [
+      {
+        "version": "3.5.0",
+        "build": "py312h0a2e395_0"
+      }
+    ],
+    "cppyy-kit": [
+      {
+        "version": "0.3.0",
+        "build": "pyh4616a5c_2"
+      }
+    ]
+  },
+  "toolchain": [
+    201703,
+    16,
+    1,
+    3,
+    4,
+    0
+  ],
+  "truth": [
+    0.3,
+    -0.2,
+    0.5,
+    0.25,
+    -0.35,
+    0.18
+  ],
+  "count": 240,
+  "seed": 2026,
+  "huber_scale_m": 0.03
+}

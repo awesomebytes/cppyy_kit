@@ -1,0 +1,3 @@
+Updated [task.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/01_accelerate_d/task.py) to run the sequential motion logic in one cppyy_kit call for inputs with at least two samples. Validation, thresholds, event timing, signature, and `int32` output are preserved.
+
+The supplied pytest command passed: **12 tests**. On 250,000 samples, the result exactly matched the original logic. First-call setup took **157.4 ms**; warmed calls averaged **2.51 ms** over seven runs. The first-call measurement includes compile or cache setup.

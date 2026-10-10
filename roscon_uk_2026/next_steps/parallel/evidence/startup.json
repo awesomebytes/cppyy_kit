@@ -1,0 +1,94 @@
+{
+  "cache_directory": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/startup-cache-1791150055600194524",
+  "child_source": "\nimport time\nstart = time.perf_counter()\nfrom processing import Batch, load\nimported = time.perf_counter()\nmetadata = load()\nloaded = time.perf_counter()\nb = Batch([dict(x=3., y=4., z=0., confidence=.7, frame=0)])\nprepared = time.perf_counter()\ncalls={}\nfor method in (\"serial_aos\", \"serial_columns\", \"xsimd\", \"tbb\"):\n t=time.perf_counter(); b.run(method,workers=2); calls[method]=time.perf_counter()-t\nimport json\nprint(json.dumps(dict(import_seconds=imported-start, native_load_seconds=loaded-imported,\n first_prepare_seconds=prepared-loaded, first_calls_seconds=calls, compile=metadata)))\n",
+  "fresh_wrapper_cache": {
+    "process_wall_seconds": 1.3272102279879618,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\"import_seconds\": 0.43198557299911045, \"native_load_seconds\": 0.02975266898283735, \"first_prepare_seconds\": 0.07962192100239918, \"first_calls_seconds\": {\"serial_aos\": 0.3545440830057487, \"serial_columns\": 0.35706503700930625, \"xsimd\": 0.0001157140068244189, \"tbb\": 0.0007383350166492164}, \"compile\": {\"command\": [\"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++\", \"-shared\", \"-fPIC\", \"-std=c++17\", \"-O3\", \"-march=native\", \"-ffp-contract=off\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include\", \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp\", \"-o\", \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/libdetection.so\", \"-L/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib\", \"-Wl,-rpath,/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib\", \"-ltbb\", \"-fopt-info-vec-optimized=/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/vectorization.txt\"], \"digest\": \"e42e991e35f7fcd018cb783518d17ad581ad78e07c305baa743cde462e7b3b87\", \"seconds\": 1.0679328700061888, \"compiler\": \"x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0\", \"returncode\": 0, \"stderr\": \"\", \"cache_hit\": true, \"compile_seconds_this_run\": 0.0}}\n",
+    "timings": {
+      "import_seconds": 0.43198557299911045,
+      "native_load_seconds": 0.02975266898283735,
+      "first_prepare_seconds": 0.07962192100239918,
+      "first_calls_seconds": {
+        "serial_aos": 0.3545440830057487,
+        "serial_columns": 0.35706503700930625,
+        "xsimd": 0.0001157140068244189,
+        "tbb": 0.0007383350166492164
+      },
+      "compile": {
+        "command": [
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+          "-shared",
+          "-fPIC",
+          "-std=c++17",
+          "-O3",
+          "-march=native",
+          "-ffp-contract=off",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include",
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp",
+          "-o",
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/libdetection.so",
+          "-L/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+          "-Wl,-rpath,/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+          "-ltbb",
+          "-fopt-info-vec-optimized=/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/vectorization.txt"
+        ],
+        "digest": "e42e991e35f7fcd018cb783518d17ad581ad78e07c305baa743cde462e7b3b87",
+        "seconds": 1.0679328700061888,
+        "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+        "returncode": 0,
+        "stderr": "",
+        "cache_hit": true,
+        "compile_seconds_this_run": 0.0
+      }
+    }
+  },
+  "reused_wrapper_cache": {
+    "process_wall_seconds": 0.5589641930127982,
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "{\"import_seconds\": 0.3771515200205613, \"native_load_seconds\": 0.029267767997225747, \"first_prepare_seconds\": 0.07559160600067116, \"first_calls_seconds\": {\"serial_aos\": 0.005546909989789128, \"serial_columns\": 0.0046974680153653026, \"xsimd\": 0.00011972099309787154, \"tbb\": 0.0006951209797989577}, \"compile\": {\"command\": [\"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++\", \"-shared\", \"-fPIC\", \"-std=c++17\", \"-O3\", \"-march=native\", \"-ffp-contract=off\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build\", \"-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include\", \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp\", \"-o\", \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/libdetection.so\", \"-L/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib\", \"-Wl,-rpath,/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib\", \"-ltbb\", \"-fopt-info-vec-optimized=/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/vectorization.txt\"], \"digest\": \"e42e991e35f7fcd018cb783518d17ad581ad78e07c305baa743cde462e7b3b87\", \"seconds\": 1.0679328700061888, \"compiler\": \"x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0\", \"returncode\": 0, \"stderr\": \"\", \"cache_hit\": true, \"compile_seconds_this_run\": 0.0}}\n",
+    "timings": {
+      "import_seconds": 0.3771515200205613,
+      "native_load_seconds": 0.029267767997225747,
+      "first_prepare_seconds": 0.07559160600067116,
+      "first_calls_seconds": {
+        "serial_aos": 0.005546909989789128,
+        "serial_columns": 0.0046974680153653026,
+        "xsimd": 0.00011972099309787154,
+        "tbb": 0.0006951209797989577
+      },
+      "compile": {
+        "command": [
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+          "-shared",
+          "-fPIC",
+          "-std=c++17",
+          "-O3",
+          "-march=native",
+          "-ffp-contract=off",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build",
+          "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include",
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp",
+          "-o",
+          "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/libdetection.so",
+          "-L/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+          "-Wl,-rpath,/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+          "-ltbb",
+          "-fopt-info-vec-optimized=/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/vectorization.txt"
+        ],
+        "digest": "e42e991e35f7fcd018cb783518d17ad581ad78e07c305baa743cde462e7b3b87",
+        "seconds": 1.0679328700061888,
+        "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+        "returncode": 0,
+        "stderr": "",
+        "cache_hit": true,
+        "compile_seconds_this_run": 0.0
+      }
+    }
+  }
+}

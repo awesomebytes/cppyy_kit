@@ -1,0 +1,25 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "phase": "webcam",
+  "run": "05_webcam_a",
+  "baseline": null,
+  "agent_seconds": 220.26614544900076,
+  "agent_exit_code": 0,
+  "timed_out": false,
+  "command_count": 12,
+  "failed_commands": 2,
+  "usage": [
+    {
+      "input_tokens": 391954,
+      "cached_input_tokens": 364288,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 9270,
+      "reasoning_output_tokens": 3761
+    }
+  ],
+  "acceptance_exit_code": 0,
+  "tests_unchanged": true,
+  "human_repairs": 0,
+  "task_sha256": "82b0450e8b33a704bf1678140fc3e649824939c7cb1d5831c6ab370e2ade6e25"
+}

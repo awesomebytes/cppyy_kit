@@ -1,0 +1,107 @@
+{
+  "python": "3.12.14",
+  "packages": {
+    "cppyy": "3.5.0",
+    "cppyy-backend": "1.15.3",
+    "cppyy-cling": "6.32.8",
+    "hypothesis": "6.168.3",
+    "numpy": "2.5.3",
+    "pydantic": "2.13.5",
+    "pytest": "8.4.2"
+  },
+  "checkout_cppyy_kit": "cppyy_kit/__init__.py",
+  "library": "roscon_uk_2026/next_steps/reverse_core/build/40694f2e84f189b8/libreverse_pose.so",
+  "library_sha256": "c3acd8d562596865250ce2a431f86160e91bed8beae294711586952d1c8d8480",
+  "library_mapped": true,
+  "source_sha256": {
+    "driver.cpp": "30202aa995162348a5d7200a711cb8b9fac0e3b26a4d7a59d6ddf70f7258107e",
+    "pose_filter.cpp": "97e85221ae71d435a137fac98623ac3f9d7b82d6adfc9371d2ef3e3fc5191212",
+    "pose_filter.hpp": "db89b35d9fbb6fc0db3fc1d485b723e04bc425ffaede576fb8742185596089c1"
+  },
+  "cached_build_lookup_s": 0.001655366999329999,
+  "library_compilation_s": 2.895185379020404,
+  "driver_compilation_s": 0.4878515650052577,
+  "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+  "first_construction_s": 0.343389001005562,
+  "first_batch_s": 0.016701981978258118,
+  "samples_per_batch": 10000,
+  "repetitions": 30,
+  "contiguous_batch_median_s": 0.0001155314821517095,
+  "strided_batch_median_s": 0.00012455449905246496,
+  "contiguity_copy_median_s": 8.728005923330784e-06,
+  "notes": "Existing compiled cache. Construction includes cppyy load/declaration binding. Batch timings include validation, allocation, native call, and output. Copy timing is only ascontiguousarray on a strided positions buffer.",
+  "test_cases": {
+    "test_filter.py::test_independent_reference": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 7
+    },
+    "test_filter.py::test_chunking": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 12
+    },
+    "test_filter.py::test_reset_isolation": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 14
+    },
+    "test_filter.py::test_gap_threshold": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 7
+    },
+    "test_filter.py::test_full_finite_float_range": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 0
+    },
+    "test_filter.py::test_native_rejection_is_atomic": {
+      "passing": 150,
+      "failing": 0,
+      "invalid_generated": 7
+    },
+    "test_filter.py::TestFilterSequence::runTest": {
+      "passing": 100,
+      "failing": 0,
+      "invalid_generated": 8
+    }
+  },
+  "test_events_percent": {
+    "test_filter.py::test_independent_reference": {
+      "nonempty": 90.45,
+      "empty": 5.1
+    },
+    "test_filter.py::TestFilterSequence::runTest": {
+      "empty": 66.67,
+      "feed:smooth": 62.96,
+      "feed:gap": 60.19,
+      "reject:dtype": 53.7,
+      "reset": 52.78,
+      "reject:decrease": 46.3,
+      "reject:length": 40.74,
+      "reject:shape": 40.74,
+      "reject:inf": 39.81,
+      "reject:across-decrease": 36.11,
+      "reject:-inf": 33.33,
+      "reject:repeat": 33.33,
+      "reject:nan": 30.56,
+      "reject:across-repeat": 23.15
+    }
+  },
+  "pytest_result": "18 passed in 1.98s",
+  "test_sha256": {
+    "test_filter.py": "976357c7ad04f94b2f23d79c7ef6915eb353b70fc46d2b693e749e3810b8c909",
+    "oracle.py": "5e1afa2dc9e7ff7234013f463aa8dd16949f3b87f0c7bb71513ab9f8c75ec43c",
+    "faulty.cpp": "ae8137bd41ab85b0619ead841c9a2804b5a692af80be68037d95a45de3572e74",
+    "faulty.hpp": "f2dc9cc0110423f7e4292053b6df14ab22bc356d893422d307a0920298877bbe",
+    "faulty_fixture.py": "09968b89e2091c1eb18e133c0bbc8775574523abe5b79b7b93ca01dd23351987"
+  },
+  "production_adapter_sha256": "5d8ff7ab3870f71a83bd124c6285b1fcb539b383d310c5fdcf5b99a1bbe18b0a",
+  "standalone_reproducer": {
+    "ordinary_exit": 0,
+    "assert_correct_exit": 1,
+    "expected_z_m": 1.0,
+    "faulty_z_m": 1.2499999921875e-08
+  }
+}

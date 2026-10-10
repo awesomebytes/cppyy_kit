@@ -1,0 +1,307 @@
+{
+  "results": [
+    {
+      "kind": "python",
+      "seed": 41,
+      "bias_x": 0.05,
+      "validity_resolution": 0.001,
+      "points": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.25,
+          0.5
+        ],
+        [
+          0.75,
+          0.5
+        ],
+        [
+          0.9,
+          0.9
+        ],
+        [
+          -0.01,
+          0.1
+        ],
+        [
+          1.01,
+          0.9
+        ]
+      ],
+      "decisions": [
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "accepted": 90000,
+      "repeats": 30000,
+      "samples": [
+        {
+          "native_seconds": 0.087206367,
+          "wall_seconds": 0.08722813799977303,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.085354388,
+          "wall_seconds": 0.08536321501014754,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.085928706,
+          "wall_seconds": 0.08593157600262202,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.084900425,
+          "wall_seconds": 0.08490339000127278,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.084923836,
+          "wall_seconds": 0.08492529499926604,
+          "calls": 210000
+        }
+      ],
+      "exact": true,
+      "path_xy": [
+        0.1,
+        0.1,
+        0.19916954583195604,
+        0.11286083898832315,
+        0.27368795613980024,
+        0.17954671849209652,
+        0.34820636644764447,
+        0.24623259799586988,
+        0.4441175738763962,
+        0.21792994282786574,
+        0.5410178058118604,
+        0.24263510526111548,
+        0.6379180377473246,
+        0.26734026769436525,
+        0.7348182696827887,
+        0.29204543012761497,
+        0.8317185016182529,
+        0.31675059256086474,
+        0.8366638325918349,
+        0.3180114275717643,
+        0.7701031332312968,
+        0.39264167144538475,
+        0.7712471811997427,
+        0.4926351270024656,
+        0.718453293341476,
+        0.5775633637957063,
+        0.7005078601922984,
+        0.6759399942985264,
+        0.7670052401281989,
+        0.7506266628656842,
+        0.8335026200640995,
+        0.8253133314328421,
+        0.9,
+        0.9
+      ],
+      "path_length": 1.5051035285208356,
+      "solve_calls": 1164,
+      "solve_native_seconds": 0.001197148,
+      "solve_wall_seconds": 0.015347638021921739,
+      "calls_per_solve_second": 972310.8588077663,
+      "bringup_seconds": 0.83480791101465,
+      "adapter_header_parse_seconds": 0.034542698005679995,
+      "construction_first_use_seconds": 0.2375258669781033,
+      "first_dispatch_seconds": 0.05698668799595907,
+      "solve_wrapper_first_use_seconds": 0.028701062023174018,
+      "input_conversion_seconds": 0.021200780000071973,
+      "max_rss_kib": 298284,
+      "versions": {
+        "python": "3.12.13",
+        "cppyy": "3.5.0",
+        "ompl": "1.7.0"
+      },
+      "process_seconds": 1.875730734987883
+    },
+    {
+      "kind": "native",
+      "seed": 41,
+      "bias_x": 0.05,
+      "validity_resolution": 0.001,
+      "points": [
+        [
+          0.1,
+          0.1
+        ],
+        [
+          0.5,
+          0.5
+        ],
+        [
+          0.25,
+          0.5
+        ],
+        [
+          0.75,
+          0.5
+        ],
+        [
+          0.9,
+          0.9
+        ],
+        [
+          -0.01,
+          0.1
+        ],
+        [
+          1.01,
+          0.9
+        ]
+      ],
+      "decisions": [
+        1,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0
+      ],
+      "accepted": 90000,
+      "repeats": 30000,
+      "samples": [
+        {
+          "native_seconds": 0.00119112,
+          "wall_seconds": 0.0012127849913667887,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.000982089,
+          "wall_seconds": 0.0009869539935607463,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.000979787,
+          "wall_seconds": 0.0009815149824135005,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.001237347,
+          "wall_seconds": 0.0012394900259096175,
+          "calls": 210000
+        },
+        {
+          "native_seconds": 0.001260684,
+          "wall_seconds": 0.0012623000075109303,
+          "calls": 210000
+        }
+      ],
+      "exact": true,
+      "path_xy": [
+        0.1,
+        0.1,
+        0.19916954583195604,
+        0.11286083898832315,
+        0.27368795613980024,
+        0.17954671849209652,
+        0.34820636644764447,
+        0.24623259799586988,
+        0.4441175738763962,
+        0.21792994282786574,
+        0.5410178058118604,
+        0.24263510526111548,
+        0.6379180377473246,
+        0.26734026769436525,
+        0.7348182696827887,
+        0.29204543012761497,
+        0.8317185016182529,
+        0.31675059256086474,
+        0.8366638325918349,
+        0.3180114275717643,
+        0.7701031332312968,
+        0.39264167144538475,
+        0.7712471811997427,
+        0.4926351270024656,
+        0.718453293341476,
+        0.5775633637957063,
+        0.7005078601922984,
+        0.6759399942985264,
+        0.7670052401281989,
+        0.7506266628656842,
+        0.8335026200640995,
+        0.8253133314328421,
+        0.9,
+        0.9
+      ],
+      "path_length": 1.5051035285208356,
+      "solve_calls": 1164,
+      "solve_native_seconds": 0.001197987,
+      "solve_wall_seconds": 0.013233325007604435,
+      "calls_per_solve_second": 971629.9091726372,
+      "bringup_seconds": 0.7921190050255973,
+      "adapter_header_parse_seconds": 0.03385344200069085,
+      "construction_first_use_seconds": 0.1454313260037452,
+      "first_dispatch_seconds": 0.051191860024118796,
+      "solve_wrapper_first_use_seconds": 0.03597148499102332,
+      "input_conversion_seconds": 0.02158343599876389,
+      "max_rss_kib": 296664,
+      "versions": {
+        "python": "3.12.13",
+        "cppyy": "3.5.0",
+        "ompl": "1.7.0"
+      },
+      "process_seconds": 1.3132408400124405
+    },
+    {
+      "kind": "lifecycle",
+      "released": 25,
+      "exceptions": [
+        {
+          "operation": "check",
+          "type": "ValueError",
+          "message": "extension_example::BatchResult extension_example::Engine::check(const std::vector<double>& xy, unsigned long repeats) =>\n    ValueError: scripted validity policy failure",
+          "calls": 2
+        },
+        {
+          "operation": "solve",
+          "type": "ValueError",
+          "message": "extension_example::SolveResult extension_example::Engine::solve(double timeout) =>\n    ValueError: scripted validity policy failure",
+          "calls": 7
+        }
+      ],
+      "boundary_nonfinite_decisions": [
+        [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          0,
+          0,
+          0
+        ]
+      ],
+      "invalid_bias_rejections": 6,
+      "process_seconds": 1.6749790870235302
+    }
+  ],
+  "checks": "passed"
+}

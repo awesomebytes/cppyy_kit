@@ -1,0 +1,5 @@
+Updated [task.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/01_accelerate_c/task.py) to run the sequential state machine in one `cppyy_kit` native call. The signature, validation, thresholds, event timing, and `int32` output are preserved.
+
+Verification: **12 tests passed**, and the result exactly matched the original implementation on 250,000 synthetic samples.
+
+Timing: first call, including compilation or cache initialization, **46.424 ms**. Warmed calls: **1.991 ms median** across seven runs (**1.825 ms minimum**).

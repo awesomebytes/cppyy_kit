@@ -1,0 +1,31 @@
+[workspace]
+name = "ceres-manif-feasibility"
+channels = ["https://prefix.dev/awesomebytes", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.13"
+cppyy-kit = "==0.3.0"
+cppyy = "==3.5.0"
+numpy = "==2.5.3"
+scipy = "==1.17.1"
+ceres-solver = { version = "==2.2.0", build = "cpu*" }
+manif = "==0.0.5"
+eigen = "==3.4.0"
+cxx-compiler = "*"
+gcc_linux-64 = "==14.3.0"
+gxx_linux-64 = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+OPENBLAS_NUM_THREADS = "1"
+OMP_NUM_THREADS = "1"
+
+[tasks]
+probe = "python probe.py"
+check = "python acceptance.py"
+demo = "python calibration.py"
+check-jit = "python acceptance.py --jit"
+demo-jit = "python calibration.py --jit"
+guide = "cat GUIDE.md"

@@ -1,0 +1,94 @@
+[
+  {
+    "command": "/bin/bash -lc \"cat /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md && printf '\\\\n--- task.py ---\\\\n' && sed -n '1,240p' task.py && printf '\\\\n--- files ---\\\\n' && rg --files -g 'test_task.py' -g 'AGENTS.md' -g 'task.py'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '1,260p' test_task.py && git status --short\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_task.py -q'",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom task import motion_mask, synthetic\n\ndef reference(t, xyz, enter_speed=0.08, exit_speed=0.04, hold_seconds=0.12):\n    n = len(t)\n    mask = np.zeros(n, dtype=np.int32)\n    if n < 2:\n        return mask\n    speed = np.linalg.norm(np.diff(xyz, axis=0), axis=1) / np.diff(t)\n    candidate = -1\n    active = False\n    for i, current_speed in enumerate(speed, start=1):\n        if active:\n            if current_speed < exit_speed:\n                active = False\n                candidate = -1\n            else:\n                mask[i] = 1\n        elif current_speed < enter_speed:\n            candidate = -1\n        else:\n            if candidate < 0:\n                candidate = i\n            if t[i] - t[candidate] >= hold_seconds:\n                active = True\n                mask[i] = 1\n    return mask\n\nt, xyz = synthetic()\nexpected = reference(t, xyz)\nstart = time.perf_counter()\ngot = motion_mask(t, xyz)\nfirst_ms = (time.perf_counter() - start) * 1000\nnp.testing.assert_array_equal(got, expected)\nloops = 7\nstart = time.perf_counter()\nfor _ in range(loops):\n    np.testing.assert_array_equal(motion_mask(t, xyz), expected)\nwarmed_ms = (time.perf_counter() - start) * 1000 / loops\nprint(f\\\"samples={len(t)} equal=True dtype={got.dtype}\\\")\nprint(f\\\"first_call_ms={first_ms:.3f}\\\")\nprint(f\\\"warmed_call_ms_mean={warmed_ms:.3f} (7 calls, comparison included)\\\")\nPY\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_task.py -q'",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import inspect, cppyy_kit; import cppyy_kit._cpp as c; print(inspect.getsourcefile(c)); print(inspect.getsource(c.arr))'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import inspect, cppyy_kit; print(cppyy_kit.__file__)'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'print(1)'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -X faulthandler -c 'import cppyy_kit; print(cppyy_kit.__file__)'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import sys; print(sys.path)'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import importlib.util; print(importlib.util.find_spec(\\\"cppyy_kit\\\"))'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"sed -n '1,200p' /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/lib/python3.12/site-packages/cppyy_kit/__init__.py && ls -la\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -X faulthandler -c 'import cppyy; print(cppyy.__version__)'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc 'rg -n \"autopch|PCH|DISABLE|cache\" /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/lib/python3.12/site-packages/cppyy_kit/autopch.py | head -80'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"CPPYY_KIT_NO_AUTOPCH=1 /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import cppyy; print(cppyy.__version__)'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -c 'import numpy; print(numpy.__version__)'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -X importtime -c 'import cppyy' 2>&1 | tail -35\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -S -c 'import sys; sys.path.append(\\\"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/lib/python3.12/site-packages\\\"); import cppyy; print(cppyy.__version__)'\"",
+    "exit_code": 139
+  },
+  {
+    "command": "/bin/bash -lc \"pixi run python -c 'import cppyy; print(cppyy.__version__)'\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'pixi run /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_task.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'rg -n \"def cache_dir|CACHE|XDG|os.environ|clear_cache\" /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/lib/python3.12/site-packages/cppyy_kit/cache.py | head -100'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'timing_cache_dir=\"$PWD/.motion_mask_timing_cache\"; CPPYY_KIT_CACHE_DIR=\"$timing_cache_dir\" pixi run /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python - <<'\"'PY'\nimport os\nimport shutil\nimport time\nimport numpy as np\nfrom task import motion_mask, synthetic\n\ncache_dir = os.environ[\\\"CPPYY_KIT_CACHE_DIR\\\"]\n\ndef reference(t, xyz, enter_speed=0.08, exit_speed=0.04, hold_seconds=0.12):\n    n = len(t)\n    mask = np.zeros(n, dtype=np.int32)\n    candidate = -1\n    active = False\n    for i in range(1, n):\n        delta = xyz[i] - xyz[i - 1]\n        speed = np.sqrt(np.dot(delta, delta)) / (t[i] - t[i - 1])\n        if active:\n            if speed < exit_speed:\n                active = False\n                candidate = -1\n            else:\n                mask[i] = 1\n        elif speed < enter_speed:\n            candidate = -1\n        else:\n            if candidate < 0:\n                candidate = i\n            if t[i] - t[candidate] >= hold_seconds:\n                active = True\n                mask[i] = 1\n    return mask\n\ntry:\n    t, xyz = synthetic()\n    expected = reference(t, xyz)\n    started = time.perf_counter()\n    got = motion_mask(t, xyz)\n    first_ms = (time.perf_counter() - started) * 1000\n    np.testing.assert_array_equal(got, expected)\n    count = 7\n    started = time.perf_counter()\n    for _ in range(count):\n        warm = motion_mask(t, xyz)\n    warmed_ms = (time.perf_counter() - started) * 1000 / count\n    np.testing.assert_array_equal(warm, expected)\n    print(f\\\"samples={len(t)} equal=True dtype={got.dtype}\\\")\n    print(f\\\"first_call_ms_including_compile={first_ms:.3f}\\\")\n    print(f\\\"warmed_operation_ms_mean={warmed_ms:.3f} ({count} calls)\\\")\nfinally:\n    shutil.rmtree(cache_dir, ignore_errors=True)\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git diff -- task.py && git status --short && test ! -e .motion_mask_timing_cache && echo timing_cache_removed'",
+    "exit_code": 0
+  }
+]

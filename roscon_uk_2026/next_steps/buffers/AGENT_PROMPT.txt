@@ -1,0 +1,32 @@
+Work only in roscon_uk_2026/next_steps/buffers in this existing repository checkout.
+Read AGENTS.md at the repository root and GUIDE.md in this directory.
+Use the locked Pixi environment. Do not install skills or use pip, worktrees,
+additional repository checkouts, or other agents.
+
+Copy skeleton.py to candidate.py. Implement only the C++ docstring bodies of
+candidate.transform_kernel and candidate.filter_kernel. Keep all signatures,
+typed NDArray annotations, and the existing Python ownership adapter unchanged.
+Do not call buffer_demo::transform or buffer_demo::filter, import the saved
+solution, or edit native.hpp, buffers.py, test_buffers.py, or the expected data.
+
+Input points are native float64, aligned C-contiguous arrays with shape (N, 3).
+Rotation is a native float64 C-contiguous (3, 3) proper rotation. Translation
+is (3,), and output has the same scalar count as points. The transform convention
+is target_column = rotation * source_column + translation. Express point storage
+as an Eigen::Matrix<double, Eigen::Dynamic, 3, Eigen::RowMajor> mapped with
+Eigen::Unaligned. Maps must not outlive a call. No Python callbacks or pointers
+may be retained by native code. Handle N=0 without reading memory.
+
+The filter retains finite rows whose squared distance from the target-frame
+origin is less than or equal to radius_squared. Preserve input order. Compact
+retained coordinates into output and return the number of retained rows.
+Invalid element counts must raise std::invalid_argument before a map is used.
+
+Run from this directory:
+pixi run probe
+pixi run env BUFFERS_KERNEL_MODULE=candidate pytest -q test_buffers.py
+
+Do not change the checks to pass them. Report the command, test result, elapsed
+time, failures, any manual correction, and the storage/copy/lifetime rules.
+The saved implementation is buffers.py plus native.hpp. Reading it to fill in
+the missing logic does not count as an independent agent evaluation.

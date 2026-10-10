@@ -1,0 +1,95 @@
+{
+  "channels": [
+    {
+      "topic": "/wbc_lerobot",
+      "message_encoding": "cdr",
+      "schema": "std_msgs/msg/String",
+      "schema_encoding": "ros2msg",
+      "count": 2735
+    },
+    {
+      "topic": "/stamped/secondary_imu",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/IMUStateStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/stamped/lowstate",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/LowStateStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/stamped/dex1/right/cmd",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/MotorCmdStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/stamped/dex1/right/state",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/MotorStateStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/stamped/dex1/left/cmd",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/MotorCmdStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/stamped/lowcmd",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/LowCmdStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/camera/right_wrist/image/compressed",
+      "message_encoding": "cdr",
+      "schema": "sensor_msgs/msg/CompressedImage",
+      "schema_encoding": "ros2msg",
+      "count": 1640
+    },
+    {
+      "topic": "/stamped/dex1/left/state",
+      "message_encoding": "cdr",
+      "schema": "homies/msg/MotorStateStamped",
+      "schema_encoding": "ros2msg",
+      "count": 5470
+    },
+    {
+      "topic": "/lf/odommodestate",
+      "message_encoding": "cdr",
+      "schema": "unitree_go/msg/SportModeState",
+      "schema_encoding": "ros2msg",
+      "count": 1094
+    },
+    {
+      "topic": "/camera/left_wrist/image/compressed",
+      "message_encoding": "cdr",
+      "schema": "sensor_msgs/msg/CompressedImage",
+      "schema_encoding": "ros2msg",
+      "count": 1640
+    },
+    {
+      "topic": "/camera/head/image/compressed",
+      "message_encoding": "cdr",
+      "schema": "sensor_msgs/msg/CompressedImage",
+      "schema_encoding": "ros2msg",
+      "count": 1640
+    },
+    {
+      "topic": "/annotation",
+      "message_encoding": "cdr",
+      "schema": "std_msgs/msg/String",
+      "schema_encoding": "ros2msg",
+      "count": 5
+    }
+  ]
+}

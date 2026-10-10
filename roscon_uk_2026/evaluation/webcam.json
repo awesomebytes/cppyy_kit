@@ -1,0 +1,13 @@
+{
+  "device": 0,
+  "image_shape": [
+    480,
+    640,
+    3
+  ],
+  "tracked_frames": 30,
+  "median_track_ms": 0.199914000404533,
+  "capture": "actual webcam",
+  "gui_click_rehearsal": false,
+  "images_saved": false
+}

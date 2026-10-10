@@ -1,0 +1,121 @@
+{
+  "experiment": "synthetic Cartesian pose smoothing, v1",
+  "objective": "full-episode pooled position RMSE metres",
+  "selection": "training RMSE only; tie order defaults, Optuna, grid",
+  "bounds_tau_s": [
+    0.005,
+    0.5
+  ],
+  "budget_per_search": 24,
+  "default_evaluations": 1,
+  "seed": 20261004,
+  "samples_per_episode": 500,
+  "train_seeds": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "held_out_seeds": [
+    100,
+    101,
+    102,
+    103
+  ],
+  "datasets": {
+    "training": [
+      {
+        "episode_id": "synthetic-pose-v1-seed-0-n-500",
+        "sha256": "efbfc86537f5081c06b53fe75629ba9be106e88e433eed139f2246658b67bd8c"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-1-n-500",
+        "sha256": "acb5fb924bace5975330090e6afef3c7ce922ef548feb033d8f6e577c7e81a2d"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-2-n-500",
+        "sha256": "9290cb2f453f24ae6b6031670f3163cb5136f62395253adacad148659d0ec360"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-3-n-500",
+        "sha256": "08d995636e3c32138ada4ebe4db69e878dd7212b9447432feab2e02b6a730dae"
+      }
+    ],
+    "held_out": [
+      {
+        "episode_id": "synthetic-pose-v1-seed-100-n-500",
+        "sha256": "00d86498bf14c43d7ac45cac77d8b0369354879b49753a0098e95a77f07f181a"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-101-n-500",
+        "sha256": "c55f30cf44ace018a23f9a5ee7761cb3835507d276085e1a27c7546d483b4974"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-102-n-500",
+        "sha256": "5deb5864518dd9958d9990fd27cc5c15051772d6f8941307e4008625311ff072"
+      },
+      {
+        "episode_id": "synthetic-pose-v1-seed-103-n-500",
+        "sha256": "8f58d124bb034a45d5f511fb77c26d5c117cd9fa47d22e6feaa1fc57bc7b1b45"
+      }
+    ]
+  },
+  "versions": {
+    "numpy": "2.4.6",
+    "cppyy": "3.5.0",
+    "pydantic": "2.12.5",
+    "optuna": "4.5.0"
+  },
+  "python": "3.12.14 (main, Sep  2 2026, 23:27:36) [GCC 15.3.0]",
+  "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+  "git_revision": "148fcf51072b39964b721b794ba7721a533b4c37",
+  "compiler_version": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0\nCopyright (C) 2024 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n\n",
+  "compile_flags": [
+    "-std=c++17",
+    "-O3",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "argv": [
+    "tune.py",
+    "--output",
+    "build/frozen-run"
+  ],
+  "source_sha256": {
+    "roscon_uk_2026/next_steps/tuning/tune.py": "18419a87bcadbc3f8e945a6f7bc6c57ed35637332de1169c83e6e31111165338",
+    "roscon_uk_2026/next_steps/tuning/metrics.py": "87b1b8f61b69ac7a4671ae3c6ab75b38e6e94ec9695bd1eb502517765546b81a",
+    "roscon_uk_2026/next_steps/tuning/pixi.toml": "1fa911ea8d6d335ffbe21a78eb705d766fbc83a8d0678eee04380e998c669cca",
+    "roscon_uk_2026/next_steps/tuning/pixi.lock": "1ba55ddc067e1d2d9089ca418a081ca2f640596831518671b380e90bd9c7e623",
+    "roscon_uk_2026/next_steps/tuning/test_tuning.py": "82ecbe60aa1ee80c07e7b67bc86b7d26a491c5f885f2c9aa7ed09dc1e2eb12e2",
+    "roscon_uk_2026/next_steps/tuning/replay_saved.py": "d18bb2216b32c4804f5d9c903c4c0cf06868b2fb8fae98d2234e104dbae506e4",
+    "roscon_uk_2026/next_steps/reverse_core/__init__.py": "5d8ff7ab3870f71a83bd124c6285b1fcb539b383d310c5fdcf5b99a1bbe18b0a",
+    "roscon_uk_2026/next_steps/reverse_core/check_exercise.py": "973f256809b3c188cd90690784e870a680d07bc53742466f46b873764694f07c",
+    "roscon_uk_2026/next_steps/reverse_core/demo.py": "852d68879401f0b0ad07bdb1b46aabb849d3084916045a5aa5ed31f80009a67f",
+    "roscon_uk_2026/next_steps/reverse_core/skeleton.py": "9a8d9c5bb05ec0edd4c57ce7227915c1598bffe7da098072c56e6fb037566c2a",
+    "roscon_uk_2026/next_steps/reverse_core/solution.py": "43b8917afc5d77455e52ddb010d2bf8521200c952b8e086d95916b39efe56c1b",
+    "roscon_uk_2026/next_steps/reverse_core/native/driver.cpp": "30202aa995162348a5d7200a711cb8b9fac0e3b26a4d7a59d6ddf70f7258107e",
+    "roscon_uk_2026/next_steps/reverse_core/native/pose_filter.cpp": "97e85221ae71d435a137fac98623ac3f9d7b82d6adfc9371d2ef3e3fc5191212",
+    "roscon_uk_2026/next_steps/reverse_core/native/pose_filter.hpp": "db89b35d9fbb6fc0db3fc1d485b723e04bc425ffaede576fb8742185596089c1"
+  },
+  "lag": {
+    "method": "bounded positive shift of interpolated estimate against truth",
+    "resolution_s": 0.005,
+    "maximum_s": 0.3,
+    "settle_s": 0.5,
+    "max_interpolation_gap_s": 0.05,
+    "limits": "noise, amplitude distortion and interpolation bias; upper bound is censored; not processing latency"
+  },
+  "native_artifacts": {
+    "library": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/build/21a1fbb43e9ac31d/libreverse_pose.so",
+    "driver": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/build/21a1fbb43e9ac31d/pose_filter_driver",
+    "include_dir": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/reverse_core/native"
+  },
+  "startup_s": {
+    "dependency_imports": 0.20758404201478697,
+    "native_build_or_cache_lookup": 0.0026433320017531514,
+    "cppyy_library_and_header_load": 0.29348514397861436,
+    "dataset_generation": 0.008114513999316841,
+    "first_adapter_and_native_process": 0.06389261700678617
+  }
+}

@@ -1,0 +1,8 @@
+Complete TrackingController.update() in controller.py using the supplied
+control_kit guide. Use the period supplied by controller_manager, read the two
+claimed position interfaces, apply the documented tracking law, and write the
+commands. Preserve lifecycle and measurement boilerplate. Do not change tests
+or other files. Run the acceptance test and a three-second 1000 Hz trial. Report
+achieved rate, p99 cycle interval, late intervals, and tracking error. State that
+the hardware is GenericSystem and that measured scheduling is not a hard real
+time guarantee. Work only in the task directory.

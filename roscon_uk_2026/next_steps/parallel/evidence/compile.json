@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+    "-shared",
+    "-fPIC",
+    "-std=c++17",
+    "-O3",
+    "-march=native",
+    "-ffp-contract=off",
+    "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel",
+    "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build",
+    "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/include",
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/native.cpp",
+    "-o",
+    "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/libdetection.so",
+    "-L/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+    "-Wl,-rpath,/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/.pixi/envs/default/lib",
+    "-ltbb",
+    "-fopt-info-vec-optimized=/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/parallel/build/vectorization.txt"
+  ],
+  "digest": "e42e991e35f7fcd018cb783518d17ad581ad78e07c305baa743cde462e7b3b87",
+  "seconds": 1.0679328700061888,
+  "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+  "returncode": 0,
+  "stderr": ""
+}

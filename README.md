@@ -135,6 +135,10 @@ lists their package names.
 
 ## Read task guides
 
+Start with [AI-assisted prototyping](CPPYY_KIT_WITH_AI.md) for setup, a copyable
+agent request, and runnable examples for accelerating Python, calling C++
+libraries, or configuring existing C++ software.
+
 Read the guide for your task, or give its output to a coding agent:
 
 ```bash

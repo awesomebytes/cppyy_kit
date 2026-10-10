@@ -1,0 +1,27 @@
+[workspace]
+name = "numpy-eigen-buffers"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.13"
+cppyy = "==3.5.0"
+numpy = "==2.5.1"
+eigen = "==5.0.1"
+pytest = "==7.4.4"
+cxx-compiler = "==1.11.0"
+gcc_linux-64 = "==14.3.0"
+gxx_linux-64 = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+OPENBLAS_NUM_THREADS = "1"
+OMP_NUM_THREADS = "1"
+
+[tasks]
+guide = "cat GUIDE.md"
+check = "pytest -q test_buffers.py"
+demo = "python experiment.py --output measurement.json"
+probe = "python probe.py"

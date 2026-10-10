@@ -1,0 +1,50 @@
+[
+  {
+    "command": "/bin/bash -lc \"cat /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md && printf '\\\\n--- tracker.py ---\\\\n' && sed -n '1,260p' tracker.py && printf '\\\\n--- test_tracker.py ---\\\\n' && sed -n '1,320p' test_tracker.py\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python -m pytest test_tracker.py -q'",
+    "exit_code": 1
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python -m pytest test_tracker.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/roscon_uk_2026/.pixi/envs/vision/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom tracker import track\n\ndef reference(previous, current, x, y, radius=5, search=8):\n    h, w = previous.shape\n    ys = range(max(radius, y-search), min(h-radius-1, y+search)+1)\n    xs = range(max(radius, x-search), min(w-radius-1, x+search)+1)\n    patch = previous[y-radius:y+radius+1, x-radius:x+radius+1].astype(np.int32)\n    best = None\n    best_xy = None\n    for cy in ys:\n        for cx in xs:\n            candidate = current[cy-radius:cy+radius+1, cx-radius:cx+radius+1].astype(np.int32)\n            score = int(np.square(patch-candidate).sum(dtype=np.int64))\n            if best is None or score < best:\n                best, best_xy = score, (cx, cy)\n    return best_xy\n\nrng = np.random.default_rng(20261003)\ncases = [\n    (rng.integers(0, 256, (80, 100), dtype=np.uint8), 40, 30, 5, 8),\n    (np.zeros((20, 20), dtype=np.uint8), 5, 5, 5, 8),\n    (rng.integers(0, 256, (51, 63), dtype=np.uint8)[:, ::2], 8, 20, 3, 11),\n    (rng.integers(0, 256, (32, 40), dtype=np.uint8), 6, 7, 0, 4),\n]\nfor previous, x, y, radius, search in cases:\n    if previous.shape[1] <= 2*radius or previous.shape[0] <= 2*radius:\n        continue\n    current = rng.integers(0, 256, previous.shape, dtype=np.uint8)\n    expected = reference(previous, current, x, y, radius, search)\n    actual = track(previous, current, x, y, radius, search)\n    assert actual == expected, (actual, expected)\nprint(f\\\"synthetic_reference_cases={len(cases)} passed\\\")\n\nprevious = rng.integers(0, 256, (480, 640), dtype=np.uint8)\ncurrent = np.roll(previous, (3, -4), axis=(0, 1))\nstart = time.perf_counter()\nfirst = track(previous, current, 320, 240, radius=5, search=8)\nfirst_ms = (time.perf_counter() - start) * 1000\nsamples = []\nfor _ in range(100):\n    start = time.perf_counter()\n    result = track(previous, current, 320, 240, radius=5, search=8)\n    samples.append((time.perf_counter() - start) * 1000)\nassert first == result == (316, 243), (first, result)\nprint(f\\\"template=11x11 search=+/-8 first_call_ms={first_ms:.3f} warmed_median_ms={np.median(samples):.3f} warmed_p95_ms={np.percentile(samples, 95):.3f}\\\")\nPY\"",
+    "exit_code": 127
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom tracker import track\n\ndef reference(previous, current, x, y, radius=5, search=8):\n    h, w = previous.shape\n    ys = range(max(radius, y-search), min(h-radius-1, y+search)+1)\n    xs = range(max(radius, x-search), min(w-radius-1, x+search)+1)\n    patch = previous[y-radius:y+radius+1, x-radius:x+radius+1].astype(np.int32)\n    best = None\n    best_xy = None\n    for cy in ys:\n        for cx in xs:\n            candidate = current[cy-radius:cy+radius+1, cx-radius:cx+radius+1].astype(np.int32)\n            score = int(np.square(patch-candidate).sum(dtype=np.int64))\n            if best is None or score < best:\n                best, best_xy = score, (cx, cy)\n    return best_xy\n\nrng = np.random.default_rng(20261003)\ncases = [\n    (rng.integers(0, 256, (80, 100), dtype=np.uint8), 40, 30, 5, 8),\n    (np.zeros((20, 20), dtype=np.uint8), 5, 5, 5, 8),\n    (rng.integers(0, 256, (51, 63), dtype=np.uint8)[:, ::2], 8, 20, 3, 11),\n    (rng.integers(0, 256, (32, 40), dtype=np.uint8), 6, 7, 0, 4),\n]\nfor previous, x, y, radius, search in cases:\n    current = rng.integers(0, 256, previous.shape, dtype=np.uint8)\n    expected = reference(previous, current, x, y, radius, search)\n    actual = track(previous, current, x, y, radius, search)\n    assert actual == expected, (actual, expected)\nprint(f\\\"synthetic_reference_cases={len(cases)} passed\\\")\n\nprevious = rng.integers(0, 256, (480, 640), dtype=np.uint8)\ncurrent = np.roll(previous, (3, -4), axis=(0, 1))\nstart = time.perf_counter()\nfirst = track(previous, current, 320, 240, radius=5, search=8)\nfirst_ms = (time.perf_counter() - start) * 1000\nsamples = []\nfor _ in range(100):\n    start = time.perf_counter()\n    result = track(previous, current, 320, 240, radius=5, search=8)\n    samples.append((time.perf_counter() - start) * 1000)\nassert first == result == (316, 243), (first, result)\nprint(f\\\"template=11x11 search=+/-8 first_call_ms={first_ms:.3f} warmed_median_ms={np.median(samples):.3f} warmed_p95_ms={np.percentile(samples, 95):.3f}\\\")\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'git diff -- tracker.py && git status --short'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc '/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python -m pytest test_tracker.py -q'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python - <<'PY'\nimport time\nimport numpy as np\nfrom tracker import track\n\ndef reference(a, b, x, y, radius, search):\n    h, w = a.shape\n    patch = a[y-radius:y+radius+1, x-radius:x+radius+1].astype(np.int32)\n    best_score, best_xy = None, None\n    for cy in range(max(radius, y-search), min(h-radius-1, y+search)+1):\n        for cx in range(max(radius, x-search), min(w-radius-1, x+search)+1):\n            delta = patch - b[cy-radius:cy+radius+1, cx-radius:cx+radius+1].astype(np.int32)\n            score = int((delta * delta).sum(dtype=np.int64))\n            if best_score is None or score < best_score:\n                best_score, best_xy = score, (cx, cy)\n    return best_xy\n\nrng = np.random.default_rng(20261003)\ncases = [\n    (rng.integers(0, 256, (80, 100), dtype=np.uint8), 40, 30, 5, 8),\n    (np.zeros((20, 20), dtype=np.uint8), 5, 5, 5, 8),\n    (rng.integers(0, 256, (51, 63), dtype=np.uint8)[:, ::2], 8, 20, 3, 11),\n    (rng.integers(0, 256, (32, 40), dtype=np.uint8), 6, 7, 0, 4),\n    (rng.integers(0, 256, (24, 30), dtype=np.uint8), 10, 12, 2, 10**100),\n]\nfor a, x, y, radius, search in cases:\n    b = rng.integers(0, 256, a.shape, dtype=np.uint8)\n    expected = reference(a, b, x, y, radius, search)\n    actual = track(a, b, x, y, radius, search)\n    assert actual == expected, (actual, expected)\nprint(f\\\"synthetic_reference_cases={len(cases)} passed\\\")\n\nprevious = rng.integers(0, 256, (480, 640), dtype=np.uint8)\ncurrent = np.roll(previous, (3, -4), axis=(0, 1))\nt0 = time.perf_counter()\nfirst_result = track(previous, current, 320, 240, radius=5, search=8)\nfirst_ms = 1000 * (time.perf_counter() - t0)\nsamples = []\nfor _ in range(100):\n    t0 = time.perf_counter()\n    result = track(previous, current, 320, 240, radius=5, search=8)\n    samples.append(1000 * (time.perf_counter() - t0))\nassert first_result == result == (316, 243)\nprint(f\\\"template=11x11 search=+/-8 first_call_ms={first_ms:.3f} warmed_median_ms={np.median(samples):.3f} warmed_p95_ms={np.percentile(samples, 95):.3f}\\\")\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'rg -n \"CACHE|cache_dir|XDG|cppyy_kit\" /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/lib/python3.12/site-packages/cppyy_kit/cache.py | head -50'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/vision/bin/python - <<'PY'\nimport os\nimport shutil\nimport tempfile\nimport time\nimport numpy as np\ncache_dir = tempfile.mkdtemp(prefix='.tracker_timing_cache_', dir='.')\nos.environ['CPPYY_KIT_CACHE_DIR'] = cache_dir\ntry:\n    from tracker import track\n    rng = np.random.default_rng(20261003)\n    previous = rng.integers(0, 256, (480, 640), dtype=np.uint8)\n    current = np.roll(previous, (3, -4), axis=(0, 1))\n    start = time.perf_counter()\n    first = track(previous, current, 320, 240, radius=5, search=8)\n    first_ms = 1000 * (time.perf_counter() - start)\n    samples = []\n    for _ in range(100):\n        start = time.perf_counter()\n        result = track(previous, current, 320, 240, radius=5, search=8)\n        samples.append(1000 * (time.perf_counter() - start))\n    assert first == result == (316, 243)\n    print(f'template=11x11 search=+/-8 cold_first_call_ms={first_ms:.3f} warmed_median_ms={np.median(samples):.3f} warmed_p95_ms={np.percentile(samples, 95):.3f}')\nfinally:\n    shutil.rmtree(cache_dir, ignore_errors=True)\nPY\"",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc 'ls -la'",
+    "exit_code": 0
+  },
+  {
+    "command": "/bin/bash -lc \"find build .pytest_cache __pycache__ -maxdepth 3 -type f -printf '%TY-%Tm-%Td %TH:%TM %p\\\\n'\"",
+    "exit_code": 0
+  }
+]

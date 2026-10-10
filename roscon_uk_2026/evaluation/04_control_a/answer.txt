@@ -1,0 +1,5 @@
+Implemented the tracking law in [controller.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/04_control_a/controller.py:44): it advances time by the supplied period, reads both position states, writes the documented commands, and records samples.
+
+The acceptance test and three-second 1000 Hz trial could not complete. After setting the package path and a writable cache, both stopped at `rclcpp.init()` with an uncaught `std::exception` and segmentation violation. The trial did not reach its measurement loop, so achieved rate, p99 interval, late intervals, and tracking error are unavailable.
+
+The configured hardware is `mock_components/GenericSystem`. Any measured scheduling rate would be an observation, not a hard real-time guarantee.

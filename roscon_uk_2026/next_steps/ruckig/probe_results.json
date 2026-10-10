@@ -1,0 +1,13 @@
+{
+  "build": {
+    "cached": true,
+    "fetch_verify_s": 0.0010916430037468672,
+    "compile_s": 0.0
+  },
+  "adapter_returncode": 0,
+  "adapter_stdout": "compiled adapter: PASS\n",
+  "adapter_stderr": "",
+  "template_returncode": 0,
+  "template_stdout": "Ruckig template declaration: PASS\n",
+  "template_stderr": ""
+}

@@ -1,0 +1,40 @@
+[workspace]
+name = "cppyy-kit-roscon-uk-2026"
+channels = ["https://prefix.dev/awesomebytes", "robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+cppyy-kit = "0.3.*"
+numpy = "*"
+mcap = "*"
+pytest = ">=7.4,<8"
+
+[pypi-dependencies]
+mcap-ros2-support = "==0.5.7"
+
+[tasks]
+agent-guide = "python scripts/agent_guide.py"
+fetch-data = "python scripts/fetch_data.py"
+inspect-data = "python scripts/inspect_mcap.py"
+check = "pytest tests -q"
+
+[feature.ros.dependencies]
+ros-jazzy-rclcpp-kit = "0.3.*"
+ros-jazzy-rclpy = "*"
+ros-jazzy-rosbag2-storage-mcap = "*"
+ros-jazzy-ros2bag = "*"
+ros-jazzy-std-msgs = ">=5.3.8,<6"
+
+[feature.control.dependencies]
+ros-jazzy-control-kit = "0.3.*"
+
+[feature.vision.dependencies]
+ros-jazzy-cv-kit = "0.3.*"
+libopencv = "*"
+py-opencv = "*"
+
+[environments]
+ros = { features = ["ros"], solve-group = "default" }
+control = { features = ["ros", "control"], solve-group = "default" }
+vision = { features = ["ros", "vision"], solve-group = "default" }

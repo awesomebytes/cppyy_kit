@@ -1,0 +1,30 @@
+{
+  "samples": 600,
+  "input_sha256": "9f83e482182ae1fc96dbeb633e341ab67706ff916ac8170b3be11e6bf8545561",
+  "file_bytes": 185094,
+  "fixture_generation_ms": 22.845531988423318,
+  "first_native_total_ms": 1621.5351019927766,
+  "setup_ms": {
+    "adapter_build_or_cache_ms": 1202.5250240112655,
+    "adapter_compile_ms": 1192.7585979865398,
+    "cppyy_load_declarations_ms": 314.84784799977206
+  },
+  "python_decode_and_numpy_median_ms": 18.205630010925233,
+  "native_extract_and_numpy_median_ms": 0.34529800177551806,
+  "native_components_median_ms": {
+    "container_io_parse_ms": 0.21919399999999994,
+    "cdr_decode_append_ms": 0.026206000000000035,
+    "decompression_ms": 0.0,
+    "numpy_owned_copy_ms": 0.061503000324591994
+  },
+  "speed_query_median_ms": 0.02950002090074122,
+  "speed_query_matches": 483,
+  "process_peak_rss_kib": 253188,
+  "versions": {
+    "numpy": "2.5.3",
+    "cppyy": "3.5.0",
+    "mcap": "1.5.0",
+    "mcap-ros2-support": "0.5.7"
+  },
+  "timing_conditions": "9 sequential warmed reads, filesystem cache warm; conversion is an owned bulk copy; container timing includes I/O and parsing; compressed chunks rejected"
+}

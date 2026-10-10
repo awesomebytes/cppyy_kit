@@ -1,0 +1,83 @@
+F
+=================================== FAILURES ===================================
+___________ test_exact_flags_and_counts_multiple_workers_repeated[0] ___________
+
+n = 0
+
+    @pytest.mark.parametrize("n", [0, 1, 3, 17, 257, 123457])
+    def test_exact_flags_and_counts_multiple_workers_repeated(n):
+        data = records(n)
+        batch = Batch(data, frames=7)
+        flags, counts = expected(data)
+        for method, workers in [("serial_aos", 1), ("serial_columns", 1), ("xsimd", 1),
+                                ("tbb", 1), ("tbb", 2), ("tbb", 4)]:
+            for _ in range(3):
+>               result, histogram, peak = batch.run(method, workers=workers, instrument=True)
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_processing.py:41: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+processing.py:121: in run
+    _aos(_FUNCTIONS["detection_aos"], self._address, self.n, self.frames, radius*radius, threshold,
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <cppyy_kit._cpp._CppFunc object at 0x768f7cc442f0>
+args = (130359058474176, 0, 0, 7, 25.0, 0.7, ...), kwargs = {}
+
+    def __call__(self, *args, **kwargs):
+        bound = self.__signature__.bind(*args, **kwargs)
+        bound.apply_defaults()
+        specs = []
+        values = []
+        for name, original_spec in zip(self._plan["params"], self._plan["specs"]):
+            arg = bound.arguments[name]
+            spec = original_spec if original_spec is not None else _infer_value(arg, name)
+            if isinstance(spec, _Numeric):
+                if spec.kind == "array":
+                    if spec.dtype is None:
+                        inferred = _infer_value(arg, name)
+                        if inferred.kind != "array":
+                            raise TypeError("%s must be a NumPy ndarray" % name)
+                        inferred.const = spec.const
+                        spec = inferred
+                    _validate_array(arg, spec, name, writable=not spec.const)
+                elif spec.kind == "sequence":
+                    if spec.dtype is None:
+                        inferred = _infer_value(arg, name)
+                        if inferred.kind != "sequence":
+                            raise TypeError("%s must be a numeric sequence" % name)
+                        spec = inferred
+                    arg = _array_for_sequence(arg, spec, name)
+                elif spec.kind == "scalar":
+                    arg = _scalar_argument(arg, spec, name)
+            specs.append(spec)
+            values.append(arg)
+        plan_key = tuple(_spec_key(spec) for spec in specs)
+        plan = self._plans.get(plan_key)
+        if plan is None:
+            plan = _build_plan(self._name, self._fn, self._body,
+                               nogil=self._nogil, specs=specs,
+                               options=self._opts)
+            self._plans[plan_key] = plan
+        marshaled = []
+        for spec, name, arg in zip(specs, plan["params"], values):
+            if isinstance(spec, _Numeric):
+                if spec.kind in ("array", "sequence"):
+                    marshaled.extend((_address(arg), int(arg.size)))
+                else:
+                    marshaled.append(arg)
+            elif isinstance(spec, str) and spec.strip().endswith("*"):
+                marshaled.append(_address(arg))
+            else:
+                marshaled.append(arg)
+        impl = self._ensure(plan)
+>       return impl(*marshaled)
+               ^^^^^^^^^^^^^^^^
+E       cppyy.gbl.std.logic_error: void cppyy_kit_cpp::_aos_37be364e69a7_nogil(std::uintptr_t function, std::uintptr_t records, int n, int frames, double radius2, double threshold, int parallel, int workers, uintptr_t flags__addr, uintptr_t counts__addr, uintptr_t peak__addr) =>
+E           logic_error: TODO parallel_for
+
+../../../cppyy_kit/_cpp.py:469: logic_error
+=========================== short test summary info ============================
+FAILED tests/test_processing.py::test_exact_flags_and_counts_multiple_workers_repeated[0]
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 1.47s

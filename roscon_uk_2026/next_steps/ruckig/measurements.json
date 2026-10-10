@@ -1,0 +1,173 @@
+{
+  "versions": {
+    "cppyy": "3.5.0",
+    "numpy": "2.5.3",
+    "ruckig": "0.12.2",
+    "pytest": "8.4.2"
+  },
+  "python": "3.12.13",
+  "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+  "setup": {
+    "import_s": 0.20953194799949415,
+    "adapter_declarations_s": 0.016680412023561075,
+    "build": {
+      "cached": true,
+      "fetch_verify_s": 0.0007506909896619618,
+      "compile_s": 0.0
+    }
+  },
+  "last_full_build": {
+    "cached": false,
+    "fetch_verify_s": 0.0008847129938658327,
+    "compile_s": 7.720651326992083,
+    "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+    "command": [
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+      "-std=c++17",
+      "-O3",
+      "-DNDEBUG",
+      "-fPIC",
+      "-shared",
+      "-pthread",
+      "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/include",
+      "-I/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/tracking.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/brake.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_first_step1.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_first_step2.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_second_step1.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_second_step2.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_third_step1.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/position_third_step2.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/velocity_second_step1.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/velocity_second_step2.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/velocity_third_step1.cpp",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/ruckig-0.12.2/src/ruckig/velocity_third_step2.cpp",
+      "-o",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/ruckig/.build/libtracking.so"
+    ],
+    "source_sha256": "08f69a165da3815d122ea3c5f377b5dd76c2e626ac026e5156d5e32dd4636b0f"
+  },
+  "measurements": [
+    {
+      "dofs": 3,
+      "native_step_internal": {
+        "count": 4990,
+        "unit": "us",
+        "p50": 0.321,
+        "p95": 0.345,
+        "p99": 0.376,
+        "max": 5.047
+      },
+      "native_step_boundary_retained_input": {
+        "count": 4990,
+        "unit": "us",
+        "p50": 0.803,
+        "p95": 0.851,
+        "p99": 0.924,
+        "max": 51.507
+      },
+      "native_recalculation_boundary_retained_input": {
+        "count": 10,
+        "unit": "us",
+        "p50": 1.9325,
+        "p95": 7.502699999999998,
+        "p99": 8.22054,
+        "max": 8.4
+      },
+      "python_binding_plus_python_tracking": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 1.142,
+        "p95": 1.2440999999999995,
+        "p99": 1.4462199999999712,
+        "max": 13.632
+      },
+      "python_list_to_native_vector": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 0.775,
+        "p95": 0.845,
+        "p99": 0.903,
+        "max": 5.439
+      },
+      "native_outputs_to_python_lists": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 2.278,
+        "p95": 2.39105,
+        "p99": 2.5230099999999998,
+        "max": 15.711
+      },
+      "native_step_with_list_conversion": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 1.56,
+        "p95": 1.6560999999999995,
+        "p99": 1.7620199999999995,
+        "max": 34.638
+      }
+    },
+    {
+      "dofs": 6,
+      "native_step_internal": {
+        "count": 4990,
+        "unit": "us",
+        "p50": 0.377,
+        "p95": 0.4025500000000002,
+        "p99": 0.4262199999999993,
+        "max": 4.215
+      },
+      "native_step_boundary_retained_input": {
+        "count": 4990,
+        "unit": "us",
+        "p50": 0.832,
+        "p95": 0.886,
+        "p99": 0.9391099999999997,
+        "max": 14.319
+      },
+      "native_recalculation_boundary_retained_input": {
+        "count": 10,
+        "unit": "us",
+        "p50": 2.38,
+        "p95": 3.720199999999998,
+        "p99": 4.463240000000001,
+        "max": 4.649
+      },
+      "python_binding_plus_python_tracking": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 1.513,
+        "p95": 1.604,
+        "p99": 1.7860399999999992,
+        "max": 16.283
+      },
+      "python_list_to_native_vector": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 0.848,
+        "p95": 0.921,
+        "p99": 1.0100499999999988,
+        "max": 8.27
+      },
+      "native_outputs_to_python_lists": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 2.27,
+        "p95": 2.384,
+        "p99": 2.525029999999999,
+        "max": 10.019
+      },
+      "native_step_with_list_conversion": {
+        "count": 3000,
+        "unit": "us",
+        "p50": 1.7765,
+        "p95": 1.881,
+        "p99": 1.9750399999999992,
+        "max": 38.617
+      }
+    }
+  ],
+  "peak_process_rss_kib": 229492,
+  "timing_scope": "single process, warmed calls, no scheduling or real-time guarantee"
+}

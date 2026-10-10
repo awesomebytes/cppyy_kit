@@ -1,0 +1,10 @@
+.pixi/
+__pycache__/
+.pytest_cache/
+build/
+.independent-checks/
+*.sqlite3
+data/*
+!data/.gitkeep
+eval_runs/*
+!eval_runs/.gitkeep

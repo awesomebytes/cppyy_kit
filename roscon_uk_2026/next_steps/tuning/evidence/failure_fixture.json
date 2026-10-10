@@ -1,0 +1,21 @@
+{
+  "purpose": "test-only injected replay exception; not a failure in the real estimator",
+  "seed": 34,
+  "budget": 2,
+  "bounds_tau_s": [
+    0.005,
+    0.5
+  ],
+  "versions": {
+    "numpy": "2.4.6",
+    "cppyy": "3.5.0",
+    "pydantic": "2.12.5",
+    "optuna": "4.5.0"
+  },
+  "dataset": [
+    {
+      "episode_id": "synthetic-pose-v1-seed-0-n-200",
+      "sha256": "72379ce23fb85180376d8f9599ab08b5871c1ab208e689fb54d6d078469665bc"
+    }
+  ]
+}

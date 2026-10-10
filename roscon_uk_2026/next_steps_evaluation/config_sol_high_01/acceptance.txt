@@ -1,0 +1,1 @@
+PASS: validation before native loading, explicit field/units mapping, default export, native-loader replay

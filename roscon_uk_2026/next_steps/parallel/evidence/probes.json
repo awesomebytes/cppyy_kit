@@ -1,0 +1,16 @@
+{
+  "tbb_inline": {
+    "returncode": 0,
+    "stdout": "oneTBB inline template probe passed\n",
+    "stderr": "",
+    "seconds": 0.6460875860066153,
+    "source": "\nimport cppyy\ncppyy.load_library(\"libtbb\")\ncppyy.cppdef(\"\"\"\n#include <oneapi/tbb/parallel_for.h>\n#include <oneapi/tbb/task_arena.h>\nint probe_tbb() {\n int out[17]{};\n oneapi::tbb::task_arena arena(2);\n arena.execute([&] { oneapi::tbb::parallel_for(0, 17, [&](int i){out[i]=i;}); });\n int sum=0; for(auto x:out)sum+=x; return sum;\n}\n\"\"\")\nassert cppyy.gbl.probe_tbb() == 136\nprint(\"oneTBB inline template probe passed\")\n"
+  },
+  "xsimd_inline": {
+    "returncode": 0,
+    "stdout": "xsimd inline template probe passed\n",
+    "stderr": "",
+    "seconds": 0.4225910959939938,
+    "source": "\nimport cppyy\ncppyy.cppdef(\"\"\"\n#include <xsimd/xsimd.hpp>\ndouble probe_simd() {\n using B=xsimd::batch<double>;\n double out[B::size];\n (B(2.)*B(3.)).store_unaligned(out);\n return out[0];\n}\n\"\"\")\nassert cppyy.gbl.probe_simd() == 6.\nprint(\"xsimd inline template probe passed\")\n"
+  }
+}

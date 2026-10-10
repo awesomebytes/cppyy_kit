@@ -1,0 +1,25 @@
+[workspace]
+name = "ruckig-native-composition"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.13"
+cppyy = "==3.5.0"
+numpy = "==2.5.3"
+pytest = "==8.4.2"
+gcc_linux-64 = "==14.3.0"
+gxx_linux-64 = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[pypi-dependencies]
+ruckig = "==0.12.2"
+
+[tasks]
+build = "python build.py"
+probe = "python probe.py"
+check = "python -m pytest -q test_acceptance.py"
+demo = "python demo.py"
+benchmark = "python benchmark.py"
+guide = "cat GUIDE.md"

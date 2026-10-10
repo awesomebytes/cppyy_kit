@@ -1,0 +1,3 @@
+Exercise checks passed: independent recurrence, reset/order, seeded trials, selection, persistence.
+[I 2026-10-04 22:50:00,139] A new study created in RDB with name: tau_s
+[I 2026-10-04 22:50:01,093] A new study created in RDB with name: tau_s

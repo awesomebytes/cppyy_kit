@@ -1,0 +1,14 @@
+Implement sweep() in analyze.py using cppyy_kit. Read the supplied kernel guide
+and the motion-rule reference. The loading boilerplate reads an actual public
+Unitree G1 MCAP. Sweep 41 enter-speed thresholds for both recorded end effectors
+and return event counts and active durations, exactly as the docstring specifies.
+Keep validation, file loading, and the output format. Do not change tests or
+other files. Run the tests and analyze the supplied recording. Report decoding
+time, first query time, and warmed query time separately. Do not describe motion
+events as confirmed grasps or task success. Work only in the task directory.
+
+Python: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python
+Check: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/.pixi/envs/default/bin/python -m pytest test_analyze.py -q
+Read /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/guides/kernel.md before editing.
+Motion rule: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/examples/01_python/task.py
+Recording: /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/data/hiw_pillow_episode_0002.mcap

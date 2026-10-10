@@ -1,0 +1,72 @@
+{
+  "parameters": {
+    "n": 50000,
+    "m": 2000,
+    "k": 8,
+    "repeats": 5,
+    "seed": 4026,
+    "frame_gap": 128,
+    "min_confidence": 0.6,
+    "max_distance": 0.25
+  },
+  "versions": {
+    "python": "3.12.13",
+    "numpy": "2.5.3",
+    "scipy": "1.17.1",
+    "cppyy": "3.5.0",
+    "cppyy_kit_path": "/home/sapf/playground/ros_project/cppyy_kit/cppyy_kit/__init__.py",
+    "nanoflann": "1.6.3",
+    "header_sha256": "e47f12ae2fc339cd2eb9ca148af837bd1025ff7e301ecf1860675ff1c73dd071",
+    "compiler": "x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-20) 14.3.0",
+    "platform": "Linux-6.17.0-1032-oem-x86_64-with-glibc2.39",
+    "machine": "x86_64"
+  },
+  "startup_seconds": {
+    "adapter_import_total": 0.9965824709797744,
+    "cppyy_kit_numpy_import": 0.25006948501686566,
+    "header_discovery_verification": 0.0002010720199905336,
+    "adapter_prebuild": 0.7036106160085183,
+    "adapter_load_declarations": 0.03625899599865079,
+    "scipy_import": 0.11106917398865335
+  },
+  "cache": {
+    "cached": true,
+    "so": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/build/cache/recorded_nn_3228b71b15e9.so",
+    "header": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/nanoflann/build/cache/recorded_nn_3228b71b15e9.h"
+  },
+  "build_seconds": {
+    "input_validation_conversion": 0.0009426239994354546,
+    "constructor_call": 0.01071925600990653,
+    "native_copy_and_tree_build": 0.005879088,
+    "scipy_copy_and_tree_build": 0.011159627989400178
+  },
+  "first_filtered_call_seconds": {
+    "native_seconds": 0.003841976,
+    "call_seconds": 0.00760727800661698,
+    "conversion_seconds": 9.534700075164437e-05
+  },
+  "warmed_filtered_seconds": {
+    "native_query_and_centroid": 0.003287452,
+    "native_call": 0.0033086820039898157,
+    "validation_allocation": 4.0691986214369535e-05,
+    "output_conversion": 0.0,
+    "scipy_radius_search_and_candidate_lists": 0.04685741299181245,
+    "scipy_python_selection_and_centroid": 0.05419334600446746,
+    "scipy_total": 0.10094294798909687,
+    "scipy_adaptive_knn_search": 0.007760478009004146,
+    "scipy_adaptive_python_selection": 0.026319324009818956,
+    "scipy_adaptive_total": 0.03411599498940632
+  },
+  "warmed_unfiltered_seconds": {
+    "native_call_including_centroid": 0.002017988997977227,
+    "scipy_query_without_centroid": 0.002459602023009211
+  },
+  "numpy_brute_force_32_queries_seconds": 0.025948508002329618,
+  "memory_kib": {
+    "process_rss_before_native_build": 237628,
+    "process_rss_after_native_build": 241316,
+    "process_peak_rss": 282620,
+    "native_input_copy_logical": 1953.125
+  },
+  "acceptance": "PASS: 32 independent oracle queries, all 2000 filtered SciPy radius/adaptive queries, all 2000 direct SciPy kNN queries"
+}

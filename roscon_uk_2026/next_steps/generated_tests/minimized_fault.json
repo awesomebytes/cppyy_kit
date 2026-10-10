@@ -1,0 +1,54 @@
+{
+  "fixture": "MissingResetFilter",
+  "fault": "compiled C++ fixture reset does not forward to the native filter",
+  "config": {
+    "tau_s": 0.08,
+    "max_gap_s": 0.5,
+    "frame_id": "world"
+  },
+  "operations": [
+    {
+      "method": "process",
+      "timestamps_ns": [
+        0
+      ],
+      "positions_m": [
+        [
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "method": "reset"
+    },
+    {
+      "method": "process",
+      "timestamps_ns": [
+        1
+      ],
+      "positions_m": [
+        [
+          0,
+          0,
+          1
+        ]
+      ]
+    }
+  ],
+  "expected_last_output_m": [
+    [
+      0,
+      0,
+      1
+    ]
+  ],
+  "observed_last_output_m": [
+    [
+      0.0,
+      0.0,
+      1.2499999921875e-08
+    ]
+  ]
+}

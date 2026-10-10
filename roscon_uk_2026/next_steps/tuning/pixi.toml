@@ -1,0 +1,24 @@
+[workspace]
+name = "native-filter-tuning"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+cppyy = "3.5.*"
+numpy = "2.4.*"
+pydantic = "2.12.*"
+optuna = "4.5.*"
+pytest = "7.4.*"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+
+[activation.env]
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+[tasks]
+tune = "python tune.py"
+check = "pytest -q test_tuning.py"
+replay = "python replay_saved.py"

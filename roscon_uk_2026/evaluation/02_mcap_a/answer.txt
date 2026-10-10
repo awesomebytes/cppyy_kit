@@ -1,0 +1,8 @@
+Implemented `sweep()` in [analyze.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/02_mcap_a/analyze.py:88) with a cached `cppyy_kit` kernel. It returns `int32` event counts and `float64` active durations for both end effectors and all thresholds. Validation and output format are unchanged.
+
+- Tests: **5 passed**. The native results also matched a direct implementation of the motion rule on the recording.
+- Recording: **2,735 samples**, **54.68 s**.
+- Decode and load: **300.0 ms**.
+- First query: **43.1 ms**.
+- Warmed query median: **1.49 ms**.
+- Results: all 41 thresholds returned **[0, 0] motion events** and **[0.0, 0.0] active seconds**. At the lowest threshold, the longest continuous qualifying interval was about 0.06 s, below the 0.12 s hold time.

@@ -1,0 +1,33 @@
+[workspace]
+name = "validated-detection-parallel"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "==3.12.12"
+cppyy = "==3.5.0"
+numpy = "==2.5.3"
+pydantic = "==2.13.5"
+pytest = "==9.1.1"
+cxx-compiler = "==1.11.0"
+gcc = "==14.3.0"
+gxx = "==14.3.0"
+libgcc = "==15.2.0"
+libstdcxx = "==15.2.0"
+tbb = "==2023.1.0"
+tbb-devel = "==2023.1.0"
+xsimd = "==14.3.0"
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/../../.."
+LD_LIBRARY_PATH = "$CONDA_PREFIX/lib"
+OMP_NUM_THREADS = "1"
+OPENBLAS_NUM_THREADS = "1"
+CPPYY_KIT_NO_AUTOPCH = "1"
+
+[tasks]
+guide = "cat GUIDE.md"
+probe = "python probe.py"
+check = "python -m pytest tests -q"
+bench = "python benchmark.py"
+startup = "python startup.py"

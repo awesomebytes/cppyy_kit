@@ -1,0 +1,4 @@
+build/
+.pixi/
+__pycache__/
+.pytest_cache/

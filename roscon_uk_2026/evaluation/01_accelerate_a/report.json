@@ -1,0 +1,25 @@
+{
+  "model": "gpt-6-luna",
+  "reasoning_effort": "high",
+  "phase": "accelerate",
+  "run": "01_accelerate_a",
+  "baseline": "01_implement_a",
+  "agent_seconds": 170.73260778399708,
+  "agent_exit_code": 0,
+  "timed_out": false,
+  "command_count": 20,
+  "failed_commands": 7,
+  "usage": [
+    {
+      "input_tokens": 547217,
+      "cached_input_tokens": 511488,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 7809,
+      "reasoning_output_tokens": 3631
+    }
+  ],
+  "acceptance_exit_code": -11,
+  "tests_unchanged": true,
+  "human_repairs": 0,
+  "task_sha256": "88c3d9548e1ccfa6c7c9a7b00bc3f880614ec7bfb2ae6a1febbe7551e6f4e026"
+}

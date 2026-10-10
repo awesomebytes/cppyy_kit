@@ -1,0 +1,8 @@
+{
+  "command": "pixi install --locked",
+  "seconds": 0.06223833799595013,
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "\u2714 The default environment has been installed.\n",
+  "note": "Existing environment and warm dependency cache, not a fresh network install."
+}

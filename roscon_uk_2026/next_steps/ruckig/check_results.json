@@ -1,0 +1,10 @@
+{
+  "command": "pixi run --manifest-path roscon_uk_2026/next_steps/ruckig/pixi.toml check",
+  "passed": 40,
+  "checker_sha256": "de3014b037aafeaef69f1b0586e1be908ef7b7dcc247e2c0d913c668adc57f82",
+  "skeleton_command": "TRACKING_SOURCE=\"$PWD/.build/candidate.cpp\" pixi run python -m pytest -q -x test_acceptance.py",
+  "skeleton_returncode": 1,
+  "skeleton_failure": "std::logic_error: complete the native step",
+  "fresh_agent_evaluation": false,
+  "stdout": "\u2728 Pixi task (check): python -m pytest -q test_acceptance.py\n........................................                                 [100%]\n40 passed in 0.91s\n"
+}

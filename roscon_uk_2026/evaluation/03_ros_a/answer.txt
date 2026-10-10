@@ -1,0 +1,9 @@
+Updated only [node.py](/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/eval_runs/03_ros_a/node.py) to run the rolling query in one cppyy kernel call per window. The subscription, callback, timestamp handling, window behavior, and returned array shapes and dtypes remain intact.
+
+- Acceptance check: **2 passed**.
+- Randomized comparison with the original Python query: **500 windows matched**.
+- First call in the benchmark process, with the compiled artifact already cached: **42.7 ms**.
+- Warmed native query on a 256-sample window with 41 thresholds: **0.078 ms median**, **0.093 ms p95**.
+- Original Python query on the same workload: **6.56 ms median**, about **79× slower** than the warmed native wrapper.
+
+These are offline query measurements. They do not establish ROS message delivery; the separate replay check is still needed.
