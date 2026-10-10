@@ -52,7 +52,7 @@ jobs:
           python3 scripts/verify_release_version.py "${GITHUB_REF_NAME}"
 
       - name: Set up core source-test environment
-        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           pixi-version: v0.70.0
           working-directory: ci/rclcpp_kit
@@ -101,7 +101,7 @@ jobs:
         run: python3 scripts/verify_release_version.py "${GITHUB_REF_NAME}"
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           pixi-version: v0.70.0
           # Packaging metadata/build tools only; it pulls no ROS/cppyy stack.
@@ -170,7 +170,7 @@ jobs:
           python3 scripts/verify_release_version.py "${GITHUB_REF_NAME}"
 
       - name: Set up reproducible package builder
-        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           pixi-version: v0.70.0
           working-directory: ci/package
@@ -396,7 +396,7 @@ jobs:
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Set up pixi
-        uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
+        uses: prefix-dev/setup-pixi@9dabb60412d3d2d967a8d682f7ce01317af40514 # v0.11.0
         with:
           pixi-version: v0.70.0
           environments: pkg
