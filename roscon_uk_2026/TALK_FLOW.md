@@ -7,28 +7,23 @@ a replacement for the existing [presentation plan](PLAN.md) and its evidence.
 ## The shared setting
 
 Start with a simulated mobile manipulator: a wheeled base, arm(s), RGB/depth,
-IMU, joint state and range/point-cloud data. The selected starting robot is
-[Stretch 4 in its official MuJoCo simulator](next_steps/robot_playground/README.md).
-Local locked Pixi checks verified base, lift and arm motion, RGB/depth, IMU and
-two 3D lidar streams. The user confirmed the interactive viewer and cameras.
-Stretch 3 is a verified fallback. A separate upstream Jazzy ROS bridge probe
-passes base commands, clock, joint state, IMU, odometry, scan, point clouds and
-head images, using a narrow upstream API/readiness patch. ROS arm trajectories,
-transforms, reset, Nav2, ros2_control, WBC and a full task remain unverified.
-This is a working simulator and ROS bridge baseline; it does not establish a
-cppyy_kit performance gain. Alternative robot selection remains open.
+IMU, joint state and range/point-cloud data. The current starting point is
+[TIAGo PRO on ROS 2 Jazzy and Gazebo Harmonic](next_steps/tiago_pro_jazzy/README.md).
+The local source setup starts nine controllers, MoveIt, Nav2 and the GUI, with
+RGB/depth, laser and wrist F/T topics. Corrected cloud geometry places the floor
+at z=0 and the tabletop at approximately z=1.02 m. Its optional shared `kit`
+environment also passed isolated installed `rclcpp_kit` native-node bringup
+and teardown. This establishes compatible setup, not a robot processing
+pipeline, acceleration result, autonomous task or grasping demonstration.
 
-The alternative TIAGo single-arm, TIAGo++ and TIAGo PRO playgrounds pass
-headless base, arm(s) and sensor checks with Humble, Python 3.12 and Gazebo
-Classic 11.15.1. Each has a dedicated Pixi environment and reusable viewer
-environment. The user confirmed Gazebo and RViz for all three, including PRO
-mesh, robot-description and camera-frame fixes. Dual and PRO wrist F/T sensors
-are enabled: dual passes a 5 N load/release check; PRO is load-responsive but
-fails strict magnitude checks, and its per-joint estimator was skipped as not
-ready. Nav2, MoveIt and grasping remain unvalidated. The robot examples do not
-yet demonstrate cppyy_kit acceleration or composition. All playground
-simulators, viewers, bridges and ROS daemons are stopped and the lock is free;
-a shared launcher lock permits one playground at a time.
+The published `tiago-pro-playground` 0.1.0 package remains the earlier Humble /
+Gazebo Classic baseline; the Jazzy migration is local and not packaged or
+published yet. Earlier Humble PRO runs recorded MoveIt arm/head/gripper
+execution, Nav2 arrivals and corrected wrist-load responses. Those results
+are not new Harmonic motion or force-calibration evidence. Stretch, single-arm
+TIAGo and TIAGo++ remain earlier alternative playgrounds. A shared launcher
+lock permits one simulator at a time. The new robot work still needs the
+measured cppyy_kit processing and composition demonstration below.
 
 Use one task: find an object, approach it and position the arm near it. Reuse
 navigation and basic control software. Grasping and whole-body balance are not

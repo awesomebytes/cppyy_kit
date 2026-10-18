@@ -1,0 +1,122 @@
+/**:
+  ros__parameters:
+    hold_joints: true
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+    use_sim_time: true
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    arm_left_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    arm_right_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    wrist_left_ft_broadcaster:
+      type: force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster
+    wrist_right_ft_broadcaster:
+      type: force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster
+    torso_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    head_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    gripper_left_controller:
+      type: effort_controllers/GripperActionController
+    gripper_right_controller:
+      type: effort_controllers/GripperActionController
+arm_left_controller:
+  ros__parameters:
+    joints:
+    - arm_left_1_joint
+    - arm_left_2_joint
+    - arm_left_3_joint
+    - arm_left_4_joint
+    - arm_left_5_joint
+    - arm_left_6_joint
+    - arm_left_7_joint
+    command_interfaces:
+    - position
+    state_interfaces:
+    - position
+    - velocity
+arm_right_controller:
+  ros__parameters:
+    joints:
+    - arm_right_1_joint
+    - arm_right_2_joint
+    - arm_right_3_joint
+    - arm_right_4_joint
+    - arm_right_5_joint
+    - arm_right_6_joint
+    - arm_right_7_joint
+    command_interfaces:
+    - position
+    state_interfaces:
+    - position
+    - velocity
+torso_controller:
+  ros__parameters:
+    joints:
+    - torso_lift_joint
+    command_interfaces:
+    - position
+    state_interfaces:
+    - position
+    - velocity
+head_controller:
+  ros__parameters:
+    joints:
+    - head_1_joint
+    - head_2_joint
+    command_interfaces:
+    - position
+    state_interfaces:
+    - position
+    interpolate_from_desired_state: true
+    constraints:
+      goal_time: 2.0
+      head_1_joint:
+        goal: 0.01
+      head_2_joint:
+        goal: 0.01
+wrist_left_ft_broadcaster:
+  ros__parameters:
+    sensor_name: wrist_left_ft_sensor
+    frame_id: wrist_left_ft_sensor_link
+wrist_right_ft_broadcaster:
+  ros__parameters:
+    sensor_name: wrist_right_ft_sensor
+    frame_id: wrist_right_ft_sensor_link
+gripper_left_controller:
+  ros__parameters:
+    use_sim_time: true
+    update_rate: 100
+    joint: gripper_left_finger_joint
+    action_monitor_rate: 20.0
+    goal_tolerance: 0.001
+    max_effort: 10.0
+    allow_stalling: false
+    stall_velocity_threshold: 0.0001
+    stall_timeout: 5.0
+    gains:
+      gripper_left_finger_joint:
+        p: 100.0
+        i: 50.0
+        d: 2.0
+        i_clamp: 0.5
+gripper_right_controller:
+  ros__parameters:
+    use_sim_time: true
+    update_rate: 100
+    joint: gripper_right_finger_joint
+    action_monitor_rate: 20.0
+    goal_tolerance: 0.001
+    max_effort: 10.0
+    allow_stalling: false
+    stall_velocity_threshold: 0.0001
+    stall_timeout: 5.0
+    gains:
+      gripper_right_finger_joint:
+        p: 100.0
+        i: 50.0
+        d: 2.0
+        i_clamp: 0.5

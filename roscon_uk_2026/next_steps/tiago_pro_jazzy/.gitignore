@@ -1,0 +1,5 @@
+.pixi/
+generated/
+artifacts/
+build/
+__pycache__/

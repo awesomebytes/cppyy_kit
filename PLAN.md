@@ -32,8 +32,8 @@ evaluation history.
 
 ### Quick composition experiment (2026-10-18)
 
-The [robot playground](roscon_uk_2026/next_steps/robot_playground/README.md)
-selects the official Stretch 4 MuJoCo simulator after locked local base/lift/arm,
+The earlier [robot playground](roscon_uk_2026/next_steps/robot_playground/README.md)
+established a Stretch 4 MuJoCo baseline with locked local base/lift/arm,
 RGB/depth, IMU and 3D lidar checks. The user confirmed its interactive viewer
 and camera operation. Stretch 3 also passes motion and sensor
 checks as a fallback. A separate Jazzy ROS bridge probe passed base commands,
@@ -59,12 +59,22 @@ WBC and PRO's per-joint torque estimator remain unvalidated. Robot acceleration
 or composition with cppyy_kit is not implemented by this conventional ROS
 baseline. Tasks retain a one-playground simulator lock.
 
+The current local [Jazzy / Gazebo Harmonic migration](roscon_uk_2026/next_steps/tiago_pro_jazzy/README.md)
+starts nine native controllers, MoveIt, Nav2 and the GUI. RGB/depth, laser and
+wrist F/T topics are present; corrected depth-cloud geometry places the floor
+at z=0 and the tabletop at z=1.019997 m. The optional shared `kit` environment
+also passed installed `rclcpp_kit` native-node bringup and teardown under
+`python -I`. This proves compatible local setup, not native robot processing,
+autonomous motion, grasping or a new force-calibration result. The Jazzy
+migration is not packaged or published. Public version 0.1.0 remains the
+independent Humble / Gazebo Classic package described below.
+
 The independent ROS simulator package `tiago-pro-playground` 0.1.0 build 2 is
 built locally ([recipe](recipe/tiago-pro-playground/)); artifact
 `tiago-pro-playground-0.1.0-h41f06ac_2.conda` is 49,450,386 bytes. A separate consumer at
 `/home/sapf/playground/tiago-pro-0.1.0-trim` passed `pixi install`, native
 plugin loading, nine controller activations and MoveIt/Nav2/Gazebo/RViz startup,
-with no autonomous motion. Its installed GUI is running. The 826-package
+with no autonomous motion. That installed GUI startup passed. The 826-package
 environment downloads 1.10 GiB; the workspace uses 4.15 GiB logically and
 4.48 GiB allocated, reducing the prefix by 594 MiB (12.3%). Runtime constraints
 select Qt 5, LLVM/Clang 21, compatible Qt 5 Qwt and headless OpenCV 4.13.

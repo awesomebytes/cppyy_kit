@@ -1,0 +1,4 @@
+generated/
+upstream
+pal_sea_arm_moveit_config
+__pycache__/

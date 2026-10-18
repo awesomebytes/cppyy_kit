@@ -1,0 +1,45 @@
+[workspace]
+name = "tiago-pro-jazzy-playground"
+channels = ["https://prefix.dev/awesomebytes", "robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+pyyaml = "*"
+numpy = "*"
+cmake = "*"
+ninja = "*"
+cxx-compiler = "*"
+pkg-config = "*"
+ros-jazzy-ros-base = "*"
+ros-jazzy-xacro = "*"
+ros-jazzy-robot-state-publisher = "*"
+ros-jazzy-ros2-control = "*"
+ros-jazzy-ros2-controllers = "*"
+ros-jazzy-ros-gz-sim = "*"
+ros-jazzy-ros-gz-bridge = "*"
+ros-jazzy-ros-gz-image = "*"
+ros-jazzy-gz-ros2-control = "*"
+ros-jazzy-nav2-bringup = "*"
+ros-jazzy-moveit-ros-move-group = "*"
+ros-jazzy-moveit-ros-visualization = "*"
+ros-jazzy-moveit-planners-ompl = "*"
+ros-jazzy-moveit-kinematics = "*"
+ros-jazzy-moveit-simple-controller-manager = "*"
+ros-jazzy-moveit-msgs = "*"
+ros-jazzy-srdfdom = "*"
+ros-jazzy-moveit-ros-perception = "*"
+ros-jazzy-rmw-fastrtps-cpp = "*"
+
+[tasks]
+build-native = "bash build_native.sh"
+model = "python -c 'from simulation_model import prepare; prepare()'"
+playground = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py"
+playground-headless = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py gui:=false rviz:=false"
+
+[feature.kit.dependencies]
+ros-jazzy-rclcpp-kit = "==0.4.1"
+
+[environments]
+default = {features = [], solve-group = "jazzy"}
+kit = {features = ["kit"], solve-group = "jazzy"}

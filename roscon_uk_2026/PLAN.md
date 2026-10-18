@@ -72,8 +72,8 @@ milestones proceed without changing this first gate.
 
 ## Current state
 
-The [shared robot playground](next_steps/robot_playground/README.md) now selects
-Stretch 4 using the official MuJoCo simulator. Local locked Pixi checks pass
+The earlier [shared robot playground](next_steps/robot_playground/README.md)
+established Stretch 4 using the official MuJoCo simulator. Local locked Pixi checks pass
 base/lift/arm motion, RGB/depth, IMU and 3D lidar delivery. The user confirmed
 the interactive viewer and camera operation. Stretch 3 is a verified
 fallback. The Jazzy ROS bridge probe passes base commands, clock, joint state,
@@ -98,13 +98,23 @@ collision occupancy in a world-fixed planning frame. Grasping, WBC, PRO's
 per-joint torque estimator and cppyy_kit robot acceleration/composition remain
 unvalidated. The shared lock permits one playground simulator at a time.
 
+The current local [Jazzy / Gazebo Harmonic migration](next_steps/tiago_pro_jazzy/README.md)
+starts nine native controllers, MoveIt, Nav2 and the GUI. RGB/depth, laser and
+wrist F/T topics are present; corrected depth-cloud geometry places the floor
+at z=0 and the tabletop at z=1.019997 m. The optional shared `kit` environment
+also passed installed `rclcpp_kit` native-node bringup and teardown under
+`python -I`. This proves compatible local setup, not native robot processing,
+autonomous motion, grasping or a new force-calibration result. The Jazzy
+migration is not packaged or published. Public version 0.1.0 remains the
+independent Humble / Gazebo Classic package described below.
+
 The independent `tiago-pro-playground` 0.1.0 build 2 simulator package is built
 locally ([recipe](../recipe/tiago-pro-playground/)); artifact
 `tiago-pro-playground-0.1.0-h41f06ac_2.conda` is 49,450,386 bytes.
 A separate consumer at `/home/sapf/playground/tiago-pro-0.1.0-trim`
 passed `pixi install`, native plugin loading, nine controller activations and
 MoveIt/Nav2/Gazebo/RViz startup without autonomous motion. The installed GUI
-is running. Its 826 packages download 1.10 GiB; workspace size is 4.15 GiB
+startup passed. Its 826 packages download 1.10 GiB; workspace size is 4.15 GiB
 logical / 4.48 GiB allocated, a 594 MiB (12.3%) prefix reduction. Runtime
 constraints select Qt 5, LLVM/Clang 21, compatible Qt 5 Qwt and headless
 OpenCV 4.13. `cv2.imshow` is unavailable; Gazebo/RViz GUIs work normally.
