@@ -1,0 +1,10 @@
+.pixi/
+vendor/
+build/
+install/
+log/
+logs/
+build-symlink/
+install-symlink/
+.run.json
+__pycache__/

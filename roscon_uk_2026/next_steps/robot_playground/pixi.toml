@@ -1,0 +1,24 @@
+[workspace]
+name = "cppyy-kit-robot-playground"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+numpy = ">=2,<3"
+pillow = "*"
+libegl = "*"
+libgl = "*"
+libopengl = "*"
+pip = "*"
+pkg-config = "*"
+c-compiler = "*"
+evdev = "*"
+
+[pypi-dependencies]
+hello-robot-stretch-mujoco = { path = "vendor/stretch_mujoco", editable = true }
+
+[tasks]
+probe = "python -c 'import mujoco; print(mujoco.__version__)'"
+check = "bash ../simulator_guard.sh -- python run_stretch.py --headless"
+view = "bash ../simulator_guard.sh -- python run_stretch.py"

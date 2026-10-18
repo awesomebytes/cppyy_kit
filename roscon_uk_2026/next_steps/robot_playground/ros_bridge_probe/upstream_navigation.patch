@@ -1,0 +1,36 @@
+diff --git a/stretch_simulation/stretch_mujoco_driver/stretch_mujoco_driver.py b/stretch_simulation/stretch_mujoco_driver/stretch_mujoco_driver.py
+index 2e4625e..21d84a3 100644
+--- a/stretch_simulation/stretch_mujoco_driver/stretch_mujoco_driver.py
++++ b/stretch_simulation/stretch_mujoco_driver/stretch_mujoco_driver.py
+@@ -390,14 +390,14 @@ class StretchMujocoDriver(Node):
+         if self.robot_mode == "navigation":
+             time_since_last_twist = self.get_clock().now() - self.last_twist_time
+             if time_since_last_twist < self.timeout:
+-                self.sim.set_base_velocity(
++                self.sim.base.set_velocity(
+                     self.linear_velocity_mps, self.linear_velocity_mps_y, self.angular_velocity_radps
+                 )
+             elif time_since_last_twist < Duration(seconds=self.timeout_s + 1.0):  # type: ignore
+                 # self.sim.set_base_velocity(0.0, 0.0)
+-                self.sim.move_by(Actuators.base_translate, 0.0)
++                self.sim.base.set_velocity(0.0, 0.0, 0.0)
+             else:
+-                self.sim.set_base_velocity(0.0, 0.0, 0.0)
++                self.sim.base.set_velocity(0.0, 0.0, 0.0)
+ 
+         # get copy of the current robot status
+         robot_status = self.sim.pull_status()
+@@ -617,6 +617,13 @@ class StretchMujocoDriver(Node):
+         except ValueError:
+             ...  # Lidar is disabled, get_data() throws a ValueError
+ 
++        if not self.use_cameras:
++            return
++
++        # The physics server can connect before the first camera frame arrives.
++        if self.sim.data_proxies.get_cameras() is None:
++            return
++
+         camera_data = self.sim.pull_camera_data()
+         for camera, frame in camera_data.get_all(
+             auto_rotate=False, auto_correct_rgb=True

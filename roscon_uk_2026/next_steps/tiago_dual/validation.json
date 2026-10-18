@@ -1,0 +1,108 @@
+{
+  "message_counts": {
+    "joints": 1171,
+    "ft_left": 2321,
+    "ft_right": 2312,
+    "imu": 2322,
+    "rgb": 717,
+    "odom": 1158,
+    "depth": 689,
+    "cloud": 532,
+    "clock": 245,
+    "scan": 244
+  },
+  "missing_streams": [],
+  "simulated_seconds_advanced": 7.7,
+  "base_odometry_displacement_m": 0.2112567273060946,
+  "arm_joint_1_delta_rad": {
+    "left": 0.15000042665792623,
+    "right": 0.15000129815963348
+  },
+  "rgb": {
+    "width": 640,
+    "height": 480,
+    "encoding": "bgr8"
+  },
+  "depth": {
+    "width": 640,
+    "height": 480,
+    "encoding": "32FC1"
+  },
+  "pointcloud_points": 307200,
+  "scan_ranges": 666,
+  "force_torque": {
+    "left": {
+      "frame_id": "wrist_left_ft_link",
+      "baseline_force_N_torque_Nm": [
+        10.896362853129048,
+        -0.014419524213954754,
+        0.003991526591535762,
+        0.00017947613930281383,
+        0.9723101891234135,
+        0.0015808721106124323
+      ],
+      "loaded_force_N_torque_Nm": [
+        5.948783240005927,
+        -0.028687760757402852,
+        0.021618729491914568,
+        -0.000946488364177134,
+        0.6252519965374325,
+        0.0008425885325557816
+      ],
+      "released_force_N_torque_Nm": [
+        10.986071330079783,
+        -0.014556027682638166,
+        -0.00046770166961095246,
+        0.00014171773792651975,
+        0.9883139382489455,
+        0.0016507803278346172
+      ],
+      "applied_force_world_z_N": 5.0,
+      "observed_force_change_norm_N": 4.947631587845612,
+      "release_force_residual_N": 0.08981934194093436,
+      "finite_six_axes": true,
+      "service_result": {
+        "success": true,
+        "message": ""
+      },
+      "passed": true
+    },
+    "right": {
+      "frame_id": "wrist_right_ft_link",
+      "baseline_force_N_torque_Nm": [
+        -10.899766554602284,
+        -0.002568601759789711,
+        0.0355039690631341,
+        0.0005759365987881227,
+        -0.9665277844740413,
+        -0.0016829657975965383
+      ],
+      "loaded_force_N_torque_Nm": [
+        -5.938235149042601,
+        0.0022866767996785773,
+        0.02181736941641105,
+        0.0005821856152287583,
+        -0.6251912989406665,
+        -0.0006329085186334993
+      ],
+      "released_force_N_torque_Nm": [
+        -10.989400888549127,
+        -0.0032332632392601153,
+        0.015401369180259502,
+        0.0006173396587099718,
+        -0.9854484319535157,
+        -0.0016991467569898678
+      ],
+      "applied_force_world_z_N": 5.0,
+      "observed_force_change_norm_N": 4.9615526587042105,
+      "release_force_residual_N": 0.0918633230349716,
+      "finite_six_axes": true,
+      "service_result": {
+        "success": true,
+        "message": ""
+      },
+      "passed": true
+    }
+  },
+  "passed": true
+}

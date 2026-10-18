@@ -1,0 +1,12 @@
+[workspace]
+name = "tiago-single-viewers"
+channels = ["robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+ros-humble-rviz2 = "*"
+ros-humble-rmw-cyclonedds-cpp = "*"
+
+[tasks]
+rviz = "bash ../rviz.sh"

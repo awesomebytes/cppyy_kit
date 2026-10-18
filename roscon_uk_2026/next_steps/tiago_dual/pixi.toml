@@ -1,0 +1,43 @@
+[workspace]
+name = "tiago-dual-playground"
+channels = ["robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+ros-humble-ros-base = "*"
+ros-humble-rmw-cyclonedds-cpp = "*"
+ros-humble-gazebo-ros-pkgs = "*"
+ros-humble-gazebo-ros2-control = "*"
+ros-humble-ros2-controllers = "*"
+ros-humble-robot-state-publisher = "*"
+ros-humble-xacro = "*"
+ros-humble-ament-cmake-auto = "*"
+colcon-common-extensions = "*"
+vcstool = "*"
+compilers = "*"
+cmake = "*"
+ninja = "*"
+make = "*"
+pkg-config = "*"
+pillow = ">=12.3.0,<13"
+ros-humble-ros2controlcli = ">=2.54.0,<3"
+
+[activation.env]
+ROS_DOMAIN_ID = "163"
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+CYCLONEDDS_URI = "$PIXI_PROJECT_ROOT/cyclonedds.xml"
+GAZEBO_MASTER_URI = "http://127.0.0.1:11363"
+
+[tasks]
+probe = "python -c 'import rclpy; print(rclpy.__file__)'"
+bootstrap = "bash bootstrap.sh"
+build = "bash build.sh"
+sim = "bash run.sh"
+view = "bash view.sh"
+check = "bash check.sh"
+smoke = "bash smoke.sh"
+rviz = "bash rviz.sh"
+plotjuggler = "bash plotjuggler.sh"
+ft-check = "python ../wrist_ft_matrix.py --robot dual --output evidence/ft_matrix_passive_grippers.json"
+ft-torque-check = "python ../wrist_ft_matrix.py --robot dual --torque --output evidence/ft_torque_passive_grippers.json"

@@ -1,0 +1,9 @@
+.pixi/
+vendor/
+build/
+install/
+log/
+*.log
+__pycache__/
+robot.urdf
+evidence/*.raw.json

@@ -1,0 +1,38 @@
+[workspace]
+name = "tiago-single-playground"
+channels = ["robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+ros-humble-ros-base = "*"
+ros-humble-rmw-cyclonedds-cpp = "*"
+ros-humble-gazebo-ros-pkgs = "*"
+ros-humble-gazebo-ros2-control = "*"
+ros-humble-ros2-controllers = "*"
+ros-humble-xacro = "*"
+ros-humble-robot-state-publisher = "*"
+ros-humble-ament-cmake-auto = "*"
+colcon-common-extensions = "*"
+vcstool = "*"
+cmake = ">=3.27,<4"
+make = "*"
+c-compiler = "*"
+cxx-compiler = "*"
+setuptools = "<80"
+ros-humble-launch-param-builder = ">=0.1.1,<0.2"
+ros-humble-twist-mux = ">=4.3.0,<5"
+ros-humble-joy = ">=3.3.0,<4"
+ros-humble-joy-teleop = ">=1.7.0,<2"
+
+[activation.env]
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+ROS_DOMAIN_ID = "161"
+
+[tasks]
+run = "bash ../simulator_guard.sh -- python manage.py run"
+view = "bash ../simulator_guard.sh -- python manage.py view"
+check = "bash smoke.sh"
+stop = "python manage.py stop"
+bootstrap = "bash setup.sh"
+rviz = "pixi run --manifest-path tools/pixi.toml rviz"

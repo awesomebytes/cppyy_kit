@@ -1,0 +1,6 @@
+.pixi/
+source/
+artifacts/
+__pycache__/
+*.log
+MUJOCO_LOG.TXT

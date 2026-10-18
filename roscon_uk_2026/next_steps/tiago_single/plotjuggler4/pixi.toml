@@ -1,0 +1,20 @@
+[workspace]
+name = "tiago-plotjuggler4"
+channels = ["https://prefix.dev/plotjuggler", "robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+pj-bridge-ros2-humble = "==0.10.0"
+ros-humble-rmw-cyclonedds-cpp = "*"
+curl = "*"
+python = "3.12.*"
+websocket-client = "*"
+
+[activation.env]
+ROS_DOMAIN_ID = "161"
+RMW_IMPLEMENTATION = "rmw_cyclonedds_cpp"
+
+[tasks]
+bootstrap = "bash bootstrap.sh"
+bridge = "bash bridge.sh"
+view = "bash view.sh"

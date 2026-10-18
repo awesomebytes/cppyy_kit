@@ -1,0 +1,13 @@
+diff --git a/urdf/laser/sick_tim571_laser.gazebo.xacro b/urdf/laser/sick_tim571_laser.gazebo.xacro
+index 08a24a7..b5ea7e8 100644
+--- a/urdf/laser/sick_tim571_laser.gazebo.xacro
++++ b/urdf/laser/sick_tim571_laser.gazebo.xacro
+@@ -19,7 +19,7 @@
+   <xacro:macro name="sick_tim571_laser_gazebo" params="name ros_topic update_rate min_angle max_angle">
+ 
+     <gazebo reference="${name}_link">
+-      <sensor name="${name}" type="gpu_lidar">
++      <sensor name="${name}" type="${'ray' if gazebo_version == 'classic' else 'gpu_lidar'}">
+         <update_rate>${update_rate}</update_rate>
+         <topic>${ros_topic}</topic>
+         <gz_frame_id>${name}_link</gz_frame_id>

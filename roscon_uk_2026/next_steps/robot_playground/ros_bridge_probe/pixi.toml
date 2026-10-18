@@ -1,0 +1,28 @@
+[workspace]
+name = "stretch4-ros-bridge-probe"
+channels = ["robostack-jazzy", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+numpy = "==2.2.5"
+pip = "*"
+c-compiler = "*"
+pkg-config = "*"
+pillow = "*"
+libegl = "*"
+libgl = "*"
+libopengl = "*"
+evdev = "*"
+ros-jazzy-ros-base = "*"
+ros-jazzy-control-msgs = "*"
+ros-jazzy-tf-transformations = "*"
+ros-jazzy-sensor-msgs-py = "*"
+ros-jazzy-rmw-cyclonedds-cpp = "*"
+
+[pypi-dependencies]
+stretch4-mujoco = { path = "../stretch4_probe/source", editable = true }
+
+[tasks]
+probe = "bash ../../simulator_guard.sh -- python probe.py"
+probe-cameras = "bash ../../simulator_guard.sh -- python probe.py --cameras"

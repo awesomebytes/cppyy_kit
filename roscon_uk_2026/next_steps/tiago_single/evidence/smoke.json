@@ -1,0 +1,36 @@
+{
+  "message_counts": {
+    "/joint_states": 356,
+    "/base_imu": 710,
+    "/mobile_base_controller/odom": 357,
+    "/scan_raw": 67,
+    "/clock": 74,
+    "/head_front_camera/rgb/image_raw": 203,
+    "/head_front_camera/depth/rgb/points": 151,
+    "/head_front_camera/depth/image_raw": 204
+  },
+  "clock_advance_s": 7.4,
+  "base_displacement_m": 0.5082323448491182,
+  "arm_1_before_rad": 2.2357084536572813e-05,
+  "arm_1_after_rad": 0.15002368165150237,
+  "arm_1_change_rad": 0.1500013245669658,
+  "rgb": {
+    "width": 640,
+    "height": 480,
+    "encoding": "bgr8",
+    "bytes": 921600
+  },
+  "depth": {
+    "width": 640,
+    "height": 480,
+    "encoding": "32FC1",
+    "bytes": 1228800,
+    "finite_fraction": 0.37609700520833333
+  },
+  "pointcloud": {
+    "width": 640,
+    "height": 480,
+    "bytes": 9830400
+  },
+  "lidar_samples": 666
+}
