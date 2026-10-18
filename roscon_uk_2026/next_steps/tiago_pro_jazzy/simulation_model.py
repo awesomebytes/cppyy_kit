@@ -1,4 +1,5 @@
 """Prepare the pinned PAL descriptions for Jazzy and Gazebo Harmonic."""
+import os
 from pathlib import Path
 import re
 import xml.etree.ElementTree as ET
@@ -7,7 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 from initial_pose import configure as configure_initial_pose
 
 ROOT = Path(__file__).resolve().parent
-HUMBLE = ROOT.parent / 'tiago_pro'
+ASSETS = Path(os.environ.get('TIAGO_PRO_RESOURCE_ROOT', ROOT.parent / 'tiago_pro'))
 
 
 def prepare():
@@ -22,6 +23,13 @@ def prepare():
         b = [float(v) for v in tool.find('origin').get('xyz').split()]
         tool.find('parent').set('link', f'wrist_{side}_ft_sensor_link')
         tool.find('origin').set('xyz', ' '.join(str(y-x) for x,y in zip(a,b)))
+    # Reuse RGBD's aligned color output instead of rendering a second RGB camera.
+    for gazebo in robot.findall('gazebo'):
+        for sensor in list(gazebo.findall("sensor[@type='camera']")):
+            if sensor.get('name') == 'head_front_camera':
+                gazebo.remove(sensor)
+    for sensor in robot.findall(".//sensor[@type='rgbd_camera']"):
+        ET.SubElement(sensor.find('camera'), 'optical_frame_id').text = 'head_front_camera_depth_optical_frame'
     for image_format in robot.findall('.//sensor/camera/image/format'):
         image_format.text = 'R8G8B8'
     for sensor in robot.findall('.//sensor'):
@@ -45,7 +53,7 @@ def prepare():
             joint.remove(mimic)
     sim = re.sub(r'package://([^/]+)/',lambda m: get_package_share_directory(m[1])+'/',ET.tostring(robot, encoding='unicode'))
     (ROOT / 'generated/sim.urdf').write_text(sim)
-    world = ET.parse(HUMBLE / 'worlds/home/home.world')
+    world = ET.parse(ASSETS / 'worlds/home/home.world')
     w = world.getroot().find('world')
     w.find('physics').set('type','ignored')
     for filename, name in [('physics','Physics'),('user-commands','UserCommands'),
@@ -53,8 +61,10 @@ def prepare():
                            ('imu','Imu'),('forcetorque','ForceTorque')]:
         p = ET.SubElement(w,'plugin',filename=f'gz-sim-{filename}-system',name=f'gz::sim::systems::{name}')
         if name == 'Sensors': ET.SubElement(p,'render_engine').text='ogre2'
+    from world_materials import prepare as prepare_materials
+    prepare_materials(world, ASSETS / 'worlds/home/models', ROOT / 'generated')
     world.write(ROOT / 'generated/home.sdf',encoding='unicode')
-    bridge = yaml.safe_load((HUMBLE / 'vendor/tiago_pro_simulation/tiago_pro_gazebo/config/tiago_pro_gz_bridge.yaml').read_text())
+    bridge = yaml.safe_load((ROOT / 'bridge.yaml').read_text())
     bridge = [b for b in bridge if b['ros_type_name'] != 'nav_msgs/msg/Odometry'] + (native_bridges or [])
     (ROOT / 'generated/bridge.yaml').write_text(yaml.safe_dump(bridge))
     return description, ['gripper_left_controller','gripper_right_controller']

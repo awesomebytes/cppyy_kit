@@ -98,15 +98,29 @@ collision occupancy in a world-fixed planning frame. Grasping, WBC, PRO's
 per-joint torque estimator and cppyy_kit robot acceleration/composition remain
 unvalidated. The shared lock permits one playground simulator at a time.
 
-The current local [Jazzy / Gazebo Harmonic migration](next_steps/tiago_pro_jazzy/README.md)
-starts nine native controllers, MoveIt, Nav2 and the GUI. RGB/depth, laser and
-wrist F/T topics are present; corrected depth-cloud geometry places the floor
-at z=0 and the tabletop at z=1.019997 m. The optional shared `kit` environment
-also passed installed `rclcpp_kit` native-node bringup and teardown under
-`python -I`. This proves compatible local setup, not native robot processing,
-autonomous motion, grasping or a new force-calibration result. The Jazzy
-migration is not packaged or published. Public version 0.1.0 remains the
-independent Humble / Gazebo Classic package described below.
+The current [Jazzy / Gazebo Harmonic baseline](next_steps/tiago_pro_jazzy/README.md) is published
+as `tiago-pro-playground` 0.2.0 build 2 on `awesomebytes`. Fresh installed
+startup passed nine controllers, MoveIt, Nav2, RGB/depth, lasers, wrist F/T topic
+presence and the GUI. The user also confirmed source-session navigation and
+MoveIt operation. The optional shared `kit` solve passed installed `rclcpp_kit`
+native-node bringup and teardown under `python -I`. This is not a robot
+processing/composition pipeline, measured cppyy_kit speedup, autonomous grasp
+or new force-calibration result.
+
+Native materials are restored with a plain floor. A single aligned RGBD camera
+at 30 Hz avoids duplicate rendering. The recorded quiet-window median real-time
+factor improved from 0.589 to 0.832, still below 1.0. The depth-cloud bridge
+uses the camera body frame matching native XYZ while RGB keeps its optical
+frame; registered geometry places the floor at z=0 and tabletop at z=1.01999683 m.
+The 888-package runtime uses 4.14 GiB logically and 4.47 GiB allocated.
+The [Jazzy recipe and remote consumer](../recipe/tiago-pro-playground-jazzy/consumer/) record the public
+51,253,587-byte artifact and verified repodata SHA-256
+`10f5a546798358b8721e274fc23899f6b02ca4d7dfc2350aa54b769530f71889`.
+Its remote lock has verified public artifact URLs/hashes and no checkout paths.
+A fresh source-independent consumer at `/home/sapf/playground/tiago-pro-0.2.0-proof`
+passed public-channel `pixi install --locked`; its installed GUI is running.
+Public version 0.1.0 remains the independent Humble / Gazebo Classic fallback
+with its separate recorded evidence below.
 
 The independent `tiago-pro-playground` 0.1.0 build 2 simulator package is built
 locally ([recipe](../recipe/tiago-pro-playground/)); artifact

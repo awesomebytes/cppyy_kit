@@ -11,6 +11,8 @@ cmake = "*"
 ninja = "*"
 cxx-compiler = "*"
 pkg-config = "*"
+libclang13 = ">=22.1.8,<23"
+libopencv = {version = "==5.0.0", build = "headless*"}
 ros-jazzy-ros-base = "*"
 ros-jazzy-xacro = "*"
 ros-jazzy-robot-state-publisher = "*"

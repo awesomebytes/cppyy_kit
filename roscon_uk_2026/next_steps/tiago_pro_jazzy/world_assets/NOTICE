@@ -1,0 +1,6 @@
+wood.jpg and bricks.png are redistributed unchanged from Gazebo Classic 11,
+media/materials/textures, distributed by the Gazebo project under Apache 2.0.
+Source: https://github.com/gazebosim/gazebo/tree/gazebo11/media/materials/textures
+The texture choices match the original Gazebo/Wood and Gazebo/Bricks scripts.
+Other model textures are referenced from the existing bundled home assets and
+retain their accompanying upstream licenses.

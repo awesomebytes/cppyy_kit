@@ -1,5 +1,7 @@
 # TIAGo PRO simulation playground
 
+For the published Jazzy/Harmonic `0.2.0` simulator, see [the Jazzy guide](../tiago_pro_jazzy/README.md). This page retains the Humble/Classic `0.1.0` baseline.
+
 Run the home simulator, native controllers, MoveIt, Nav2 and RViz from one
 launch file. This is a conventional ROS baseline for later cppyy_kit experiments,
 not a demonstrated cppyy_kit performance improvement.

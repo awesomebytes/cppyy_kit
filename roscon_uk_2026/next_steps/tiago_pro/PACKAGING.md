@@ -1,5 +1,7 @@
 # Installable TIAGo PRO playground
 
+For the published Jazzy/Harmonic `0.2.0` simulator, see [the Jazzy guide](../tiago_pro_jazzy/README.md). This page retains the Humble/Classic `0.1.0` baseline.
+
 `tiago-pro-playground` **0.1.0 build 2** is published on the public
 [awesomebytes channel](https://prefix.dev/channels/awesomebytes/packages/tiago-pro-playground).
 It includes pinned robot descriptions, an offline home world, both patched

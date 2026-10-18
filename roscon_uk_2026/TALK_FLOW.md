@@ -8,22 +8,25 @@ a replacement for the existing [presentation plan](PLAN.md) and its evidence.
 
 Start with a simulated mobile manipulator: a wheeled base, arm(s), RGB/depth,
 IMU, joint state and range/point-cloud data. The current starting point is
-[TIAGo PRO on ROS 2 Jazzy and Gazebo Harmonic](next_steps/tiago_pro_jazzy/README.md).
-The local source setup starts nine controllers, MoveIt, Nav2 and the GUI, with
-RGB/depth, laser and wrist F/T topics. Corrected cloud geometry places the floor
-at z=0 and the tabletop at approximately z=1.02 m. Its optional shared `kit`
-environment also passed isolated installed `rclcpp_kit` native-node bringup
-and teardown. This establishes compatible setup, not a robot processing
-pipeline, acceleration result, autonomous task or grasping demonstration.
+[TIAGo PRO on ROS 2 Jazzy and Gazebo Harmonic](next_steps/tiago_pro_jazzy/README.md),
+now published as `tiago-pro-playground` 0.2.0 build 2. Fresh installed startup
+passed nine controllers, MoveIt, Nav2, sensors and the GUI; the user also
+confirmed source-session navigation and MoveIt operation. The optional shared
+`kit` environment passed installed `rclcpp_kit` native-node bringup and teardown.
+These establish the robot baseline and compatible kit setup, not the robot
+processing/composition experiment, acceleration result or autonomous grasping.
 
-The published `tiago-pro-playground` 0.1.0 package remains the earlier Humble /
-Gazebo Classic baseline; the Jazzy migration is local and not packaged or
-published yet. Earlier Humble PRO runs recorded MoveIt arm/head/gripper
-execution, Nav2 arrivals and corrected wrist-load responses. Those results
-are not new Harmonic motion or force-calibration evidence. Stretch, single-arm
-TIAGo and TIAGo++ remain earlier alternative playgrounds. A shared launcher
-lock permits one simulator at a time. The new robot work still needs the
-measured cppyy_kit processing and composition demonstration below.
+The native materials are restored, with a plain floor. One aligned RGBD camera
+runs at 30 Hz without duplicate rendering. Quiet-window median real-time factor
+improved from 0.589 to 0.832 in the recorded comparison; it remains below 1.0.
+The depth-cloud bridge uses the camera body frame matching native XYZ, while
+RGB retains its optical frame. Registered cloud geometry places the floor at
+z=0 and tabletop at approximately z=1.02 m. Public 0.1.0 remains the earlier
+Humble / Gazebo Classic fallback; its wrist-load and motion evidence does not
+establish new Harmonic force calibration. Stretch, single-arm TIAGo and TIAGo++
+remain earlier alternatives. One shared lock permits one simulator at a time.
+The measured cppyy_kit processing and composition demonstration below remains
+the next task.
 
 Use one task: find an object, approach it and position the arm near it. Reuse
 navigation and basic control software. Grasping and whole-body balance are not

@@ -7,3 +7,5 @@ target_link_libraries(tiago_pro_physical_mimic PRIVATE gz-sim8::gz-sim8)
 # Conda's imported target includes GUI/media libraries. Keep only symbols used
 # by this server plugin so loading it does not pull a second GUI/audio stack.
 target_link_options(tiago_pro_physical_mimic PRIVATE "LINKER:--as-needed")
+
+install(TARGETS tiago_pro_physical_mimic LIBRARY DESTINATION lib)

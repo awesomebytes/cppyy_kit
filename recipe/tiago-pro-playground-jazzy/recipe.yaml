@@ -1,0 +1,60 @@
+schema_version: 1
+package:
+  name: tiago-pro-playground
+  version: "0.2.0"
+source:
+  path: ../../output/tiago-pro-jazzy-source
+  use_gitignore: false
+build:
+  number: 2
+  skip:
+    - not linux or not x86_64
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+    - pkg-config
+  host:
+    - python 3.12.*
+    - libgz-sim8 >=8.10,<9
+  run:
+    - python 3.12.*
+    - numpy
+    - pyyaml >=6,<7
+    - ros-jazzy-ros-base
+    - ros-jazzy-xacro
+    - ros-jazzy-robot-state-publisher
+    - ros-jazzy-ros2-control
+    - ros-jazzy-ros2-controllers
+    - ros-jazzy-ros-gz-sim >=1.0.24,<2
+    - ros-jazzy-ros-gz-bridge >=1.0.24,<2
+    - ros-jazzy-ros-gz-image
+    - ros-jazzy-gz-ros2-control >=1.2.20,<2
+    - libgz-sim8 >=8.10,<9
+    - ros-jazzy-nav2-bringup
+    - ros-jazzy-moveit-ros-move-group
+    - ros-jazzy-moveit-ros-visualization
+    - ros-jazzy-moveit-planners-ompl
+    - ros-jazzy-moveit-kinematics
+    - ros-jazzy-moveit-simple-controller-manager
+    - ros-jazzy-moveit-msgs
+    - ros-jazzy-srdfdom
+    - ros-jazzy-moveit-ros-perception
+    - ros-jazzy-rmw-fastrtps-cpp
+    - util-linux
+    - bash
+  run_constraints:
+    - libclang13 >=22.1.8,<23
+    - libopencv ==5.0.0 headless*
+tests:
+  - script:
+      - tiago-pro-playground --prepare-only
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause AND Apache-2.0 AND CC-BY-3.0
+  license_file:
+    - licenses/**/*
+    - worlds/home/LICENSE
+  summary: "TIAGo PRO Jazzy Gazebo Harmonic home playground with native controllers, MoveIt and Nav2"

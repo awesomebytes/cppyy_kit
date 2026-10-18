@@ -14,6 +14,7 @@ from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
 
 ROOT = Path(__file__).resolve().parent
+ASSETS = Path(os.environ.get("TIAGO_PRO_RESOURCE_ROOT", ROOT.parent / "tiago_pro"))
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'moveit'))
 
@@ -33,7 +34,7 @@ def setup(context):
     os.environ['RMW_IMPLEMENTATION'] = 'rmw_fastrtps_cpp'
     os.environ['GZ_PARTITION'] = 'tiago_pro_jazzy'
     os.environ['TIAGO_PRO_NAV_MAP'] = str(map_file)
-    os.environ['GZ_SIM_RESOURCE_PATH'] = ':'.join([str(ROOT / 'generated/prefix/share'), str(ROOT.parent / 'tiago_pro/worlds/home/models'), *[str(p) for p in (ROOT.parent / 'tiago_pro/worlds/home/models').glob('*/materials/textures')]])
+    os.environ['GZ_SIM_RESOURCE_PATH'] = ':'.join([str(ROOT / 'generated/prefix/share'), str(ASSETS / 'worlds/home/models'), *[str(p) for p in (ASSETS / 'worlds/home/models').glob('*/materials/textures')]])
     os.environ.setdefault('QT_X11_NO_MITSHM', '1')
 
     if enabled(context, 'simulation'):
@@ -105,8 +106,8 @@ def generate_launch_description():
     defaults = {
         'simulation': 'true', 'moveit': 'true', 'navigation': 'true',
         'rviz': 'true', 'gui': 'true',
-        'world': str(ROOT.parent / 'tiago_pro/worlds/home/home.world'),
-        'map': str(ROOT.parent / 'tiago_pro/worlds/home/map.yaml'),
+        'world': str(ASSETS / 'worlds/home/home.world'),
+        'map': str(ASSETS / 'worlds/home/map.yaml'),
         'spawn_x': '-2.65728', 'spawn_y': '1.35', 'spawn_yaw': '1.5707963267948966',
         'rviz_config': str(ROOT / 'playground.rviz'),
     }
