@@ -72,6 +72,57 @@ milestones proceed without changing this first gate.
 
 ## Current state
 
+The [shared robot playground](next_steps/robot_playground/README.md) now selects
+Stretch 4 using the official MuJoCo simulator. Local locked Pixi checks pass
+base/lift/arm motion, RGB/depth, IMU and 3D lidar delivery. The user confirmed
+the interactive viewer and camera operation. Stretch 3 is a verified
+fallback. The Jazzy ROS bridge probe passes base commands, clock, joint state,
+IMU, odometry, scan, point clouds and head images with a narrow upstream
+API/readiness patch. ROS arm trajectories, transforms, reset, Nav2,
+ros2_control and WBC remain unverified. The proposed single-robot talk
+flow is in [TALK_FLOW.md](TALK_FLOW.md); these bringup checks do not supersede
+the historical acceptance evidence below.
+
+TIAGo single-arm, TIAGo++ and TIAGo PRO have separate locked Humble / Python
+3.12 / Gazebo Classic 11.15.1 headless baselines with base, arm(s) and sensor
+checks. Dedicated Pixi and reusable viewer environments are available. The user
+confirmed Gazebo and RViz for all three, including PRO mesh, description and
+optical-frame fixes. Dual wrist F/T passes a 5 N load check (4.7 N; release
+0.065 N). PRO's native base/gripper/sensor corrections resolved its earlier
+force-magnitude failures, with directional, pure-torque and subsequent
+effort-controller load evidence recorded. Its
+[unified native ROS launch](next_steps/tiago_pro/README.md) now starts the home
+simulator, controllers, MoveIt, Nav2 and RViz. Native arm/head/gripper execution
+and Nav2 arrivals are recorded. Ready joints initialize directly; depth supplies
+collision occupancy in a world-fixed planning frame. Grasping, WBC, PRO's
+per-joint torque estimator and cppyy_kit robot acceleration/composition remain
+unvalidated. The shared lock permits one playground simulator at a time.
+
+The independent `tiago-pro-playground` 0.1.0 build 2 simulator package is built
+locally ([recipe](../recipe/tiago-pro-playground/)); artifact
+`tiago-pro-playground-0.1.0-h41f06ac_2.conda` is 49,450,386 bytes.
+A separate consumer at `/home/sapf/playground/tiago-pro-0.1.0-trim`
+passed `pixi install`, native plugin loading, nine controller activations and
+MoveIt/Nav2/Gazebo/RViz startup without autonomous motion. The installed GUI
+is running. Its 826 packages download 1.10 GiB; workspace size is 4.15 GiB
+logical / 4.48 GiB allocated, a 594 MiB (12.3%) prefix reduction. Runtime
+constraints select Qt 5, LLVM/Clang 21, compatible Qt 5 Qwt and headless
+OpenCV 4.13. `cv2.imshow` is unavailable; Gazebo/RViz GUIs work normally.
+The simulator package is independent of cppyy_kit.
+The single build-2 artifact is published on the public `awesomebytes` channel.
+Public repodata verified its 49,450,386-byte size and SHA-256
+`7f40f59a5e2ad515950191f878d246c475a8e370372c8048d48a6b141f8ed6af`.
+The [consumer README, manifest and lock](../recipe/tiago-pro-playground/consumer/)
+now use remote public channels, retain all 826 package versions, and passed
+`pixi install --locked` without a local artifact channel.
+
+A [quick native ROS composition experiment](next_steps/composition/README.md)
+now exercises Python main-thread supervision, two C++ processing nodes,
+latest-only overload handling and joined shutdown. Direct and ROS outputs use
+the same kernels and an independent oracle. It is a prepared synthetic
+concurrency example; image performance, GUI interaction and executor comparisons
+remain follow-up work. It does not replace the historical presentation gates.
+
 Selected C++ capability experiments and the reverse direction, using Python to
 improve existing C++ workflows, are recorded separately in
 [CPP_PYTHON_NEXT_STEPS.md](CPP_PYTHON_NEXT_STEPS.md).

@@ -30,6 +30,63 @@ evaluation history.
 
 ## Current status and next work (2026-10-10)
 
+### Quick composition experiment (2026-10-18)
+
+The [robot playground](roscon_uk_2026/next_steps/robot_playground/README.md)
+selects the official Stretch 4 MuJoCo simulator after locked local base/lift/arm,
+RGB/depth, IMU and 3D lidar checks. The user confirmed its interactive viewer
+and camera operation. Stretch 3 also passes motion and sensor
+checks as a fallback. A separate Jazzy ROS bridge probe passed base commands,
+clock, joint state, IMU, odometry, scan, point clouds and head images, using a
+narrow upstream API/readiness patch. ROS arm trajectories, reset, Nav2,
+ros2_control and WBC remain unverified. This is a working simulator and ROS
+bridge baseline, not a complete robot application or a speedup claim.
+Next: select measured sensor processing and complete the shared robot task.
+
+TIAGo single-arm, TIAGo++ and TIAGo PRO also pass headless base, arm(s) and
+sensor checks in isolated Humble / Python 3.12 / Gazebo Classic 11.15.1
+environments, with reusable viewer environments. The user confirmed Gazebo and
+RViz for all three; PRO mesh, description delivery and optical-frame fixes are
+verified. Dual wrist F/T passes a 5 N load check (approximately 4.7 N; release
+0.065 N). PRO's native base/gripper/sensor corrections resolved the earlier
+force-magnitude failures; directional and pure-torque evidence and subsequent
+effort-controller load checks are recorded. PRO now has a
+[unified ROS launch](roscon_uk_2026/next_steps/tiago_pro/README.md) for the home
+simulator, native controllers, MoveIt, Nav2 and RViz. Native arm/head/gripper
+execution and Nav2 arrivals are recorded. Ready joints initialize directly;
+depth supplies collision occupancy in a world-fixed planning frame. Grasping,
+WBC and PRO's per-joint torque estimator remain unvalidated. Robot acceleration
+or composition with cppyy_kit is not implemented by this conventional ROS
+baseline. Tasks retain a one-playground simulator lock.
+
+The independent ROS simulator package `tiago-pro-playground` 0.1.0 build 2 is
+built locally ([recipe](recipe/tiago-pro-playground/)); artifact
+`tiago-pro-playground-0.1.0-h41f06ac_2.conda` is 49,450,386 bytes. A separate consumer at
+`/home/sapf/playground/tiago-pro-0.1.0-trim` passed `pixi install`, native
+plugin loading, nine controller activations and MoveIt/Nav2/Gazebo/RViz startup,
+with no autonomous motion. Its installed GUI is running. The 826-package
+environment downloads 1.10 GiB; the workspace uses 4.15 GiB logically and
+4.48 GiB allocated, reducing the prefix by 594 MiB (12.3%). Runtime constraints
+select Qt 5, LLVM/Clang 21, compatible Qt 5 Qwt and headless OpenCV 4.13.
+`cv2.imshow` is unavailable; Gazebo and RViz retain their normal GUIs.
+This package does not depend on cppyy_kit. The single build-2 artifact is now
+published on the public `awesomebytes` channel. Public repodata verified its
+49,450,386-byte size and SHA-256
+`7f40f59a5e2ad515950191f878d246c475a8e370372c8048d48a6b141f8ed6af`.
+The [consumer README, manifest and lock](recipe/tiago-pro-playground/consumer/)
+use remote public channels, preserve all 826 package versions, and passed
+`pixi install --locked` without a local artifact channel.
+
+The [native ROS composition experiment](roscon_uk_2026/next_steps/composition/README.md)
+implements two processing nodes and a native sink in one managed context, with
+Python main-thread supervision. Shared kernels have direct and composed output
+parity checks. Latest-only overload accounting, native progress during a busy
+Python loop and joined shutdown are checked. This is a synthetic concurrency
+proof using existing kit APIs; it makes no speedup or zero-copy claim. GPU and
+transport changes are excluded. EventsCBG availability is recorded without a
+dependency update. Next: replace simulated work with measured image processing
+before comparing executor policies or expanding the API.
+
 The July milestone entries below preserve the original implementation history.
 The following merged commits and integration record supersede pending wording
 about the numeric interface, agent tooling, and presentation assets:
