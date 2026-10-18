@@ -1,0 +1,10 @@
+gripper_left:
+  open: {gripper_left_finger_joint: 0.070}
+  closed: {gripper_left_finger_joint: 0.000}
+gripper_right:
+  open: {gripper_right_finger_joint: 0.070}
+  closed: {gripper_right_finger_joint: 0.000}
+head:
+  center: {head_1_joint: 0.0, head_2_joint: -0.2}
+  look_left: {head_1_joint: 0.5, head_2_joint: -0.2}
+  look_right: {head_1_joint: -0.5, head_2_joint: -0.2}

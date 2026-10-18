@@ -1,0 +1,48 @@
+--- a/gazebo_plugins/src/gazebo_ros_planar_move.cpp
++++ b/gazebo_plugins/src/gazebo_ros_planar_move.cpp
+@@ -22,6 +22,7 @@
+ 
+ #include <gazebo/common/Events.hh>
+ #include <gazebo/physics/Model.hh>
++#include <gazebo/physics/Link.hh>
+ #include <gazebo/physics/World.hh>
+ #include <gazebo_plugins/gazebo_ros_planar_move.hpp>
+ #include <gazebo_ros/conversions/builtin_interfaces.hpp>
+@@ -85,6 +86,9 @@
+   /// Pointer to model.
+   gazebo::physics::ModelPtr model_;
+ 
++  // Apply base commands only to the configured physical base link.
++  gazebo::physics::LinkPtr base_link_;
++
+   /// Connection to event called at every world iteration.
+   gazebo::event::ConnectionPtr update_connection_;
+ 
+@@ -128,6 +132,12 @@
+ void GazeboRosPlanarMove::Load(gazebo::physics::ModelPtr _model, sdf::ElementPtr _sdf)
+ {
+   impl_->model_ = _model;
++  const auto body_name = _sdf->Get<std::string>("body_name", "base_footprint").first;
++  impl_->base_link_ = _model->GetLink(body_name);
++  if (!impl_->base_link_) {
++    gzerr << "Planar base link not found: " << body_name << "\n";
++    return;
++  }
+ 
+   impl_->world_ = _model->GetWorld();
+ 
+@@ -238,12 +248,12 @@
+   if (seconds_since_last_update >= update_period_) {
+     ignition::math::Pose3d pose = model_->WorldPose();
+     auto yaw = static_cast<float>(pose.Rot().Yaw());
+-    model_->SetLinearVel(
++    base_link_->SetLinearVel(
+       ignition::math::Vector3d(
+         target_cmd_vel_.linear.x * cosf(yaw) - target_cmd_vel_.linear.y * sinf(yaw),
+         target_cmd_vel_.linear.y * cosf(yaw) + target_cmd_vel_.linear.x * sinf(yaw),
+         0));
+-    model_->SetAngularVel(ignition::math::Vector3d(0, 0, target_cmd_vel_.angular.z));
++    base_link_->SetAngularVel(ignition::math::Vector3d(0, 0, target_cmd_vel_.angular.z));
+ 
+     last_update_time_ = _info.simTime;
+   }

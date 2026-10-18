@@ -1,0 +1,50 @@
+--- a/src/mimic_joint_plugin.cpp
++++ b/src/mimic_joint_plugin.cpp
+@@ -70,8 +70,16 @@
+             if (name.empty()) {
+                 name = "gazebo_ros_control/pid_gains/" + mimic_joint_name;
+             }
+-            pid_ = std::make_unique<control_toolbox::PidROS>(ros_node_, "name");
+-            pid_->initPid();
++            pid_ = std::make_unique<control_toolbox::PidROS>(ros_node_, name);
++            if (!pid_->initPid()) {
++                RCLCPP_ERROR(ros_node_->get_logger(), "Missing physical mimic PID gains");
++                return;
++            }
++        }
++
++        if (!pid_) {
++            RCLCPP_ERROR(ros_node_->get_logger(), "This build requires physical hasPID mode");
++            return;
+         }
+ 
+         // Check for multiplier element
+@@ -114,17 +122,13 @@
+             max_effort_ = _sdf->GetElement("maxEffort")->Get<double>();
+         }
+ 
+-        // Set max effort
+-        if (!pid_) {
+-            mimic_joint_->SetParam("fmax", 0, max_effort_);
+-        }
+ 
+         // Listen to the update event. This event is broadcast every
+         // simulation iteration.
+         update_connection_ = event::Events::ConnectWorldUpdateBegin(
+             boost::bind(&MimicJointPlugin::UpdateChild, this));
+ 
+-        RCLCPP_ERROR_STREAM(
++        RCLCPP_INFO_STREAM(
+             ros_node_->get_logger(),
+             "MimicJointPlugin loaded! Joint: \"" << joint_name << "\", Mimic joint: \"" << mimic_joint_name << "\""
+                                                                << ", Multiplier: " << multiplier_ << ", Offset: " << offset_
+@@ -148,9 +152,6 @@
+                 effort = math::clamp(effort, -max_effort_, max_effort_);
+                 mimic_joint_->SetForce(0, effort);
+             }
+-            else {
+-                mimic_joint_->SetPosition(0, angle, true);
+-            }
+         }
+     }
+ 

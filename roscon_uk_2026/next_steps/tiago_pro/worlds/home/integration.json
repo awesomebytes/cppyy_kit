@@ -1,0 +1,22 @@
+{
+  "spawn": {
+    "x": -2.65728,
+    "y": 1.35,
+    "yaw": 1.5707963267948966
+  },
+  "table_near_edge_forward_m": 0.6737600000000001,
+  "existing_table": "turtlebot3_house::table",
+  "table_surface_height_m": 1.02,
+  "collision_obstacle_count": 82,
+  "map_origin": [
+    -9.0,
+    -7.0,
+    0.0
+  ],
+  "map_resolution": 0.05,
+  "map_size": [
+    360,
+    280
+  ],
+  "map_method": "projected primitive collision boxes/cylinders, height 0.08..1.6 m; mesh furniture supplied by live lidar costmaps"
+}

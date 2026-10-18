@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.16)
+project(cppyy_kit_physical_gripper_mimic LANGUAGES CXX)
+find_package(ament_cmake REQUIRED)
+find_package(gazebo_dev REQUIRED)
+find_package(gazebo_ros REQUIRED)
+find_package(control_toolbox REQUIRED)
+add_library(cppyy_kit_gazebo_mimic SHARED "${CMAKE_CURRENT_BINARY_DIR}/source/src/mimic_joint_plugin.cpp")
+target_compile_features(cppyy_kit_gazebo_mimic PRIVATE cxx_std_17)
+target_include_directories(cppyy_kit_gazebo_mimic PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/vendor/roboticsgroup_upatras_gazebo_plugins/include")
+ament_target_dependencies(cppyy_kit_gazebo_mimic gazebo_dev gazebo_ros control_toolbox)
+install(TARGETS cppyy_kit_gazebo_mimic LIBRARY DESTINATION lib)

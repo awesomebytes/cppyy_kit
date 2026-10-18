@@ -1,0 +1,11 @@
+[workspace]
+name = "tiago-pro-playground"
+channels = ["https://prefix.dev/awesomebytes", "robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+tiago-pro-playground = "==0.1.0"
+
+[tasks]
+playground = "tiago-pro-playground"
+playground-headless = "tiago-pro-playground gui:=false rviz:=false"

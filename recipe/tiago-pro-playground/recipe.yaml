@@ -1,0 +1,70 @@
+schema_version: 1
+package:
+  name: tiago-pro-playground
+  version: "0.1.0"
+source:
+  path: ../../output/tiago-pro-source
+  use_gitignore: false
+build:
+  number: 2
+  skip:
+    - not linux or not x86_64
+requirements:
+  build:
+    - ${{ compiler('cxx') }}
+    - ${{ stdlib('c') }}
+    - cmake
+    - ninja
+    - patch
+    - pkg-config
+  host:
+    - python 3.12.*
+    - ros-humble-gazebo-ros-pkgs >=3.9.0,<4
+    - ros-humble-control-toolbox
+    - ros-humble-tf2-geometry-msgs
+    - ros-humble-tf2-ros
+    - ros-humble-nav-msgs
+    - tbb >=2022.3.0,<2023
+  run:
+    - python 3.12.*
+    - numpy
+    - libopenblas
+    - pyyaml >=6,<7
+    - ros-humble-ros-base
+    - ros-humble-xacro
+    - ros-humble-robot-state-publisher
+    - ros-humble-ros2-control
+    - ros-humble-ros2-controllers
+    - ros-humble-gazebo-ros-pkgs >=3.9.0,<4
+    - ros-humble-gazebo-ros2-control >=0.4.10,<0.5
+    - ros-humble-control-toolbox
+    - tbb >=2022.3.0,<2023
+    - ros-humble-nav2-bringup >=1.1.20,<2
+    - ros-humble-moveit-ros-move-group >=2.5.9,<3
+    - ros-humble-moveit-ros-visualization >=2.5.9,<3
+    - ros-humble-moveit-planners-ompl >=2.5.9,<3
+    - ros-humble-moveit-kinematics >=2.5.9,<3
+    - ros-humble-moveit-simple-controller-manager >=2.5.9,<3
+    - ros-humble-moveit-msgs >=2.2.1,<3
+    - ros-humble-srdfdom >=2.0.7,<3
+    - ros-humble-moveit-ros-perception >=2.5.9,<3
+    - ros-humble-rmw-fastrtps-cpp
+    - util-linux
+    - bash
+  run_constraints:
+    # Qt5's broad libclang13 lower bound otherwise pulls a second LLVM major.
+    - libclang13 >=21.1.8,<22
+    # Match Gazebo/RViz's Qt5 ABI; newer Qwt builds use Qt6.
+    - qwt ==6.3.0 h7c222af_0
+    # Same OpenCV ABI and dependency generation; viewers are Gazebo and RViz.
+    - libopencv ==4.13.0 headless_py312h6596e09_6
+tests:
+  - script:
+      - tiago-pro-playground --prepare-only
+about:
+  homepage: https://github.com/awesomebytes/cppyy_kit
+  license: BSD-3-Clause AND Apache-2.0 AND CC-BY-3.0
+  license_file:
+    - licenses/**/*
+    - worlds/home/LICENSE
+  summary: "TIAGo PRO Humble Gazebo Classic home playground with native controllers, MoveIt and Nav2"

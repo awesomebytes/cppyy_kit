@@ -1,0 +1,8 @@
+.pixi/
+vendor/
+build/
+install/
+log/
+generated/
+artifacts/
+__pycache__/

@@ -1,0 +1,2 @@
+upstream https://github.com/pal-robotics/tiago_pro_moveit_config.git fa1f97542f85c15c464d9685b93584316b8ceead
+pal_sea_arm_moveit_config https://github.com/pal-robotics/pal_sea_arm_moveit_config.git d262ae8a3db78e86b8017a06aa3fb0d24ad744e1

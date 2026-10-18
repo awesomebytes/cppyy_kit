@@ -1,0 +1,42 @@
+controller_manager:
+  ros__parameters:
+    gripper_left_controller:
+      type: effort_controllers/GripperActionController
+    gripper_right_controller:
+      type: effort_controllers/GripperActionController
+
+gripper_left_controller:
+  ros__parameters:
+    use_sim_time: true
+    update_rate: 100
+    joint: gripper_left_finger_joint
+    action_monitor_rate: 20.0
+    goal_tolerance: 0.001
+    max_effort: 10.0
+    allow_stalling: false
+    stall_velocity_threshold: 0.0001
+    stall_timeout: 5.0
+    gains:
+      gripper_left_finger_joint:
+        p: 100.0
+        i: 50.0
+        d: 2.0
+        i_clamp: 0.5
+
+gripper_right_controller:
+  ros__parameters:
+    use_sim_time: true
+    update_rate: 100
+    joint: gripper_right_finger_joint
+    action_monitor_rate: 20.0
+    goal_tolerance: 0.001
+    max_effort: 10.0
+    allow_stalling: false
+    stall_velocity_threshold: 0.0001
+    stall_timeout: 5.0
+    gains:
+      gripper_right_finger_joint:
+        p: 100.0
+        i: 50.0
+        d: 2.0
+        i_clamp: 0.5

@@ -1,0 +1,52 @@
+[workspace]
+name = "tiago-pro-playground"
+channels = ["robostack-humble", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+ros-humble-ros-base = "*"
+ros-humble-xacro = "*"
+ros-humble-robot-state-publisher = "*"
+ros-humble-ros2-control = "*"
+ros-humble-ros2-controllers = "*"
+colcon-common-extensions = "*"
+cmake = "*"
+ninja = "*"
+cxx-compiler = "*"
+ros-humble-gazebo-ros-pkgs = ">=3.9.0,<4"
+ros-humble-gazebo-ros2-control = ">=0.4.10,<0.5"
+tbb = ">=2022.3.0,<2023"
+ros-humble-nav2-bringup = ">=1.1.20,<2"
+ros-humble-moveit-ros-move-group = ">=2.5.9,<3"
+ros-humble-moveit-ros-visualization = ">=2.5.9,<3"
+ros-humble-moveit-planners-ompl = ">=2.5.9,<3"
+ros-humble-moveit-kinematics = ">=2.5.9,<3"
+ros-humble-moveit-simple-controller-manager = ">=2.5.9,<3"
+ros-humble-moveit-msgs = ">=2.2.1,<3"
+ros-humble-srdfdom = ">=2.0.7,<3"
+pyyaml = ">=6.0.3,<7"
+ros-humble-moveit-ros-perception = ">=2.5.9,<3"
+ros-humble-rmw-fastrtps-cpp = "*"
+
+[tasks]
+model = "python prepare_model.py"
+build-planar-plugin = "bash build_planar_plugin.sh"
+headless = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py moveit:=false navigation:=false rviz:=false gui:=false"
+view = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py moveit:=false navigation:=false rviz:=false"
+check = { cmd = "bash ../simulator_guard.sh -- python check.py", env = { ROS_DOMAIN_ID = "77", GAZEBO_MASTER_URI = "http://127.0.0.1:11377" } }
+rviz = "bash rviz.sh"
+plotjuggler4 = "bash plotjuggler.sh"
+ft-check = { cmd = "python ../wrist_ft_matrix.py --robot pro --output artifacts/ft_matrix_corrected.json", env = { ROS_DOMAIN_ID = "77" } }
+ft-torque-check = { cmd = "python ../wrist_ft_matrix.py --robot pro --torque --output artifacts/ft_torque_corrected.json", env = { ROS_DOMAIN_ID = "77" } }
+playground = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py"
+playground-headless = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py gui:=false rviz:=false"
+playground-home = "bash ../simulator_guard.sh -- ros2 launch $PWD/playground.launch.py"
+control-check = { cmd = "python control_check.py --base-only", env = { ROS_DOMAIN_ID = "77", GAZEBO_MASTER_URI = "http://127.0.0.1:11377" } }
+joint-control-check = { cmd = "python direct_joint_check.py", env = { ROS_DOMAIN_ID = "77", RMW_IMPLEMENTATION = "rmw_fastrtps_cpp" } }
+build-gripper-plugin = "bash gripper/build.sh"
+gripper-check = { cmd = "python gripper/command.py", env = { ROS_DOMAIN_ID = "77" } }
+gripper-demo = { cmd = "python gripper/demo.py --cycles 3 --hold 4.5", env = { ROS_DOMAIN_ID = "77", RMW_IMPLEMENTATION = "rmw_fastrtps_cpp" } }
+sensor-view = "bash sensor_view.sh"
+moveit = "ros2 launch $PWD/playground.launch.py simulation:=false navigation:=false rviz:=false gui:=false"
+navigation = "ros2 launch $PWD/playground.launch.py simulation:=false moveit:=false rviz:=false gui:=false"

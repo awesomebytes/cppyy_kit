@@ -1,0 +1,13 @@
+# Obtained by native FK search, joint-bound and full-state self-collision checks.
+# Both-arm OMPL planning and observed execution passed on 18 October 2026.
+# Every new request still requires planning from the current robot and scene.
+compact:
+  arm_left: [3.048905718, -2.033470544, 0.774255181, 0.426711260, -1.267484240, 0.502857644, -1.175531431]
+  arm_right: [-3.048905718, -2.033470544, -0.774255181, 0.426711260, 1.267484240, 0.502857644, 1.175531431]
+# PAL spherical-wrist home endpoint, with moderate torso elevation.
+# Source: vendor/tiago_pro_robot/tiago_pro_bringup/config/motions/
+# tiago_pro_motions_general_spherical-wrist.yaml, home final arm values.
+ready:
+  torso_lift_joint: 0.20
+  arm_left: [0.36, -1.83, 0.47, -2.35, 0.0, -1.2, 0.0]
+  arm_right: [-0.36, -1.83, -0.47, -2.35, 0.0, -1.2, 0.0]

@@ -1,0 +1,104 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 38; 42; 48
+    Fixed Frame: base_footprint
+    Frame Rate: 20
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Ground grid
+      Enabled: true
+      Cell Size: 1
+      Plane Cell Count: 20
+      Reference Frame: <Fixed Frame>
+      Color: 110; 110; 110
+    - Class: rviz_default_plugins/RobotModel
+      Name: TIAGo PRO model
+      Enabled: true
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Depth: 1
+      Visual Enabled: true
+      Collision Enabled: false
+      Alpha: 1
+    - Class: rviz_default_plugins/TF
+      Name: TF frames
+      Enabled: false
+      Show Arrows: true
+      Show Axes: true
+      Show Names: false
+      Marker Scale: 0.2
+    - Class: rviz_default_plugins/LaserScan
+      Name: Base lidar
+      Enabled: true
+      Topic:
+        Value: /scan_front_raw
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 5
+      Size (m): 0.025
+      Style: Points
+      Color Transformer: FlatColor
+      Color: 80; 255; 80
+      Decay Time: 0
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Head RGB-D cloud
+      Enabled: true
+      Topic:
+        Value: /head_front_camera/depth/color/points
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 2
+      Style: Points
+      Size (Pixels): 2
+      Color Transformer: RGB8
+      Position Transformer: XYZ
+      Decay Time: 0
+    - Class: rviz_default_plugins/Image
+      Name: Head RGB
+      Enabled: true
+      Topic:
+        Value: /head_front_camera/color/image_raw
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 2
+      Transport Hint: raw
+      Normalize Range: true
+    - Class: rviz_default_plugins/Image
+      Name: Head depth
+      Enabled: false
+      Topic:
+        Value: /head_front_camera/depth/image_rect_raw
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Depth: 2
+      Transport Hint: raw
+      Normalize Range: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Target Frame: base_footprint
+      Distance: 4
+      Pitch: 0.45
+      Yaw: 0.8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0.7
+Window Geometry:
+  Width: 1500
+  Height: 1000
