@@ -1,12 +1,12 @@
 schema_version: 1
 package:
   name: tiago-pro-playground
-  version: "0.2.0"
+  version: "0.2.1"
 source:
   path: ../../output/tiago-pro-jazzy-source
   use_gitignore: false
 build:
-  number: 2
+  number: 0
   skip:
     - not linux or not x86_64
 requirements:

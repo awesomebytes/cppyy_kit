@@ -896,7 +896,7 @@ environments:
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-xacro-2.1.1-np2py312h1bab3cf_25.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-yaml-cpp-vendor-9.0.1-np2py312h1bab3cf_25.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-zstd-vendor-0.26.11-np2py312h6a0d68b_25.conda
-      - conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.0-h4aae1cf_2.conda
+      - conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.1-h4aae1cf_0.conda
   kit:
     channels:
     - url: https://prefix.dev/awesomebytes/
@@ -1820,7 +1820,7 @@ environments:
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-xacro-2.1.1-np2py312h1bab3cf_25.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-yaml-cpp-vendor-9.0.1-np2py312h1bab3cf_25.conda
       - conda: https://conda.anaconda.org/robostack-jazzy/linux-64/ros2-zstd-vendor-0.26.11-np2py312h6a0d68b_25.conda
-      - conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.0-h4aae1cf_2.conda
+      - conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.1-h4aae1cf_0.conda
       - conda: https://prefix.dev/awesomebytes/noarch/cppyy-kit-0.4.1-pyh4616a5c_0.conda
       - conda: https://prefix.dev/awesomebytes/noarch/ros-jazzy-rclcpp-kit-0.4.1-pyh4616a5c_0.conda
 packages:
@@ -18970,9 +18970,9 @@ packages:
   license: Apache-2.0 OR BSD-3-Clause
   size: 24624
   timestamp: 1791428379408
-- conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.0-h4aae1cf_2.conda
-  sha256: 10f5a546798358b8721e274fc23899f6b02ca4d7dfc2350aa54b769530f71889
-  md5: 731f7cea223d64c261ce0ca9a6473b79
+- conda: https://prefix.dev/awesomebytes/linux-64/tiago-pro-playground-0.2.1-h4aae1cf_0.conda
+  sha256: 2d2a1c6022c039363c5b58a8976b4d216804c8d9ea2c0cc8d4e33fb197f7ec1b
+  md5: 1ff4d14f8634a80938f844e601209295
   depends:
   - python 3.12.*
   - numpy
@@ -18999,9 +18999,9 @@ packages:
   - ros-jazzy-rmw-fastrtps-cpp
   - util-linux
   - bash
-  - __glibc >=2.28,<3.0.a0
   - libstdcxx >=14
   - libgcc >=14
+  - __glibc >=2.28,<3.0.a0
   - python_abi 3.12.* *_cp312
   - libgz-sim8 >=8.10.0,<9.0a0
   constrains:
@@ -19009,8 +19009,8 @@ packages:
   - libopencv ==5.0.0 headless*
   license: BSD-3-Clause AND Apache-2.0 AND CC-BY-3.0
   run_exports: {}
-  size: 51253587
-  timestamp: 1792362066553
+  size: 51337060
+  timestamp: 1792363358598
 - conda: https://prefix.dev/awesomebytes/noarch/cppyy-kit-0.4.1-pyh4616a5c_0.conda
   sha256: e04ebb226d43405fc335a8f736de38c4ae287ded740fb7b97a8e601fa9290975
   md5: e41c28371bf583bf3d4d1bde8d7f56ca

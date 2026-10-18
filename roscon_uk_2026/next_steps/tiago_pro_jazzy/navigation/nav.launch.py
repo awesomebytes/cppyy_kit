@@ -48,7 +48,10 @@ def generate_launch_description():
     for name in ['local_costmap', 'global_costmap']:
         costmap = params[name][name]['ros__parameters']
         costmap.update(robot_base_frame='base_footprint', use_sim_time=True,
-                       footprint='[[0.55,0.50],[0.55,-0.50],[-0.55,-0.50],[-0.55,0.50]]',
+                       # Full ready-pose collision projection: x[-.397,.383], y[-.308,.308].
+                       # At least 3 cm margin before the explicit 1 cm costmap padding.
+                       footprint='[[0.43,0.34],[0.43,-0.34],[-0.43,-0.34],[-0.43,0.34]]',
+                       footprint_padding=0.01,
                        transform_tolerance=0.5, always_send_full_costmap=True)
         costmap.pop('robot_radius', None)
         costmap['plugins'] = (['static_layer'] if name == 'global_costmap' else []) + ['obstacle_layer', 'inflation_layer']

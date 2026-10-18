@@ -17,7 +17,7 @@ optional kit environment shares its solve with the default simulator environment
 Headless OpenCV5 and Clang22 constraints avoid an unused Qt6/LLVM23 stack; Gazebo
 and RViz remain graphical. OpenCV's `imshow` is not included in that variant.
 
-Version0.2.0 uses ROS Jazzy and Gazebo Harmonic. The separate
+Version0.2.1 uses ROS Jazzy and Gazebo Harmonic. The separate
 `recipe/tiago-pro-playground` recipe and version0.1.0 retain the Humble/Classic
 baseline. Publishing a package does not require invoking the all-package release
 workflow. Build artifacts and proof logs belong under ignored `output/`.
@@ -33,7 +33,7 @@ keeping XYZ in its native body convention. The bridge therefore overrides only
 the cloud's ROS header to `head_front_camera_depth_frame`. Image and CameraInfo
 headers remain optical. This separation is covered by the installed sensor check.
 
-Published artifact: `tiago-pro-playground-0.2.0-h4aae1cf_2.conda` (51,253,587 bytes).
-SHA256: `10f5a546798358b8721e274fc23899f6b02ca4d7dfc2350aa54b769530f71889`.
+Published artifact: `tiago-pro-playground-0.2.1-h4aae1cf_0.conda` (51,337,060 bytes).
+SHA256: `2d2a1c6022c039363c5b58a8976b4d216804c8d9ea2c0cc8d4e33fb197f7ec1b`.
 Public repodata and the remote consumer lock match this hash; `pixi install --locked`
 passed with the public channel manifest.

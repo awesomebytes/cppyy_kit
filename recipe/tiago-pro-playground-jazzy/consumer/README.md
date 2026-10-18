@@ -1,6 +1,6 @@
 # TIAGo PRO Jazzy home simulator
 
-Version `0.2.0` build `h4aae1cf_2` is published on the
+Version `0.2.1` build `h4aae1cf_0` is published on the
 [awesomebytes channel](https://prefix.dev/channels/awesomebytes/packages/tiago-pro-playground).
 
 Copy `pixi.toml` and `pixi.lock` into an empty directory on Linux x86-64:
@@ -42,4 +42,7 @@ textures are bundled for offline rendering.
 
 The default installed workspace uses approximately 4.14 GiB logical / 4.47 GiB
 allocated space, excluding the shared global cache (888 packages). The custom
-package download is 48.88 MiB; dependencies are fetched from the listed channels.
+package download is 48.96 MiB; dependencies are fetched from the listed channels.
+
+Navigation assumes the ready arm pose. Its padded footprint is 0.88 × 0.70 m,
+allowing planning through the house map’s 0.80 m doorway.
