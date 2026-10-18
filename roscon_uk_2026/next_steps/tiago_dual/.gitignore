@@ -7,3 +7,5 @@ log/
 __pycache__/
 robot.urdf
 evidence/*.raw.json
+
+evidence/native_physics_original.txt
