@@ -29,7 +29,6 @@ import sys
 import tarfile
 import tempfile
 import urllib.parse
-import urllib.request
 import zipfile
 
 from ._filelock import file_lock
@@ -77,6 +76,9 @@ def _sha256(path):
 
 
 def _download(url, dest):
+    # Load HTTP/TLS support only when fetching a missing dependency.
+    import urllib.request
+
     # file:// and http(s):// both handled by urllib; file:// keeps tests offline.
     with urllib.request.urlopen(url) as resp:  # noqa: S310 (url is caller-provided, trusted)
         with open(dest, "wb") as fh:
