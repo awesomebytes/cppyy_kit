@@ -3,7 +3,7 @@ name = "webcam-segmentation"
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 [dependencies]
-python = "3.11.*"
+python = "3.12.*"
 pip = "*"
 cppyy = ">=3.5.0,<4"
 compilers = "*"
@@ -15,3 +15,6 @@ pupil-apriltags = "==1.0.4.post11"
 numpy = "==2.2.6"
 marimo = "==0.25.2"
 
+
+[environments]
+python312 = { features = [] }

@@ -150,9 +150,9 @@ preferred it over YuNet in the earlier exercise. This is a session preference,
 not a general accuracy or speed benchmark. The saved implementation in
 `../notebook.py` retains `dlib.get_frontal_face_detector()` and the 68-point
 predictor; read that implementation for the exact preprocessing and parameters.
-The rendering setup installs dlib into `build/webcam_session/rendering_python`
-using the notebook's Python 3.11. Import `dlib` directly in that notebook; do not
-add the older Python 3.12 overlay at `build/webcam_session/dlib_python`. The
+The rendering setup installs dlib into `build/webcam_session/rendering_python312`
+using the notebook's Python 3.12. Import `dlib` directly in that notebook; its launcher selects the matching
+Python 3.12 rendering overlay. The
 predictor is `roscon_uk_2026/next_steps/webcam_session/models/shape_predictor_68_face_landmarks.dat`.
 Resolve these paths from the repository root. Check availability and measure
 processing rate in the active interpreter. Load the predictor only if landmarks

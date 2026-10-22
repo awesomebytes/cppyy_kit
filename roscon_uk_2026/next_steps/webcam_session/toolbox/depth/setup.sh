@@ -8,7 +8,7 @@ if [[ ! -d "$repo/.git" ]]; then
     git clone https://github.com/ByteDance-Seed/Depth-Anything-3.git "$repo"
     git -C "$repo" checkout 3d835ec1a5802d64a8b8b15f817a1ab54809bfe4
 fi
-pixi install --manifest-path "$here/pixi.toml"
+pixi install -e python312 --manifest-path "$here/pixi.toml"
 cd "$here"
-pixi run --manifest-path pixi.toml probe depth
-pixi run --manifest-path pixi.toml probe objects
+pixi run -e python312 --manifest-path pixi.toml probe depth
+pixi run -e python312 --manifest-path pixi.toml probe objects

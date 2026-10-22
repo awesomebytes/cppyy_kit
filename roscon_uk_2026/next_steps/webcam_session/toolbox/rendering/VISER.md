@@ -3,7 +3,7 @@
 Use `ViserViewer` beside a retained marimo workbench. It starts a local browser
 viewer without opening another camera or replacing the processing worker.
 These examples require this repository checkout and the rendering dependency
-setup in `build/webcam_session/rendering_python` (Viser 1.1.1).
+setup in `build/webcam_session/rendering_python312` (Viser 1.1.1).
 
 ```python
 from roscon_uk_2026.next_steps.webcam_session.toolbox.rendering.viser_view import ViserViewer
@@ -69,7 +69,7 @@ actual WebGL renderer and a screenshot. For this machine's NVIDIA hardware:
 
 ```bash
 pixi run --manifest-path roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml \
-  bash -c 'PYTHONPATH="$PWD/build/webcam_session/rendering_python:$PYTHONPATH" python \
+  bash -c 'PYTHONPATH="$PWD/build/webcam_session/rendering_python312:$PYTHONPATH" python \
     roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/measure_viser_browser.py \
     --chrome-vulkan --seconds 15'
 ```

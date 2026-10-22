@@ -74,6 +74,24 @@ command if needed. Run its cells and verify camera/viewer health. Keep the
 marimo tab open and put Viser at http://127.0.0.1:8768 beside this terminal.
 Discover the current session ID through notebook.sh pair notebook list.
 
+Before implementing native processing, run these commands from the repository
+root using the prepared notebook environment:
+
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit status --environment
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit guide
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit guide accelerate
+
+For an existing C++ library, also read `python -m cppyy_kit guide bring-library`
+in that same environment. For a relevant kit, use `guide KIT_NAME api` after
+checking that the kit and its native dependencies are available. Read
+cppyy_kit/agent_guides/bring-library.md and docs/COMMON_PATTERNS.md as needed.
+Use these instructions for cached compilation, @cpp array contracts, headers,
+preamble, library paths, nogil, ownership/keep_alive and safe native boundaries.
+Load models and compile/warm kernels once, outside the frame callback. Keep
+native objects and buffers alive for their required lifetime. Measure first-use
+and steady-state costs separately. Reuse existing model bindings; use cppyy_kit
+where a native operation helps the task, rather than adding C++ to every step.
+
 Start with the webcam stream, then ask me what task to implement. Do not load
 or demonstrate the completed depth_notebook experiment. Keep camera and viewer
 owners alive. Retain models once loaded. Inspect cell dependencies before
@@ -260,11 +278,37 @@ Persistent calibrated Viser session verification: processing-cell replacement pr
 
 ### Face detection in the notebook process
 
-The rendering setup installs dlib for the depth notebook's Python 3.11 into
-`build/webcam_session/rendering_python`, which the launcher already includes.
+The rendering setup installs dlib for the depth notebook's Python 3.12 into
+`build/webcam_session/rendering_python312`, which the launcher already includes.
 Use `import dlib` and retain `dlib.get_frontal_face_detector()` in a model cell.
-The older `build/webcam_session/dlib_python` build targets Python 3.12 and must
-not be added to this interpreter. Run `rendering/setup.sh` from its parent path
+The older `build/webcam_session/dlib_python` build also targets Python 3.12;
+the launcher supplies the rendering overlay so no manual path change is needed. Run `rendering/setup.sh` from its parent path
 when preparing a new machine; setup checks a direct detector call. No separate
 face process is needed for dlib. The 68-point predictor is needed only for
 landmarks, not for face boxes.
+
+### Python and calibration for new sessions
+
+New depth/rendering and segmentation sessions use Python 3.12, matching the
+people environment and supported cppyy_kit packages. Their launcher selects
+the Pixi `python312` environment. This separate prefix lets an existing 3.11
+interpreter finish without replacing its libraries. A running interpreter must
+be stopped and restarted once to change Python versions. The rendering overlay
+is `build/webcam_session/rendering_python312`; do not mix it with the old 3.11
+`rendering_python` directory.
+
+Reuse `build/webcam_session/calibration_refined.json` for camera 0 at 640 × 360.
+The committed fallback is `rendering/evidence/webcam_calibration_refined.json`.
+It contains the camera matrix and distortion coefficients from 26 views, with
+0.146 pixel fitted reprojection RMS. Check the physical camera and frame mode
+before use; scale intrinsics for resizing and account for cropping. The existing
+`DepthPipeline(calibration=...)` applies cached undistortion and scales the matrix
+to the depth grid. Calibration does not turn relative depth into metric depth.
+
+Verified on 22 October 2026 with Python 3.12.15: direct dlib 20.0.1 detector
+call, cppyy_kit native compilation/call, DA3-Small CUDA inference (252 × 336
+depth), YOLOE CUDA inference (person detection), EdgeSAM mask generation and
+AprilTag detector construction in the segmentation environment, and Viser
+publication of synthetic frames. Existing downloaded model assets were reused.
+These are execution checks, not a new accuracy or throughput benchmark. No
+camera was opened for these migration checks.

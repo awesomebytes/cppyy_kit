@@ -120,6 +120,30 @@ outputs, parameters and dependencies for a later compiled implementation.
 Do not restart or shut down
 the session unless needed or requested; explain any required restart first.
 
+The prepared webcam calibration is build/webcam_session/calibration_refined.json
+(camera 0, 640x360). The committed copy is:
+roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/evidence/webcam_calibration_refined.json
+Reuse it for undistortion and projection when relevant. Check capture mode and
+account for resizing/cropping; calibration alone does not make relative depth metric.
+
+Before implementing native processing, run these commands from the repository
+root using the prepared notebook environment:
+
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit status --environment
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit guide
+pixi run -e python312 -m roscon_uk_2026/next_steps/webcam_session/toolbox/depth/pixi.toml python -m cppyy_kit guide accelerate
+
+For an existing C++ library, also read `python -m cppyy_kit guide bring-library`
+in that same environment. For a relevant kit, use `guide KIT_NAME api` after
+checking that the kit and its native dependencies are available. Read
+cppyy_kit/agent_guides/bring-library.md and docs/COMMON_PATTERNS.md as needed.
+Use these instructions for cached compilation, @cpp array contracts, headers,
+preamble, library paths, nogil, ownership/keep_alive and safe native boundaries.
+Load models and compile/warm kernels once, outside the frame callback. Keep
+native objects and buffers alive for their required lifetime. Measure first-use
+and steady-state costs separately. Reuse existing model bindings; use cppyy_kit
+where a native operation helps the task, rather than adding C++ to every step.
+
 First report session health, then ask me what I want to try.
 ```
 
