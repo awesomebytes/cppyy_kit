@@ -253,7 +253,7 @@ jobs:
             platform: noarch
             build: pyh4616a5c_0
             dependencies: >-
-              python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control
+              python cppyy-kit ros-jazzy-rclcpp-kit ros-jazzy-ros2-control eigen
           - name: ros-jazzy-cv-kit
             version: "0.4.1"
             platform: noarch
@@ -280,7 +280,7 @@ jobs:
               ros-jazzy-nav2-costmap-2d ros-jazzy-nav2-navfn-planner
               ros-jazzy-nav2-smac-planner
               ros-jazzy-nav2-regulated-pure-pursuit-controller
-              ros-jazzy-nav2-msgs
+              ros-jazzy-nav2-msgs ros-jazzy-dwb-core
           - name: ros-jazzy-ompl-kit
             version: "0.4.1"
             platform: noarch
