@@ -53,7 +53,10 @@ so defaults and keyword arguments work and invalid calls raise ``TypeError`` ear
 Keyword-only and variadic parameters are rejected at decoration time.
 
 Unsupported annotations and dtypes raise clear errors. Compose with real libraries
-via ``@cpp(include_paths=..., libraries=...)``.
+via ``@cpp(headers=..., include_paths=..., libraries=...)``.
+``preamble`` adds file-scope C++ before the generated namespace. Explicit
+``link_args`` select the compiled-library path from the first call and require
+enabled caching; compilation errors propagate instead of falling back to Cling.
 
 ``@cpp(nogil=True)`` releases the GIL (``Py_BEGIN_ALLOW_THREADS``) around **only** the
 compiled body. Argument and result marshaling stay under the lock, so plain Python
@@ -341,7 +344,7 @@ class _CppFunc:
     """A ``@cpp``-decorated function: compiles + caches its C++ on first call."""
 
     def __init__(self, fn, name, include_paths, library_paths, libraries, std,
-                 nogil, cached):
+                 nogil, cached, headers, preamble, link_args):
         self._fn = fn
         self._name = name or fn.__name__
         self.__signature__ = inspect.signature(fn)
@@ -353,8 +356,17 @@ class _CppFunc:
                 "parameters (unsupported: %s)." % (self._name, ", ".join(unsupported)))
         self._nogil = bool(nogil)
         self._cached = cached
+        if isinstance(headers, str):
+            raise TypeError("headers must be a sequence of header names")
+        headers = tuple(headers)
+        for header in headers:
+            if not isinstance(header, str) or any(c in header for c in '\n\r<>"'):
+                raise ValueError("headers must contain bare include names")
+        self._preamble = "".join("#include <%s>\n" % h for h in headers) + preamble + "\n"
         self._opts = {"include_paths": tuple(include_paths), "library_paths": tuple(library_paths),
-                      "libraries": tuple(libraries), "std": std}
+                      "libraries": tuple(libraries), "std": std, "link_args": tuple(link_args)}
+        if self._opts["link_args"]:
+            self._opts["compiled_only"] = True
         if self._nogil:
             # The GIL-release wrapper ``#include``s <Python.h>; trampoline=True adds
             # the Python include path (and the harmless libcppyy link) so the cached
@@ -368,7 +380,7 @@ class _CppFunc:
         self._plans = {}
         self._impls = {}
         self._plan = _build_plan(self._name, fn, body, nogil=self._nogil,
-                                 options=self._opts)
+                                 options=self._opts, preamble=self._preamble)
         self._static = all(spec is not None and
                            not (isinstance(spec, _Numeric) and spec.dtype is None)
                            for spec in self._plan["specs"])
@@ -454,7 +466,7 @@ class _CppFunc:
         if plan is None:
             plan = _build_plan(self._name, self._fn, self._body,
                                nogil=self._nogil, specs=specs,
-                               options=self._opts)
+                               options=self._opts, preamble=self._preamble)
             self._plans[plan_key] = plan
         marshaled = []
         for spec, name, arg in zip(specs, plan["params"], values):
@@ -532,7 +544,7 @@ def _nogil_wrapper(ret, entry, real_name, sig, call_args):
     return "%s %s(%s) {\n%s\n}" % (ret, entry, sig, inner)
 
 
-def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
+def _build_plan(name, fn, body, nogil=False, specs=None, options=None, preamble=""):
     ann = getattr(fn, "__annotations__", {})
     params = [p.name for p in inspect.signature(fn).parameters.values()
               if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]
@@ -589,7 +601,7 @@ def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
                            (options or {}).items()))
     spec_text = repr(tuple(_spec_key(s) for s in concrete))
     digest = hashlib.sha256(
-        (name + ret + sig + body + spec_text + settings +
+        (name + ret + sig + body + spec_text + settings + preamble +
          ("|nogil" if nogil else "")).encode()).hexdigest()[:12]
     real_name = "%s_%s" % (name, digest)
     real_def = "%s %s(%s) {\n%s\n%s\n}" % (ret, real_name, sig, "\n".join(injects), body)
@@ -603,7 +615,7 @@ def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
         entry = real_name
         body_src = real_def
         includes = "#include <cstdint>\n#include <cstddef>\n#include <complex>\n"
-    source = "%snamespace cppyy_kit_cpp {\n%s\n}\n" % (includes, body_src)
+    source = "%snamespace cppyy_kit_cpp {\n%s\n}\n" % (includes + preamble, body_src)
     # Bodiless declaration of the entry point cppyy resolves (the kernel stays inside
     # the .so on a cache hit). The wrapper's signature is plain POD -> no Python.h here.
     decls = ("#include <cstdint>\n#include <cstddef>\n#include <complex>\nnamespace cppyy_kit_cpp { %s %s(%s); }\n"
@@ -614,14 +626,21 @@ def _build_plan(name, fn, body, nogil=False, specs=None, options=None):
 
 
 def cpp(func=None, *, name=None, include_paths=(), library_paths=(), libraries=(),
-        std="c++17", nogil=False, cached=True):
+        std="c++17", nogil=False, cached=True, headers=(), preamble="",
+        link_args=()):
     """Decorator. Use bare (``@cpp``) or parameterized
     (``@cpp(libraries=["behaviortree_cpp"])``). See the module docstring.
+
+    ``headers`` contains bare include names, such as ``("Eigen/Core",)``.
+    ``preamble`` supplies file-scope C++ after the includes, before the generated
+    namespace. Both affect the compiled symbol and cache identity.
+    ``link_args`` forwards compiler-driver link options, such as ``-fopenmp``
+    with GCC. These options require the compiled cache path.
 
     ``nogil=True`` releases the GIL around only the compiled body (true parallelism
     from plain Python threads). ``cached=False`` compiles in-memory and skips the
     ``.so`` cache entirely. Use this option for debugging."""
     def decorate(fn):
         return _CppFunc(fn, name, include_paths, library_paths, libraries, std,
-                        nogil, cached)
+                        nogil, cached, headers, preamble, link_args)
     return decorate(func) if func is not None else decorate

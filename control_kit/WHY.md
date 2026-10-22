@@ -1,9 +1,10 @@
 # Why control_kit: Python and C++ ros2_control workflows
 
-`control_kit` lets a Python class derive from ros2_control's
-`ControllerInterface` and run inside a real `controller_manager` in the same
-process. It is useful for prototyping a controller with mock hardware without
-building a plugin package for each change.
+`control_kit` runs Python or compiled C++ implementations of ros2_control's
+`ControllerInterface`. Use a Python implementation to prototype the update law,
+or compile a native controller with `cppyy_kit` so its update calls no Python.
+Both can run inside an in-process `controller_manager`. A reusable plugin bridge also runs a Python law in a separately launched manager;
+the native controller can be exported directly.
 
 Install `ros-jazzy-control-kit` with `pixi add -c https://prefix.dev/awesomebytes -c robostack-jazzy -c conda-forge ros-jazzy-control-kit`.
 See the [Getting Started guide](https://awesomebytes.github.io/cppyy_kit/getting-started/)
@@ -11,6 +12,49 @@ for setup, or the [project repository](https://github.com/awesomebytes/cppyy_kit
 The `control` Pixi environment and `demo-control-python` task below require a
 source checkout. See [SKILL.md](SKILL.md) for API and ordering rules, and
 [REPORT.md](REPORT.md) for implementation details and measurements.
+
+## Python controller in an external manager
+
+The repository includes a [Python position servo](https://github.com/awesomebytes/cppyy_kit/blob/main/control_kit/demos/python_position_controller.py)
+loaded into Gazebo's ros2_control manager through a reusable bridge. Its
+`update(measured_positions, dt)` computes commands in Python. The bridge handles
+ROS interfaces and plugin loading. `cppyy_kit` compiles and caches the bridge,
+and `control_kit` exports the plugin overlay without a per-controller CMake package.
+
+Follow the [external-manager instructions](EXTERNAL_CONTROLLERS.md).
+This requires the source checkout. It is separate from the cross-inherited
+in-process example below. Python allocation and GIL acquisition remain in the
+update path, so this is not a hard real-time controller.
+
+The [admittance example](https://github.com/awesomebytes/cppyy_kit/blob/main/control_kit/demos/python_admittance_controller.py)
+accepts force targets. Its spring dynamics remain Python while a cached
+native Eigen kernel computes the Jacobian and damped inverse-kinematics step.
+
+## Native C++ controller example
+
+This example requires the repository checkout. From this guide's directory:
+
+```bash
+pixi run --manifest-path ../pixi.toml -e control demo-control-native
+```
+
+The demo compiles [PositionServo](https://github.com/awesomebytes/cppyy_kit/blob/main/control_kit/control_kit/native_controller.cpp) through
+`cppyy_kit`, adds an owning C++ instance to the real controller manager, and moves
+two mock joints to `[0.6, -0.35]` radians. It prints `OK` when the maximum measured
+error is below 0.002 rad. All lifecycle methods and `update()` execute C++.
+Python configures the controller and supplies goals; it does not implement the
+update callback.
+
+The controller applies a proportional position step bounded by per-joint speed
+and position limits. Activation starts from measured positions. Invalid target
+arrays are rejected without changing the previous target. The update uses
+preallocated buffers and a nonblocking target handoff. This does not establish
+hard real-time scheduling on the host.
+
+`ControlRig.add_native_controller(controller, name, parameters=...)` retains
+normal C++ shared ownership. The [native helper](https://github.com/awesomebytes/cppyy_kit/blob/main/control_kit/control_kit/native_control.py)
+also exports the cached build as a pluginlib overlay for an external manager.
+See the [external-manager guide](EXTERNAL_CONTROLLERS.md) for plugin export and loading.
 
 ## Python controller example
 
@@ -78,7 +122,7 @@ To add a controller you write, minimum:
 Each change to the control law requires a rebuild and relaunch. This takes longer than
 rerunning a Python script.
 
-## Side-by-side
+## Side-by-side: Python injection
 
 | | stock ros2_control | control_kit |
 |---|---|---|
@@ -105,6 +149,7 @@ in-process `ControllerManager` loop on a stock kernel. See the
 until `SCHED_FIFO` and preemption settings are applied.
 
 **Use a compiled plugin** when a separately launched `controller_manager` must load the
-controller by type name. See REPORT §3, Route B. A prototype can be written in Python
-and then ported to a native C++ plugin with the L2 direct-compile procedure. The interface
-contract is the same.
+controller by type name. `install_native_controller_plugin(prefix)` compiles the
+native position controller and creates its pluginlib overlay. It builds without
+loading the exported plugin into the Python process. The in-process example uses
+a separate build without plugin registration. The controller interface is the same.

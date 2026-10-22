@@ -1,5 +1,11 @@
 # control_kit: writing a Python controller for controller_manager
 
+Current extension: Route B is now implemented as a reusable CPython plugin bridge.
+See the [external-manager guide](EXTERNAL_CONTROLLERS.md) for the callback
+contract and plugin export. The measurements below concern Route A.
+References to Route B not being built describe the original experiment.
+
+
 **Date:** 2026-07-11 · **Env:** pixi `control` (robostack-jazzy + conda-forge),
 `ros-jazzy-ros2-control` (controller_manager / controller_interface / hardware_interface),
 `ros-jazzy-ros2-controllers`, `cppyy 3.5.0`, Python 3.12, linux-64. ROS_DOMAIN_ID=49.

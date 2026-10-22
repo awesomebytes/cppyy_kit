@@ -9,6 +9,11 @@
 set -euxo pipefail
 : "${PKG_NAME:?}" "${PKG_IMPORT:?}" "${PKG_WHERE:?}" "${PKG_VERSION:?}"
 
+package_data='"agent_guides/*.md"'
+if [ "${PKG_IMPORT}" = "control_kit" ] || [ "${PKG_IMPORT}" = "nav2_kit" ]; then
+  package_data+=', "*.hpp", "*.cpp"'
+fi
+
 # Copy canonical documentation in the isolated build source, not the checkout.
 # The core package already carries its task guides under agent_guides/.
 if [ "${PKG_IMPORT}" != "cppyy_kit" ]; then
@@ -21,6 +26,11 @@ if [ "${PKG_IMPORT}" != "cppyy_kit" ]; then
     cp "${kit_source}/WHY.md" "${kit_guides}/overview.md"
   fi
   cp "${kit_source}/SKILL.md" "${kit_guides}/api.md"
+  if [ "${PKG_IMPORT}" = "control_kit" ]; then
+    cp "${kit_source}/EXTERNAL_CONTROLLERS.md" "${kit_guides}/external-controllers.md"
+  elif [ "${PKG_IMPORT}" = "nav2_kit" ]; then
+    cp "${kit_source}/PYTHON_CRITIC.md" "${kit_guides}/python-critic.md"
+  fi
 fi
 
 cat > "${SRC_DIR}/pyproject.toml" <<PYPROJECT
@@ -40,7 +50,7 @@ where = ["${PKG_WHERE}"]
 include = ["${PKG_IMPORT}", "${PKG_IMPORT}.*"]
 
 [tool.setuptools.package-data]
-"${PKG_IMPORT}" = ["agent_guides/*.md"]
+"${PKG_IMPORT}" = [${package_data}]
 PYPROJECT
 
 "${PYTHON}" -m pip install "${SRC_DIR}" --no-deps --no-build-isolation -vv

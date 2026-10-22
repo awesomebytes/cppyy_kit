@@ -214,3 +214,32 @@ already collision-free) and it enters rotate-to-heading near the goal (pass
   (matching `plan_navfn`), so both planners return the same convention.
 - **`warmup()` once** during init for the pure cores; **`warmup_lifecycle()`** for the
   LifecycleNode / Smac / RPP first-use JIT.
+
+
+## Export a Python DWB trajectory critic
+
+This source-checkout path uses the installed DWB headers and libraries. Install `ros-jazzy-dwb-core` in the active environment. Use activated `pixi run` so compiler and library paths match.
+
+```python
+from nav2_kit.python_critic import install_python_critic_plugin
+install_python_critic_plugin("/absolute/path/to/overlay")
+```
+
+Prepend the returned overlay to `AMENT_PREFIX_PATH` before launching Nav2.
+Add a named critic to the DWB `critics` list and set its `.class` to
+`nav2_kit_python::PythonCritic`. Its parameters are `python_module`,
+`python_class`, absolute `python_path`, JSON-object string `python_options`, and
+optional `lookahead_distance` in metres. The normal DWB `.scale` controls its
+contribution. Preserve the other collision and goal critics.
+
+The Python policy implements `configure(options)`,
+`prepare(yaw, path_heading, goal_distance)`, and
+`score(vx, vy, wz, final_heading)`. `prepare` runs once per cycle; `score` runs
+per candidate reaching the critic. Return `None` to reject a candidate, or a
+finite nonnegative score. The bridge converts Python exceptions and invalid
+scores into DWB trajectory errors. Python uses the GIL. Keep callbacks short because they run in the controller
+scoring loop.
+
+See the [source navigation guide](PYTHON_CRITIC.md)
+for configuration and launch ordering. Header and C++ implementation
+files are included in the kit package data.

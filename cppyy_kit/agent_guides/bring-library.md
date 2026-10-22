@@ -12,6 +12,15 @@ manifest and lock. Headers and compatible binary dependencies are needed; a
 Python binding package alone may not supply them. Check the library's existing
 Python bindings before adding an adapter.
 
+Run Python through `pixi run python` or an activated environment so compiler and
+library paths are available. In this repository checkout, select the required
+environment, for example `pixi run -e control python`. On Linux, cppyy_kit native
+startup sets an unset `CXX` to the matching Conda compiler in Python's own prefix
+when that executable exists. This avoids a Cling startup crash when Python is
+launched directly without compiler activation. It preserves an existing `CXX`.
+Use `from cppyy_kit import cppyy` to apply this setup before importing cppyy;
+`import cppyy_kit` alone does not start the native runtime.
+
 ## Load an installed header-only library
 
 For example, an environment containing Eigen headers can run:

@@ -31,6 +31,7 @@ requirements:
     - cppyy-kit ==0.4.1
     - ros-jazzy-rclcpp-kit ==0.4.1
     - ros-jazzy-ros2-control
+    - eigen
 
 tests:
   - script:

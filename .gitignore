@@ -23,3 +23,8 @@ data/
 
 # mkdocs-material build output (M4)
 site/
+
+# Local runtime caches and editor locks
+.cache/
+.~lock.*#
+Interactive_perception.ini

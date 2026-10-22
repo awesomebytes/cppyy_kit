@@ -161,9 +161,12 @@ def _compile(
     code: str,
     declarations: str,
     packages: Iterable[str],
+    include_paths: Iterable[str] = (),
+    library_paths: Iterable[str] = (),
+    libraries: Iterable[str] = (),
 ) -> dict[str, Any]:
-    libraries = ["rclcpp"]
-    libraries.extend(
+    link_libraries = ["rclcpp", *libraries]
+    link_libraries.extend(
         "%s__rosidl_typesupport_cpp" % package
         for package in sorted(set(packages))
     )
@@ -171,9 +174,9 @@ def _compile(
         code,
         decls=declarations,
         name="rclcpp_native_%s" % source_id,
-        include_paths=tuple(sorted(ros2_include_paths())),
-        library_paths=(get_ros2_lib_path(),),
-        libraries=tuple(libraries),
+        include_paths=tuple(sorted(ros2_include_paths())) + tuple(include_paths),
+        library_paths=(get_ros2_lib_path(),) + tuple(library_paths),
+        libraries=tuple(link_libraries),
         directory=_cache_dir(),
     )
 
@@ -447,6 +450,10 @@ def create_fused_pipeline(
     queue_capacity: int = 64,
     output_memory: str = "fresh",
     includes: Iterable[str] = (),
+    include_paths: Iterable[str] = (),
+    library_paths: Iterable[str] = (),
+    libraries: Iterable[str] = (),
+    reliability: str = "reliable",
 ) -> FusedPipeline:
     """Compile an editable subscription-transform-publisher C++ object.
 
@@ -456,7 +463,14 @@ def create_fused_pipeline(
     memory is explicit: ``fresh`` preserves current behavior, ``reuse`` serializes
     access to one persistent output which the transform must fully overwrite, and
     ``loaned`` uses rclcpp loan RAII with its allocator fallback.
+    ``reliability`` controls input reliability; output remains reliable. Extra
+    include paths and libraries support transforms using external C++ libraries.
     """
+    if reliability not in ("reliable", "best_effort"):
+        raise ValueError("reliability must be reliable or best_effort")
+    include_paths = tuple(str(value) for value in include_paths)
+    library_paths = tuple(str(value) for value in library_paths)
+    libraries = tuple(str(value) for value in libraries)
     body = _validate_source(transform_body, "transform_body")
     policy = str(delivery).lower()
     if policy not in _VALID_POLICIES:
@@ -480,6 +494,10 @@ def create_fused_pipeline(
         "delivery": policy,
         "output_memory": memory_policy,
         "includes": extra_headers,
+        "include_paths": include_paths,
+        "library_paths": library_paths,
+        "libraries": libraries,
+        "reliability": reliability,
     }
     source_id = _digest(payload)
     interface = "FusedPipeline_%s" % source_id
@@ -527,6 +545,7 @@ public:
   {
     auto qos = rclcpp::QoS(rclcpp::KeepLast(qos_depth));
     publisher_ = node->create_publisher<%(out_type)s>(output_topic, qos);
+    qos.%(reliability)s();
     subscription_ = node->create_subscription<%(in_type)s>(
       input_topic, qos,
       [this](std::shared_ptr<const %(in_type)s> message) {
@@ -603,6 +622,7 @@ std::shared_ptr<%(interface)s> %(factory)s(
 }
 }
 """ % {
+        "reliability": reliability,
         "implementation": implementation,
         "interface": interface,
         "in_type": in_type,
@@ -627,6 +647,9 @@ std::shared_ptr<%(interface)s> %(factory)s(
         code=code,
         declarations=declarations,
         packages=(in_package, out_package),
+        include_paths=include_paths,
+        library_paths=library_paths,
+        libraries=libraries,
     )
     impl = getattr(cppyy.gbl.rclcpp_kit_native_pipeline, factory)(
         node,

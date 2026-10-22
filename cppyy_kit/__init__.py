@@ -30,6 +30,7 @@ import contextlib
 import inspect
 import importlib as _importlib
 import os
+import platform
 import subprocess
 import sys
 import threading as _threading
@@ -65,6 +66,15 @@ def _ensure_runtime():
     with _RUNTIME_LOCK:
         if _RUNTIME_READY:
             return
+        # Conda's Linux Cling build needs CXX during startup. Directly running
+        # an environment's Python skips compiler activation and can segfault in
+        # AddHostArguments. Use only the compiler from this Python's prefix.
+        if "CXX" not in os.environ and sys.platform.startswith("linux"):
+            compiler = os.path.join(
+                sys.prefix, "bin", platform.machine() + "-conda-linux-gnu-c++")
+            if (os.path.isdir(os.path.join(sys.prefix, "conda-meta"))
+                    and os.path.isfile(compiler) and os.access(compiler, os.X_OK)):
+                os.environ.setdefault("CXX", compiler)
         # Cling reads CLING_STANDARD_PCH during its first import.
         autopch.setup()
         cppyy = _importlib.import_module("cppyy")

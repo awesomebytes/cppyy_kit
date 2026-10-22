@@ -694,6 +694,20 @@ def sum_sq(data: NDArray[np.float64]) -> float:
 
 sum_sq(np.array([1, 2, 3], dtype=np.float64))  # 14.0
 ```
+For library code, `@cpp(headers=["Eigen/Core"], include_paths=[eigen_include])`
+puts includes at file scope, outside the generated namespace. `preamble=` adds
+file-scope declarations or preprocessor checks. Both participate in symbol and
+cache identity. `link_args=["-fopenmp"]` supports GCC OpenMP kernels and selects
+shared-library compilation from the first call. Combine it with `nogil=True`
+when other Python threads should progress during the native computation.
+
+Explicit link arguments require enabled caching. With these arguments, build
+failures propagate instead of falling back to Cling. At the lower level,
+`cppdef_cached(..., compiled_only=True)` selects this same behavior and also
+requires `decls`. Without explicit link arguments, the existing JIT/cache path
+remains available. These options are source additions after the 0.4.1 release.
+See the repository [Eigen/OpenMP example](https://github.com/awesomebytes/cppyy_kit/blob/main/examples/particle_scores/README.md).
+
 - **Input annotation forms.** `cppyy_kit.numpy_types` groups NumPy typing names:
   `NDArray`, `ArrayLike`, `DTypeLike`, `ConstNDArray`, and supported numeric
   scalar dtype names. For explicit array dtypes in `@cpp`, use `NDArray[T]` for

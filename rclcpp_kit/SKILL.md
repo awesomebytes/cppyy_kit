@@ -250,3 +250,16 @@ service protocol rather than mirroring it.
 - **Symbols resolve by soname at call time.** If you reach past the kit into another
   ROS library, load it first with `cppyy_kit.load_libraries([...])`. See
   [library loading](https://awesomebytes.github.io/cppyy_kit/docs/COMMON_PATTERNS/).
+
+## External libraries in fused pipelines
+
+`create_fused_pipeline` accepts `include_paths`, `library_paths` and `libraries`
+in addition to `includes`. Use these for a transform that calls an external C++
+library. The values participate in source/cache identity. The headers and ABI-
+compatible libraries must be available in the active environment.
+
+Set `reliability="best_effort"` for sensor-data subscriptions, or keep the default
+`"reliable"`. This controls the input subscription; the output publisher remains
+reliable. Other strings raise `ValueError`. For example, add
+`includes=["Eigen/Core"], include_paths=[eigen_include], reliability="best_effort"`
+to an existing fused pipeline. These are source additions after release 0.4.1.
