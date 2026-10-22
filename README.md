@@ -93,6 +93,15 @@ use; later runs can load it from the compile cache.
 For independent work in Python threads, `@cpp(nogil=True)` releases Python's
 interpreter lock during the C++ function. See the [parallel example](examples/parallel_demo/parallel_demo.py).
 
+Use `@cpp(headers=["Eigen/Core"], include_paths=[eigen_include])` to include
+library headers. `preamble=` adds file-scope C++ before the generated function.
+For GCC OpenMP kernels, add `link_args=["-fopenmp"]` and a parallel-loop pragma.
+Explicit link arguments use the compiled library from the first call and require
+enabled caching. Combine this with `nogil=True` to let Python threads progress
+while native workers compute. See the runnable [particle-scoring example and
+usage](examples/particle_scores/README.md) (repository checkout).
+
+
 ## Choose a library
 
 Install the kit for the library you want to use. Each linked page shows its

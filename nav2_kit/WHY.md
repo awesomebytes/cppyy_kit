@@ -24,6 +24,18 @@ limitations, see [REPORT.md](REPORT.md).
 
 ---
 
+## Python policy inside the existing Nav2 controller
+
+The source checkout also provides a reusable DWB trajectory-critic plugin.
+`nav2_kit.python_critic.install_python_critic_plugin(prefix)` compiles and exports
+its bridge through cppyy_kit. A Python class scores or rejects trajectories
+inside Nav2's real `controller_server`; DWB retains command selection and its
+stock critics. This route requires DWB and a running Nav2 stack.
+
+The [forward-camera policy](https://github.com/awesomebytes/cppyy_kit/blob/main/nav2_kit/demos/forward_camera_policy.py) constrains travel
+direction. Follow the [plugin guide](PYTHON_CRITIC.md) to load a policy.
+Python candidate scoring takes the GIL and provides no real-time guarantee.
+
 ## Plan on a grid with Nav2's C++ NavFn
 
 The included example builds a costmap from a NumPy occupancy grid, with a wall
@@ -98,12 +110,6 @@ planner_server:
 - **A prototype-to-native path.** Prototype with cppyy JIT, then compile the planner
   as a Nav2 plugin when needed. The Nav2 calls stay the same.
 
-**What stock Nav2 buys that this does not.** A production stack: lifecycle
-management, dynamic costmap layers from live sensors, tf/localization, recovery
-behaviors, the full planner/controller/behavior-tree ecosystem, and the operational
-maturity of the servers. nav2_kit is for *composing and prototyping from the cores*,
-not for running a robot in production.
-
 ---
 
 ## Supported components and limitations
@@ -140,16 +146,3 @@ robot. It publishes `nav_msgs/OccupancyGrid` +
 combinations reach the goal; `--planner smac --controller rpp` runs Nav2's real Smac 2D
 planner **and** its real RegulatedPurePursuit controller, both C++, driven from one
 self-contained Python file.
-
----
-
-## Limits
-
-nav2_kit is deliberately **not a Nav2 stack**: no lifecycle *servers*/manager, no
-pluginlib-by-name loading, no tf tree/localization, no dynamic obstacle/inflation
-layers, no recovery behaviors. The kit exposes `Costmap2D` + `NavFn` and Smac **2D** +
-the RPP controller (via an in-process `LifecycleNode` +
-plugin-free `Costmap2DROS`, still no servers). Smac **Hybrid-A\*** remains out (a flaky
-OMPL-under-Cling crash). Loading a **Python
-planner/controller plugin *inside* a real Nav2 server**, is a separate planned spike.
-See [REPORT.md](REPORT.md) §6 for the full list.

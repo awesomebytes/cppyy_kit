@@ -1,5 +1,12 @@
 # nav2_kit: use Nav2 algorithm cores from Python
 
+Current extension: the source checkout now includes a pluginlib DWB critic
+bridge which invokes a Python policy inside `controller_server`. The historical
+algorithm-core probes below describe a different execution path. See the
+[navigation experiment](PYTHON_CRITIC.md) for
+integration details and evidence.
+
+
 **Date:** 2026-07-11 (lifecycle support added 2026-07-12) · **Env:** pixi `nav2`
 (robostack-jazzy + conda-forge), `ros-jazzy-nav2-costmap-2d`,
 `ros-jazzy-nav2-navfn-planner`, `ros-jazzy-nav2-smac-planner`,
@@ -407,3 +414,17 @@ run **before** rclcpp shutdown. rclcpp_kit registers `shutdown_rclcpp()` first (
 runs LAST, LIFO), so the kit tracks each constructed lifecycle object and a
 `register_teardown` callback drops them ahead of it. Verified: the 14-test suite and all
 four demo combinations exit 0 (`Cleaning up` → `Destroying bond` → `Destroying`).
+
+
+## Navigation extension maintenance fixes
+
+The plugin work exposed an existing `plan_navfn` ownership error: it tried to
+attach a lifetime pin to a plain NumPy array after copying the path into owned
+storage. The pin was unnecessary and raised TypeError. The helper now returns
+the copied array directly. The existing `demo-nav2-plan` ran successfully with
+118 waypoints through the synthetic doorway after this fix.
+
+The package now imports cppyy through cppyy_kit so compiler fallback and PCH
+setup run before Cling initialization. Plugin builds still use activated Pixi
+environments. The package recipe includes DWB core and ships the plugin's C++
+source/header files; no new package release was built or published here.

@@ -56,9 +56,8 @@ Notes / limits (v0):
 """
 import os
 
-import cppyy
-
 import cppyy_kit
+from cppyy_kit import cppyy
 
 # The two .so whose symbols the cores resolve against. NavFn's setCost/getCharMap
 # are undefined in libnav2_navfn_planner.so (they live in the costmap core), so both
@@ -256,9 +255,7 @@ def plan_navfn(costmap, start, goal, allow_unknown=True):
         return None
     path = np.empty((n, 2), dtype=np.float32)
     _glue().copy_path(nav, path.ctypes.data)
-    # Pin the NavFn on the returned array so it can't be collected mid-extraction
-    # (defensive; copy_path already ran, but keeps the pattern explicit).
-    cppyy_kit.keep_alive(path, nav)
+    # copy_path has finished; this array owns its storage independently of NavFn.
     return path
 
 

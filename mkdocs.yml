@@ -117,6 +117,7 @@ nav:
       - Why: nav2_kit/WHY.md
       - Report: nav2_kit/REPORT.md
       - Skill: nav2_kit/SKILL.md
+      - Python DWB critic: nav2_kit/PYTHON_CRITIC.md
     - moveit_kit:
       - Why: moveit_kit/WHY.md
       - Report: moveit_kit/REPORT.md
@@ -125,6 +126,7 @@ nav:
       - Why: control_kit/WHY.md
       - Report: control_kit/REPORT.md
       - Skill: control_kit/SKILL.md
+      - External controllers: control_kit/EXTERNAL_CONTROLLERS.md
     - cv_kit:
       - Why: cv_kit/WHY.md
       - Report: cv_kit/REPORT.md

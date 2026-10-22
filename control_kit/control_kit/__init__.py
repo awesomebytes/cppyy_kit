@@ -1,6 +1,9 @@
 """
-control_kit lets you write a ros2_control controller in Python and run it inside the
-real ``controller_manager`` through cppyy.
+control_kit loads ros2_control controllers into a real ``controller_manager``
+through cppyy. ``control_kit.native_control`` compiles a C++ position servo through
+``cppyy_kit.cppdef_cached``. Its lifecycle and update methods execute native C++.
+Python configures the controller and submits targets. The cross-language path below
+also supports controllers whose update method runs in Python.
 
 ros2_control does not define a Python controller API. A controller is a C++ class
 derived from ``controller_interface::ControllerInterface``, exported through a
@@ -73,10 +76,11 @@ Minimal Python controller (mirrors the C++ tutorial's names 1:1)::
 See docs/control_kit/REPORT.md for the capability matrix, route analysis, and
 real-time measurements. See CONTROL_KIT.md for the API reference.
 """
+import math
 import os
 import time
 
-import cppyy
+from cppyy_kit import cppyy
 
 import cppyy_kit
 
@@ -160,6 +164,18 @@ controller_interface::ControllerInterfaceBaseSharedPtr add_py_controller(
   spec.info.name = name;
   spec.info.type = type;
   spec.c = sp;
+  return cm->add_controller(spec);
+}
+
+// Preserve the owning shared_ptr control block of a compiled controller.
+controller_interface::ControllerInterfaceBaseSharedPtr add_native_controller(
+    std::shared_ptr<controller_manager::ControllerManager> cm,
+    controller_interface::ControllerInterfaceBaseSharedPtr controller,
+    const std::string & name, const std::string & type) {
+  controller_manager::ControllerSpec spec;
+  spec.info.name = name;
+  spec.info.type = type;
+  spec.c = controller;
   return cm->add_controller(spec);
 }
 
@@ -471,6 +487,23 @@ class ControlRig:
         self._kept.append(controller)
         return added
 
+    def add_native_controller(self, controller, name,
+                              type_label="control_kit_native/PositionServo",
+                              parameters=None):
+        """Add an owning C++ shared_ptr before activation or update.
+
+        The manager shares ownership with the factory result. Parameters are set
+        after initialization and before configure.
+        """
+        self._guard_before_loop("add_native_controller")
+        bringup_control()
+        added = _CK.add_native_controller(self.cm, controller, name, type_label)
+        if not added:
+            raise cppyy_kit.CppyyKitError("failed to add native controller: " + name)
+        if parameters:
+            self.set_controller_parameters(added, parameters)
+        return added
+
     def set_controller_parameters(self, controller, parameters):
         """Set parameters on a loaded controller's own lifecycle node (a dict of
         name -> scalar / homogeneous list). The controller's ParamListener already
@@ -655,3 +688,63 @@ def warmup():
         rig._teardown()
 
     cppyy_kit.warmup(_thunk)
+
+
+def make_position_task_controller(joints, update_positions):
+    """Create a real ControllerInterface for a Python position task callback.
+
+    ``update_positions(state_dict, dt_seconds)`` returns commanded joint positions.
+    This adapter claims position command and state interfaces. It can run in an
+    in-process ControlRig. It cannot inject into another process's controller manager.
+    The callback runs on the manager update thread and must finish within its period.
+    """
+    bringup_control()
+    names = tuple(joints)
+    if not names or len(set(names)) != len(names):
+        raise ValueError("Joint names must be nonempty and unique")
+
+    class PositionTaskController(_CI.ControllerInterface):
+        def __init__(self):
+            super().__init__()
+            self.last_error = None
+            self.cycles = 0
+
+        def on_init(self):
+            return CallbackReturn.SUCCESS
+
+        def command_interface_configuration(self):
+            return interface_config([name + "/position" for name in names])
+
+        def state_interface_configuration(self):
+            return interface_config([name + "/position" for name in names])
+
+        def on_configure(self, previous):
+            return CallbackReturn.SUCCESS
+
+        def on_activate(self, previous):
+            return CallbackReturn.SUCCESS
+
+        def on_deactivate(self, previous):
+            return CallbackReturn.SUCCESS
+
+        def update(self, stamp, period):
+            state = {name: read_state(self, i) for i, name in enumerate(names)}
+            try:
+                if not all(math.isfinite(value) for value in state.values()):
+                    raise ValueError("Position feedback contains a nonfinite value")
+                target = update_positions(state, float(period.seconds()))
+                values = [float(target.get(name, state[name])) for name in names]
+                if not all(math.isfinite(value) for value in values):
+                    raise ValueError("Task callback returned a nonfinite position")
+                for i, value in enumerate(values):
+                    write_command(self, i, value)
+                self.cycles += 1
+                return return_type.OK
+            except Exception as error:
+                self.last_error = str(error)
+                if all(math.isfinite(value) for value in state.values()):
+                    for i, name in enumerate(names):
+                        write_command(self, i, state[name])
+                return return_type.ERROR
+
+    return PositionTaskController()

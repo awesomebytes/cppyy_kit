@@ -156,7 +156,7 @@ def _load(so_path):
 
 def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(),
                   libraries=(), link_args=(), defines=(), std="c++17",
-                  trampoline=False, directory=None, cached=True):
+                  trampoline=False, directory=None, cached=True, compiled_only=False):
     """Compile ``code`` into a ``.so`` and load the library in later runs. This
     avoids cppyy's first-use call-wrapper JIT for the cached functions.
 
@@ -173,6 +173,11 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     ``std`` shape the compile (mirror the direct-compile recipe). ``name`` gives the
     artifact a readable filename stem. Returns a dict describing what happened
     (``{"cached": bool, "so": path, ...}``) for tests/tracing.
+
+    ``compiled_only=True`` builds and loads the shared library even on the first
+    call. It requires declarations and enabled caching, and propagates build
+    errors instead of falling back to Cling. Use it for compiler-driver options
+    which Cling cannot reproduce, such as OpenMP.
 
     ``cached=False`` (for debugging) bypasses the .so cache for this call.
     It uses in-memory ``cppyy.cppdef(code)`` without reading or writing the cache.
@@ -200,11 +205,8 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
     # toggle (disable_caching), or the CPPYY_KIT_NO_CACHE=1 env kill-switch all make
     # this behave like cppyy.cppdef: no .so read and no .so write. See
     # docs/FREEZE.md, "Debugging: turning the caches off".
-    if cached is False or _caching_off():
-        cppyy.cppdef(code)
-        trace.record("cppdef_cached", name=name, cached=False, reason="disabled",
-                     duration_ms=_ms())
-        return {"cached": False, "reason": "disabled", "so": None}
+    if compiled_only and (not decls or cached is False or _caching_off()):
+        raise ValueError("compiled_only requires declarations and enabled caching")
 
     include_paths = tuple(include_paths)
     library_paths = tuple(library_paths)
@@ -226,6 +228,13 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
         if path not in _INCLUDED:
             _INCLUDED.add(path)
             cppyy.add_include_path(path)
+
+    if cached is False or _caching_off():
+        cppyy.cppdef(code)
+        trace.record("cppdef_cached", name=name, cached=False, reason="disabled",
+                     duration_ms=_ms())
+        return {"cached": False, "reason": "disabled", "so": None}
+
 
     # No declarations -> nothing to split, so we cannot avoid Cling emitting the
     # bodies. Stay a correct drop-in: plain cppdef, note once that decls caches it.
@@ -273,6 +282,14 @@ def cppdef_cached(code, decls=None, name=None, include_paths=(), library_paths=(
                     _LOADED.discard(so_path)
                 else:
                     return _apply_loaded()
+
+            if compiled_only:
+                _build(code, decls, so_path, header_path, meta_path,
+                       include_paths, library_paths, libraries, link_args, defines, std, name)
+                _load(so_path)
+                result = _apply_loaded()
+                result.update(cached=False, reason="miss-built-loaded")
+                return result
 
             # Define in Cling for this process, then build for later processes.
             cppyy.cppdef(code)

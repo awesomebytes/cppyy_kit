@@ -236,6 +236,8 @@ demo-control-rig = "python control_kit/demos/d01_mock_rig.py"
 # Run a Python PD controller derived from
 # controller_interface::ControllerInterface in the standard read/update/write loop.
 demo-control-python = "python control_kit/demos/d02_python_controller.py"
+# Compile a native C++ controller with cppyy_kit and run it in controller_manager.
+demo-control-native = "python control_kit/demos/d03_native_controller.py"
 # Update-loop rate/jitter/missed-deadline numbers, Python controller vs C++ baseline.
 bench-control = "python control_kit/demos/bench_control_loop.py"
 # control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
