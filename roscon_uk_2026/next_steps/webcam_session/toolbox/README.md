@@ -142,3 +142,20 @@ Installing `compilers` alone did not set `CXX` in this fresh environment and
 Cling startup crashed. The locked environment and Pixi launcher include the
 working activation. Models were downloaded from official upstream sources;
 model licenses are linked from their guides.
+
+## Face detection choice for the live demo
+
+Start with dlib for a face-detection request on this webcam. The presenter
+preferred it over YuNet in the earlier exercise. This is a session preference,
+not a general accuracy or speed benchmark. The saved implementation in
+`../notebook.py` retains `dlib.get_frontal_face_detector()` and the 68-point
+predictor; read that implementation for the exact preprocessing and parameters.
+The local dlib installation is `build/webcam_session/dlib_python` and the
+predictor is `roscon_uk_2026/next_steps/webcam_session/models/shape_predictor_68_face_landmarks.dat`.
+Resolve these paths from the repository root. Check availability and measure
+processing rate in the active interpreter. Load the predictor only if landmarks
+are requested. MediaPipe remains the prepared option for dense face/iris, hand
+and body landmarks. Explain a change of backend if dlib cannot meet the task.
+
+For the fresh Viser notebook, add processing controls only when code consumes
+them. Point-size, cloud fitting and ray selection appear only with a point cloud.

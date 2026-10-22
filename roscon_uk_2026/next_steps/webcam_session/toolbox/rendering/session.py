@@ -21,7 +21,7 @@ class Workbench:
         self.state = {}
         self._condition = threading.Condition()
         self._stop = threading.Event()
-        self._controls = dict(threshold=0.5, label='object', enabled=True)
+        self._controls = {}
         self._processor = lambda frame, state, controls: frame
         self._revision = 0
         self._raw = None

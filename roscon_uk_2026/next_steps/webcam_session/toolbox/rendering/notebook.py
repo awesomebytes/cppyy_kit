@@ -42,6 +42,7 @@ def processing(workbench):
                         (16, 32), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         return frame
 
+    workbench.configure(threshold=0.5, label="object", enabled=True)
     workbench.set_processor(process)
     return
 

@@ -41,15 +41,18 @@ class ImGuiViewer:
     def _gui(self):
         controls = self.workbench.controls()
         _, self._mode = imgui.combo('View', self._mode, ['Raw camera', 'Processed'])
-        changed, threshold = imgui.slider_float('Threshold', controls['threshold'], 0., 1.)
-        if changed:
-            self.workbench.configure(threshold=threshold)
-        changed, label = imgui.input_text('Label', controls['label'])
-        if changed:
-            self.workbench.configure(label=label)
-        changed, enabled = imgui.checkbox('Enabled', controls['enabled'])
-        if changed:
-            self.workbench.configure(enabled=enabled)
+        if 'threshold' in controls:
+            changed, threshold = imgui.slider_float('Threshold', controls['threshold'], 0., 1.)
+            if changed:
+                self.workbench.configure(threshold=threshold)
+        if 'label' in controls:
+            changed, label = imgui.input_text('Label', controls['label'])
+            if changed:
+                self.workbench.configure(label=label)
+        if 'enabled' in controls:
+            changed, enabled = imgui.checkbox('Enabled', controls['enabled'])
+            if changed:
+                self.workbench.configure(enabled=enabled)
         if self._draw:
             try:
                 self._draw(self.workbench)

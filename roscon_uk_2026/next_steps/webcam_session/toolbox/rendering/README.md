@@ -79,6 +79,8 @@ or demonstrate the completed depth_notebook experiment. Keep camera and viewer
 owners alive. Retain models once loaded. Inspect cell dependencies before
 editing. Save accepted edits through marimo code mode, not external writes to
 the active notebook. Stop/join workers before replacing their runtime cells.
+For face detection, start with dlib as described in toolbox/README.md.
+Add controls only when the current processing uses them.
 Use cppyy_kit where a native computation benefits the chosen task.
 
 After each change, inspect output, errors and rates. Preserve useful examples

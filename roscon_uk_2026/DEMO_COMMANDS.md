@@ -96,7 +96,9 @@ tab open; the viewer sits beside this terminal.
 
 Start with the plain webcam stream. Ask me what I want to implement, then
 build and refine it interactively from my requests. Use the prepared model
-environments when useful. Use cppyy_kit for computations that benefit from
+environments when useful. For face detection, start with dlib as described in
+toolbox/README.md; it was preferred in the earlier webcam exercise. Add UI
+controls only when the current processing uses them. Use cppyy_kit for computations that benefit from
 native code; explain briefly where it helps.
 
 Keep the camera, viewer and loaded models alive between processing edits.

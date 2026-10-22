@@ -27,7 +27,8 @@ class ViserViewer:
         self._control_handles = {}
         self.error = None
         self.server.scene.set_up_direction('-y')
-        self.server.scene.add_frame('/origin', axes_length=0.2, axes_radius=0.005)
+        self._origin = self.server.scene.add_frame(
+            '/origin', axes_length=0.2, axes_radius=0.005, visible=False)
         self.image = self.server.gui.add_image(
             np.zeros((240, 320, 3), dtype=np.uint8), label='Camera', format='jpeg')
         self.depth_image = self.server.gui.add_image(
@@ -36,11 +37,11 @@ class ViserViewer:
         self.mode = self.server.gui.add_dropdown(
             'Image source', ('processed', 'raw'), initial_value='processed')
         self.point_size = self.server.gui.add_slider(
-            'Point size', min=0.001, max=0.05, step=0.001, initial_value=0.005)
-        fit = self.server.gui.add_button('Fit cloud')
-        fit.on_click(lambda event: self._connect(event.client) if event.client else None)
-        self.pick = self.server.gui.add_checkbox('Pick a 3D ray', initial_value=False)
-        self._folder = self.server.gui.add_folder('Processing controls')
+            'Point size', min=0.001, max=0.05, step=0.001, initial_value=0.005, visible=False)
+        self.fit = self.server.gui.add_button('Fit cloud', visible=False)
+        self.fit.on_click(lambda event: self._connect(event.client) if event.client else None)
+        self.pick = self.server.gui.add_checkbox('Pick a 3D ray', initial_value=False, visible=False)
+        self._folder = self.server.gui.add_folder('Processing controls', visible=False)
         self._status = self.server.gui.add_markdown('Waiting for a frame.')
         self._sync_controls()
         self.server.on_client_connect(self._connect)
@@ -69,7 +70,11 @@ class ViserViewer:
             self.pick.value = False
 
     def _sync_controls(self):
-        for name, value in self.workbench.controls().items():
+        controls = self.workbench.controls()
+        for name in list(self._control_handles):
+            if name not in controls:
+                self._control_handles.pop(name).remove()
+        for name, value in controls.items():
             if not isinstance(value, (bool, int, float, str)):
                 continue
             handle = self._control_handles.get(name)
@@ -88,6 +93,8 @@ class ViserViewer:
                 self._control_handles[name] = handle
             elif handle.value != value:
                 handle.value = value
+
+        self._folder.visible = bool(self._control_handles)
 
     def _control_callback(self, name):
         def changed(event):
@@ -119,7 +126,11 @@ class ViserViewer:
                 self._counts['depth_updates'] += 1
             published = True
         points = None if processed is None else processed.get('points')
-        if points is None or len(points) == 0:
+        has_cloud = points is not None and len(points) > 0
+        for handle in (self.point_size, self.fit, self.pick, self._origin):
+            handle.visible = has_cloud
+        if not has_cloud:
+            self.pick.value = False
             if self._cloud is not None:
                 self._cloud.visible = False
         elif processed['sequence'] != getattr(self, '_cloud_sequence', None):
