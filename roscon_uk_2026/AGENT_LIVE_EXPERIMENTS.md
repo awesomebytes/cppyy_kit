@@ -469,3 +469,33 @@ ahead-of-time native artifact + ordinary Python/UI or ROS host
 The reusable contribution from cppyy_kit would be native integration, resource
 ownership, explicit preparation and the export contract. Existing notebook and
 agent tools can provide the editor, session transport and general UI machinery.
+
+## Package direction agreed on 22 October: interpreter_kit
+
+`interpreter_kit`: a persistent Python interpreter for agents, notebooks and live
+applications. Extract the reusable session interface into an optional package.
+Keep marimo, live viewers and model integrations outside the core cppyy_kit
+installation requirements. Session operations should cover starting/reconnecting,
+executing code, inspecting results/errors, displaying output and clean shutdown.
+
+A working interactive experiment should produce an explicit reference capture:
+
+- Working Python and C++ source, configuration and dependency/model identities.
+- Selected sample inputs and expected outputs, with comparison tolerances.
+- Instructions to reproduce the result in a fresh process.
+- The Python API to preserve and measured startup, latency, throughput and memory.
+
+A saved notebook alone is insufficient: stale definitions, device handles and
+background threads can make its visible source differ from its running state.
+Capture a selected working version and verify its replay against the samples.
+
+The capture becomes the implementation brief for the same agent or a new agent
+conversation. The final implementation may use C++ with nanobind/pybind11, Rust
+with PyO3, or another suitable implementation. Choose using dependencies and
+measurements. Preserve behavior and the Python API, not the prototype language.
+
+Acceptance checks: replay the reference samples within their tolerances, verify
+the Python API, and measure startup, steady-state performance and memory in a
+fresh process without cppyy/Cling. This is a proposed package workflow; the next
+implementation task is extracting the persistent-session code and the capture
+interface from the existing demos.
