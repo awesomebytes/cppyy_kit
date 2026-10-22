@@ -3,7 +3,7 @@
 Use the reusable adapter when an existing Gazebo or `controller_manager` process
 must load your Python control law. The adapter handles pluginlib, lifecycle calls,
 ROS commands and joint interfaces. Your class returns ordered position commands.
-These APIs are source additions after release 0.4.1; the package recipe includes
+These APIs are available in release 0.4.2; the package recipe includes
 all native sources for the next build. Use the activated Linux ROS Jazzy compiler
 and Python environment for both the build and host process.
 

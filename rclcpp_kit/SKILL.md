@@ -262,4 +262,4 @@ Set `reliability="best_effort"` for sensor-data subscriptions, or keep the defau
 `"reliable"`. This controls the input subscription; the output publisher remains
 reliable. Other strings raise `ValueError`. For example, add
 `includes=["Eigen/Core"], include_paths=[eigen_include], reliability="best_effort"`
-to an existing fused pipeline. These are source additions after release 0.4.1.
+to an existing fused pipeline. These are available in release 0.4.2.

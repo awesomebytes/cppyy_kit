@@ -2,8 +2,8 @@
 
 Use this adapter to score DWB trajectories inside the existing Nav2
 `controller_server`. Keep the robot's map, sensors, planner, collision critics
-and normal launch configuration. These APIs are source additions after release
-0.4.1. The next package build includes DWB and the adapter's C++ sources. Build
+and normal launch configuration. These APIs are available in release
+0.4.2. The next package build includes DWB and the adapter's C++ sources. Build
 and launch from the same activated Linux ROS Jazzy/Python environment.
 
 In your launch setup, before starting `controller_server`:
