@@ -79,7 +79,9 @@ or demonstrate the completed depth_notebook experiment. Keep camera and viewer
 owners alive. Retain models once loaded. Inspect cell dependencies before
 editing. Save accepted edits through marimo code mode, not external writes to
 the active notebook. Stop/join workers before replacing their runtime cells.
-For face detection, start with dlib as described in toolbox/README.md.
+Inspect installed modules, local assets and retained models first. For face
+detection, start with dlib as described in toolbox/README.md; keep all other
+backends available and change when the task or measurements justify it.
 Add controls only when the current processing uses them.
 Use cppyy_kit where a native computation benefits the chosen task.
 
@@ -255,3 +257,14 @@ See [the live DA3 comparison](DEPTH_COMPARISON.md) for RGB, depth and cloud in o
 See [phone calibration and Metric-Large measurements](CALIBRATION.md) for the checkerboard workflow, downloaded model and capture-rate investigation.
 
 Persistent calibrated Viser session verification: processing-cell replacement preserved process, session and state identities, with no errors. A five-second sample measured approximately 30 captured and processed frames/s. A separate ten-second hardware-accelerated browser sample measured 27.0 RGB and 27.3 depth image loads/s, with 60.1 animation callbacks/s. These are separate software measurements, not screen latency. See [session evidence](evidence/side_by_side_verified.json) and [browser evidence](evidence/side_by_side_browser_30fps.json).
+
+### Face detection in the notebook process
+
+The rendering setup installs dlib for the depth notebook's Python 3.11 into
+`build/webcam_session/rendering_python`, which the launcher already includes.
+Use `import dlib` and retain `dlib.get_frontal_face_detector()` in a model cell.
+The older `build/webcam_session/dlib_python` build targets Python 3.12 and must
+not be added to this interpreter. Run `rendering/setup.sh` from its parent path
+when preparing a new machine; setup checks a direct detector call. No separate
+face process is needed for dlib. The 68-point predictor is needed only for
+landmarks, not for face boxes.

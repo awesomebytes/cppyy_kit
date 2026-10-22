@@ -7,3 +7,4 @@ markdown-it-py==4.2.0
 mdurl==0.1.2
 pygments==2.21.0
 polyscope==2.6.1
+dlib==20.0.1

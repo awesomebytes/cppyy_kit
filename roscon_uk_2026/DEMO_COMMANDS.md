@@ -97,7 +97,14 @@ tab open; the viewer sits beside this terminal.
 Start with the plain webcam stream. Ask me what I want to implement, then
 build and refine it interactively from my requests. Use the prepared model
 environments when useful. For face detection, start with dlib as described in
-toolbox/README.md; it was preferred in the earlier webcam exercise. Add UI
+toolbox/README.md; it was preferred in the earlier webcam exercise.
+Inspect the active Python version, installed packages, downloaded assets and
+retained model objects before choosing an implementation. Prefer direct dlib
+from the prepared rendering environment for face boxes. Keep YuNet, MediaPipe
+and other backends available; switch when the task or measured results justify
+it. Reuse local assets before downloading or building anything. A subprocess
+is a fallback for an actual compatibility need, not the default. Never load a
+native extension built for a different Python ABI. Add UI
 controls only when the current processing uses them. Use cppyy_kit for computations that benefit from
 native code; explain briefly where it helps.
 
