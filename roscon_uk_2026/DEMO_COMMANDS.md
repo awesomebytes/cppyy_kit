@@ -70,10 +70,49 @@ xdg-open http://127.0.0.1:8768
 ```
 
 You should see the webcam stream. Put the agent terminal on the left and the
-viewer on the right. Keep marimo open in another tab. Use the agent prompt in the
-[Presentation section of the rendering guide](next_steps/webcam_session/toolbox/rendering/README.md#presentation-fresh-live-coding-with-an-mcap-fallback).
-Ask for a task, inspect the result, then refine it. The agent should edit the
-processing cells while keeping the camera, viewer and loaded models alive.
+viewer on the right. Keep marimo open in another tab.
+
+### Paste this into the new Codex session
+
+```text
+We are doing a live webcam coding demo. Work in:
+/home/sapf/playground/ros_project/cppyy_kit
+
+Read the Presentation section of:
+roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/README.md
+Also read:
+roscon_uk_2026/next_steps/webcam_session/toolbox/README.md
+
+Use this notebook as the starting point:
+roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/live_notebook.py
+
+First check whether marimo is running at http://127.0.0.1:2721.
+If it is not, start it using the documented command. If it is running,
+connect to that session. Discover its session ID using notebook.sh pair
+notebook list --url http://127.0.0.1:2721. Run the cells if needed and verify
+that the camera and Viser viewer at http://127.0.0.1:8768 are healthy.
+Tell me if I need to open or run something in the browser. Keep the marimo
+tab open; the viewer sits beside this terminal.
+
+Start with the plain webcam stream. Ask me what I want to implement, then
+build and refine it interactively from my requests. Use the prepared model
+environments when useful. Use cppyy_kit for computations that benefit from
+native code; explain briefly where it helps.
+
+Keep the camera, viewer and loaded models alive between processing edits.
+Do not start a second camera owner. Inspect cell dependencies before editing.
+Use marimo pair/code mode to save cell edits, not external file writes to the
+active notebook. Stop and join workers before replacing their runtime cells.
+Check live output, errors and capture/processing rates after each change.
+Do not load the completed depth_notebook experiment as the demo.
+
+Save the accepted working code. On request, capture representative inputs,
+outputs, parameters and dependencies for a later compiled implementation.
+Do not restart or shut down
+the session unless needed or requested; explain any required restart first.
+
+First report session health, then ask me what I want to try.
+```
 
 To list the live notebook sessions for agent access:
 
@@ -121,3 +160,26 @@ image region and 3D cluster, then refine the result. The recording stays fixed
 while the analysis changes. Save accepted edits and press Ctrl-C in the marimo
 terminal to stop. See the [notebook guide](next_steps/agent_session/NOTEBOOK.md)
 for session access and data setup.
+
+### Paste this if switching the agent to the MCAP fallback
+
+```text
+Switch to the recorded robot-data demo. Work in:
+/home/sapf/playground/ros_project/cppyy_kit
+
+Read roscon_uk_2026/next_steps/agent_session/NOTEBOOK.md.
+Use roscon_uk_2026/next_steps/agent_session/notebook.py and the local recording
+in data/table_scene. Connect to marimo at http://127.0.0.1:2718, or start it
+using the documented command if absent. Discover its session and run the
+cells if needed. Tell me if I need to open or run something in the browser.
+
+Inspect the current scene, notebook code and controls. It starts with a
+red-object selection. Ask me which block/color to find. Show the selected
+image region and corresponding 3D cluster, then refine the selection from
+my feedback. Keep the loaded data alive while changing analysis. Use marimo
+pair/code mode for saved edits and check outputs/errors after each change.
+Use cppyy_kit where native processing helps. Preserve accepted source,
+parameters and representative input/output examples for later reuse.
+
+First report session/data health, then ask me which object to find.
+```
