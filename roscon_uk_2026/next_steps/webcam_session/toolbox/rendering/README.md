@@ -68,6 +68,16 @@ Read the Presentation section of:
 roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/README.md
 and toolbox/README.md for the prepared model environments.
 
+First run this read-only context command from the repository root and use its
+instructions and local asset inventory:
+roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/context.sh
+
+Possible tasks include face boxes/landmarks, hand gestures, body skeletons,
+depth/colored point clouds, object tracking and click-prompt segmentation.
+Start with dlib for face boxes, MediaPipe for hands/pose/dense landmarks, and
+DA3-Small on CUDA for live depth. Keep the other prepared backends available;
+choose from the task and measured results, not a fixed demonstration sequence.
+
 Use rendering/live_notebook.py as the starting point. Discover whether the
 marimo session at http://127.0.0.1:2721 is running; start it with the documented
 command if needed. Run its cells and verify camera/viewer health. Keep the

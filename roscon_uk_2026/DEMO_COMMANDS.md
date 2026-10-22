@@ -83,6 +83,16 @@ roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/README.md
 Also read:
 roscon_uk_2026/next_steps/webcam_session/toolbox/README.md
 
+First run this read-only context command from the repository root and use its
+instructions and local asset inventory:
+roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/context.sh
+
+Possible tasks include face boxes/landmarks, hand gestures, body skeletons,
+depth/colored point clouds, object tracking and click-prompt segmentation.
+Start with dlib for face boxes, MediaPipe for hands/pose/dense landmarks, and
+DA3-Small on CUDA for live depth. Keep the other prepared backends available;
+choose from the task and measured results, not a fixed demonstration sequence.
+
 Use this notebook as the starting point:
 roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/live_notebook.py
 
