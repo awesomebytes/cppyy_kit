@@ -3,5 +3,5 @@ set -euxo pipefail
 export PKG_NAME="wbc-kit"
 export PKG_IMPORT="wbc_kit"
 export PKG_WHERE="wbc_kit"
-export PKG_VERSION="0.4.1"
+export PKG_VERSION="0.4.2"
 bash "${SRC_DIR}/recipe/_build_kit.sh"
