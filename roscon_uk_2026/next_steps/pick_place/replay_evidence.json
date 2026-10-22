@@ -1,0 +1,111 @@
+{
+  "input": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/pick_place/sample.npz",
+  "input_points": 307200,
+  "finite_points": 147131,
+  "frame": "base_link",
+  "table_height_m": 0.943422794342041,
+  "objects": [
+    {
+      "center_base_m": [
+        0.8794617056846619,
+        -0.1960349828004837,
+        0.9787567853927612
+      ],
+      "size_visible_m": [
+        0.04968428611755371,
+        0.047499507665634155,
+        0.030086815357208252
+      ],
+      "color": "yellow",
+      "silhouette": "polygon",
+      "pixel": [
+        410.70697836139016,
+        295.5301045846485
+      ],
+      "bbox": [
+        398,
+        286,
+        27,
+        28
+      ]
+    },
+    {
+      "center_base_m": [
+        0.8765733242034912,
+        -8.689891546964645e-05,
+        0.9885995388031006
+      ],
+      "size_visible_m": [
+        0.03276163339614868,
+        0.03751683980226517,
+        0.05040532350540161
+      ],
+      "color": "blue",
+      "silhouette": "polygon",
+      "pixel": [
+        327.514573172377,
+        291.979828173967
+      ],
+      "bbox": [
+        319,
+        279,
+        17,
+        34
+      ]
+    },
+    {
+      "center_base_m": [
+        0.8787094354629517,
+        0.19112646579742432,
+        0.976479172706604
+      ],
+      "size_visible_m": [
+        0.04317253828048706,
+        0.041828349232673645,
+        0.02464592456817627
+      ],
+      "color": "red",
+      "silhouette": "polygon",
+      "pixel": [
+        246.21993335971933,
+        296.5615000153193
+      ],
+      "bbox": [
+        234,
+        288,
+        23,
+        25
+      ]
+    }
+  ],
+  "image_contours": 87,
+  "native_loading_and_first_calls_ms": 1904.6715350123122,
+  "warmed": {
+    "calls": 30,
+    "cloud": {
+      "median_ms": 2.2137289633974433,
+      "p95_ms": 2.4483872111886735
+    },
+    "image": {
+      "median_ms": 4.193316504824907,
+      "p95_ms": 5.414684698916969
+    },
+    "scope": "cloud receives transformed finite points; image receives full RGB frame"
+  },
+  "voxel_comparison": {
+    "input_points": 49695,
+    "leaf_m": 0.00800000037997961,
+    "numpy_points": 9181,
+    "pcl_points": 9181,
+    "max_centroid_difference_m": 2.384185791015625e-07,
+    "numpy": {
+      "median_ms": 15.344069455750287,
+      "p95_ms": 15.635634370846674
+    },
+    "pcl": {
+      "median_ms": 1.3085384853184223,
+      "p95_ms": 1.4333075785543767
+    },
+    "scope": "same finite ROI input; NumPy arrays in and out; PCL copies included"
+  }
+}

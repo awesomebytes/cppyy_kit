@@ -1,0 +1,47 @@
+{
+  "input": "sample.npz, simulator frame recorded 2026-10-19",
+  "environment": "pixi run -e pick-place",
+  "manual_checks": [
+    "Synthetic horizontal plane and one object produce one cluster centered at (0.79818, 0, 0.06000) m.",
+    "NaN and infinity rejected: 10730 input points, 10728 finite points.",
+    "Empty cloud and arrays with negative strides processed safely.",
+    "Synthetic red square labels quadrilateral; blue disk labels round.",
+    "Native ROS cloud filter preserves frame and timestamp; cloud and image JSON parse successfully.",
+    "Both ROS wrapper headers load after rclcpp bringup in a clean process."
+  ],
+  "timing": {
+    "calls": 30,
+    "condition": "warmed processing, includes NumPy bridge, excludes startup and compilation",
+    "cloud_median_ms": 3.260538971517235,
+    "cloud_p95_ms": 3.8335243938490744,
+    "image_median_ms": 4.784601042047143,
+    "image_p95_ms": 6.166048685554414
+  },
+  "cloud": {
+    "input_points": 307200,
+    "finite_points": 147131,
+    "frame": "base_link after supplied sample transform",
+    "roi_lower_m": [0.5, -0.5, 0.85],
+    "roi_upper_m": [1.3, 0.5, 1.3],
+    "leaf_m": 0.008,
+    "voxel_points": 9181,
+    "plane_inliers": 8438,
+    "table_height_at_frame_origin_m": 0.943422794342041,
+    "object_centers_m": [
+      [0.8794617056846619, -0.1960349828004837, 0.9787567853927612],
+      [0.8765733242034912, -0.00008689891546964645, 0.9885995388031006],
+      [0.8787094354629517, 0.19112646579742432, 0.976479172706604]
+    ],
+    "limitation": "Bounds describe visible voxelized surfaces above the plane clearance; no hidden or contact surface reconstruction."
+  },
+  "image": {
+    "size_pixels": [640, 480],
+    "encoding": "rgb8",
+    "target_bboxes_xywh": {
+      "red": [234, 288, 23, 25],
+      "blue": [319, 279, 17, 34],
+      "yellow": [398, 286, 27, 28]
+    },
+    "limitation": "Color thresholds also detect background texture contours. Associate projected cloud centers with image masks before selecting a physical object. Shape labels describe silhouettes."
+  }
+}

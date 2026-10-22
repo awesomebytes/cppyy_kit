@@ -1,0 +1,68 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.25.2",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "e23ace7a39452bce9357cb1f181f387d",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "08d286a3b49801c03547a7115c0b6431",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/85f43dcf0b5537e9.pch\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "915b71010bb54c77529e6a482e7bf008",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "application/json": "{\"frames\": 44834, \"revision\": 7, \"label\": \"YuNet rotated views\", \"processing_ms\": \"text/plain+float:51.21953901834786\", \"error\": null, \"uptime_s\": \"text/plain+float:1622.8639079339337\", \"updated_unix\": \"text/plain+float:1792528604.4243994\", \"pid\": 72145, \"session_id\": 123312333882144, \"state_id\": 123312333946432, \"installed_revision\": 8, \"running\": true}"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "eadea3974314cf889999d0ba2889c7ba",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"interactive-webcam\">Interactive webcam</h1>\n<span class=\"paragraph\"><a href=\"http://127.0.0.1:8766\" rel=\"noopener noreferrer\" target=\"_blank\">Open the continuous viewer in a separate window</a>.\nEdit the processing cell through marimo or the agent interface. The camera cell\nowns the persistent session. Inspect <code>camera.status()</code> and <code>camera.snapshot()</code>.\nCall <code>camera.close()</code> when finished.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}

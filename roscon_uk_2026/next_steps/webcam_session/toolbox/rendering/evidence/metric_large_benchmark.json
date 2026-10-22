@@ -1,0 +1,32 @@
+{
+  "input": "synthetic black 640x480, batch 1; throughput smoke check, not quality evaluation",
+  "samples": 30,
+  "results": [
+    {
+      "resolution": 336,
+      "output_shape": [
+        1,
+        252,
+        336
+      ],
+      "median_ms": 37.87980997003615,
+      "p95_ms": 47.05804205150343,
+      "peak_allocated_mb": 2101.204992,
+      "peak_reserved_mb": 2246.049792,
+      "intrinsics": null
+    },
+    {
+      "resolution": 504,
+      "output_shape": [
+        1,
+        378,
+        504
+      ],
+      "median_ms": 65.07880351273343,
+      "p95_ms": 68.86940330732614,
+      "peak_allocated_mb": 2267.0336,
+      "peak_reserved_mb": 2600.46848,
+      "intrinsics": null
+    }
+  ]
+}

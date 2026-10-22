@@ -1,0 +1,204 @@
+{
+  "urdf": "roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/robot_description.urdf",
+  "urdf_sha256": "de34cde28a7a93d18af8919be17b673e1c4cd9933290526753fe3c3e3ea19466",
+  "units": "metres, radians, seconds",
+  "method": "executed probes, no test files",
+  "obstacle_probes": {
+    "sphere": {
+      "initial_clearance_m": 0.07823062499999996,
+      "minimum_observed_clearance_m": 0.04000776021011633,
+      "configured_margin_m": 0.04,
+      "mean_step_ms": 7.853428460657597
+    },
+    "capsule": {
+      "initial_clearance_m": 0.07823062499999996,
+      "minimum_observed_clearance_m": 0.040014949249575424,
+      "configured_margin_m": 0.04,
+      "mean_step_ms": 16.48241759976372
+    },
+    "box": {
+      "initial_clearance_m": 0.07823062499999996,
+      "minimum_observed_clearance_m": 0.04000790157875596,
+      "configured_margin_m": 0.04,
+      "mean_step_ms": 14.724772570189089
+    }
+  },
+  "position_only": {
+    "initial_error_m": 0.036055512754639925,
+    "final_error_m": 2.616384697235025e-05,
+    "mean_step_ms": 0.5337271699681878,
+    "steps": 100
+  },
+  "orientation_only": {
+    "initial_error_rad": 3.0313587768388808,
+    "final_error_rad": 0.0003073878440847811,
+    "steps": 120
+  },
+  "ros2_control": {
+    "configured": true,
+    "activated": true,
+    "callbacks": 101,
+    "duration_s": 5,
+    "rate_hz": 20,
+    "final_error_m": 2.6916912038687524e-05,
+    "callback_error": null
+  },
+  "live_measured_servo": {
+    "commanded_world_z_increment_m": 0.015,
+    "wall_s": 8,
+    "feedback_cycles": 142,
+    "initial_xyz": [
+      -2.85859169,
+      1.71469454,
+      0.83582423
+    ],
+    "final_xyz": [
+      -2.85862684,
+      1.71426373,
+      0.84927245
+    ],
+    "final_error_m": 0.0016108482556084626,
+    "base_enabled": false
+  },
+  "live_fk_tf_max_difference_m": 7.64129793e-07,
+  "limitations": [
+    "Weighted preferences, not strict task hierarchy",
+    "Sampled conservative arm and grasp segments only",
+    "No self-collision, base, torso or environment map collision checks",
+    "Local gradients can stall and require feasible approach selection",
+    "Native simulator trajectory controllers run in an external controller manager"
+  ],
+  "original_probe_parameters": {
+    "gain": 2,
+    "damping": 0.03
+  },
+  "tuning_probe": {
+    "current_defaults": {
+      "gain": 4,
+      "damping": 0.003
+    },
+    "small_orientation_increment_rad": 0.15,
+    "position_tolerance_m": 0.003,
+    "orientation_tolerance_rad": 0.01,
+    "previous_defaults": {
+      "convergence_sim_s": 1.75,
+      "position_error_m": 0.0013348925667180105,
+      "orientation_error_rad": 0.009374575472289695
+    },
+    "current_defaults_result": {
+      "convergence_sim_s": 0.65,
+      "position_error_m": 0.000167095780183761,
+      "orientation_error_rad": 0.009053331458672691
+    },
+    "vertical_lift_m": 0.42,
+    "vertical_position_tolerance_m": 0.008,
+    "previous_lift_convergence_sim_s": 3.95,
+    "current_lift_convergence_sim_s": 3.05,
+    "warning": "High stationary topdown targets stalled under all probed dampings; lower damping does not solve geometric feasibility or local minima."
+  },
+  "offline_staged_route": {
+    "configuration": "nominal ready arms, torso 0.20m, base [-2.65728,1.35038,pi/2]",
+    "integration": "perfect position following, dt=0.05 seconds, gain=4, damping=.003",
+    "topdown_xyzw": [
+      0.5,
+      0.5,
+      -0.5,
+      0.5
+    ],
+    "grasp_target_xyz": [
+      -2.84998,
+      2.22909,
+      1.0488
+    ],
+    "stages": [
+      {
+        "name": "rotate_near",
+        "target_z_m": 1.0,
+        "sim_s": 9.65,
+        "position_error_m": 0.009527206905708829,
+        "orientation_error_rad": 0.01653198426964941,
+        "minimum_grasp_z_m": 0.5817812655058409
+      },
+      {
+        "name": "lift_near",
+        "target_z_m": 1.1988,
+        "sim_s": 1.8,
+        "position_error_m": 0.008428157011918838,
+        "orientation_error_rad": 0.015136225627903352
+      },
+      {
+        "name": "translate_approach",
+        "target_z_m": 1.1988,
+        "sim_s": 4.95,
+        "position_error_m": 0.0098706506847346,
+        "orientation_error_rad": 0.03286846694841037
+      },
+      {
+        "name": "descend",
+        "sim_s": 0.75,
+        "position_error_m": 0.00897449932008639,
+        "orientation_error_rad": 0.009837682969486505
+      },
+      {
+        "name": "lift_object",
+        "sim_s": 0.65,
+        "position_error_m": 0.009107978605990451,
+        "orientation_error_rad": 0.008632143814363698
+      },
+      {
+        "name": "carry",
+        "sim_s": 1.0,
+        "position_error_m": 0.009958308129133227,
+        "orientation_error_rad": 0.026655136851400824
+      },
+      {
+        "name": "place",
+        "sim_s": 0.65,
+        "position_error_m": 0.008484333994297653,
+        "orientation_error_rad": 0.007672064253955035
+      },
+      {
+        "name": "retreat",
+        "sim_s": 1.7,
+        "position_error_m": 0.00994761690409283,
+        "orientation_error_rad": 0.031820899999594573
+      }
+    ],
+    "limitations": [
+      "No object dynamics or grasp validation in this probe",
+      "No full robot collision checks",
+      "Base Y upper bound is a demo workspace constraint, not general obstacle avoidance",
+      "Requires nominal initial branch; elevated first branches stalled"
+    ],
+    "base_y_upper_bound_m": 1.6,
+    "maximum_observed_base_y_m": 1.6,
+    "final_base_pose": [
+      -2.6961920827936066,
+      1.6,
+      1.0048732607245696
+    ],
+    "minimum_approach_grasp_z_over_table_m": 1.142574438319102
+  },
+  "optional_handover_probe": {
+    "method": "offline nominal FK integration, exact current prepare and interpolated move geometry, base_y <=1.60m, config yaw captured after both prepares",
+    "right_topdown_xyzw": [
+      0.5,
+      0.5,
+      -0.5,
+      0.5
+    ],
+    "both_prepares_converged": true,
+    "right_prepare_rotate_sim_s": 10.6,
+    "right_prepare_lift_sim_s": 1.95,
+    "left_pick_after_both_prepares_converged": true,
+    "handover_converged": false,
+    "failed_stage": "handover_present waypoint 3 of 16",
+    "final_position_error_m": 0.03730265079109245,
+    "final_orientation_error_rad": 0.14081100189279314,
+    "limitations": [
+      "No self-collision checking",
+      "No object dynamics or contact validation",
+      "Optional handover is experimental and not established by this work"
+    ]
+  }
+}

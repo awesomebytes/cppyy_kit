@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.18)
+project(sum_example LANGUAGES CXX)
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(pybind11 CONFIG REQUIRED)
+pybind11_add_module(_native bindings.cpp kernel.cpp)

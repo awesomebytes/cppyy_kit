@@ -1,0 +1,88 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Camera cloud
+      Enabled: true
+      Topic:
+        Value: /head_front_camera/depth/color/points
+        Reliability Policy: Best Effort
+        Durability Policy: Volatile
+        Depth: 1
+      Color Transformer: RGB8
+      Position Transformer: XYZ
+      Size (Pixels): 2
+      Style: Points
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Filtered objects
+      Enabled: true
+      Topic:
+        Value: /agent_session/filtered_points
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+      Color Transformer: FlatColor
+      Color: 20; 255; 60
+      Position Transformer: XYZ
+      Size (Pixels): 5
+      Style: Points
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Visible object bounds
+      Enabled: true
+      Topic:
+        Value: /agent_session/objects
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Name: RGB overlay
+      Enabled: true
+      Topic:
+        Value: /agent_session/overlay
+        Reliability Policy: Reliable
+        Durability Policy: Transient Local
+        Depth: 1
+      Min Value: 0
+      Max Value: 1
+      Normalize Range: true
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 35; 38; 44
+    Fixed Frame: base_link
+    Frame Rate: 15
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Name: Current View
+      Distance: 1.25
+      Focal Point:
+        X: 0.88
+        Y: 0
+        Z: 0.94
+      Pitch: 0.6
+      Yaw: 3.14
+      Target Frame: base_link
+      Near Clip Distance: 0.01
+      Value: Orbit (rviz_default_plugins)
+Window Geometry:
+  Height: 900
+  Width: 1400
+  X: 0
+  Y: 0

@@ -1,0 +1,388 @@
+{
+  "selected": {
+    "center": [
+      -2.849978,
+      2.2290874,
+      1.0533767
+    ],
+    "size": [
+      0.044955254,
+      0.043172836,
+      0.023249984
+    ],
+    "minimum": [
+      -2.8724556,
+      2.2075009,
+      1.0417517
+    ],
+    "maximum": [
+      -2.8275003,
+      2.2506738,
+      1.0650017
+    ],
+    "points": 69,
+    "color": "red",
+    "shape": "polygon",
+    "table_height": 1.0166045,
+    "frame_id": "odom",
+    "pixel": [
+      245.54280933484404,
+      296.28026567913145
+    ],
+    "image_bbox": [
+      234,
+      288,
+      23,
+      25
+    ],
+    "name": "red_cube"
+  },
+  "success": true,
+  "mode": "contact",
+  "stage": "complete",
+  "message": "Measured object lift and placement completed",
+  "handover": false,
+  "holding_side": null,
+  "attachment_active": false,
+  "measurements": {
+    "contact_lift_m": 0.09395168152547617,
+    "contact_follow_error_m": 0.0310558579439858,
+    "placement_error_m": 0.03530952381767002
+  },
+  "moves": [
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009789684859777764,
+      "orientation_error_rad": 0.028736378488272592,
+      "cycles": 1238,
+      "wall_s": 63.17919058795087
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00974578493474515,
+      "orientation_error_rad": 0.028571176719187873,
+      "cycles": 203,
+      "wall_s": 10.347203152952716
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024730042776992683,
+      "orientation_error_rad": 0.0023973168850774506,
+      "cycles": 11,
+      "wall_s": 0.5635841969633475
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024441199536256175,
+      "orientation_error_rad": 0.006135575087237253,
+      "cycles": 22,
+      "wall_s": 1.1218813660088927
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024626308813288252,
+      "orientation_error_rad": 0.00451603959209446,
+      "cycles": 28,
+      "wall_s": 1.4231944949133322
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024393834750608818,
+      "orientation_error_rad": 0.002791566479214991,
+      "cycles": 30,
+      "wall_s": 1.5328459501033649
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02489394229288261,
+      "orientation_error_rad": 0.002423141368161291,
+      "cycles": 29,
+      "wall_s": 1.487357854959555
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024268636472252487,
+      "orientation_error_rad": 0.0028657026185145004,
+      "cycles": 30,
+      "wall_s": 1.52694476605393
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024909775972323998,
+      "orientation_error_rad": 0.005025153122627675,
+      "cycles": 26,
+      "wall_s": 1.332289754995145
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02458556689226417,
+      "orientation_error_rad": 0.018788686488608493,
+      "cycles": 36,
+      "wall_s": 1.836072406033054
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024285915468079903,
+      "orientation_error_rad": 0.033238202436705076,
+      "cycles": 38,
+      "wall_s": 1.9341265339171514
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024905341218529633,
+      "orientation_error_rad": 0.04448834759528285,
+      "cycles": 42,
+      "wall_s": 2.146206842036918
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02474427519213849,
+      "orientation_error_rad": 0.05096300895218411,
+      "cycles": 45,
+      "wall_s": 2.2967638020636514
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.0248886592975248,
+      "orientation_error_rad": 0.05981559631819559,
+      "cycles": 46,
+      "wall_s": 2.3508970600087196
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009871469360061192,
+      "orientation_error_rad": 0.02914682929459389,
+      "cycles": 161,
+      "wall_s": 8.218596641090699
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02428345408571141,
+      "orientation_error_rad": 0.0019874352305890206,
+      "cycles": 11,
+      "wall_s": 0.5627793319290504
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024675550894259827,
+      "orientation_error_rad": 0.0006477557827126464,
+      "cycles": 25,
+      "wall_s": 1.2737101969541982
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024237080757896753,
+      "orientation_error_rad": 0.0012511812083150576,
+      "cycles": 25,
+      "wall_s": 1.2745423279702663
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009822304969809032,
+      "orientation_error_rad": 0.0010615561203849856,
+      "cycles": 52,
+      "wall_s": 2.6556489400099963
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024068227407978843,
+      "orientation_error_rad": 0.0013530675567341476,
+      "cycles": 15,
+      "wall_s": 0.7676429130369797
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024315641016293462,
+      "orientation_error_rad": 0.0052861156236025,
+      "cycles": 31,
+      "wall_s": 1.578475397080183
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009916150755089307,
+      "orientation_error_rad": 0.0035713049936136865,
+      "cycles": 54,
+      "wall_s": 2.75703003606759
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02422063532861432,
+      "orientation_error_rad": 0.001000119251525957,
+      "cycles": 8,
+      "wall_s": 0.40904166805557907
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024465672285943263,
+      "orientation_error_rad": 0.004219624605217181,
+      "cycles": 20,
+      "wall_s": 1.0173940350068733
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.023587783051983512,
+      "orientation_error_rad": 0.00888362780282921,
+      "cycles": 15,
+      "wall_s": 0.7685767729999498
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02449479592996046,
+      "orientation_error_rad": 0.012587414216965308,
+      "cycles": 12,
+      "wall_s": 0.6156841380288824
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009987859765317072,
+      "orientation_error_rad": 0.02359983933766427,
+      "cycles": 115,
+      "wall_s": 5.8621796279912814
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02461221416543854,
+      "orientation_error_rad": 0.0024481719407584775,
+      "cycles": 13,
+      "wall_s": 0.6648263309616596
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02497710193041759,
+      "orientation_error_rad": 0.0019256769625081143,
+      "cycles": 29,
+      "wall_s": 1.4765628880122676
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024284570441591713,
+      "orientation_error_rad": 0.0033475568770124278,
+      "cycles": 28,
+      "wall_s": 1.4268915670691058
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00973242174185207,
+      "orientation_error_rad": 0.0020040772174366246,
+      "cycles": 58,
+      "wall_s": 2.9615074889734387
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024994814078880438,
+      "orientation_error_rad": 0.0014598500337461857,
+      "cycles": 10,
+      "wall_s": 0.5092237920034677
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024784710975825425,
+      "orientation_error_rad": 0.00607070599239301,
+      "cycles": 26,
+      "wall_s": 1.3276515540201217
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024608571743591122,
+      "orientation_error_rad": 0.008283150672603956,
+      "cycles": 29,
+      "wall_s": 1.4807554190047085
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009989655766671822,
+      "orientation_error_rad": 0.016288419378309667,
+      "cycles": 65,
+      "wall_s": 3.31740408600308
+    }
+  ],
+  "process_timing_s": {
+    "real": 142.53,
+    "user": 77.14,
+    "sys": 19.09
+  },
+  "process_exit_code": 0,
+  "distributed_shutdown": [
+    {
+      "event": "stopped",
+      "stage": "cluster",
+      "startup_s": 2.972951047006063,
+      "warm_wall_s": 135.92904635996092,
+      "warm_cpu_s": 2.858463299,
+      "cpu_cores": 0.02102908374292829,
+      "peak_rss_kib": 745512,
+      "joined_shutdown": true,
+      "executor_exceptions": 0,
+      "stages": {
+        "cluster": {
+          "received": 1741,
+          "processed": 1741,
+          "published": 1741,
+          "dropped": 0,
+          "coalesced": 0,
+          "exceptions": 0,
+          "python_boundary_crossings": 0,
+          "output_instances": 1741,
+          "middleware_loaned_messages": 0,
+          "allocator_fallbacks": 0,
+          "compile_cache_hits": 1,
+          "compile_cache_misses": 0
+        }
+      }
+    },
+    {
+      "event": "stopped",
+      "stage": "image",
+      "startup_s": 2.7903482649708167,
+      "warm_wall_s": 136.1074910700554,
+      "warm_cpu_s": 7.174618743000001,
+      "cpu_cores": 0.05271288660597805,
+      "peak_rss_kib": 727180,
+      "joined_shutdown": true,
+      "executor_exceptions": 0,
+      "stages": {
+        "image": {
+          "received": 1870,
+          "processed": 1870,
+          "published": 1870,
+          "dropped": 0,
+          "coalesced": 0,
+          "exceptions": 0,
+          "python_boundary_crossings": 0,
+          "output_instances": 1870,
+          "middleware_loaned_messages": 0,
+          "allocator_fallbacks": 0,
+          "compile_cache_hits": 1,
+          "compile_cache_misses": 0
+        }
+      }
+    },
+    {
+      "event": "stopped",
+      "stage": "filter",
+      "startup_s": 4.444773119990714,
+      "warm_wall_s": 134.45301369100343,
+      "warm_cpu_s": 35.210035181,
+      "cpu_cores": 0.2618761321476871,
+      "peak_rss_kib": 918128,
+      "joined_shutdown": true,
+      "executor_exceptions": 0,
+      "stages": {
+        "filter": {
+          "received": 1742,
+          "processed": 1742,
+          "published": 1742,
+          "dropped": 0,
+          "coalesced": 0,
+          "exceptions": 0,
+          "python_boundary_crossings": 0,
+          "output_instances": 1742,
+          "middleware_loaned_messages": 0,
+          "allocator_fallbacks": 0,
+          "compile_cache_hits": 1,
+          "compile_cache_misses": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,292 @@
+{
+  "controller": "placo",
+  "selected": {
+    "center": [
+      -2.8497925,
+      2.2293086,
+      1.0542479
+    ],
+    "size": [
+      0.044592142,
+      0.043615818,
+      0.021501303
+    ],
+    "minimum": [
+      -2.8720884,
+      2.2075007,
+      1.0434972
+    ],
+    "maximum": [
+      -2.8274963,
+      2.2511165,
+      1.0649985
+    ],
+    "points": 68,
+    "color": "red",
+    "shape": "quadrilateral",
+    "table_height": 1.0172315,
+    "frame_id": "odom",
+    "pixel": [
+      245.71962960819687,
+      297.9950493397955
+    ],
+    "image_bbox": [
+      234,
+      290,
+      23,
+      25
+    ],
+    "name": "red_cube"
+  },
+  "success": false,
+  "mode": "contact",
+  "stage": "retreat",
+  "message": "QPError: Problem: Infeasible QP (check your hard inequality constraints)",
+  "handover": false,
+  "holding_side": null,
+  "attachment_active": false,
+  "measurements": {
+    "contact_lift_m": 0.09535349741318444,
+    "contact_follow_error_m": 0.027650070174177394
+  },
+  "moves": [
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009974687706068268,
+      "orientation_error_rad": 0.004594201219603565,
+      "cycles": 85,
+      "wall_s": 4.342315262998454
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009870318584701936,
+      "orientation_error_rad": 0.0444021834832982,
+      "cycles": 1007,
+      "wall_s": 51.40373586595524
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00992403235008261,
+      "orientation_error_rad": 0.03168581971127502,
+      "cycles": 220,
+      "wall_s": 11.23036350903567
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024006252304671214,
+      "orientation_error_rad": 0.003043386077782559,
+      "cycles": 14,
+      "wall_s": 0.7154431460658088
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024949589436774684,
+      "orientation_error_rad": 0.007421249272462911,
+      "cycles": 20,
+      "wall_s": 1.0256798740010709
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02490414335108073,
+      "orientation_error_rad": 0.009746776674182809,
+      "cycles": 19,
+      "wall_s": 0.9727761639514938
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02391827158852041,
+      "orientation_error_rad": 0.011617573168208413,
+      "cycles": 22,
+      "wall_s": 1.124871060019359
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02497924177691259,
+      "orientation_error_rad": 0.013122667476399459,
+      "cycles": 20,
+      "wall_s": 1.0254228740232065
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.0249951649787172,
+      "orientation_error_rad": 0.014348284760693577,
+      "cycles": 19,
+      "wall_s": 0.9702277269680053
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02428818633513753,
+      "orientation_error_rad": 0.014610136912035589,
+      "cycles": 18,
+      "wall_s": 0.9229617299279198
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.023830600762645416,
+      "orientation_error_rad": 0.01519929589588341,
+      "cycles": 19,
+      "wall_s": 0.9742137269349769
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024946197360463447,
+      "orientation_error_rad": 0.01631634263879081,
+      "cycles": 17,
+      "wall_s": 0.8636022919090465
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02446445435958877,
+      "orientation_error_rad": 0.017275662323972447,
+      "cycles": 18,
+      "wall_s": 0.9175556360278279
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024292013310863482,
+      "orientation_error_rad": 0.018159926934478213,
+      "cycles": 16,
+      "wall_s": 0.8150476479204372
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024253037172695637,
+      "orientation_error_rad": 0.018904861303783015,
+      "cycles": 15,
+      "wall_s": 0.7639140050159767
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009739738273312452,
+      "orientation_error_rad": 0.015925618196215196,
+      "cycles": 31,
+      "wall_s": 1.5822638849494979
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024330812893649533,
+      "orientation_error_rad": 0.0014014875775434953,
+      "cycles": 17,
+      "wall_s": 0.8618096159771085
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024419317345260788,
+      "orientation_error_rad": 0.004205206961669207,
+      "cycles": 31,
+      "wall_s": 1.5721666309982538
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024811634254797463,
+      "orientation_error_rad": 0.0052027840536733126,
+      "cycles": 32,
+      "wall_s": 1.6349813139531761
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00971353660163017,
+      "orientation_error_rad": 0.003006216685321564,
+      "cycles": 64,
+      "wall_s": 3.262736225966364
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024852445511199257,
+      "orientation_error_rad": 0.002257010936806943,
+      "cycles": 19,
+      "wall_s": 0.9715670299483463
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024919798609363324,
+      "orientation_error_rad": 0.005945900987333092,
+      "cycles": 34,
+      "wall_s": 1.733782085007988
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009720534511347313,
+      "orientation_error_rad": 0.003981220496081336,
+      "cycles": 61,
+      "wall_s": 3.1155990780098364
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02467825318047386,
+      "orientation_error_rad": 0.0009519917796722664,
+      "cycles": 8,
+      "wall_s": 0.41045944299548864
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02464206803153712,
+      "orientation_error_rad": 0.002817989170196662,
+      "cycles": 24,
+      "wall_s": 1.2231675720540807
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024951900325101344,
+      "orientation_error_rad": 0.004922736905834685,
+      "cycles": 21,
+      "wall_s": 1.0691338380565867
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02395826245534889,
+      "orientation_error_rad": 0.00621937653340019,
+      "cycles": 22,
+      "wall_s": 1.118547625024803
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009872144605948383,
+      "orientation_error_rad": 0.004953324259624451,
+      "cycles": 49,
+      "wall_s": 2.505815534037538
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024749373686040018,
+      "orientation_error_rad": 0.0016156890778175087,
+      "cycles": 13,
+      "wall_s": 0.662927821977064
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024761552759524068,
+      "orientation_error_rad": 0.005177338850640449,
+      "cycles": 34,
+      "wall_s": 1.737382410094142
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024915641222756985,
+      "orientation_error_rad": 0.0059082278271813966,
+      "cycles": 37,
+      "wall_s": 1.8868895069463179
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009920606770505012,
+      "orientation_error_rad": 0.0033042257390112424,
+      "cycles": 66,
+      "wall_s": 3.3674029770772904
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02468865421737037,
+      "orientation_error_rad": 0.0016954332391771981,
+      "cycles": 17,
+      "wall_s": 0.8728462680010125
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024484048171022815,
+      "orientation_error_rad": 0.004469555257589495,
+      "cycles": 31,
+      "wall_s": 1.5841832789592445
+    }
+  ]
+}

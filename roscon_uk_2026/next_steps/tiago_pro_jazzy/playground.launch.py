@@ -80,7 +80,7 @@ def setup(context):
                    'torso_controller', 'head_controller', 'wrist_left_ft_broadcaster',
                    'wrist_right_ft_broadcaster'] + grippers
     steps = [spawn] + [Node(package='controller_manager', executable='spawner',
-                           arguments=[name, '--controller-manager-timeout', '60'],
+                           arguments=[name, '--controller-manager-timeout', '60', '--switch-timeout', '30'],
                            output='screen') for name in controllers]
     if enabled(context, 'gui'):
         rest.insert(0, ExecuteProcess(cmd=['gz', 'sim', '-g'], output='screen'))

@@ -1,0 +1,500 @@
+[INFO] [launch]: All log files can be found below /home/sapf/.ros/log/2026-10-22-01-04-23-543658-LON-LPT-UBT001-2029904
+[INFO] [launch]: Default logging verbosity is set to INFO
+Generated TIAGo PRO public URDF
+[INFO] [gz-1]: process started with pid [2029908]
+[INFO] [robot_state_publisher-2]: process started with pid [2029910]
+[INFO] [parameter_bridge-3]: process started with pid [2029912]
+[INFO] [create-4]: process started with pid [2029914]
+[robot_state_publisher-2] [INFO] [1792627463.843371468] [robot_state_publisher]: Robot initialized
+[create-4] [INFO] [1792627463.853887025] [ros_gz_sim]: Requesting list of world names.
+[create-4] [INFO] [1792627464.313912897] [ros_gz_sim]: Entity creation successful.
+[INFO] [create-4]: process has finished cleanly [pid 2029914]
+[INFO] [spawner-5]: process started with pid [2029983]
+[spawner-5] [INFO] [1792627464.562173632] [spawner_joint_state_broadcaster]: waiting for service /controller_manager/list_controllers to become available...
+[parameter_bridge-3] [INFO] [1792627464.862503603] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/world/default/clock (gz.msgs.Clock) -> clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792627464.864094993] [ros_gz_bridge]: Creating GZ->ROS Bridge: [base_imu (gz.msgs.IMU) -> base_imu (sensor_msgs/msg/Imu)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.866476295] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/scan_rear_raw (gz.msgs.LaserScan) -> scan_rear_raw (sensor_msgs/msg/LaserScan)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.866741219] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/scan_front_raw (gz.msgs.LaserScan) -> scan_front_raw (sensor_msgs/msg/LaserScan)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.866887229] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/camera_info (gz.msgs.CameraInfo) -> /head_front_camera/color/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.867158076] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/image (gz.msgs.Image) -> /head_front_camera/color/image_raw (sensor_msgs/msg/Image)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.867352028] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/camera_info (gz.msgs.CameraInfo) -> /head_front_camera/aligned_depth_to_color/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.867494151] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/camera_info (gz.msgs.CameraInfo) -> /head_front_camera/depth/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.867630188] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/points (gz.msgs.PointCloudPacked) -> /head_front_camera/depth/color/points (sensor_msgs/msg/PointCloud2)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.868257719] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/depth_image (gz.msgs.Image) -> /head_front_camera/aligned_depth_to_color/image_raw (sensor_msgs/msg/Image)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.868397706] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/head_front_camera/depth/depth_image (gz.msgs.Image) -> /head_front_camera/depth/image_rect_raw (sensor_msgs/msg/Image)] (Lazy 1)
+[parameter_bridge-3] [INFO] [1792627464.868528593] [ros_gz_bridge]: Creating ROS->GZ Bridge: [/mobile_base_controller/cmd_vel_unstamped (geometry_msgs/msg/Twist) -> /tiago_pro/cmd_vel (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792627464.869175457] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/tiago_pro/odom (gz.msgs.Odometry) -> /mobile_base_controller/odom (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-3] [INFO] [1792627464.870473751] [ros_gz_bridge]: Creating GZ->ROS Bridge: [/tiago_pro/odom_tf (gz.msgs.Pose_V) -> /tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_front_laser"]/gz_frame_id:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_imu_sensor"]/imu/noise:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[noise], child of element[imu], not defined in SDF. Copying[noise] as children of [imu].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="base_footprint"]/sensor[@name="base_rear_laser"]/gz_frame_id:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/joint[@name="arm_left_7_joint"]/physics/ode/provide_feedback:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[provide_feedback], child of element[ode], not defined in SDF. Copying[provide_feedback] as children of [ode].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/joint[@name="arm_right_7_joint"]/physics/ode/provide_feedback:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[provide_feedback], child of element[ode], not defined in SDF. Copying[provide_feedback] as children of [ode].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_frame_depth_sensor"]/gz_frame_id:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gz-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="tiago_pro"]/link[@name="head_2_link"]/sensor[@name="head_front_camera_frame_depth_sensor"]/camera[@name="rgbd_camera_frame"]/vertical_fov:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf:L0]: XML Element[vertical_fov], child of element[camera], not defined in SDF. Copying[vertical_fov] as children of [camera].
+[gz-1] [INFO] [1792627466.085595736] [gz_ros_control]: [gz_ros2_control] Fixed joint ['wrist_left_ft_sensor_joint'] (Entity='345') is skipped.
+[gz-1] [INFO] [1792627466.085629605] [gz_ros_control]: [gz_ros2_control] Fixed joint ['wrist_right_ft_sensor_joint'] (Entity='362') is skipped.
+[gz-1] [INFO] [1792627466.085903573] [gz_ros_control]: Loading controller_manager
+[gz-1] [INFO] [1792627466.091921602] [controller_manager]: Using ROS clock for triggering controller manager cycles.
+[gz-1] [WARN] [1792627466.091943596] [controller_manager]: The resource manager is not yet initialized, will wait for the robot description to initialize it..
+[gz-1] [INFO] [1792627466.095632841] [controller_manager]: Subscribing to '/robot_description' topic for robot description.
+[gz-1] [WARN] [1792627466.095648649] [gz_ros_control]: Waiting RM to load and initialize hardware...
+[gz-1] [INFO] [1792627466.272089001] [controller_manager]: Received robot description from topic.
+[gz-1] [INFO] [1792627466.272222986] [controller_manager]: Enforcing command limits is disabled. Command limits from URDF will be ignored.
+[gz-1] [INFO] [1792627466.278980078] [gz_ros_control]: The position_proportional_gain has been set to: 0.1
+[gz-1] [INFO] [1792627466.279034242] [gz_ros_control]: Loading joint: wheel_front_right_joint
+[gz-1] [INFO] [1792627466.279038942] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279041754] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279045466] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279047443] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279066869] [gz_ros_control]: Loading joint: wheel_front_left_joint
+[gz-1] [INFO] [1792627466.279069293] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279071577] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279075055] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279079789] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279087275] [gz_ros_control]: Loading joint: wheel_rear_right_joint
+[gz-1] [INFO] [1792627466.279089369] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279091164] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279093347] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279095130] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279100041] [gz_ros_control]: Loading joint: wheel_rear_left_joint
+[gz-1] [INFO] [1792627466.279102281] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279104221] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279106130] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279107773] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279113314] [gz_ros_control]: Loading joint: torso_lift_joint
+[gz-1] [INFO] [1792627466.279115523] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279117528] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279120901] [gz_ros_control]: 			 found initial value: 0.200000
+[gz-1] [INFO] [1792627466.279126115] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279128486] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279130671] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279134072] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279144361] [gz_ros_control]: Loading joint: head_1_joint
+[gz-1] [INFO] [1792627466.279147026] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279148943] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279151614] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279154062] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279157090] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279159164] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279160874] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279166633] [gz_ros_control]: Loading joint: head_2_joint
+[gz-1] [INFO] [1792627466.279169006] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279170788] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279173044] [gz_ros_control]: 			 found initial value: -0.200000
+[gz-1] [INFO] [1792627466.279175271] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279178645] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279180466] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279182181] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279187857] [gz_ros_control]: Loading joint: arm_left_1_joint
+[gz-1] [INFO] [1792627466.279193240] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279195527] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279228349] [gz_ros_control]: 			 found initial value: 0.360000
+[gz-1] [INFO] [1792627466.279232768] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279235016] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279237284] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279239439] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279245155] [gz_ros_control]: Loading joint: arm_left_2_joint
+[gz-1] [INFO] [1792627466.279247614] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279249791] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279253544] [gz_ros_control]: 			 found initial value: -1.830000
+[gz-1] [INFO] [1792627466.279255879] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279257830] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279259667] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279261460] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279267937] [gz_ros_control]: Loading joint: arm_left_3_joint
+[gz-1] [INFO] [1792627466.279269996] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279271827] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279276271] [gz_ros_control]: 			 found initial value: 0.470000
+[gz-1] [INFO] [1792627466.279278573] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279280375] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279282182] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279283901] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279289730] [gz_ros_control]: Loading joint: arm_left_4_joint
+[gz-1] [INFO] [1792627466.279291698] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279293501] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279295205] [gz_ros_control]: 			 found initial value: -2.350000
+[gz-1] [INFO] [1792627466.279297226] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279298909] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279300550] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279302097] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279307350] [gz_ros_control]: Loading joint: arm_left_5_joint
+[gz-1] [INFO] [1792627466.279309227] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279311043] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279312726] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279316449] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279318379] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279320303] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279322024] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279326879] [gz_ros_control]: Loading joint: arm_left_6_joint
+[gz-1] [INFO] [1792627466.279328829] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279330652] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279332567] [gz_ros_control]: 			 found initial value: -1.200000
+[gz-1] [INFO] [1792627466.279334779] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279336684] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279338521] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279340168] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279346043] [gz_ros_control]: Loading joint: arm_left_7_joint
+[gz-1] [INFO] [1792627466.279348157] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279350066] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279351939] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279354695] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279361786] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279365266] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279366988] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279373864] [gz_ros_control]: Loading joint: gripper_left_finger_joint
+[gz-1] [INFO] [1792627466.279375995] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279377886] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279379543] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279381555] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279383196] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279384926] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279386605] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279394062] [gz_ros_control]: Loading joint: gripper_left_outer_finger_right_joint
+[gz-1] [INFO] [1792627466.279396240] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279403235] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279405293] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279407424] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279409013] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279413965] [gz_ros_control]: Loading joint: gripper_left_inner_finger_right_joint
+[gz-1] [INFO] [1792627466.279415919] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279419222] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279420786] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279424587] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279426236] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279430315] [gz_ros_control]: Loading joint: gripper_left_fingertip_right_joint
+[gz-1] [INFO] [1792627466.279432136] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279433821] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279435281] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279437156] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279438735] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279442820] [gz_ros_control]: Loading joint: gripper_left_finger_right_joint
+[gz-1] [INFO] [1792627466.279444864] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279446409] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279447977] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279449931] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279451593] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279455223] [gz_ros_control]: Loading joint: gripper_left_outer_finger_left_joint
+[gz-1] [INFO] [1792627466.279458457] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279460052] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279461657] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279463573] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279465409] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279468705] [gz_ros_control]: Loading joint: gripper_left_inner_finger_left_joint
+[gz-1] [INFO] [1792627466.279470689] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279472350] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279475602] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279477459] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279479237] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279482750] [gz_ros_control]: Loading joint: gripper_left_fingertip_left_joint
+[gz-1] [INFO] [1792627466.279484609] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279486183] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279487682] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279489444] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279491087] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279496602] [gz_ros_control]: Loading joint: arm_right_1_joint
+[gz-1] [INFO] [1792627466.279498655] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279500383] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279502037] [gz_ros_control]: 			 found initial value: -0.360000
+[gz-1] [INFO] [1792627466.279504041] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279505790] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279507394] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279509164] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279515090] [gz_ros_control]: Loading joint: arm_right_2_joint
+[gz-1] [INFO] [1792627466.279516968] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279518539] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279519992] [gz_ros_control]: 			 found initial value: -1.830000
+[gz-1] [INFO] [1792627466.279521837] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279523415] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279524943] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279526365] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279534348] [gz_ros_control]: Loading joint: arm_right_3_joint
+[gz-1] [INFO] [1792627466.279536388] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279539471] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279541050] [gz_ros_control]: 			 found initial value: -0.470000
+[gz-1] [INFO] [1792627466.279547952] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279549852] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279551571] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279553042] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279558010] [gz_ros_control]: Loading joint: arm_right_4_joint
+[gz-1] [INFO] [1792627466.279560056] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279561715] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279563150] [gz_ros_control]: 			 found initial value: -2.350000
+[gz-1] [INFO] [1792627466.279564972] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279566791] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279568399] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279569961] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279574580] [gz_ros_control]: Loading joint: arm_right_5_joint
+[gz-1] [INFO] [1792627466.279576521] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279578079] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279579514] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279583216] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279588624] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279590403] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279592337] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279597718] [gz_ros_control]: Loading joint: arm_right_6_joint
+[gz-1] [INFO] [1792627466.279599686] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279601241] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279605026] [gz_ros_control]: 			 found initial value: -1.200000
+[gz-1] [INFO] [1792627466.279607130] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279608821] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279610684] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279612185] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279617039] [gz_ros_control]: Loading joint: arm_right_7_joint
+[gz-1] [INFO] [1792627466.279618992] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279620522] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279621935] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279623694] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279625386] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279627014] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279628559] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279635176] [gz_ros_control]: Loading joint: gripper_right_finger_joint
+[gz-1] [INFO] [1792627466.279637068] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279638739] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279640234] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279642086] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279643822] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279645436] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279646886] [gz_ros_control]: 		 effort
+[gz-1] [INFO] [1792627466.279652313] [gz_ros_control]: Loading joint: gripper_right_outer_finger_right_joint
+[gz-1] [INFO] [1792627466.279654327] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279655880] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279657429] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279659227] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279660777] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279665925] [gz_ros_control]: Loading joint: gripper_right_inner_finger_right_joint
+[gz-1] [INFO] [1792627466.279668698] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279670298] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279673521] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279675532] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279677115] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279680951] [gz_ros_control]: Loading joint: gripper_right_fingertip_right_joint
+[gz-1] [INFO] [1792627466.279682798] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279684380] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279685926] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279687928] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279689510] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279693349] [gz_ros_control]: Loading joint: gripper_right_finger_right_joint
+[gz-1] [INFO] [1792627466.279697452] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279699147] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279700700] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279702532] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279704104] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279707712] [gz_ros_control]: Loading joint: gripper_right_outer_finger_left_joint
+[gz-1] [INFO] [1792627466.279709572] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279711227] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279712721] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279714503] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279716014] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279719441] [gz_ros_control]: Loading joint: gripper_right_inner_finger_left_joint
+[gz-1] [INFO] [1792627466.279721291] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279722778] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279725118] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279727003] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279728760] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279732287] [gz_ros_control]: Loading joint: gripper_right_fingertip_left_joint
+[gz-1] [INFO] [1792627466.279734287] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279735863] [gz_ros_control]: 		 position
+[gz-1] [INFO] [1792627466.279737336] [gz_ros_control]: 			 found initial value: 0.000000
+[gz-1] [INFO] [1792627466.279739257] [gz_ros_control]: 		 velocity
+[gz-1] [INFO] [1792627466.279740819] [gz_ros_control]: 	Command:
+[gz-1] [INFO] [1792627466.279862915] [gz_ros_control]: Loading sensor: base_imu_sensor
+[gz-1] [INFO] [1792627466.279865847] [gz_ros_control]: 	State:
+[gz-1] [WARN] [1792627466.279868392] [gz_ros_control]: IMU sensor 'base_imu_sensor' not found in hardware_info, skipping.
+[gz-1] [INFO] [1792627466.279915207] [gz_ros_control]: Loading sensor: wrist_left_ft_sensor
+[gz-1] [INFO] [1792627466.279917325] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279923192] [gz_ros_control]: 		 force.x
+[gz-1] [INFO] [1792627466.279925471] [gz_ros_control]: 		 force.y
+[gz-1] [INFO] [1792627466.279927275] [gz_ros_control]: 		 force.z
+[gz-1] [INFO] [1792627466.279929076] [gz_ros_control]: 		 torque.x
+[gz-1] [INFO] [1792627466.279930676] [gz_ros_control]: 		 torque.y
+[gz-1] [INFO] [1792627466.279932218] [gz_ros_control]: 		 torque.z
+[gz-1] [INFO] [1792627466.279934239] [gz_ros_control]: Loading sensor: wrist_right_ft_sensor
+[gz-1] [INFO] [1792627466.279935865] [gz_ros_control]: 	State:
+[gz-1] [INFO] [1792627466.279937449] [gz_ros_control]: 		 force.x
+[gz-1] [INFO] [1792627466.279938987] [gz_ros_control]: 		 force.y
+[gz-1] [INFO] [1792627466.279940487] [gz_ros_control]: 		 force.z
+[gz-1] [INFO] [1792627466.279942165] [gz_ros_control]: 		 torque.x
+[gz-1] [INFO] [1792627466.279943751] [gz_ros_control]: 		 torque.y
+[gz-1] [INFO] [1792627466.279945261] [gz_ros_control]: 		 torque.z
+[gz-1] [INFO] [1792627466.280021786] [controller_manager]: Initialize hardware 'ros2_control_gazebo_system' 
+[gz-1] [WARN] [1792627466.280047930] [controller_manager.hardware_component.system.ros2_control_gazebo_system]: Executor is not available during hardware component initialization for 'ros2_control_gazebo_system'. Skipping node creation!
+[gz-1] [INFO] [1792627466.280120282] [controller_manager]: Successful initialization of hardware 'ros2_control_gazebo_system'
+[gz-1] [INFO] [1792627466.280332344] [controller_manager]: Activating component 'ros2_control_gazebo_system'.
+[gz-1] [INFO] [1792627466.280337841] [resource_manager]: 'configure' hardware 'ros2_control_gazebo_system' 
+[gz-1] [INFO] [1792627466.280342866] [gz_ros_control]: System Successfully configured!
+[gz-1] [INFO] [1792627466.280346985] [resource_manager]: Successful 'configure' of hardware 'ros2_control_gazebo_system'
+[gz-1] [INFO] [1792627466.280359380] [resource_manager]: 'activate' hardware 'ros2_control_gazebo_system' 
+[gz-1] [INFO] [1792627466.280362692] [resource_manager]: Successful 'activate' of hardware 'ros2_control_gazebo_system'
+[gz-1] [WARN] [1792627466.280384729] [controller_manager]: Component 'ros2_control_gazebo_system' does not have read or write statistics initialized, skipping registration.
+[gz-1] [INFO] [1792627466.280396261] [controller_manager]: Resource Manager has been successfully initialized. Starting Controller Manager services...
+[gz-1] [INFO] [1792627466.314454247] [controller_manager]: Loading controller : 'joint_state_broadcaster' of type 'joint_state_broadcaster/JointStateBroadcaster'
+[gz-1] [INFO] [1792627466.314492604] [controller_manager]: Loading controller 'joint_state_broadcaster'
+[gz-1] [INFO] [1792627466.320732165] [controller_manager]: Controller 'joint_state_broadcaster' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-5] [INFO] [1792627466.327319347] [spawner_joint_state_broadcaster]: Loaded joint_state_broadcaster
+[gz-1] [INFO] [1792627466.327828521] [controller_manager]: Configuring controller: 'joint_state_broadcaster'
+[gz-1] [INFO] [1792627466.327883326] [joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[gz-1] [INFO] [1792627466.339127947] [controller_manager]: Activating controllers: [ joint_state_broadcaster ]
+[gz-1] [WARN] [1792627468.248486259] [gz_ros_control]:  Desired controller update period (0.01 s) is slower than the gazebo simulation period (0.001 s).
+[gz-1] libEGL warning: pci id for fd 76: 10de:2d39, driver (null)
+[gz-1] 
+[gz-1] pci id for fd 77: 10de:2d39, driver (null)
+[gz-1] pci id for fd 78: 10de:2d39, driver (null)
+[gz-1] libEGL warning: egl: failed to create dri2 screen
+[gz-1] libEGL warning: pci id for fd 76: 10de:2d39, driver (null)
+[gz-1] 
+[gz-1] pci id for fd 77: 10de:2d39, driver (null)
+[gz-1] pci id for fd 78: 10de:2d39, driver (null)
+[gz-1] libEGL warning: egl: failed to create dri2 screen
+[gz-1] libEGL warning: pci id for fd 76: 10de:2d39, driver (null)
+[gz-1] 
+[gz-1] [INFO] [1792627468.662740003] [gz_ros_control]: ForceTorque wrist_left_ft_sensor has a topic name: world/default/model/tiago_pro/joint/wrist_left_ft_sensor_joint/sensor/wrist_left_ft_sensor/forcetorque
+[gz-1] [INFO] [1792627468.662889572] [gz_ros_control]: ForceTorque wrist_right_ft_sensor has a topic name: world/default/model/tiago_pro/joint/wrist_right_ft_sensor_joint/sensor/wrist_right_ft_sensor/forcetorque
+[gz-1] [INFO] [1792627468.663113152] [controller_manager]: Successfully switched controllers!
+[spawner-5] [INFO] [1792627468.675202010] [spawner_joint_state_broadcaster]: Configured and activated joint_state_broadcaster
+[INFO] [spawner-5]: process has finished cleanly [pid 2029983]
+[INFO] [spawner-6]: process started with pid [2030143]
+[spawner-6] [INFO] [1792627468.953601065] [spawner_arm_left_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627469.286794062] [controller_manager]: Loading controller : 'arm_left_controller' of type 'joint_trajectory_controller/JointTrajectoryController'
+[gz-1] [INFO] [1792627469.286879258] [controller_manager]: Loading controller 'arm_left_controller'
+[gz-1] [INFO] [1792627469.297487421] [controller_manager]: Controller 'arm_left_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-6] [INFO] [1792627469.335530655] [spawner_arm_left_controller]: Loaded arm_left_controller
+[gz-1] [INFO] [1792627469.417424293] [controller_manager]: Configuring controller: 'arm_left_controller'
+[gz-1] [INFO] [1792627469.417588724] [arm_left_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[gz-1] [INFO] [1792627469.417600995] [arm_left_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[gz-1] [INFO] [1792627469.417610163] [arm_left_controller]: Using 'splines' interpolation method.
+[gz-1] [INFO] [1792627469.419249785] [arm_left_controller]: Action status changes will be monitored at 20.00 Hz.
+[gz-1] [INFO] [1792627469.421631094] [arm_left_controller]: Setting initial scaling factor to 1.000000
+[gz-1] [INFO] [1792627469.421642532] [arm_left_controller]: No scaling interface set. This controller will not read speed scaling from the hardware.
+[gz-1] [INFO] [1792627469.427080504] [controller_manager]: Activating controllers: [ arm_left_controller ]
+[gz-1] [INFO] [1792627469.436060855] [arm_left_controller]: action_execution_timeout is disabled (set to 0.0)
+[gz-1] [INFO] [1792627469.436086506] [controller_manager]: Successfully switched controllers!
+[spawner-6] [INFO] [1792627469.447025176] [spawner_arm_left_controller]: Configured and activated arm_left_controller
+[INFO] [spawner-6]: process has finished cleanly [pid 2030143]
+[INFO] [spawner-7]: process started with pid [2030162]
+[spawner-7] [INFO] [1792627469.725073316] [spawner_arm_right_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627469.976536210] [controller_manager]: Loading controller : 'arm_right_controller' of type 'joint_trajectory_controller/JointTrajectoryController'
+[gz-1] [INFO] [1792627469.976574402] [controller_manager]: Loading controller 'arm_right_controller'
+[gz-1] [INFO] [1792627469.976708759] [controller_manager]: Controller 'arm_right_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-7] [INFO] [1792627469.991350946] [spawner_arm_right_controller]: Loaded arm_right_controller
+[gz-1] [INFO] [1792627469.992157121] [controller_manager]: Configuring controller: 'arm_right_controller'
+[gz-1] [INFO] [1792627469.992317897] [arm_right_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[gz-1] [INFO] [1792627469.992334581] [arm_right_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[gz-1] [INFO] [1792627469.992365826] [arm_right_controller]: Using 'splines' interpolation method.
+[gz-1] [INFO] [1792627469.993237381] [arm_right_controller]: Action status changes will be monitored at 20.00 Hz.
+[gz-1] [INFO] [1792627469.994865265] [arm_right_controller]: Setting initial scaling factor to 1.000000
+[gz-1] [INFO] [1792627469.994882060] [arm_right_controller]: No scaling interface set. This controller will not read speed scaling from the hardware.
+[gz-1] [INFO] [1792627470.001590070] [controller_manager]: Activating controllers: [ arm_right_controller ]
+[gz-1] [INFO] [1792627470.011241973] [controller_manager]: Successfully switched controllers!
+[spawner-7] [INFO] [1792627470.021954215] [spawner_arm_right_controller]: Configured and activated arm_right_controller
+[INFO] [spawner-7]: process has finished cleanly [pid 2030162]
+[INFO] [spawner-8]: process started with pid [2030184]
+[spawner-8] [INFO] [1792627470.312018558] [spawner_torso_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627471.192456907] [controller_manager]: Loading controller : 'torso_controller' of type 'joint_trajectory_controller/JointTrajectoryController'
+[gz-1] [INFO] [1792627471.192498859] [controller_manager]: Loading controller 'torso_controller'
+[gz-1] [INFO] [1792627471.192637211] [controller_manager]: Controller 'torso_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-8] [INFO] [1792627471.202627503] [spawner_torso_controller]: Loaded torso_controller
+[gz-1] [INFO] [1792627471.203341735] [controller_manager]: Configuring controller: 'torso_controller'
+[gz-1] [INFO] [1792627471.203524506] [torso_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[gz-1] [INFO] [1792627471.203562567] [torso_controller]: Command interfaces are [position] and state interfaces are [position velocity].
+[gz-1] [INFO] [1792627471.203579304] [torso_controller]: Using 'splines' interpolation method.
+[gz-1] [INFO] [1792627471.205357439] [torso_controller]: Action status changes will be monitored at 20.00 Hz.
+[gz-1] [INFO] [1792627471.216672875] [torso_controller]: Setting initial scaling factor to 1.000000
+[gz-1] [INFO] [1792627471.216746877] [torso_controller]: No scaling interface set. This controller will not read speed scaling from the hardware.
+[gz-1] [INFO] [1792627471.224285516] [controller_manager]: Activating controllers: [ torso_controller ]
+[gz-1] [INFO] [1792627471.233510563] [controller_manager]: Successfully switched controllers!
+[spawner-8] [INFO] [1792627471.244284054] [spawner_torso_controller]: Configured and activated torso_controller
+[INFO] [spawner-8]: process has finished cleanly [pid 2030184]
+[INFO] [spawner-9]: process started with pid [2030221]
+[spawner-9] [INFO] [1792627471.519401735] [spawner_head_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627471.790312849] [controller_manager]: Loading controller : 'head_controller' of type 'joint_trajectory_controller/JointTrajectoryController'
+[gz-1] [INFO] [1792627471.790348310] [controller_manager]: Loading controller 'head_controller'
+[gz-1] [INFO] [1792627471.790580310] [controller_manager]: Controller 'head_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-9] [INFO] [1792627471.809311196] [spawner_head_controller]: Loaded head_controller
+[gz-1] [INFO] [1792627471.810057554] [controller_manager]: Configuring controller: 'head_controller'
+[gz-1] [INFO] [1792627471.810152977] [head_controller]: No specific joint names are used for command interfaces. Using 'joints' parameter.
+[gz-1] [INFO] [1792627471.810164936] [head_controller]: Command interfaces are [position] and state interfaces are [position].
+[gz-1] [INFO] [1792627471.810169624] [head_controller]: Using 'splines' interpolation method.
+[gz-1] [INFO] [1792627471.810827995] [head_controller]: Action status changes will be monitored at 20.00 Hz.
+[gz-1] [INFO] [1792627471.811877712] [head_controller]: Setting initial scaling factor to 1.000000
+[gz-1] [INFO] [1792627471.811888462] [head_controller]: No scaling interface set. This controller will not read speed scaling from the hardware.
+[gz-1] [INFO] [1792627471.819787526] [controller_manager]: Activating controllers: [ head_controller ]
+[gz-1] [INFO] [1792627471.829512425] [controller_manager]: Successfully switched controllers!
+[spawner-9] [INFO] [1792627471.841482570] [spawner_head_controller]: Configured and activated head_controller
+[INFO] [spawner-9]: process has finished cleanly [pid 2030221]
+[INFO] [spawner-10]: process started with pid [2030251]
+[spawner-10] [INFO] [1792627472.116589882] [spawner_wrist_left_ft_broadcaster]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627472.369814744] [controller_manager]: Loading controller : 'wrist_left_ft_broadcaster' of type 'force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster'
+[gz-1] [INFO] [1792627472.369866436] [controller_manager]: Loading controller 'wrist_left_ft_broadcaster'
+[gz-1] [INFO] [1792627472.372423120] [controller_manager]: Controller 'wrist_left_ft_broadcaster' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-10] [INFO] [1792627472.384910177] [spawner_wrist_left_ft_broadcaster]: Loaded wrist_left_ft_broadcaster
+[gz-1] [INFO] [1792627472.466776759] [controller_manager]: Configuring controller: 'wrist_left_ft_broadcaster'
+[gz-1] [INFO] [1792627472.468793386] [wrist_left_ft_broadcaster]: configure successful
+[gz-1] [INFO] [1792627472.470493679] [controller_manager]: Activating controllers: [ wrist_left_ft_broadcaster ]
+[gz-1] [INFO] [1792627472.479981637] [controller_manager]: Successfully switched controllers!
+[spawner-10] [INFO] [1792627472.490945402] [spawner_wrist_left_ft_broadcaster]: Configured and activated wrist_left_ft_broadcaster
+[INFO] [spawner-10]: process has finished cleanly [pid 2030251]
+[INFO] [spawner-11]: process started with pid [2030271]
+[spawner-11] [INFO] [1792627472.777648306] [spawner_wrist_right_ft_broadcaster]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627473.030010082] [controller_manager]: Loading controller : 'wrist_right_ft_broadcaster' of type 'force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster'
+[gz-1] [INFO] [1792627473.030040733] [controller_manager]: Loading controller 'wrist_right_ft_broadcaster'
+[gz-1] [INFO] [1792627473.030215324] [controller_manager]: Controller 'wrist_right_ft_broadcaster' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[spawner-11] [INFO] [1792627473.044158173] [spawner_wrist_right_ft_broadcaster]: Loaded wrist_right_ft_broadcaster
+[gz-1] [INFO] [1792627473.044773043] [controller_manager]: Configuring controller: 'wrist_right_ft_broadcaster'
+[gz-1] [INFO] [1792627473.045825157] [wrist_right_ft_broadcaster]: configure successful
+[gz-1] [INFO] [1792627473.054337580] [controller_manager]: Activating controllers: [ wrist_right_ft_broadcaster ]
+[gz-1] [INFO] [1792627473.063615707] [controller_manager]: Successfully switched controllers!
+[spawner-11] [INFO] [1792627473.076222114] [spawner_wrist_right_ft_broadcaster]: Configured and activated wrist_right_ft_broadcaster
+[INFO] [spawner-11]: process has finished cleanly [pid 2030271]
+[INFO] [spawner-12]: process started with pid [2030293]
+[spawner-12] [INFO] [1792627473.358379473] [spawner_gripper_left_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627473.621127916] [controller_manager]: Loading controller : 'gripper_left_controller' of type 'effort_controllers/GripperActionController'
+[gz-1] [INFO] [1792627473.621161753] [controller_manager]: Loading controller 'gripper_left_controller'
+[gz-1] [INFO] [1792627473.623481959] [controller_manager]: Controller 'gripper_left_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[gz-1] [WARN] [1792627473.629438658] [gripper_left_controller]: [Deprecated]: the `position_controllers/GripperActionController` and `effort_controllers::GripperActionController` controllers are replaced by 'parallel_gripper_controllers/GripperActionController' controller
+[spawner-12] [INFO] [1792627473.633275169] [spawner_gripper_left_controller]: Loaded gripper_left_controller
+[gz-1] [INFO] [1792627473.634410351] [controller_manager]: Configuring controller: 'gripper_left_controller'
+[gz-1] [INFO] [1792627473.634496933] [gripper_left_controller]: Action status changes will be monitored at 20.000000 Hz.
+[gz-1] [INFO] [1792627473.643615290] [controller_manager]: Activating controllers: [ gripper_left_controller ]
+[gz-1] [INFO] [1792627473.654956350] [controller_manager]: Successfully switched controllers!
+[spawner-12] [INFO] [1792627473.665535776] [spawner_gripper_left_controller]: Configured and activated gripper_left_controller
+[INFO] [spawner-12]: process has finished cleanly [pid 2030293]
+[INFO] [spawner-13]: process started with pid [2030311]
+[spawner-13] [INFO] [1792627473.979173964] [spawner_gripper_right_controller]: waiting for service /controller_manager/list_controllers to become available...
+[gz-1] [INFO] [1792627474.311809755] [controller_manager]: Loading controller : 'gripper_right_controller' of type 'effort_controllers/GripperActionController'
+[gz-1] [INFO] [1792627474.311847875] [controller_manager]: Loading controller 'gripper_right_controller'
+[gz-1] [INFO] [1792627474.312024266] [controller_manager]: Controller 'gripper_right_controller' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --param use_sim_time:=true 
+[gz-1] [WARN] [1792627474.317531223] [gripper_right_controller]: [Deprecated]: the `position_controllers/GripperActionController` and `effort_controllers::GripperActionController` controllers are replaced by 'parallel_gripper_controllers/GripperActionController' controller
+[spawner-13] [INFO] [1792627474.329040649] [spawner_gripper_right_controller]: Loaded gripper_right_controller
+[gz-1] [INFO] [1792627474.411017045] [controller_manager]: Configuring controller: 'gripper_right_controller'
+[gz-1] [INFO] [1792627474.411103304] [gripper_right_controller]: Action status changes will be monitored at 20.000000 Hz.
+[gz-1] [INFO] [1792627474.422349574] [controller_manager]: Activating controllers: [ gripper_right_controller ]
+[gz-1] [INFO] [1792627474.432332854] [controller_manager]: Successfully switched controllers!
+[spawner-13] [INFO] [1792627474.444541028] [spawner_gripper_right_controller]: Configured and activated gripper_right_controller
+[INFO] [spawner-13]: process has finished cleanly [pid 2030311]
+[INFO] [launch.user]: TIAGO_PRO_READY: simulator and native controllers active
+[gz-1] [INFO] [1792627476.772806521] [controller_manager]: Loading controller : 'cppyy_admittance_arm_left' of type 'control_kit_python/PythonController'
+[gz-1] [INFO] [1792627476.772896714] [controller_manager]: Loading controller 'cppyy_admittance_arm_left'
+[gz-1] [INFO] [1792627476.775278210] [controller_manager]: Controller 'cppyy_admittance_arm_left' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --params-file /home/sapf/.cache/cppyy_kit/control_plugin/cppyy_admittance_arm_left.yaml --param use_sim_time:=true 
+[gz-1] [INFO] [1792627476.784303269] [controller_manager]: Configuring controller: 'cppyy_admittance_arm_left'
+[gz-1] cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/c41ebbac5d37bf73.pch
+[gz-1] [INFO] [1792627477.516545395] [controller_manager]: Activating controllers: [ cppyy_admittance_arm_left ]
+[gz-1] [INFO] [1792627477.516603842] [controller_manager]: Deactivating controllers: [ arm_left_controller ]
+[gz-1] [INFO] [1792627477.528894605] [controller_manager]: Successfully switched controllers!
+[gz-1] [INFO] [1792627621.455435545] [controller_manager]: Activating controllers: [ arm_left_controller ]
+[gz-1] [INFO] [1792627621.455490540] [controller_manager]: Deactivating controllers: [ cppyy_admittance_arm_left ]
+[gz-1] [INFO] [1792627621.463536841] [controller_manager]: Successfully switched controllers!
+[gz-1] [INFO] [1792627621.484929871] [controller_manager]: Unloading controller: 'cppyy_admittance_arm_left'
+[gz-1] [INFO] [1792627621.485005747] [controller_manager]: Cleanup controller 'cppyy_admittance_arm_left'
+[WARNING] [launch]: user interrupted with ctrl-c (SIGINT)
+[INFO] [parameter_bridge-3]: sending signal 'SIGINT' to process[parameter_bridge-3]
+[INFO] [robot_state_publisher-2]: sending signal 'SIGINT' to process[robot_state_publisher-2]
+[INFO] [gz-1]: sending signal 'SIGINT' to process[gz-1]
+[parameter_bridge-3] [INFO] [1792627621.714263699] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[robot_state_publisher-2] [INFO] [1792627621.714261622] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[parameter_bridge-3] [INFO] [1792627621.715883992] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[robot_state_publisher-2] [INFO] [1792627621.716299852] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [robot_state_publisher-2]: process has finished cleanly [pid 2029910]
+[INFO] [parameter_bridge-3]: process has finished cleanly [pid 2029912]
+[ERROR] [gz-1]: process[gz-1] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[INFO] [gz-1]: sending signal 'SIGTERM' to process[gz-1]

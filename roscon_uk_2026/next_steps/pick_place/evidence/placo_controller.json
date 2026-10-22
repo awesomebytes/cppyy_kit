@@ -1,0 +1,110 @@
+{
+  "urdf_sha256": "de34cde28a7a93d18af8919be17b673e1c4cd9933290526753fe3c3e3ea19466",
+  "solver": "Placo 0.10.0 KinematicsSolver",
+  "robot_geometries": 61,
+  "eligible_self_collision_pairs": 1114,
+  "near_pairs_at_ready": 59,
+  "full_distance_seconds": 0.3213851819746196,
+  "minimum_full_clearance_m": 0.004595387814308424,
+  "minimum_broadphase_clearance_m": 0.004595387814308424,
+  "closest_pair": [
+    "gripper_right_base_finger_right_link_0",
+    "gripper_right_outer_finger_right_link_0"
+  ],
+  "reach_probe": {
+    "steps": 40,
+    "initial_error_m": 0.029999999999999805,
+    "final_error_m": 5.2956376970339826e-06,
+    "mean_step_seconds": 0.025276429354562424,
+    "max_step_seconds": 0.03626355796586722,
+    "last_diagnostics": {
+      "backend": "placo",
+      "task_error": 6.572623249698034e-06,
+      "minimum_clearance": 0.0045953878143084525,
+      "step_accepted": true,
+      "scaled_speed": 6.658614775556515e-05,
+      "collision_pairs": 1114,
+      "near_collision_pairs": 59,
+      "solver_failure": null
+    }
+  },
+  "all_task_types_and_primitives": {
+    "backend": "placo",
+    "task_error": 2.441378406835331,
+    "minimum_clearance": 0.004595387814308424,
+    "step_accepted": true,
+    "scaled_speed": 0.3500000000000014,
+    "collision_pairs": 1297,
+    "near_collision_pairs": 59,
+    "solver_failure": null
+  },
+  "initial_environment_penetration": {
+    "backend": "placo",
+    "task_error": 2.441378406835331,
+    "minimum_clearance": -0.17931235254135297,
+    "step_accepted": false,
+    "scaled_speed": 0.0,
+    "collision_pairs": 1175,
+    "near_collision_pairs": 79,
+    "solver_failure": "QPError: Problem: Infeasible QP (check your hard inequality constraints)"
+  },
+  "penetration_hold_max_joint_delta": 0.0,
+  "obstacle_removal_pairs": 1114,
+  "fixed_base_pose_max_difference": 0.0,
+  "initial_self_penetration": {
+    "joint": "arm_left_4_joint",
+    "position_rad": -1.4211966766239539,
+    "joint_limits": [
+      -2.443460952792061,
+      1.1344640137963142
+    ],
+    "pair": [
+      "base_link_0",
+      "arm_left_6_link_0"
+    ],
+    "minimum_clearance_m": -0.006466035575068196,
+    "diagnostics": {
+      "backend": "placo",
+      "task_error": 0.0,
+      "minimum_clearance": -0.006466035575068196,
+      "step_accepted": true,
+      "scaled_speed": 0.17362696864328342,
+      "collision_pairs": 1114,
+      "near_collision_pairs": 57,
+      "solver_failure": null
+    },
+    "max_command_delta": 0.008681348432164171,
+    "minimum_clearance_after_command_m": -0.002236912860811735,
+    "clearance_improved_m": 0.004229122714256461
+  },
+  "moving_sphere_avoidance": {
+    "goal_offset_m": [
+      0.3,
+      0,
+      0
+    ],
+    "sphere_offset_m": [
+      0.18,
+      0,
+      0
+    ],
+    "sphere_radius_m": 0.05,
+    "cycles": 150,
+    "minimum_environment_clearance_m": 0.0020001997404016925,
+    "grasp_displacement_m": [
+      0.11889912706144878,
+      0.013006049593504487,
+      -0.01665776038070943
+    ],
+    "final_goal_error_m": 0.18232982335875567,
+    "last": {
+      "cycle": 149,
+      "minimum_environment_clearance_m": 0.002000212968977122,
+      "step_accepted": false,
+      "solver_failure": null
+    },
+    "accepted_cycles": 18
+  },
+  "orientation_scale_m_per_rad": 0.3,
+  "passive_joint_state": "Measured passive positions take precedence over URDF mimic estimates; only commanded coordinates have native position bounds."
+}

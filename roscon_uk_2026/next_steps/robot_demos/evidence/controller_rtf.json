@@ -1,0 +1,20 @@
+[
+  {
+    "controller": "python_before",
+    "wall_seconds": 7.001248294953257,
+    "sim_seconds": 3.760000000000005,
+    "rtf": 0.5370470866902898
+  },
+  {
+    "controller": "stock",
+    "wall_seconds": 7.000595721066929,
+    "sim_seconds": 4.022999999999996,
+    "rtf": 0.5746653799609598
+  },
+  {
+    "controller": "python_after",
+    "wall_seconds": 7.010532251908444,
+    "sim_seconds": 3.875,
+    "rtf": 0.5527397722113221
+  }
+]

@@ -1,0 +1,252 @@
+{
+  "method": "Three fresh processes per implementation, rotated order. 1000 warmup calls, seven batches of 10000 calls per process. Same retained callable and float64 arrays. Includes Python loop, binding checks, boundary crossing and native solve. Excludes startup, compilation, function lookup and input allocation. Rust uses LLT, Eigen LDLT.",
+  "summary": {
+    "plain": {
+      "median_ns_per_call": 273.0955,
+      "min_process_median_ns": 265.2708,
+      "max_process_median_ns": 278.4447
+    },
+    "cached": {
+      "median_ns_per_call": 247.9783,
+      "min_process_median_ns": 240.8034,
+      "max_process_median_ns": 249.3588
+    },
+    "native": {
+      "median_ns_per_call": 443.4534,
+      "min_process_median_ns": 443.4075,
+      "max_process_median_ns": 454.6339
+    },
+    "nanobind": {
+      "median_ns_per_call": 538.3879,
+      "min_process_median_ns": 537.8994,
+      "max_process_median_ns": 548.5445
+    },
+    "rust": {
+      "median_ns_per_call": 261.9063,
+      "min_process_median_ns": 260.565,
+      "max_process_median_ns": 264.5385
+    }
+  },
+  "samples": {
+    "plain": [
+      {
+        "mode": "plain",
+        "batch_ns_per_call": [
+          273.0955,
+          272.3452,
+          273.5858,
+          269.8614,
+          273.8461,
+          273.078,
+          275.1568
+        ],
+        "median_ns_per_call": 273.0955,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "plain",
+        "batch_ns_per_call": [
+          282.1938,
+          280.5968,
+          277.4832,
+          278.4509,
+          278.4447,
+          276.8032,
+          275.1461
+        ],
+        "median_ns_per_call": 278.4447,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "plain",
+        "batch_ns_per_call": [
+          258.3292,
+          265.495,
+          265.2708,
+          261.793,
+          265.9033,
+          267.044,
+          263.0927
+        ],
+        "median_ns_per_call": 265.2708,
+        "max_error": 1.5265566588595902e-16
+      }
+    ],
+    "cached": [
+      {
+        "mode": "cached",
+        "batch_ns_per_call": [
+          247.9783,
+          252.5815,
+          249.5651,
+          251.6393,
+          247.8346,
+          246.5943,
+          247.1401
+        ],
+        "median_ns_per_call": 247.9783,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "cached",
+        "batch_ns_per_call": [
+          233.8589,
+          236.5554,
+          237.8809,
+          240.8034,
+          245.2275,
+          242.58,
+          241.2663
+        ],
+        "median_ns_per_call": 240.8034,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "cached",
+        "batch_ns_per_call": [
+          248.8085,
+          247.7286,
+          250.0927,
+          248.6147,
+          249.3588,
+          250.1044,
+          250.1098
+        ],
+        "median_ns_per_call": 249.3588,
+        "max_error": 1.5265566588595902e-16
+      }
+    ],
+    "native": [
+      {
+        "mode": "native",
+        "batch_ns_per_call": [
+          455.0969,
+          452.2061,
+          453.666,
+          454.7466,
+          455.783,
+          453.5365,
+          454.6339
+        ],
+        "median_ns_per_call": 454.6339,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "native",
+        "batch_ns_per_call": [
+          452.8389,
+          443.4075,
+          440.1677,
+          442.4871,
+          442.7448,
+          445.105,
+          451.9158
+        ],
+        "median_ns_per_call": 443.4075,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "native",
+        "batch_ns_per_call": [
+          441.3527,
+          445.7657,
+          440.9786,
+          441.4844,
+          444.6132,
+          443.4534,
+          444.0285
+        ],
+        "median_ns_per_call": 443.4534,
+        "max_error": 1.5265566588595902e-16
+      }
+    ],
+    "nanobind": [
+      {
+        "mode": "nanobind",
+        "batch_ns_per_call": [
+          552.5917,
+          554.9705,
+          537.3694,
+          532.4365,
+          538.0854,
+          548.5445,
+          551.8405
+        ],
+        "median_ns_per_call": 548.5445,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "nanobind",
+        "batch_ns_per_call": [
+          539.2416,
+          538.3879,
+          535.9198,
+          527.1286,
+          523.9369,
+          543.6013,
+          543.9715
+        ],
+        "median_ns_per_call": 538.3879,
+        "max_error": 1.5265566588595902e-16
+      },
+      {
+        "mode": "nanobind",
+        "batch_ns_per_call": [
+          529.6974,
+          534.7382,
+          536.907,
+          538.3414,
+          537.8994,
+          538.8629,
+          541.8682
+        ],
+        "median_ns_per_call": 537.8994,
+        "max_error": 1.5265566588595902e-16
+      }
+    ],
+    "rust": [
+      {
+        "mode": "rust",
+        "batch_ns_per_call": [
+          267.6402,
+          267.6648,
+          267.5022,
+          260.565,
+          260.2484,
+          252.3586,
+          254.4397
+        ],
+        "median_ns_per_call": 260.565,
+        "max_error": 4.163336342344337e-17
+      },
+      {
+        "mode": "rust",
+        "batch_ns_per_call": [
+          262.7936,
+          261.9063,
+          257.0713,
+          264.9735,
+          267.6621,
+          260.3117,
+          256.8752
+        ],
+        "median_ns_per_call": 261.9063,
+        "max_error": 4.163336342344337e-17
+      },
+      {
+        "mode": "rust",
+        "batch_ns_per_call": [
+          271.4329,
+          279.8336,
+          273.1513,
+          264.5385,
+          256.709,
+          258.1143,
+          260.2605
+        ],
+        "median_ns_per_call": 264.5385,
+        "max_error": 4.163336342344337e-17
+      }
+    ]
+  }
+}

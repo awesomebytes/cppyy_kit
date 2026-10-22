@@ -1,0 +1,1200 @@
+{
+  "recorded_at": "2026-10-20T19:25:37.218957+01:00",
+  "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 16:50:00) [GCC 14.3.0]",
+  "platform": "Linux-6.17.0-1033-oem-x86_64-with-glibc2.39",
+  "method": "Three interleaved fresh processes per path, standard existing cppyy PCH; kit startup hook disabled; OS caches warm. Stage times exclude memory sampling. RSS includes shared pages. PSS apportions shared pages. Private is Private_Clean + Private_Dirty. No compiler child peak measurement.",
+  "preparation": {
+    "mode": "cached",
+    "stages": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.0004960456863045692,
+        "rss_mib": 19.09375,
+        "pss_mib": 12.193359375,
+        "private_mib": 8.1484375
+      },
+      {
+        "stage": "cppyy_ready",
+        "elapsed_ms": 148.86587799992412,
+        "rss_mib": 185.31640625,
+        "pss_mib": 175.8525390625,
+        "private_mib": 170.3984375
+      },
+      {
+        "stage": "small_definition",
+        "elapsed_ms": 6.063541979528964,
+        "rss_mib": 189.0,
+        "pss_mib": 179.5361328125,
+        "private_mib": 174.08203125
+      },
+      {
+        "stage": "small_first_call",
+        "elapsed_ms": 2.675684983842075,
+        "rss_mib": 189.20703125,
+        "pss_mib": 179.7431640625,
+        "private_mib": 174.2890625
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 22.979359957389534,
+        "rss_mib": 199.609375,
+        "pss_mib": 188.03515625,
+        "private_mib": 181.5390625
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 13.951199944131076,
+        "rss_mib": 200.890625,
+        "pss_mib": 189.31640625,
+        "private_mib": 182.8203125
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 2.748433966189623,
+        "rss_mib": 203.44921875,
+        "pss_mib": 191.783203125,
+        "private_mib": 185.1953125
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 1.6545620746910572,
+        "rss_mib": 203.4609375,
+        "pss_mib": 191.794921875,
+        "private_mib": 185.20703125
+      }
+    ],
+    "cache": {
+      "cached": true,
+      "so": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.so",
+      "header": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.h"
+    },
+    "cppyy_version": "3.5.0",
+    "compiler_mappings": [
+      "77104a200000-77104b442000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+      "77104b442000-7710510d4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+      "7710510d4000-771054024000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+      "771054024000-77105495f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+      "77105495f000-7710549ad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+    ],
+    "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+    "max_error": 1.5265566588595902e-16,
+    "stderr": ""
+  },
+  "samples": {
+    "plain": [
+      {
+        "mode": "plain",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0004600733518600464,
+            "rss_mib": 19.12890625,
+            "pss_mib": 12.21484375,
+            "private_mib": 8.14453125
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 143.97341501899064,
+            "rss_mib": 182.64453125,
+            "pss_mib": 173.2890625,
+            "private_mib": 167.87890625
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 6.737741059623659,
+            "rss_mib": 186.7109375,
+            "pss_mib": 177.35546875,
+            "private_mib": 171.9453125
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 2.5751349749043584,
+            "rss_mib": 186.91015625,
+            "pss_mib": 177.5546875,
+            "private_mib": 172.14453125
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 22.346213925629854,
+            "rss_mib": 197.25390625,
+            "pss_mib": 185.798828125,
+            "private_mib": 179.3515625
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 2104.08489103429,
+            "rss_mib": 363.99609375,
+            "pss_mib": 352.541015625,
+            "private_mib": 346.09375
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 107.10096801631153,
+            "rss_mib": 367.12109375,
+            "pss_mib": 355.57421875,
+            "private_mib": 349.03515625
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.520707086659968,
+            "rss_mib": 367.1328125,
+            "pss_mib": 355.5859375,
+            "private_mib": 349.046875
+          }
+        ],
+        "cache": null,
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "71378e800000-71378fa42000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "71378fa42000-7137956d4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7137956d4000-713798624000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "713798624000-713798f5f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "713798f5f000-713798fad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.000525033101439476,
+            "rss_mib": 18.8984375,
+            "pss_mib": 12.123046875,
+            "private_mib": 8.1484375
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 166.6136080166325,
+            "rss_mib": 182.62109375,
+            "pss_mib": 173.3232421875,
+            "private_mib": 167.92578125
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 7.095424109138548,
+            "rss_mib": 186.67578125,
+            "pss_mib": 177.3779296875,
+            "private_mib": 171.98046875
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 3.680736990645528,
+            "rss_mib": 186.8515625,
+            "pss_mib": 177.5537109375,
+            "private_mib": 172.15625
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 28.015883988700807,
+            "rss_mib": 197.15625,
+            "pss_mib": 185.751953125,
+            "private_mib": 179.31640625
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 1250.3524880157784,
+            "rss_mib": 363.88671875,
+            "pss_mib": 352.482421875,
+            "private_mib": 346.046875
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 42.37979091703892,
+            "rss_mib": 367.01953125,
+            "pss_mib": 355.5234375,
+            "private_mib": 348.99609375
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.457626978866756,
+            "rss_mib": 367.03125,
+            "pss_mib": 355.53515625,
+            "private_mib": 349.0078125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "7da7d9200000-7da7da442000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7da7da442000-7da7e00d4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7da7e00d4000-7da7e3024000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7da7e3024000-7da7e395f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7da7e395f000-7da7e39ad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0005479669198393822,
+            "rss_mib": 19.23046875,
+            "pss_mib": 12.2919921875,
+            "private_mib": 8.1875
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 168.17196900956333,
+            "rss_mib": 182.68359375,
+            "pss_mib": 173.3369140625,
+            "private_mib": 167.92578125
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 7.415076019242406,
+            "rss_mib": 186.74609375,
+            "pss_mib": 177.3994140625,
+            "private_mib": 171.98828125
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 2.8360330034047365,
+            "rss_mib": 186.91796875,
+            "pss_mib": 177.5712890625,
+            "private_mib": 172.16015625
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 27.51932805404067,
+            "rss_mib": 197.33203125,
+            "pss_mib": 185.88671875,
+            "private_mib": 179.44140625
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 1250.9195789461955,
+            "rss_mib": 364.0703125,
+            "pss_mib": 352.625,
+            "private_mib": 346.1796875
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 44.73042499739677,
+            "rss_mib": 367.20703125,
+            "pss_mib": 355.669921875,
+            "private_mib": 349.1328125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.330291084945202,
+            "rss_mib": 367.21875,
+            "pss_mib": 355.681640625,
+            "private_mib": 349.14453125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "723831a00000-723832c42000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "723832c42000-7238388d4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7238388d4000-72383b824000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "72383b824000-72383c15f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "72383c15f000-72383c1ad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      }
+    ],
+    "cached": [
+      {
+        "mode": "cached",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.005017966032028198,
+            "rss_mib": 19.24609375,
+            "pss_mib": 12.291015625,
+            "private_mib": 8.1875
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 412.24246902856976,
+            "rss_mib": 185.3671875,
+            "pss_mib": 175.8994140625,
+            "private_mib": 170.44140625
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 20.665024989284575,
+            "rss_mib": 189.05078125,
+            "pss_mib": 179.5830078125,
+            "private_mib": 174.125
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 3.3477989491075277,
+            "rss_mib": 189.234375,
+            "pss_mib": 179.7666015625,
+            "private_mib": 174.30859375
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 99.88121897913516,
+            "rss_mib": 199.5234375,
+            "pss_mib": 187.951171875,
+            "private_mib": 181.45703125
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 11.833415948785841,
+            "rss_mib": 200.8046875,
+            "pss_mib": 189.232421875,
+            "private_mib": 182.73828125
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 3.650818020105362,
+            "rss_mib": 203.37109375,
+            "pss_mib": 191.70703125,
+            "private_mib": 185.12109375
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.8070519911125302,
+            "rss_mib": 203.3828125,
+            "pss_mib": 191.71875,
+            "private_mib": 185.1328125
+          }
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.h"
+        },
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "789207000000-789208242000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "789208242000-78920ded4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "78920ded4000-789210e24000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "789210e24000-78921175f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "78921175f000-7892117ad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.00048300717025995255,
+            "rss_mib": 19.1875,
+            "pss_mib": 12.21484375,
+            "private_mib": 8.0859375
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 167.08535805810243,
+            "rss_mib": 185.46484375,
+            "pss_mib": 175.919921875,
+            "private_mib": 170.375
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 6.452257977798581,
+            "rss_mib": 189.1484375,
+            "pss_mib": 179.603515625,
+            "private_mib": 174.05859375
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 2.8186830459162593,
+            "rss_mib": 189.32421875,
+            "pss_mib": 179.779296875,
+            "private_mib": 174.234375
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 28.431541053578258,
+            "rss_mib": 199.73828125,
+            "pss_mib": 188.0888671875,
+            "private_mib": 181.5078125
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 15.421384014189243,
+            "rss_mib": 201.0234375,
+            "pss_mib": 189.3740234375,
+            "private_mib": 182.79296875
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 3.044920042157173,
+            "rss_mib": 203.46484375,
+            "pss_mib": 191.7548828125,
+            "private_mib": 185.11328125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.0707329967990518,
+            "rss_mib": 203.4765625,
+            "pss_mib": 191.7666015625,
+            "private_mib": 185.125
+          }
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.h"
+        },
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "739883000000-739884242000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "739884242000-739889ed4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "739889ed4000-73988ce24000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "73988ce24000-73988d75f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "73988d75f000-73988d7ad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0005800975486636162,
+            "rss_mib": 19.13671875,
+            "pss_mib": 12.1904296875,
+            "private_mib": 8.08984375
+          },
+          {
+            "stage": "cppyy_ready",
+            "elapsed_ms": 162.8134329803288,
+            "rss_mib": 185.40234375,
+            "pss_mib": 175.8818359375,
+            "private_mib": 170.36328125
+          },
+          {
+            "stage": "small_definition",
+            "elapsed_ms": 6.781165022403002,
+            "rss_mib": 189.078125,
+            "pss_mib": 179.5576171875,
+            "private_mib": 174.0390625
+          },
+          {
+            "stage": "small_first_call",
+            "elapsed_ms": 3.742336994037032,
+            "rss_mib": 189.28515625,
+            "pss_mib": 179.7646484375,
+            "private_mib": 174.24609375
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 28.207113035023212,
+            "rss_mib": 199.5546875,
+            "pss_mib": 187.927734375,
+            "private_mib": 181.37109375
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 14.680688036605716,
+            "rss_mib": 200.83984375,
+            "pss_mib": 189.2119140625,
+            "private_mib": 182.65625
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 2.9412000440061092,
+            "rss_mib": 203.28125,
+            "pss_mib": 191.5927734375,
+            "private_mib": 184.9765625
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 2.140523982234299,
+            "rss_mib": 203.29296875,
+            "pss_mib": 191.6044921875,
+            "private_mib": 184.98828125
+          }
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-functions/17.6.32.8/runtime_joint_step_c07f696aa826.h"
+        },
+        "cppyy_version": "3.5.0",
+        "compiler_mappings": [
+          "7cee59600000-7cee5a842000 r--p 00000000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7cee5a842000-7cee604d4000 r-xp 01242000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7cee604d4000-7cee63424000 r--p 06ed4000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7cee63424000-7cee63d5f000 r--p 09e23000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so",
+          "7cee63d5f000-7cee63dad000 rw-p 0a75e000 103:02 94675841                  /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/lib/libCling.so"
+        ],
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      }
+    ],
+    "native": [
+      {
+        "mode": "native",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.000842963345348835,
+            "rss_mib": 19.15234375,
+            "pss_mib": 12.2001953125,
+            "private_mib": 8.10546875
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 38.99968892801553,
+            "rss_mib": 34.12890625,
+            "pss_mib": 23.8017578125,
+            "private_mib": 18.125
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.35056204069405794,
+            "rss_mib": 34.30859375,
+            "pss_mib": 23.9814453125,
+            "private_mib": 18.3046875
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.11923396959900856,
+            "rss_mib": 36.87109375,
+            "pss_mib": 26.462890625,
+            "private_mib": 20.71875
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0038440339267253876,
+            "rss_mib": 36.87109375,
+            "pss_mib": 26.462890625,
+            "private_mib": 20.71875
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "native",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0004470348358154297,
+            "rss_mib": 19.1953125,
+            "pss_mib": 12.2314453125,
+            "private_mib": 8.109375
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 38.46443700604141,
+            "rss_mib": 34.0703125,
+            "pss_mib": 23.767578125,
+            "private_mib": 18.09765625
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.246344949118793,
+            "rss_mib": 34.25,
+            "pss_mib": 23.947265625,
+            "private_mib": 18.27734375
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.106935971416533,
+            "rss_mib": 36.875,
+            "pss_mib": 26.4599609375,
+            "private_mib": 20.69140625
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.004066969268023968,
+            "rss_mib": 36.875,
+            "pss_mib": 26.4599609375,
+            "private_mib": 20.69140625
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "native",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.00047904904931783676,
+            "rss_mib": 19.1484375,
+            "pss_mib": 12.240234375,
+            "private_mib": 8.1328125
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 42.66964097041637,
+            "rss_mib": 34.17578125,
+            "pss_mib": 23.912109375,
+            "private_mib": 18.2421875
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.32971310429275036,
+            "rss_mib": 34.36328125,
+            "pss_mib": 24.099609375,
+            "private_mib": 18.4296875
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.10807299986481667,
+            "rss_mib": 36.921875,
+            "pss_mib": 26.5458984375,
+            "private_mib": 20.77734375
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0037320423871278763,
+            "rss_mib": 36.921875,
+            "pss_mib": 26.5458984375,
+            "private_mib": 20.77734375
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      }
+    ],
+    "nanobind": [
+      {
+        "mode": "nanobind",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0007210765033960342,
+            "rss_mib": 19.03515625,
+            "pss_mib": 12.12890625,
+            "private_mib": 8.15625
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 93.19859999231994,
+            "rss_mib": 34.10546875,
+            "pss_mib": 23.7666015625,
+            "private_mib": 18.15234375
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.2638869918882847,
+            "rss_mib": 34.20703125,
+            "pss_mib": 23.8681640625,
+            "private_mib": 18.25390625
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.01176504883915186,
+            "rss_mib": 36.78125,
+            "pss_mib": 26.330078125,
+            "private_mib": 20.6171875
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0044599873945117,
+            "rss_mib": 36.78125,
+            "pss_mib": 26.330078125,
+            "private_mib": 20.6171875
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "nanobind",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0006799818947911263,
+            "rss_mib": 19.171875,
+            "pss_mib": 12.2529296875,
+            "private_mib": 8.17578125
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 81.86262694653124,
+            "rss_mib": 34.0859375,
+            "pss_mib": 23.8017578125,
+            "private_mib": 18.15234375
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.26976398658007383,
+            "rss_mib": 34.19140625,
+            "pss_mib": 23.9072265625,
+            "private_mib": 18.2578125
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.010938034392893314,
+            "rss_mib": 36.671875,
+            "pss_mib": 26.275390625,
+            "private_mib": 20.52734375
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0029569491744041443,
+            "rss_mib": 36.671875,
+            "pss_mib": 26.275390625,
+            "private_mib": 20.52734375
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      },
+      {
+        "mode": "nanobind",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0005399342626333237,
+            "rss_mib": 19.0625,
+            "pss_mib": 12.1845703125,
+            "private_mib": 8.1328125
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 45.64134497195482,
+            "rss_mib": 34.03515625,
+            "pss_mib": 23.7822265625,
+            "private_mib": 18.1484375
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.3126369556412101,
+            "rss_mib": 34.13671875,
+            "pss_mib": 23.8837890625,
+            "private_mib": 18.25
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.011886004358530045,
+            "rss_mib": 36.6171875,
+            "pss_mib": 26.251953125,
+            "private_mib": 20.51953125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0032579991966485977,
+            "rss_mib": 36.6171875,
+            "pss_mib": 26.251953125,
+            "private_mib": 20.51953125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 1.5265566588595902e-16,
+        "stderr": ""
+      }
+    ],
+    "rust": [
+      {
+        "mode": "rust",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0005230540409684181,
+            "rss_mib": 19.1171875,
+            "pss_mib": 12.2197265625,
+            "private_mib": 8.16796875
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 75.46817499678582,
+            "rss_mib": 34.0625,
+            "pss_mib": 23.7744140625,
+            "private_mib": 18.125
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.2686469815671444,
+            "rss_mib": 34.37890625,
+            "pss_mib": 24.0908203125,
+            "private_mib": 18.44140625
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.09577407035976648,
+            "rss_mib": 36.9609375,
+            "pss_mib": 26.560546875,
+            "private_mib": 20.8125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.0015720725059509277,
+            "rss_mib": 36.9609375,
+            "pss_mib": 26.560546875,
+            "private_mib": 20.8125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 4.163336342344337e-17,
+        "stderr": ""
+      },
+      {
+        "mode": "rust",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.000600004568696022,
+            "rss_mib": 19.2109375,
+            "pss_mib": 12.25390625,
+            "private_mib": 8.1796875
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 82.79209898319095,
+            "rss_mib": 34.06640625,
+            "pss_mib": 23.7666015625,
+            "private_mib": 18.140625
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.2293870784342289,
+            "rss_mib": 34.3828125,
+            "pss_mib": 24.0830078125,
+            "private_mib": 18.45703125
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.12318999506533146,
+            "rss_mib": 36.96875,
+            "pss_mib": 26.556640625,
+            "private_mib": 20.83203125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.002774992026388645,
+            "rss_mib": 36.96875,
+            "pss_mib": 26.556640625,
+            "private_mib": 20.83203125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 4.163336342344337e-17,
+        "stderr": ""
+      },
+      {
+        "mode": "rust",
+        "stages": [
+          {
+            "stage": "python_baseline",
+            "elapsed_ms": 0.0006980262696743011,
+            "rss_mib": 19.140625,
+            "pss_mib": 12.1953125,
+            "private_mib": 8.09375
+          },
+          {
+            "stage": "numpy_import",
+            "elapsed_ms": 51.83665198273957,
+            "rss_mib": 34.08203125,
+            "pss_mib": 23.78125,
+            "private_mib": 18.11328125
+          },
+          {
+            "stage": "eigen_load",
+            "elapsed_ms": 0.2683569910004735,
+            "rss_mib": 34.39453125,
+            "pss_mib": 24.09375,
+            "private_mib": 18.42578125
+          },
+          {
+            "stage": "eigen_first_call",
+            "elapsed_ms": 0.11255103163421154,
+            "rss_mib": 36.94921875,
+            "pss_mib": 26.5673828125,
+            "private_mib": 20.83203125
+          },
+          {
+            "stage": "eigen_second_call",
+            "elapsed_ms": 0.002121902070939541,
+            "rss_mib": 36.94921875,
+            "pss_mib": 26.5673828125,
+            "private_mib": 20.83203125
+          }
+        ],
+        "cache": null,
+        "cppyy_version": null,
+        "compiler_mappings": [],
+        "pch": null,
+        "max_error": 4.163336342344337e-17,
+        "stderr": ""
+      }
+    ]
+  },
+  "medians": {
+    "plain": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.000525033101439476,
+        "rss_mib": 19.12890625,
+        "pss_mib": 12.21484375,
+        "private_mib": 8.1484375
+      },
+      {
+        "stage": "cppyy_ready",
+        "elapsed_ms": 166.6136080166325,
+        "rss_mib": 182.64453125,
+        "pss_mib": 173.3232421875,
+        "private_mib": 167.92578125
+      },
+      {
+        "stage": "small_definition",
+        "elapsed_ms": 7.095424109138548,
+        "rss_mib": 186.7109375,
+        "pss_mib": 177.3779296875,
+        "private_mib": 171.98046875
+      },
+      {
+        "stage": "small_first_call",
+        "elapsed_ms": 2.8360330034047365,
+        "rss_mib": 186.91015625,
+        "pss_mib": 177.5546875,
+        "private_mib": 172.15625
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 27.51932805404067,
+        "rss_mib": 197.25390625,
+        "pss_mib": 185.798828125,
+        "private_mib": 179.3515625
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 1250.9195789461955,
+        "rss_mib": 363.99609375,
+        "pss_mib": 352.541015625,
+        "private_mib": 346.09375
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 44.73042499739677,
+        "rss_mib": 367.12109375,
+        "pss_mib": 355.57421875,
+        "private_mib": 349.03515625
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 2.457626978866756,
+        "rss_mib": 367.1328125,
+        "pss_mib": 355.5859375,
+        "private_mib": 349.046875
+      }
+    ],
+    "cached": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.0005800975486636162,
+        "rss_mib": 19.1875,
+        "pss_mib": 12.21484375,
+        "private_mib": 8.08984375
+      },
+      {
+        "stage": "cppyy_ready",
+        "elapsed_ms": 167.08535805810243,
+        "rss_mib": 185.40234375,
+        "pss_mib": 175.8994140625,
+        "private_mib": 170.375
+      },
+      {
+        "stage": "small_definition",
+        "elapsed_ms": 6.781165022403002,
+        "rss_mib": 189.078125,
+        "pss_mib": 179.5830078125,
+        "private_mib": 174.05859375
+      },
+      {
+        "stage": "small_first_call",
+        "elapsed_ms": 3.3477989491075277,
+        "rss_mib": 189.28515625,
+        "pss_mib": 179.7666015625,
+        "private_mib": 174.24609375
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 28.431541053578258,
+        "rss_mib": 199.5546875,
+        "pss_mib": 187.951171875,
+        "private_mib": 181.45703125
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 14.680688036605716,
+        "rss_mib": 200.83984375,
+        "pss_mib": 189.232421875,
+        "private_mib": 182.73828125
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 3.044920042157173,
+        "rss_mib": 203.37109375,
+        "pss_mib": 191.70703125,
+        "private_mib": 185.11328125
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 2.140523982234299,
+        "rss_mib": 203.3828125,
+        "pss_mib": 191.71875,
+        "private_mib": 185.125
+      }
+    ],
+    "native": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.00047904904931783676,
+        "rss_mib": 19.15234375,
+        "pss_mib": 12.2314453125,
+        "private_mib": 8.109375
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 38.99968892801553,
+        "rss_mib": 34.12890625,
+        "pss_mib": 23.8017578125,
+        "private_mib": 18.125
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 0.32971310429275036,
+        "rss_mib": 34.30859375,
+        "pss_mib": 23.9814453125,
+        "private_mib": 18.3046875
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 0.10807299986481667,
+        "rss_mib": 36.875,
+        "pss_mib": 26.462890625,
+        "private_mib": 20.71875
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 0.0038440339267253876,
+        "rss_mib": 36.875,
+        "pss_mib": 26.462890625,
+        "private_mib": 20.71875
+      }
+    ],
+    "nanobind": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.0006799818947911263,
+        "rss_mib": 19.0625,
+        "pss_mib": 12.1845703125,
+        "private_mib": 8.15625
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 81.86262694653124,
+        "rss_mib": 34.0859375,
+        "pss_mib": 23.7822265625,
+        "private_mib": 18.15234375
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 0.26976398658007383,
+        "rss_mib": 34.19140625,
+        "pss_mib": 23.8837890625,
+        "private_mib": 18.25390625
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 0.01176504883915186,
+        "rss_mib": 36.671875,
+        "pss_mib": 26.275390625,
+        "private_mib": 20.52734375
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 0.0032579991966485977,
+        "rss_mib": 36.671875,
+        "pss_mib": 26.275390625,
+        "private_mib": 20.52734375
+      }
+    ],
+    "rust": [
+      {
+        "stage": "python_baseline",
+        "elapsed_ms": 0.000600004568696022,
+        "rss_mib": 19.140625,
+        "pss_mib": 12.2197265625,
+        "private_mib": 8.16796875
+      },
+      {
+        "stage": "numpy_import",
+        "elapsed_ms": 75.46817499678582,
+        "rss_mib": 34.06640625,
+        "pss_mib": 23.7744140625,
+        "private_mib": 18.125
+      },
+      {
+        "stage": "eigen_load",
+        "elapsed_ms": 0.2683569910004735,
+        "rss_mib": 34.3828125,
+        "pss_mib": 24.0908203125,
+        "private_mib": 18.44140625
+      },
+      {
+        "stage": "eigen_first_call",
+        "elapsed_ms": 0.11255103163421154,
+        "rss_mib": 36.9609375,
+        "pss_mib": 26.560546875,
+        "private_mib": 20.83203125
+      },
+      {
+        "stage": "eigen_second_call",
+        "elapsed_ms": 0.002121902070939541,
+        "rss_mib": 36.9609375,
+        "pss_mib": 26.560546875,
+        "private_mib": 20.83203125
+      }
+    ]
+  },
+  "native_build_s": 5.639244992053136,
+  "native_build_log": [
+    "-- Found pybind11: /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/include (found version \"3.0.3\")\n-- Configuring done (0.0s)\n-- Generating done (0.0s)\n-- Build files have been written to: /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-native\n",
+    "[ 12%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_internals.cpp.o\n[ 12%] Building CXX object CMakeFiles/eigen_step_core.dir/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/eigen_startup/step.cpp.o\n[ 18%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_func.cpp.o\n[ 25%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_type.cpp.o\n[ 25%] Built target eigen_step_core\n[ 31%] Building CXX object CMakeFiles/eigen_step_native.dir/bindings.cpp.o\n[ 37%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_enum.cpp.o\n[ 43%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_ndarray.cpp.o\n[ 50%] Linking CXX shared module eigen_step_native.cpython-312-x86_64-linux-gnu.so\n[ 56%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/nb_static_property.cpp.o\n[ 62%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/common.cpp.o\n[ 62%] Built target eigen_step_native\n[ 68%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/error.cpp.o\n[ 75%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/trampoline.cpp.o\n[ 81%] Building CXX object CMakeFiles/nanobind-static.dir/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/python/nanobind/src/implicit.cpp.o\n[ 87%] Linking CXX static library libnanobind-static.a\n[ 87%] Built target nanobind-static\n[ 93%] Building CXX object CMakeFiles/eigen_step_nanobind.dir/nanobind.cpp.o\n[100%] Linking CXX shared module eigen_step_nanobind.cpython-312-x86_64-linux-gnu.so\n[100%] Built target eigen_step_nanobind\n"
+  ],
+  "rust_build_s": 0.038601476000621915,
+  "rust_build_log": "    Finished `release` profile [optimized] target(s) in 0.03s\n",
+  "native_artifacts": {
+    "eigen_step_native.cpython-312-x86_64-linux-gnu.so": 182912,
+    "joint_step_rust.so": 425000,
+    "eigen_step_nanobind.cpython-312-x86_64-linux-gnu.so": 101912
+  }
+}

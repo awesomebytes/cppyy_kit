@@ -1,0 +1,138 @@
+{
+  "viser": {
+    "seconds": 15.000387039966881,
+    "before": {
+      "pid": 245093,
+      "session_id": 137244581739024,
+      "state_id": 137244583914752,
+      "captured": 564,
+      "processed": 561,
+      "capture_fps": 19.756244096155612,
+      "inference_fps": 19.65115769138883,
+      "processing_ms": 27.69360097590834,
+      "revision": 1,
+      "result_revision": 1,
+      "result_age_ms": 57.519645895808935,
+      "error": null,
+      "capture_error": null,
+      "capture_running": true,
+      "inference_running": true
+    },
+    "after": {
+      "pid": 245093,
+      "session_id": 137244581739024,
+      "state_id": 137244583914752,
+      "captured": 863,
+      "processed": 860,
+      "capture_fps": 19.81681392637876,
+      "inference_fps": 19.747925813077327,
+      "processing_ms": 22.436385974287987,
+      "revision": 1,
+      "result_revision": 1,
+      "result_age_ms": 25.398447061888874,
+      "error": null,
+      "capture_error": null,
+      "capture_running": true,
+      "inference_running": true
+    },
+    "viewer_before": {
+      "image_updates": 561,
+      "depth_updates": 561,
+      "cloud_updates": 561,
+      "elapsed_s": 28.416048103012145,
+      "publication_samples": 561,
+      "update_ms_median": 2.0334660075604916,
+      "update_ms_p95": 4.838984925299883,
+      "error": null
+    },
+    "viewer_after": {
+      "image_updates": 859,
+      "depth_updates": 859,
+      "cloud_updates": 859,
+      "elapsed_s": 43.41700604511425,
+      "publication_samples": 600,
+      "update_ms_median": 2.0422255038283765,
+      "update_ms_p95": 4.832904989598319,
+      "error": null
+    },
+    "capture_hz": 19.93281901349261,
+    "processing_hz": 19.93281901349261,
+    "sample_count": 299,
+    "median_ms": {
+      "inference": 24.697546032257378,
+      "geometry_and_color": 1.9485269440338016,
+      "observed_result_age": 29.3914150679484
+    },
+    "p95_ms": {
+      "inference": 29.070895642507818,
+      "geometry_and_color": 2.310102619230747,
+      "observed_result_age": 34.235413221176714
+    }
+  },
+  "polyscope": {
+    "seconds": 10.000945348059759,
+    "before": {
+      "pid": 279058,
+      "session_id": 137957052807760,
+      "state_id": 137957057009216,
+      "captured": 60,
+      "processed": 60,
+      "capture_fps": 18.004369375969056,
+      "inference_fps": 18.004369375969056,
+      "processing_ms": 23.612156976014376,
+      "revision": 1,
+      "result_revision": 1,
+      "result_age_ms": 43.95423107780516,
+      "error": null,
+      "capture_error": null,
+      "capture_running": true,
+      "inference_running": true
+    },
+    "after": {
+      "pid": 279058,
+      "session_id": 137957052807760,
+      "state_id": 137957057009216,
+      "captured": 260,
+      "processed": 260,
+      "capture_fps": 19.49939704789026,
+      "inference_fps": 19.49939704789026,
+      "processing_ms": 24.344086996279657,
+      "revision": 1,
+      "result_revision": 1,
+      "result_age_ms": 24.770578020252287,
+      "error": null,
+      "capture_error": null,
+      "capture_running": true,
+      "inference_running": true
+    },
+    "viewer_before": {
+      "running": true,
+      "updates": 60,
+      "render_ticks": 180,
+      "error": null,
+      "update_ms_median": 2.719109004829079,
+      "update_ms_p95": 3.2768149510957247
+    },
+    "viewer_after": {
+      "running": true,
+      "updates": 259,
+      "render_ticks": 777,
+      "error": null,
+      "update_ms_median": 2.7225560043007135,
+      "update_ms_p95": 3.0252527561970055
+    },
+    "capture_hz": 19.998109482600178,
+    "processing_hz": 19.998109482600178,
+    "sample_count": 200,
+    "median_ms": {
+      "inference": 23.704020481090993,
+      "geometry_and_color": 1.8965329509228468,
+      "observed_result_age": 28.413840977009386
+    },
+    "p95_ms": {
+      "inference": 27.219865849474445,
+      "geometry_and_color": 2.9071219207253307,
+      "observed_result_age": 33.206480980152264
+    }
+  }
+}

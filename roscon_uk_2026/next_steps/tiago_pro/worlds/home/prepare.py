@@ -1,4 +1,5 @@
 """Merge the existing physics and rasterize static house collision geometry."""
+import argparse
 import itertools
 import json
 import math
@@ -12,6 +13,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent
 MODEL_ROOT = ROOT / 'models'
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--scene', choices=('house', 'simple-house'), default='house')
+parser.add_argument('--output', type=Path, default=ROOT)
+args = parser.parse_args()
+OUTPUT = args.output
+OUTPUT.mkdir(parents=True, exist_ok=True)
 
 
 def add_body(model, name, shape, dimensions, position, color, mass=None):
@@ -106,6 +113,10 @@ def visit(model, parent):
 
 
 house = ET.parse(MODEL_ROOT/'turtlebot3_house/model.sdf').getroot().find('model')
+if args.scene == 'simple-house':
+    for model in list(house.findall('model')):
+        if model.get('name') != 'table':
+            house.remove(model)
 visit(house,np.eye(4))
 resolution = 0.05
 origin = [-9.0,-7.0,0.0]
@@ -119,8 +130,8 @@ for lo,hi in obstacles:
 # Face the existing table from its clear south side, without startup movement.
 spawn=(table_x,1.35)
 image=grid[::-1].copy()
-(ROOT/'map.pgm').write_bytes(f'P5\n{width} {height}\n255\n'.encode()+image.tobytes())
-(ROOT/'map.yaml').write_text(yaml.safe_dump({'image':'map.pgm','resolution':resolution,'origin':origin,'negate':0,'occupied_thresh':0.65,'free_thresh':0.25}))
+(OUTPUT/'map.pgm').write_bytes(f'P5\n{width} {height}\n255\n'.encode()+image.tobytes())
+(OUTPUT/'map.yaml').write_text(yaml.safe_dump({'image':'map.pgm','resolution':resolution,'origin':origin,'negate':0,'occupied_thresh':0.65,'free_thresh':0.25}))
 world=ET.parse(ROOT.parents[1]/'empty.world')
 w=world.getroot().find('world')
 scene=ET.SubElement(w,'scene')
@@ -142,16 +153,19 @@ material=ET.SubElement(visual,'material')
 ET.SubElement(material,'ambient').text='.76 .74 .69 1'
 ET.SubElement(material,'diffuse').text='.82 .80 .75 1'
 ET.SubElement(material,'specular').text='.02 .02 .02 1'
-include=ET.SubElement(w,'include');ET.SubElement(include,'uri').text='model://turtlebot3_house'
+if args.scene == 'simple-house':
+    w.append(house)
+else:
+    include=ET.SubElement(w,'include');ET.SubElement(include,'uri').text='model://turtlebot3_house'
 for model in props:w.append(model)
 gui=ET.SubElement(w,'gui');camera=ET.SubElement(gui,'camera',{'name':'home_camera'})
 ET.SubElement(camera,'pose').text='3 -2 8 0 0.85 2.45'
-world.write(ROOT/'home.world',encoding='unicode')
+world.write(OUTPUT/'home.world',encoding='unicode')
 report={'spawn':{'x':spawn[0],'y':spawn[1],'yaw':math.pi/2},'table_near_edge_forward_m':table_y-.4-spawn[1],'existing_table':'turtlebot3_house::table','table_surface_height_m':1.02,'collision_obstacle_count':len(obstacles),'map_origin':origin,'map_resolution':resolution,'map_size':[width,height], 'map_method':'projected primitive collision boxes/cylinders, height 0.08..1.6 m; mesh furniture supplied by live lidar costmaps'}
-(ROOT/'integration.json').write_text(json.dumps(report,indent=2)+'\n')
+(OUTPUT/'integration.json').write_text(json.dumps(report,indent=2)+'\n')
 # Small actual map preview without additional graphics dependencies.
 def chunk(t,d):return struct.pack('!I',len(d))+t+d+struct.pack('!I',zlib.crc32(t+d)&0xffffffff)
 raw=b''.join(b'\0'+row.tobytes() for row in image)
 png=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('!2I5B',width,height,8,0,0,0,0))+chunk(b'IDAT',zlib.compress(raw))+chunk(b'IEND',b'')
-(ROOT/'map.png').write_bytes(png)
+(OUTPUT/'map.png').write_bytes(png)
 print(json.dumps(report,indent=2))

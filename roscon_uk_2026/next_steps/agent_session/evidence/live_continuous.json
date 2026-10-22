@@ -1,0 +1,248 @@
+{
+  "result": {
+    "source": "live",
+    "frame": "base_link",
+    "stamp": 251.823,
+    "image_delta_s": 0.0,
+    "roi": [
+      0.75,
+      0.1,
+      0.9,
+      1.02,
+      0.3,
+      1.08
+    ],
+    "parameters": {
+      "color": "red",
+      "min_cluster": 20,
+      "leaf": 0.004,
+      "min_area": 40,
+      "cluster_distance": 0.035
+    },
+    "table_found": true,
+    "table_height": 0.9440100193023682,
+    "input_points": 147131,
+    "voxel_points": 2224,
+    "observations": [
+      {
+        "center": [
+          0.8787094354629517,
+          0.19224755465984344,
+          0.9754376411437988
+        ],
+        "size": [
+          0.04317265748977661,
+          0.04407086968421936,
+          0.02672964334487915
+        ],
+        "lower": [
+          0.8571231365203857,
+          0.17021211981773376,
+          0.9620727896690369
+        ],
+        "upper": [
+          0.9002957940101624,
+          0.21428298950195312,
+          0.988802433013916
+        ],
+        "points": 178,
+        "pixel": [
+          245.76230035808047,
+          296.98086432914715
+        ],
+        "color": "red",
+        "shape": "polygon",
+        "bbox": [
+          234,
+          288,
+          23,
+          25
+        ]
+      }
+    ],
+    "selected": {
+      "center": [
+        0.8787094354629517,
+        0.19224755465984344,
+        0.9754376411437988
+      ],
+      "size": [
+        0.04317265748977661,
+        0.04407086968421936,
+        0.02672964334487915
+      ],
+      "lower": [
+        0.8571231365203857,
+        0.17021211981773376,
+        0.9620727896690369
+      ],
+      "upper": [
+        0.9002957940101624,
+        0.21428298950195312,
+        0.988802433013916
+      ],
+      "points": 178,
+      "pixel": [
+        245.76230035808047,
+        296.98086432914715
+      ],
+      "color": "red",
+      "shape": "polygon",
+      "bbox": [
+        234,
+        288,
+        23,
+        25
+      ]
+    },
+    "timings": {
+      "cloud_ms": 3.706496092490852,
+      "image_ms": 5.075903958640993,
+      "total_ms": 9.189388016238809
+    }
+  },
+  "publication": {
+    "filtered_points": 178,
+    "markers": 1,
+    "selected_marker": true,
+    "topics": [
+      "/agent_session/filtered_points",
+      "/agent_session/objects",
+      "/agent_session/overlay"
+    ]
+  },
+  "frames": [
+    {
+      "stamp": 245.29,
+      "timings": {
+        "cloud_ms": 1928.0713860644028,
+        "image_ms": 254.95371595025063,
+        "total_ms": 2218.553469981998
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 247.072,
+      "timings": {
+        "cloud_ms": 13.88782192952931,
+        "image_ms": 25.399503065273166,
+        "total_ms": 42.671421892009676
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 247.5,
+      "timings": {
+        "cloud_ms": 1.9185449928045273,
+        "image_ms": 2.872397075407207,
+        "total_ms": 5.00821799505502
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 247.963,
+      "timings": {
+        "cloud_ms": 3.6140060983598232,
+        "image_ms": 5.9050279669463634,
+        "total_ms": 9.93813609238714
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 248.359,
+      "timings": {
+        "cloud_ms": 1.9744379678741097,
+        "image_ms": 1.6453999560326338,
+        "total_ms": 3.843500977382064
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 248.689,
+      "timings": {
+        "cloud_ms": 1.9063280196860433,
+        "image_ms": 2.089192974381149,
+        "total_ms": 4.201416042633355
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 249.25,
+      "timings": {
+        "cloud_ms": 1.654507010243833,
+        "image_ms": 1.9120420329272747,
+        "total_ms": 3.750937059521675
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 249.711,
+      "timings": {
+        "cloud_ms": 1.6805280465632677,
+        "image_ms": 3.0706640100106597,
+        "total_ms": 5.119767040014267
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 250.107,
+      "timings": {
+        "cloud_ms": 1.4090629993006587,
+        "image_ms": 1.898340997286141,
+        "total_ms": 3.4756320528686047
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 250.503,
+      "timings": {
+        "cloud_ms": 2.0642789313569665,
+        "image_ms": 2.7614240534603596,
+        "total_ms": 5.025562015362084
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 250.966,
+      "timings": {
+        "cloud_ms": 1.6044978983700275,
+        "image_ms": 1.63825205527246,
+        "total_ms": 3.4198109060525894
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 251.263,
+      "timings": {
+        "cloud_ms": 1.4586920151486993,
+        "image_ms": 1.5963349724188447,
+        "total_ms": 3.2659489661455154
+      },
+      "objects": 1,
+      "selected": true
+    },
+    {
+      "stamp": 251.823,
+      "timings": {
+        "cloud_ms": 3.706496092490852,
+        "image_ms": 5.075903958640993,
+        "total_ms": 9.189388016238809
+      },
+      "objects": 1,
+      "selected": true
+    }
+  ],
+  "requested_rate_hz": 2.0,
+  "mode": "fresh live frames"
+}

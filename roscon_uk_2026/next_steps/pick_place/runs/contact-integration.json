@@ -1,0 +1,292 @@
+{
+  "success": true,
+  "mode": "contact",
+  "stage": "complete",
+  "message": "Measured object lift and placement completed",
+  "handover": false,
+  "holding_side": null,
+  "attachment_active": false,
+  "measurements": {
+    "contact_lift_m": 0.09467568788161307,
+    "contact_follow_error_m": 0.03052650759535931,
+    "placement_error_m": 0.0034229089273696547
+  },
+  "moves": [
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009948158241245102,
+      "orientation_error_rad": 0.02999568657316319,
+      "cycles": 236,
+      "wall_s": 12.029613682068884
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009974947600290884,
+      "orientation_error_rad": 0.02973689529821441,
+      "cycles": 184,
+      "wall_s": 9.403775568935089
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024306178214424257,
+      "orientation_error_rad": 0.002545840073262938,
+      "cycles": 12,
+      "wall_s": 0.612129963003099
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02422806125174035,
+      "orientation_error_rad": 0.006499008807635401,
+      "cycles": 22,
+      "wall_s": 1.1229046290973201
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024529528274363405,
+      "orientation_error_rad": 0.003897871450342746,
+      "cycles": 24,
+      "wall_s": 1.2256168349413201
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024976272096172307,
+      "orientation_error_rad": 0.002713574934731685,
+      "cycles": 26,
+      "wall_s": 1.3218447100371122
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02466077701522072,
+      "orientation_error_rad": 0.0024407213212553924,
+      "cycles": 29,
+      "wall_s": 1.4869807300856337
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024911248648891663,
+      "orientation_error_rad": 0.0026694883389526227,
+      "cycles": 26,
+      "wall_s": 1.3293026180472225
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024930895847940594,
+      "orientation_error_rad": 0.004218325286703217,
+      "cycles": 26,
+      "wall_s": 1.3235273360041901
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02494864059671092,
+      "orientation_error_rad": 0.016965043781047663,
+      "cycles": 31,
+      "wall_s": 1.571360083995387
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024224305140105613,
+      "orientation_error_rad": 0.03236774604619096,
+      "cycles": 35,
+      "wall_s": 1.7887019710615277
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024614833625913164,
+      "orientation_error_rad": 0.04405845099484184,
+      "cycles": 39,
+      "wall_s": 1.9864303920185193
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024710777327832334,
+      "orientation_error_rad": 0.05144053977123378,
+      "cycles": 41,
+      "wall_s": 2.096523093059659
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024879569307994138,
+      "orientation_error_rad": 0.058884981544337966,
+      "cycles": 46,
+      "wall_s": 2.3582220999523997
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009973891999682906,
+      "orientation_error_rad": 0.029967119119636454,
+      "cycles": 160,
+      "wall_s": 8.1762158209458
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024928097671370934,
+      "orientation_error_rad": 0.0037894450365520693,
+      "cycles": 10,
+      "wall_s": 0.5137760170036927
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024346873787372297,
+      "orientation_error_rad": 0.0004588933745834452,
+      "cycles": 28,
+      "wall_s": 1.4259666979778558
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024877024317576858,
+      "orientation_error_rad": 0.0006518417892339821,
+      "cycles": 28,
+      "wall_s": 1.425084564019926
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00981911255522701,
+      "orientation_error_rad": 0.0009515907667436111,
+      "cycles": 49,
+      "wall_s": 2.504369924077764
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024875670717582385,
+      "orientation_error_rad": 0.0017620930382153221,
+      "cycles": 17,
+      "wall_s": 0.874675000901334
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024600406985879893,
+      "orientation_error_rad": 0.005615118717197294,
+      "cycles": 28,
+      "wall_s": 1.4258447689935565
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009806656545230504,
+      "orientation_error_rad": 0.00363787495899813,
+      "cycles": 53,
+      "wall_s": 2.7083174020517617
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024812232302037794,
+      "orientation_error_rad": 0.0009933561870193821,
+      "cycles": 7,
+      "wall_s": 0.3592408769764006
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024281326881084152,
+      "orientation_error_rad": 0.004494761795223106,
+      "cycles": 20,
+      "wall_s": 1.019795028027147
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02431145086559527,
+      "orientation_error_rad": 0.009033685596879067,
+      "cycles": 14,
+      "wall_s": 0.7169320889515802
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024814573012422587,
+      "orientation_error_rad": 0.012896289757677726,
+      "cycles": 12,
+      "wall_s": 0.6131264850264415
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00988753171550056,
+      "orientation_error_rad": 0.02446556316493445,
+      "cycles": 115,
+      "wall_s": 5.869168589008041
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.02488726396275939,
+      "orientation_error_rad": 0.002681575618849709,
+      "cycles": 12,
+      "wall_s": 0.6109650380676612
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024547166710522438,
+      "orientation_error_rad": 0.0018931778307397279,
+      "cycles": 27,
+      "wall_s": 1.3768186710076407
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024894136994742213,
+      "orientation_error_rad": 0.0033374140305516935,
+      "cycles": 27,
+      "wall_s": 1.3774894140660763
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.009714830786564705,
+      "orientation_error_rad": 0.0020886252697324813,
+      "cycles": 56,
+      "wall_s": 2.854272407013923
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024968087814479567,
+      "orientation_error_rad": 0.0014356308318447778,
+      "cycles": 10,
+      "wall_s": 0.5137573460815474
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024339319480349852,
+      "orientation_error_rad": 0.005921028922769526,
+      "cycles": 28,
+      "wall_s": 1.4298819160321727
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.024833025990342265,
+      "orientation_error_rad": 0.00819285236937173,
+      "cycles": 26,
+      "wall_s": 1.3218536759959534
+    },
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.00999703839439364,
+      "orientation_error_rad": 0.017758630222445858,
+      "cycles": 67,
+      "wall_s": 3.418252593022771
+    }
+  ],
+  "input": {
+    "source": "known scene pose for actuator integration probe",
+    "name": "red_cube",
+    "center": [
+      -2.85,
+      2.23,
+      1.0425
+    ]
+  },
+  "preparation": {
+    "source": "continued original near goal after first 45 second rotation probe",
+    "near_target": [
+      -2.85859169,
+      1.71469454,
+      1.0
+    ],
+    "lift_target": [
+      -2.85859169,
+      1.71469454,
+      1.2
+    ],
+    "quaternion_xyzw": [
+      0.5,
+      0.5,
+      -0.5,
+      0.5
+    ],
+    "timeout_wall_s": 120,
+    "base_y_max_m": 1.6
+  },
+  "observed_realtime_factor": 0.8246443452450756
+}

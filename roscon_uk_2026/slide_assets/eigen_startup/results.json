@@ -1,0 +1,225 @@
+{
+  "recorded_at": "2026-10-20T09:54:38.221361+01:00",
+  "method": "Same source, input, standard PCH and disabled auto hook. Cached mode uses a fresh function-cache directory then three repeats. Eigen-PCH mode uses a separately generated PCH and the plain JIT source. All processes include numerical validation. OS caches remain warm.",
+  "pch_preparation_s": 1.7427999150240794,
+  "samples": {
+    "plain": [
+      {
+        "mode": "plain",
+        "load_s": 1.5070154829882085,
+        "first_call_s": 0.04586415900848806,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 1.6886668460210785,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 1.519859881955199,
+        "first_call_s": 0.04703616595361382,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 1.703890303033404,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 1.5161117779789492,
+        "first_call_s": 0.04505729000084102,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 1.695385892991908,
+        "stderr": ""
+      }
+    ],
+    "cached": [
+      {
+        "mode": "cached",
+        "load_s": 3.7273725849809125,
+        "first_call_s": 0.05132294993381947,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": {
+          "cached": false,
+          "reason": "miss-built",
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 3.948158012004569,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.1965883020311594,
+        "first_call_s": 0.002328350907191634,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.3301165068987757,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.18405084393452853,
+        "first_call_s": 0.0023355570156127214,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.3146905329776928,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.18224657606333494,
+        "first_call_s": 0.002279584063217044,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/functions/17.6.32.8/slide_joint_step_c07f696aa826.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.31902822700794786,
+        "stderr": ""
+      }
+    ],
+    "eigen_pch": [
+      {
+        "mode": "plain",
+        "load_s": 1.3674445820506662,
+        "first_call_s": 0.04665650299284607,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/eigen.pch",
+        "process_s": 1.5122361179674044,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 1.3267144300043583,
+        "first_call_s": 0.04838091100100428,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/eigen.pch",
+        "process_s": 1.51121496304404,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 1.372439577942714,
+        "first_call_s": 0.04637718107551336,
+        "max_error": 1.5265566588595902e-16,
+        "joint_increment": [
+          -0.007927188426427437,
+          0.027907304861107894,
+          0.005278326148733921,
+          0.01058284527355757,
+          0.00105050250625118,
+          -0.01332418791468118,
+          -0.0038568545720405155
+        ],
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-sl4u_5fu/eigen.pch",
+        "process_s": 1.5541537050157785,
+        "stderr": ""
+      }
+    ]
+  },
+  "repeat_median_s": {
+    "plain": 1.695385892991908,
+    "cached": 0.31902822700794786,
+    "eigen_pch": 1.5122361179674044
+  }
+}

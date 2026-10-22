@@ -1,0 +1,81 @@
+{
+  "mode": "manual native pluginlib probe and microbenchmark",
+  "plugin_class": "nav2_kit_python::PythonCritic",
+  "base_class": "dwb_core::TrajectoryCritic",
+  "environment": "roscon_uk_2026/next_steps/tiago_pro_jazzy/.pixi/envs/kit",
+  "execution": "pixi run --manifest-path roscon_uk_2026/next_steps/tiago_pro_jazzy/pixi.toml -e kit python",
+  "build": {
+    "method": "cppyy_kit.prebuild, followed by install_python_critic_plugin",
+    "overlay": ".cache/nav2_python_critic",
+    "result": "compiled and exported",
+    "discovery": "pluginlib::ClassLoader<dwb_core::TrajectoryCritic> loaded the exported class",
+    "initialization": "Initialized with a real nav2_util::LifecycleNode and null costmap; prepare accepted a two-point path"
+  },
+  "guards": [
+    {
+      "python_result": "None",
+      "native_result": "dwb_core::IllegalTrajectoryException"
+    },
+    {
+      "python_result": "NaN",
+      "native_result": "dwb_core::IllegalTrajectoryException"
+    },
+    {
+      "python_result": "+infinity",
+      "native_result": "dwb_core::IllegalTrajectoryException"
+    },
+    {
+      "python_result": "-1.0",
+      "native_result": "dwb_core::IllegalTrajectoryException"
+    },
+    {
+      "python_exception": "RuntimeError",
+      "native_result": "dwb_core::IllegalTrajectoryException"
+    },
+    {
+      "python_exception": "SystemExit",
+      "native_result": "dwb_core::IllegalTrajectoryException; host process continued"
+    }
+  ],
+  "measurements": [
+    {
+      "name": "native bridge with constant Python score",
+      "candidate_count": 100000,
+      "microseconds_per_candidate": 0.14724788,
+      "clock": "std::chrono::steady_clock",
+      "python_result": 1.0
+    },
+    {
+      "name": "native bridge with ForwardCameraPolicy",
+      "candidate_count": 100000,
+      "microseconds_per_candidate": 0.40560064,
+      "clock": "std::chrono::steady_clock",
+      "policy_options": {},
+      "context": {
+        "yaw_rad": 0.0,
+        "path_heading_rad": 0.0,
+        "goal_distance_m": 2.0
+      },
+      "candidate": {
+        "vx_m_s": 0.2,
+        "vy_m_s": 0.0,
+        "wz_rad_s": 0.0,
+        "final_heading_rad": 0.0
+      }
+    }
+  ],
+  "measurement_limitations": [
+    "Each timing is one aggregate run, with no repetition, distribution or confidence interval.",
+    "The harness called the native plugin through ctypes in an existing matching Python interpreter.",
+    "The measured loop includes scoreTrajectory, GIL acquisition, scalar Python argument construction and the Python score call.",
+    "Timing excludes compilation, plugin discovery, lifecycle initialization, prepare, DWB trajectory generation, other critics, costmap collision checks and Nav2 executor work.",
+    "All timed candidates were identical, valid, aligned forward candidates. Rejection and Python exception paths were probed for behavior but not timed.",
+    "These measurements do not establish a control-cycle deadline or real-time guarantee.",
+    "External controller_server initialization and navigation results are recorded separately in forward.json."
+  ],
+  "lint": {
+    "command": ".pixi/envs/default/bin/flake8 nav2_kit/nav2_kit/python_critic.py nav2_kit/demos/forward_camera_policy.py",
+    "result": "passed"
+  },
+  "test_files_added": false
+}

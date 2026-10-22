@@ -1,0 +1,25 @@
+{
+  "assumption": "Ideal position command tracking, fixed initial perception. No physical object/contact simulation.",
+  "orientation_scale_m_per_rad": 0.3,
+  "stages": [
+    {
+      "stage": "orient_before_table",
+      "cycles": 162,
+      "position_error_m": 0.25940828846453606,
+      "orientation_error_rad": 0.7449000779957686,
+      "wall_s": 15.215557708987035,
+      "failure": "step_rejected",
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.7887767658356845,
+        "minimum_clearance": 0.001999724066442767,
+        "step_accepted": false,
+        "scaled_speed": 0.0,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 76,
+        "solver_failure": null
+      }
+    }
+  ],
+  "base_world_y_upper_bound_m": 1.6
+}

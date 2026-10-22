@@ -1,5 +1,11 @@
 # It was supposed to be a small Python script
 
+For the latest spoken sequence, see [TALK_SCRIPT.md](TALK_SCRIPT.md).
+For the current robot demos and supporting speaking points, see
+[Speaker notes (19 October)](SPEAKER_NOTES.md), including the Python plugin,
+its glue and the interactive admittance controller.
+
+
 A working spoken script for a roughly 45-minute deep dive. The story follows
 one prototype as we keep asking it to do more. Italic notes are cues for the
 presenter. The expandable sections hold the exact evaluated prompts and

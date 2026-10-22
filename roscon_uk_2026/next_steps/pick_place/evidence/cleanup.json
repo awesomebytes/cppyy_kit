@@ -1,0 +1,40 @@
+{
+  "method": "Executed existing offline native route probe and manual bound checks. No test files added.",
+  "checks": {
+    "ruff_format": "passed",
+    "ruff_rules": "E,F,I,UP,B,SIM passed",
+    "project_flake8": "passed"
+  },
+  "custom_route": {
+    "command": "pixi run -e pick-place python /tmp/controller_full_route_probe.py",
+    "stages": 8,
+    "maximum_position_error_m": 0.00965440535585078,
+    "maximum_orientation_error_rad": 0.02156645274875884,
+    "note": "Probe script was already present outside the checkout. Results match the prior run exactly. Nominal kinematics only; no object dynamics or contact validation."
+  },
+  "measured_bounds": {
+    "tolerance": 1e-06,
+    "behavior": "Reject active measured coordinates outside position bounds before solving or integration.",
+    "original_base_case": {
+      "measured_base_y_m": 1.7,
+      "upper_bound_m": 1.6,
+      "dt_s": 0.05,
+      "original_command_y_m_s": -1.9999999999999973,
+      "configured_speed_y_m_s": 0.12
+    },
+    "manual_rejections": [
+      {
+        "coordinate": "base_y",
+        "rejected": true,
+        "message": "Measured coordinate base_y=1.7 is outside position bounds [-inf, 1.6]"
+      },
+      {
+        "coordinate": "torso_lift_joint",
+        "rejected": true,
+        "message": "Measured coordinate torso_lift_joint=0.36 is outside position bounds [-0.001, 0.35]"
+      }
+    ],
+    "within_tolerance_base_y_m": 1.6000005,
+    "within_tolerance_command_y_m_s": -1.000000000139778e-05
+  }
+}

@@ -55,7 +55,7 @@ def prepare():
     (ROOT / 'generated/sim.urdf').write_text(sim)
     world = ET.parse(ASSETS / 'worlds/home/home.world')
     w = world.getroot().find('world')
-    w.find('physics').set('type','ignored')
+    w.find('physics').set('type', 'ignored')
     for filename, name in [('physics','Physics'),('user-commands','UserCommands'),
                            ('scene-broadcaster','SceneBroadcaster'),('sensors','Sensors'),
                            ('imu','Imu'),('forcetorque','ForceTorque')]:
@@ -63,8 +63,34 @@ def prepare():
         if name == 'Sensors': ET.SubElement(p,'render_engine').text='ogre2'
     from world_materials import prepare as prepare_materials
     prepare_materials(world, ASSETS / 'worlds/home/models', ROOT / 'generated')
+    scene = os.environ.get('TIAGO_PRO_SCENE', 'house')
+    if scene not in ('house', 'simple-house', 'table'):
+        raise ValueError('TIAGO_PRO_SCENE must be house, simple-house or table')
+    if scene == 'simple-house':
+        house_path = ROOT / 'generated/world_models/turtlebot3_house/model.sdf'
+        house = ET.parse(house_path)
+        model = house.getroot().find('model')
+        for child in list(model.findall('model')):
+            if child.get('name') != 'table':
+                model.remove(child)
+        house.write(house_path, encoding='unicode')
+    if scene == 'table':
+        house = ET.parse(ROOT / 'generated/world_models/turtlebot3_house/model.sdf')
+        table = house.find("model/model[@name='table']")
+        table.find('static').text = 'true'
+        for include in list(w.findall('include')):
+            w.remove(include)
+        w.append(table)
     world.write(ROOT / 'generated/home.sdf',encoding='unicode')
     bridge = yaml.safe_load((ROOT / 'bridge.yaml').read_text())
+    # The world clock is always published; Gazebo can omit its /clock alias
+    # when another publisher is discovered during startup.
+    for entry in bridge:
+        if entry['ros_type_name'] == 'rosgraph_msgs/msg/Clock':
+            entry['gz_topic_name'] = f"/world/{w.get('name')}/clock"
     bridge = [b for b in bridge if b['ros_type_name'] != 'nav_msgs/msg/Odometry'] + (native_bridges or [])
+    for entry in bridge:
+        if entry['ros_type_name'].startswith('sensor_msgs/'):
+            entry['lazy'] = True
     (ROOT / 'generated/bridge.yaml').write_text(yaml.safe_dump(bridge))
     return description, ['gripper_left_controller','gripper_right_controller']

@@ -1,0 +1,26 @@
+{
+  "action_status": 6,
+  "initial": [
+    -2.657281956750694,
+    1.350378516905958,
+    1.5708036252748834
+  ],
+  "goal": [
+    -1.857281956750694,
+    1.350378516905958,
+    0.0
+  ],
+  "final": [
+    -2.486836768415906,
+    1.3095315011015625,
+    0.8085886881222609
+  ],
+  "position_error_m": 0.630878545831878,
+  "yaw_error_rad": 0.8085886881222609,
+  "moving_commands": 13,
+  "commands_outside_30deg": 0,
+  "max_command_heading_error_rad": 0.5028432109278609,
+  "distance_m": 0.16893521801261877,
+  "distance_outside_30deg_m": 0.0,
+  "passed": false
+}

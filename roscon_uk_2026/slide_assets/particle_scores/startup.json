@@ -1,0 +1,62 @@
+[
+  {
+    "import_ms": 56.37386196758598,
+    "first_call_ms": 829.3443939182907,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.63671875,
+    "call_peak_mib": 233.13671875,
+    "process_ms": 936.8914249353111,
+    "mode": "first_build",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  },
+  {
+    "import_ms": 51.27018201164901,
+    "first_call_ms": 175.3491130657494,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.5078125,
+    "call_peak_mib": 233.3984375,
+    "process_ms": 267.85656809806824,
+    "mode": "cached",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  },
+  {
+    "import_ms": 51.37773999013007,
+    "first_call_ms": 177.1020629676059,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.45703125,
+    "call_peak_mib": 233.31640625,
+    "process_ms": 271.8730759806931,
+    "mode": "cached",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  },
+  {
+    "import_ms": 52.13187402114272,
+    "first_call_ms": 176.92415893543512,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.703125,
+    "call_peak_mib": 233.28515625,
+    "process_ms": 272.5564759457484,
+    "mode": "cached",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  },
+  {
+    "import_ms": 51.60425102803856,
+    "first_call_ms": 175.3200120292604,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.4921875,
+    "call_peak_mib": 233.37890625,
+    "process_ms": 270.1089520705864,
+    "mode": "cached",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  },
+  {
+    "import_ms": 51.525542978197336,
+    "first_call_ms": 180.72637496516109,
+    "baseline_peak_mib": 18.6953125,
+    "import_peak_mib": 36.5625,
+    "call_peak_mib": 233.24609375,
+    "process_ms": 282.3795019648969,
+    "mode": "cached",
+    "stderr": "cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch\n"
+  }
+]

@@ -1,0 +1,26 @@
+{
+  "stage": "image",
+  "startup_s": 2.815350686898455,
+  "warm_wall_s": 12.714843054069206,
+  "warm_cpu_s": 0.790105966,
+  "cpu_cores": 0.062140441894572795,
+  "peak_rss_kib": 727020,
+  "joined_shutdown": true,
+  "executor_exceptions": 0,
+  "stages": {
+    "image": {
+      "received": 182,
+      "processed": 182,
+      "published": 182,
+      "dropped": 0,
+      "coalesced": 0,
+      "exceptions": 0,
+      "python_boundary_crossings": 0,
+      "output_instances": 182,
+      "middleware_loaned_messages": 0,
+      "allocator_fallbacks": 0,
+      "compile_cache_hits": 1,
+      "compile_cache_misses": 0
+    }
+  }
+}

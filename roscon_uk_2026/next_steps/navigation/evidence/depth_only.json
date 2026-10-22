@@ -1,0 +1,33 @@
+{
+  "cloud_frame": "head_front_camera_depth_frame",
+  "cloud_size": [
+    640,
+    480
+  ],
+  "head_joints": {
+    "head_1_joint": 5.3517220757614735e-17,
+    "head_2_joint": -0.2000000000024509
+  },
+  "camera_base_transform": {
+    "translation": [
+      0.10253593570792552,
+      0.017500520789387828,
+      1.3458306447253217
+    ],
+    "rotation_xyzw": [
+      5.2833758193263334e-17,
+      0.09983341664737405,
+      -3.667086155231421e-07,
+      0.9950041652779034
+    ]
+  },
+  "world_height_range_m": [
+    -4.517055843145101e-06,
+    2.4998598428294048
+  ],
+  "sampled_tall_points": 3910,
+  "tall_points_in_global_costmap": 3910,
+  "tall_points_at_lethal_cost": 3796,
+  "depth_only_marking": true,
+  "note": "Global static and front/rear laser marking disabled; global costmap cleared before sampling."
+}

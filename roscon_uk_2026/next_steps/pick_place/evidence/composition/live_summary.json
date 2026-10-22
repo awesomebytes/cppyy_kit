@@ -1,0 +1,228 @@
+{
+  "source": "live sensors; sequential runs can see different inputs",
+  "wall_latency_origin": "source callback arrival in external observer; excludes sensor generation and includes observer scheduling",
+  "frame_age_clock": "simulation time; includes transport, queueing and processing",
+  "cpu_interval": "process ready to shutdown request, includes discovery and warmup",
+  "deployments": [
+    {
+      "mode": "composed",
+      "observer_wall_latency_s": {
+        "objects": {
+          "count": 82,
+          "median": 0.025700142025016248,
+          "p95": 0.05875544901937246
+        },
+        "image_objects": {
+          "count": 41,
+          "median": 0.002588142058812082,
+          "p95": 0.004596992977894843
+        }
+      },
+      "simulated_frame_age_s": {
+        "objects": {
+          "count": 95,
+          "median": 0.04100000000000392,
+          "p95": 0.06500000000000128
+        },
+        "image_objects": {
+          "count": 44,
+          "median": 0.021000000000000796,
+          "p95": 0.027000000000004576
+        }
+      },
+      "object_counts": {
+        "objects": {
+          "count": 95,
+          "median": 3,
+          "p95": 3
+        },
+        "image_objects": {
+          "count": 44,
+          "median": 87,
+          "p95": 87
+        }
+      },
+      "pipeline_reports": [
+        {
+          "stage": "all",
+          "startup_s": 4.391305605997331,
+          "warm_wall_s": 11.002124469028786,
+          "warm_cpu_s": 3.052925398,
+          "cpu_cores": 0.27748508086724977,
+          "peak_rss_kib": 919568,
+          "joined_shutdown": true,
+          "executor_exceptions": 0,
+          "stages": {
+            "filter": {
+              "received": 127,
+              "processed": 127,
+              "published": 127,
+              "dropped": 0,
+              "coalesced": 0,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 127,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            },
+            "cluster": {
+              "received": 126,
+              "processed": 126,
+              "published": 126,
+              "dropped": 0,
+              "coalesced": 0,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 126,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            },
+            "image": {
+              "received": 66,
+              "processed": 66,
+              "published": 66,
+              "dropped": 0,
+              "coalesced": 0,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 66,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            }
+          }
+        }
+      ],
+      "mean_cpu_cores_sum": 0.27748508086724977,
+      "measurement_s": 8.0,
+      "warmup_s": 3
+    },
+    {
+      "mode": "separate",
+      "observer_wall_latency_s": {
+        "objects": {
+          "count": 87,
+          "median": 0.020095724030397832,
+          "p95": 0.05226795398630202
+        },
+        "image_objects": {
+          "count": 37,
+          "median": 0.001846299972385168,
+          "p95": 0.00444997800514102
+        }
+      },
+      "simulated_frame_age_s": {
+        "objects": {
+          "count": 95,
+          "median": 0.04299999999999926,
+          "p95": 0.11299999999999955
+        },
+        "image_objects": {
+          "count": 106,
+          "median": 0.025000000000005684,
+          "p95": 0.04800000000000182
+        }
+      },
+      "object_counts": {
+        "objects": {
+          "count": 95,
+          "median": 3,
+          "p95": 3
+        },
+        "image_objects": {
+          "count": 106,
+          "median": 87,
+          "p95": 87
+        }
+      },
+      "pipeline_reports": [
+        {
+          "stage": "filter",
+          "startup_s": 4.5213927330914885,
+          "warm_wall_s": 11.008783238939941,
+          "warm_cpu_s": 2.927976751,
+          "cpu_cores": 0.26596733603067485,
+          "peak_rss_kib": 914988,
+          "joined_shutdown": true,
+          "executor_exceptions": 0,
+          "stages": {
+            "filter": {
+              "received": 143,
+              "processed": 142,
+              "published": 142,
+              "dropped": 0,
+              "coalesced": 1,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 142,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            }
+          }
+        },
+        {
+          "stage": "cluster",
+          "startup_s": 3.0479552219621837,
+          "warm_wall_s": 12.482226517982781,
+          "warm_cpu_s": 0.293557168,
+          "cpu_cores": 0.02351801319877353,
+          "peak_rss_kib": 742828,
+          "joined_shutdown": true,
+          "executor_exceptions": 0,
+          "stages": {
+            "cluster": {
+              "received": 142,
+              "processed": 142,
+              "published": 142,
+              "dropped": 0,
+              "coalesced": 0,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 142,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            }
+          }
+        },
+        {
+          "stage": "image",
+          "startup_s": 2.815350686898455,
+          "warm_wall_s": 12.714843054069206,
+          "warm_cpu_s": 0.790105966,
+          "cpu_cores": 0.062140441894572795,
+          "peak_rss_kib": 727020,
+          "joined_shutdown": true,
+          "executor_exceptions": 0,
+          "stages": {
+            "image": {
+              "received": 182,
+              "processed": 182,
+              "published": 182,
+              "dropped": 0,
+              "coalesced": 0,
+              "exceptions": 0,
+              "python_boundary_crossings": 0,
+              "output_instances": 182,
+              "middleware_loaned_messages": 0,
+              "allocator_fallbacks": 0,
+              "compile_cache_hits": 1,
+              "compile_cache_misses": 0
+            }
+          }
+        }
+      ],
+      "mean_cpu_cores_sum": 0.35162579112402115,
+      "measurement_s": 8.0,
+      "warmup_s": 3
+    }
+  ]
+}

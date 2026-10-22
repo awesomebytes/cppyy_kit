@@ -1,0 +1,25 @@
+{
+  "action_status": 6,
+  "initial": [
+    -2.0342130348943743,
+    1.3999945348750569,
+    0.9996611551977024
+  ],
+  "goal": [
+    -1.7692130348943742,
+    1.3999945348750569,
+    0.0
+  ],
+  "final": [
+    -2.0341224036625576,
+    1.400155838573976,
+    0.9997060335215024
+  ],
+  "position_error_m": 0.26490941787720695,
+  "moving_commands": 0,
+  "commands_outside_30deg": 0,
+  "max_command_heading_error_rad": 0,
+  "distance_m": 0.0,
+  "distance_outside_30deg_m": 0.0,
+  "passed": false
+}

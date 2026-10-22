@@ -1,0 +1,39 @@
+{
+  "before": {
+    "pid": 324584,
+    "session_id": 126920038066064,
+    "state_id": 126920034716352,
+    "captured": 1184,
+    "processed": 1171,
+    "capture_fps": 20.05857211412212,
+    "inference_fps": 19.838334413544768,
+    "processing_ms": 28.695003013126552,
+    "revision": 2,
+    "result_revision": 2,
+    "result_age_ms": 61.52804894372821,
+    "error": null,
+    "capture_error": null,
+    "capture_running": true,
+    "inference_running": true
+  },
+  "after": {
+    "pid": 324584,
+    "session_id": 126920038066064,
+    "state_id": 126920034716352,
+    "captured": 1335,
+    "processed": 1322,
+    "capture_fps": 20.850507767417195,
+    "inference_fps": 20.647469115000398,
+    "processing_ms": 20.128983072936535,
+    "revision": 2,
+    "result_revision": 2,
+    "result_age_ms": 45.23679194971919,
+    "error": null,
+    "capture_error": null,
+    "capture_running": true,
+    "inference_running": true
+  },
+  "same_session": true,
+  "capture_hz": 30.2,
+  "processing_hz": 30.2
+}

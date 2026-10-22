@@ -1,0 +1,9 @@
+[
+  {
+    "condition": "camera30_physics2ms_rviz",
+    "wall_seconds": 6.002377138938755,
+    "sim_seconds": 4.128000000000002,
+    "rtf": 0.6877275293517877,
+    "controller_motion_check_passed": false
+  }
+]

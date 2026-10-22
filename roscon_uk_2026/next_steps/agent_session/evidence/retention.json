@@ -1,0 +1,46 @@
+{
+  "marimo_version": "0.25.2",
+  "session_id": "sess-pe0vgw2xvwqkx3se",
+  "retention_checks": {
+    "pid": true,
+    "snapshot_id": true,
+    "points_id": true,
+    "rgb_id": true,
+    "points_sha256": true,
+    "rgb_sha256": true
+  },
+  "source_sha256": "433f57cec306e4c0e7e454aa5ecfe14b6c5413f562d0feec4e18a4d8bacbe685",
+  "replay_pid": 4180209,
+  "live_pid": 4176483,
+  "fresh_interpreter": true,
+  "replay_points_equal": true,
+  "replay_rgb_equal": true,
+  "replay_result_checks": {
+    "observations": true,
+    "selected": true,
+    "voxel_points": true,
+    "parameters": true,
+    "roi": true,
+    "table_height": true
+  },
+  "iterations": [
+    {
+      "request": 1,
+      "voxel_points": 9181,
+      "objects": 3,
+      "selected_points": null
+    },
+    {
+      "request": 2,
+      "voxel_points": 9181,
+      "objects": 3,
+      "selected_points": 65
+    },
+    {
+      "request": 3,
+      "voxel_points": 2224,
+      "objects": 1,
+      "selected_points": 178
+    }
+  ]
+}

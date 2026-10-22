@@ -1,0 +1,32 @@
+{
+  "face": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/face_detection_yunet/face_detection_yunet_2023mar.onnx",
+    "sha256": "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4",
+    "bytes": 232589
+  },
+  "palm": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/palm_detection_mediapipe/palm_detection_mediapipe_2023feb.onnx",
+    "sha256": "78ff51c38496b7fc8b8ebdb6cc8c1abb02fa6c38427c6848254cdaba57fcce7c",
+    "bytes": 3905734
+  },
+  "hand": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/handpose_estimation_mediapipe/handpose_estimation_mediapipe_2023feb.onnx",
+    "sha256": "db0898ae717b76b075d9bf563af315b29562e11f8df5027a1ef07b02bef6d81c",
+    "bytes": 4099621
+  },
+  "person": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/person_detection_mediapipe/person_detection_mediapipe_2023mar.onnx",
+    "sha256": "47fd5599d6fa17608f03e0eb0ae230baa6e597d7e8a2c8199fe00abea55a701f",
+    "bytes": 11990159
+  },
+  "pose": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/pose_estimation_mediapipe/pose_estimation_mediapipe_2023mar.onnx",
+    "sha256": "9d89c599319a18fb7d2e28451a883476164543182bafca5f09eb2cf767ed2f3f",
+    "bytes": 5557238
+  },
+  "segmentation": {
+    "path": "build/perception_toolbox/people/opencv_zoo/models/human_segmentation_pphumanseg/human_segmentation_pphumanseg_2023mar.onnx",
+    "sha256": "552d8a984054e59b5d773d24b9b12022b22046ceb2bbc4c9aaeaceb36a9ddf24",
+    "bytes": 6163938
+  }
+}

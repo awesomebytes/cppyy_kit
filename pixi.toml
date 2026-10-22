@@ -238,6 +238,9 @@ demo-control-rig = "python control_kit/demos/d01_mock_rig.py"
 demo-control-python = "python control_kit/demos/d02_python_controller.py"
 # Compile a native C++ controller with cppyy_kit and run it in controller_manager.
 demo-control-native = "python control_kit/demos/d03_native_controller.py"
+demo-control-gazebo = "python roscon_uk_2026/next_steps/pick_place/native_control_demo.py"
+demo-control-gazebo-python = "python roscon_uk_2026/next_steps/pick_place/native_control_demo.py --backend python"
+demo-control-admittance = "python roscon_uk_2026/next_steps/pick_place/admittance_demo.py"
 # Update-loop rate/jitter/missed-deadline numbers, Python controller vs C++ baseline.
 bench-control = "python control_kit/demos/bench_control_loop.py"
 # control_kit tests (gate on ros2_control). The base cppyy_kit layer is covered by test-bt.
@@ -460,7 +463,23 @@ docs-serve = "mkdocs serve"
 # the migrated read-only content carries pre-existing stale links.
 docs-build = "mkdocs build --strict"
 
+[feature.pick-place.dependencies]
+gz-transport13-python = "*"
+gz-msgs10-python = "*"
+
+[feature.pick-place-placo.dependencies]
+placo = "0.10.0.*"
+# Keep the GCC 14 headers used by the validated Cling 6.32 runtime.
+gcc_impl_linux-64 = "14.*"
+gxx_impl_linux-64 = "14.*"
+
+[feature.pick-place.tasks]
+demo-pick-place = "python roscon_uk_2026/next_steps/pick_place/demo.py"
+replay-pick-place = "python roscon_uk_2026/next_steps/pick_place/replay.py"
+
 [environments]
+pick-place-placo = { features = ["pcl", "vision", "control", "pick-place", "pick-place-placo"], solve-group = "pick-place-placo" }
+pick-place = { features = ["pcl", "vision", "control", "pick-place"], solve-group = "pick-place" }
 # solve-group = "default" pins every shared package to the exact same version as
 # the default env, so enabling a kit env never re-resolves the core ROS/cppyy stack.
 # ROS-core bits come from rclcpp_kit (local, on PYTHONPATH) + the default ros-base,

@@ -1,0 +1,80 @@
+{
+  "recorded_at": "2026-10-19T22:35:16.826337+01:00",
+  "python": "3.12.13 | packaged by conda-forge | (main, Mar  5 2026, 16:50:00) [GCC 14.3.0]",
+  "platform": "Linux-6.17.0-1033-oem-x86_64-with-glibc2.39",
+  "cache": "/home/sapf/playground/ros_project/cppyy_kit/build/slide-timings-ooebfbhn",
+  "startup": {
+    "python": {
+      "first_s": 0.1,
+      "repeat_s": [
+        0.07,
+        0.06,
+        0.1
+      ],
+      "repeat_median_s": 0.07
+    },
+    "cppyy": {
+      "first_s": 0.59,
+      "repeat_s": [
+        0.25,
+        0.25,
+        0.26
+      ],
+      "repeat_median_s": 0.25
+    },
+    "kit": {
+      "first_s": 0.58,
+      "repeat_s": [
+        0.32,
+        0.28,
+        0.31
+      ],
+      "repeat_median_s": 0.31
+    }
+  },
+  "throughput": {
+    "python": {
+      "elements": 1000000,
+      "result": 3283500000.0,
+      "samples_ms": [
+        48.198744,
+        48.405288,
+        48.462277,
+        48.160694,
+        48.046957,
+        48.949971,
+        48.334266
+      ],
+      "median_ms": 48.334266
+    },
+    "cppyy": {
+      "elements": 1000000,
+      "result": 3283500000.0,
+      "samples_ms": [
+        2.495541,
+        0.455857,
+        0.417355,
+        0.414366,
+        0.413637,
+        0.426611,
+        0.427492
+      ],
+      "median_ms": 0.426611
+    },
+    "kit": {
+      "elements": 1000000,
+      "result": 3283500000.0,
+      "samples_ms": [
+        0.733959,
+        0.472013,
+        0.421903,
+        0.387506,
+        0.397942,
+        0.407596,
+        0.416039
+      ],
+      "median_ms": 0.416039
+    }
+  },
+  "method": "Sequential fresh processes; shared pre-existing cppyy PCH and OS caches. Cold means fresh kit function cache only. Seven warmed calls per throughput process."
+}

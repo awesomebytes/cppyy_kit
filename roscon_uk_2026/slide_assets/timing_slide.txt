@@ -1,0 +1,7 @@
+Corrected baseline, 20 October 2026
+
+python: first 0.10s; repeat median 0.07s; warm operation 52.136ms
+cppyy: first 0.24s; repeat median 0.24s; warm operation 0.447ms
+kit: first 0.54s; repeat median 0.34s; warm operation 0.418ms
+
+Vanilla uses its own standard PCH; kit uses auto-PCH and a function cache.

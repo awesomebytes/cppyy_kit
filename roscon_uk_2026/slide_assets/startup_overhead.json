@@ -1,0 +1,175 @@
+{
+  "change": "Import urllib.request inside require._download, instead of on package import.",
+  "method": "Nine fresh processes per measurement, before and after. Kit auto-PCH disabled; native calls use existing standard PCH and warm function cache. After measurements ran after checks completed. Before/after batches, not interleaved. Whole-process timings are noisy.",
+  "before": {
+    "import": {
+      "samples": [
+        {
+          "process_ms": 45.97445810213685,
+          "output": "{\"import_ms\": 26.214941986836493, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 45.167866977863014,
+          "output": "{\"import_ms\": 26.244994020089507, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 45.01591494772583,
+          "output": "{\"import_ms\": 26.19755605701357, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 46.33595503401011,
+          "output": "{\"import_ms\": 26.731656049378216, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 46.203463920392096,
+          "output": "{\"import_ms\": 27.26090792566538, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 46.3416229467839,
+          "output": "{\"import_ms\": 26.728242984972894, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 46.99889104813337,
+          "output": "{\"import_ms\": 26.9559120060876, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 45.5239019356668,
+          "output": "{\"import_ms\": 26.448510005138814, \"network_imported\": true}"
+        },
+        {
+          "process_ms": 46.21380695607513,
+          "output": "{\"import_ms\": 26.55317191965878, \"network_imported\": true}"
+        }
+      ],
+      "median_process_ms": 46.203463920392096,
+      "median_import_ms": 26.55317191965878
+    },
+    "tiny": {
+      "samples": [
+        {
+          "process_ms": 257.6107570203021,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 284.16436293628067,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 297.38940100651234,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 289.90093304309994,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 258.11670103576034,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 262.29885197244585,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 296.1583479773253,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 260.1109240204096,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 268.91210908070207,
+          "output": "14.0"
+        }
+      ],
+      "median_process_ms": 268.91210908070207
+    }
+  },
+  "after": {
+    "import": {
+      "samples": [
+        {
+          "process_ms": 38.801964023150504,
+          "output": "{\"import_ms\": 19.34001292102039, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 39.160688989795744,
+          "output": "{\"import_ms\": 19.807892036624253, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 37.753646960482,
+          "output": "{\"import_ms\": 19.106248975731432, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 37.28648996911943,
+          "output": "{\"import_ms\": 19.11771297454834, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 37.61150105856359,
+          "output": "{\"import_ms\": 18.851498956792057, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 37.460647989064455,
+          "output": "{\"import_ms\": 19.394612056203187, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 37.367440992966294,
+          "output": "{\"import_ms\": 19.075326970778406, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 36.953586037270725,
+          "output": "{\"import_ms\": 18.525919993408024, \"network_imported\": false}"
+        },
+        {
+          "process_ms": 36.91084205638617,
+          "output": "{\"import_ms\": 18.915049033239484, \"network_imported\": false}"
+        }
+      ],
+      "median_process_ms": 37.460647989064455,
+      "median_import_ms": 19.106248975731432
+    },
+    "tiny": {
+      "samples": [
+        {
+          "process_ms": 252.25025310646743,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 276.79316292051226,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 290.99190200213343,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 257.79207004234195,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 287.3109170468524,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 282.64495893381536,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 267.5530189881101,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 255.14574896078557,
+          "output": "14.0"
+        },
+        {
+          "process_ms": 260.9790430869907,
+          "output": "14.0"
+        }
+      ],
+      "median_process_ms": 267.5530189881101
+    }
+  },
+  "validation": "83 existing require/startup checks passed; flake8 passed."
+}

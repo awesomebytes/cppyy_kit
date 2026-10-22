@@ -1,0 +1,12 @@
+{
+  "input": "/home/sapf/playground/ros_project/cppyy_kit/build/webcam_session/rotation_0.jpg",
+  "object": "person",
+  "detections": 1,
+  "points": 32079,
+  "depth_kind": "relative_estimate",
+  "grid": [
+    252,
+    336
+  ],
+  "units": "relative estimated scale, not metres"
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "title": "What is cppyy_kit?",
+    "lead": "A toolkit for using C++ from Python, with reusable setup and integration helpers.",
+    "bullets": [
+      "Call existing C++ libraries from Python.",
+      "Write C++ functions alongside your Python code.",
+      "Reuse compiled functions and common integration helpers.",
+      "AI coding assistant friendly."
+    ],
+    "notes": "cppyy_kit is a toolkit built around cppyy to make using C++ from Python easier in practice. There are two main things I want to do with it: use a C++ library that already exists, and write a small C++ operation inside a Python application when that is useful.\n\nThere is also practical support for coding assistants: packaged task guides, kit API references and environment diagnostics give an agent context it can inspect. In our webcam experiment, we combined those tools with a persistent marimo session and Viser, so the agent could revise processing while the camera, models and viewer stayed alive. That session is a repository example built around the kit.\ncppyy provides the underlying access to C++. The kit adds reusable setup, compiled-function caching, and helpers for arrays, callbacks and keeping native objects alive. The individual kits apply those pieces to libraries such as PCL, OpenCV and robotics frameworks.\n\nThe idea is that I can keep Python as the language where I describe and change the application, and use C++ for the libraries or operations I need. To understand why this works, let's first look at cppyy itself.\n\nSource: repository README.md. This is a description of the toolkit, not a promise that every C++ API works without adaptation."
+  },
+  {
+    "title": "Let's understand cppyy",
+    "lead": "Automatic Python–C++ bindings at runtime, with C++ JIT compilation when needed.",
+    "bullets": [
+      "Use C++ classes, functions and templates from Python.",
+      "Load an existing library or compile C++ as you experiment.",
+      "Let C++ call Python through callbacks and overrides."
+    ],
+    "notes": "The official documentation describes cppyy as a generator that creates Python–C++ bindings at runtime. It lets Python call C++, and it also lets C++ call back into Python.\n\nWhat I like is the interactive part. I can load a library and its declarations, use its classes, or define some C++ and call it from the same Python session. Templates can be instantiated as needed, rather than deciding every binding in advance. Python callbacks and overrides also let us supply behaviour to a C++ framework.\n\nUnderneath, cppyy uses Cling, a C++ interpreter built on Clang/LLVM. The native code is compiled; the Python interface is created dynamically. We still have to manage dependencies and object lifetimes, and compilation has a cost. cppyy_kit builds on this mechanism to make recurring integration work easier.\n\nDefinition paraphrased from the official documentation: https://cppyy.readthedocs.io/en/latest/"
+  }
+]

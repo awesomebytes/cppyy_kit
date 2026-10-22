@@ -1,0 +1,21 @@
+[workspace]
+name = "webcam-people"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+numpy = "<2"
+opencv = ">=4.10,<5"
+cppyy = ">=3.5,<4"
+compilers = "*"
+gxx_linux-64 = "14.*"
+pip = "*"
+
+[pypi-dependencies]
+mediapipe = "==0.10.21"
+marimo = "==0.25.2"
+
+[tasks]
+fetch = "python fetch.py"
+smoke = "python smoke.py"

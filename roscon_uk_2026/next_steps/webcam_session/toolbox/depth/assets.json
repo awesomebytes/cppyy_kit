@@ -1,0 +1,30 @@
+{
+  "da3_source_revision": "3d835ec1a5802d64a8b8b15f817a1ab54809bfe4",
+  "da3_model_revision": "e08cab65ca0ec38e7826075418411ab90cab4da3",
+  "files": [
+    {
+      "path": "build/perception_toolbox/huggingface/hub/models--depth-anything--DA3-SMALL/snapshots/e08cab65ca0ec38e7826075418411ab90cab4da3/model.safetensors",
+      "url": "https://huggingface.co/depth-anything/DA3-SMALL/resolve/e08cab65ca0ec38e7826075418411ab90cab4da3/model.safetensors",
+      "bytes": 137248940,
+      "sha256": "364492e38a3a06d221ac75da7f6621ada3f2361cd24fde11ba79091e9f40efcf"
+    },
+    {
+      "path": "build/perception_toolbox/huggingface/hub/models--depth-anything--DA3-SMALL/snapshots/e08cab65ca0ec38e7826075418411ab90cab4da3/config.json",
+      "url": "https://huggingface.co/depth-anything/DA3-SMALL/resolve/e08cab65ca0ec38e7826075418411ab90cab4da3/config.json",
+      "bytes": 1202,
+      "sha256": "a486e29e82b7ab4a7d4cefc1ea4526cfe2ae438a572c8ca98917cfbcde7447d2"
+    },
+    {
+      "path": "build/perception_toolbox/models/yoloe-11s-seg.pt",
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-11s-seg.pt",
+      "bytes": 27803986,
+      "sha256": "8e439445c87338b79d9ce21dec109f4621e26df67e94d26ea1a98c1e64dce3e3"
+    },
+    {
+      "path": "build/perception_toolbox/models/mobileclip_blt.ts",
+      "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/mobileclip_blt.ts",
+      "bytes": 599764649,
+      "sha256": "a67804d1b0f07b8b9a20c1761ec0847f34660f5fa338ec70e8f3fce68ed95e54"
+    }
+  ]
+}

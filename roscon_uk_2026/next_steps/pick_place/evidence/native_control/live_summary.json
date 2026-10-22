@@ -1,0 +1,281 @@
+{
+  "plugin_library": "/home/sapf/.cache/cppyy_kit/control_plugin/lib/libcontrol_kit_native_controller.so",
+  "plugin_sha256": "f0e5363fb8ac87a47e905503c11921402d9cea39a5814fa0b5091ceeb4540a62",
+  "controller": "control_kit_native/PositionServo",
+  "native_update": true,
+  "python_role": "ROS services, reference publication and feedback observation",
+  "joints": [
+    "arm_left_1_joint",
+    "arm_left_2_joint",
+    "arm_left_3_joint",
+    "arm_left_4_joint",
+    "arm_left_5_joint",
+    "arm_left_6_joint",
+    "arm_left_7_joint"
+  ],
+  "offset_rad": 0.04,
+  "plugin_overlay": "/home/sapf/.cache/cppyy_kit/control_plugin",
+  "controllers_before": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    }
+  },
+  "spawner_output": "[INFO] [1792396480.528267319] [spawner_cppyy_native_arm_left]: waiting for service /controller_manager/list_controllers to become available...\n[INFO] [1792396480.782488426] [spawner_cppyy_native_arm_left]: Setting controller param \"params_file\" to \"['/home/sapf/.cache/cppyy_kit/control_plugin/cppyy_native_arm_left.yaml']\" for cppyy_native_arm_left\n[INFO] [1792396480.785200086] [spawner_cppyy_native_arm_left]: Setting controller param \"type\" to \"control_kit_native/PositionServo\" for cppyy_native_arm_left\n[INFO] [1792396480.798734659] [spawner_cppyy_native_arm_left]: Loaded cppyy_native_arm_left\n",
+  "controllers_during": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "cppyy_native_arm_left": {
+      "state": "active",
+      "type": "control_kit_native/PositionServo",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "inactive",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": []
+    }
+  },
+  "start_rad": [
+    0.35999999998761695,
+    -1.8299999999845278,
+    0.4699999999954529,
+    -2.350002945184997,
+    6.7745634193574e-12,
+    -1.2000000000197797,
+    0.00238566392445607
+  ],
+  "target_rad": [
+    0.35999999998761695,
+    -1.8299999999845278,
+    0.4699999999954529,
+    -2.350002945184997,
+    6.7745634193574e-12,
+    -1.2000000000197797,
+    0.04238566392445607
+  ],
+  "measured_rad": [
+    0.3599999999779294,
+    -1.8299999999726728,
+    0.46999999999172465,
+    -2.3500029451305666,
+    1.197743517734883e-11,
+    -1.2000000000359468,
+    0.03970668284107275
+  ],
+  "sample_count": 474,
+  "measured_displacement_rad": 0.03732101891661668,
+  "max_target_error_rad": 0.002678981083383318,
+  "returned_rad": [
+    0.3599999999756585,
+    -1.8299999999698895,
+    0.469999999990845,
+    -2.350002945122768,
+    1.3210227611240293e-11,
+    -1.2000000000397286,
+    0.004988997999018499
+  ],
+  "passed": true,
+  "stock_controller_restored": true,
+  "controllers_after": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    }
+  }
+}

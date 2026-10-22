@@ -1,0 +1,17 @@
+{
+  "input": "fresh ROS RGB and PointCloud2 frames; timestamped TF and CameraInfo",
+  "recording": "capture_manifest.json",
+  "frames": 13,
+  "first_stamp_s": 245.29,
+  "last_stamp_s": 251.823,
+  "strictly_advancing_stamps": true,
+  "all_frames_one_red_cluster": true,
+  "native_first_process_ms": 2218.553469981998,
+  "warm_total_median_ms": 4.604817018844187,
+  "timing_scope": "native load on first call, PCL/OpenCV calls, association and filtered cloud conversion; excludes module imports, ROS capture, sensor decode, TF, and publication",
+  "result": "live_continuous.json",
+  "rviz_screenshot": "rviz_refined.png",
+  "rviz_observed": "Global Status: Ok; green filtered points and one visible-bounds marker at red item; RGB red selection overlay; original camera cloud also visible",
+  "command": "pixi run -e pick-place env ROS_DOMAIN_ID=77 RMW_IMPLEMENTATION=rmw_fastrtps_cpp ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET python roscon_uk_2026/next_steps/agent_session/live.py --duration 6 --rate 2 --roi .75 .10 .90 1.02 .30 1.08 --leaf .004 --min-cluster 20 --report roscon_uk_2026/next_steps/agent_session/data/live_refined_result.json",
+  "implementation": "reuse pick_place/perception.py native PCL plane/clusters and OpenCV HSV; no Gazebo object names or poses"
+}

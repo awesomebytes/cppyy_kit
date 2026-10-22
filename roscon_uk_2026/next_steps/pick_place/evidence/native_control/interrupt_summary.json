@@ -1,0 +1,78 @@
+{
+  "controller": "control_kit_native/PositionServo",
+  "plugin_sha256": "f0e5363fb8ac87a47e905503c11921402d9cea39a5814fa0b5091ceeb4540a62",
+  "stock_controller_restored": true,
+  "controllers_after": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    }
+  },
+  "interruption": "SIGINT during reference publication; process exited 130 after cleanup"
+}

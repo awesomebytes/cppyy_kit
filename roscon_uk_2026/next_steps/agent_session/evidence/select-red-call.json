@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "output": null,
+  "stdout": "updated 1 UI element(s)\n",
+  "stderr": "Traceback (most recent call last):\n  File \"/home/sapf/playground/ros_project/cppyy_kit/build/agent_session/python/marimo/_runtime/runtime.py\", line 2109, in set_ui_element_value\n    component._update(value)\n  File \"/home/sapf/playground/ros_project/cppyy_kit/build/agent_session/python/marimo/_plugins/ui/_core/ui_element.py\", line 467, in _update\n    self._value = self._convert_value(value)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/sapf/playground/ros_project/cppyy_kit/build/agent_session/python/marimo/_plugins/ui/_impl/input.py\", line 1121, in _convert_value\n    assert len(value) == 1, \"Dropdowns only support a single value\"\n           ^^^^^^^^^^^^^^^\nAssertionError: Dropdowns only support a single value\nAn exception was raised by a UIElement's on_change handler:\n",
+  "session": {
+    "id": "sess-pe0vgw2xvwqkx3se"
+  }
+}

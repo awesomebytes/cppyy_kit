@@ -1,0 +1,74 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.25.2",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "3b66c274275a09b04e7ab8526a37f79c",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "41c0cb14553359d587e73485c8d0fb23",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "0ede2fb12c4c34dcb0a37a2314494342",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre class='text-xs'>3</pre>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "d050cd60f50d79a3cc9f53ee4d14d731",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "86c6791a19249a40a810b207ecd1fd10",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"interactive-perception-workbench\">Interactive perception workbench</h1>\n<span class=\"paragraph\">The native window has raw/processed views, controls and image picking.\nKeep the session and viewer cells alive. Replace only processing or extra\nGUI callbacks. Inspect <code>workbench.status()</code> and <code>viewer.status()</code>.</span>\n<span class=\"paragraph\">For 3D, create <code>scene = ViserViewer(workbench, port=8768)</code> in a new cell.\nReturn <code>points</code> and optional <code>colors</code> alongside <code>image</code> from processing.\nClose <code>scene</code>, <code>viewer</code>, then <code>workbench</code> when finished.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}

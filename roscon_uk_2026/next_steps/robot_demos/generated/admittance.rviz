@@ -1,0 +1,127 @@
+Panels:
+- Class: rviz_common/Displays
+  Help Height: 70
+  Name: Displays
+  Property Tree Widget:
+    Expanded:
+    - /MotionPlanning1/Planned Path1
+    - /Image1
+    - /Image1/Topic1
+    Splitter Ratio: 0.5
+  Tree Height: 965
+- Class: rviz_common/Views
+  Expanded:
+  - /Current View1
+  Name: Views
+  Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ''
+  Displays:
+  - Alpha: 0.5
+    Cell Size: 0.5
+    Class: rviz_default_plugins/Grid
+    Color: 160; 160; 164
+    Enabled: true
+    Line Style:
+      Line Width: 0.029999999329447746
+      Value: Lines
+    Name: Grid
+    Normal Cell Count: 0
+    Offset:
+      X: 0
+      Y: 0
+      Z: 0
+    Plane: XY
+    Plane Cell Count: 20
+    Reference Frame: <Fixed Frame>
+    Value: true
+  - Class: rviz_default_plugins/RobotModel
+    Name: TIAGo Pro
+    Enabled: true
+    Alpha: 1.0
+    Description Source: Topic
+    Description Topic:
+      Value: /robot_description
+      Depth: 1
+      Durability Policy: Transient Local
+      Reliability Policy: Reliable
+    Visual Enabled: true
+    Collision Enabled: false
+  - Class: rviz_default_plugins/InteractiveMarkers
+    Name: Drag to apply virtual force
+    Enabled: true
+    Interactive Markers Namespace: /virtual_force
+    Show Axes: false
+    Show Descriptions: true
+    Show Visual Aids: true
+  - Class: rviz_default_plugins/MarkerArray
+    Name: Force arrow and hand offset
+    Enabled: true
+    Topic:
+      Value: /virtual_force/markers
+      Depth: 5
+  Enabled: true
+  Global Options:
+    Background Color: 40; 43; 48
+    Fixed Frame: odom
+    Frame Rate: 30
+  Name: root
+  Tools:
+  - Class: rviz_default_plugins/Interact
+    Hide Inactive Objects: true
+  - Class: rviz_default_plugins/MoveCamera
+  - Class: rviz_default_plugins/Select
+  Transformation:
+    Current:
+      Class: rviz_default_plugins/TF
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 1.9
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0.28
+        Y: 0.25
+        Z: 0.15
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 0.25
+      Target Frame: torso_lift_link
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 0.65
+    Saved:
+    - Class: rviz_default_plugins/Orbit
+      Distance: 10
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.05999999865889549
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0.8999999761581421
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05000000074505806
+      Invert Z Axis: false
+      Name: Navigation overhead
+      Near Clip Distance: 0.009999999776482582
+      Pitch: 1.5499999523162842
+      Target Frame: base_footprint
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 0
+Window Geometry:
+  Width: 1400
+  Height: 950
+  X: 40
+  Y: 40
+  Hide Left Dock: false
+  Hide Right Dock: false

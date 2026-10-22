@@ -1,0 +1,336 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.25.2",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "setup",
+      "code_hash": "4f927c7ecdb163024cdc8116d9e2a6f8",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stderr",
+          "text": "/home/sapf/playground/ros_project/cppyy_kit/build/perception_toolbox/repos/Depth-Anything-3/src/depth_anything_3/cfg.py:25: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.\nUse register_resolver() instead.\nSee https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.\n\n  OmegaConf.register_new_resolver(\"eval\", eval)\n",
+          "mimetype": "text/plain"
+        },
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[93m[WARN ] Dependency `gsplat` is required for rendering 3DGS. Install via: pip install git+https://github.com/nerfstudio-project/gsplat.git@0b4dddf04cb687367602c01196913cde6a743d70\u001b[0m\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "Hbol",
+      "code_hash": "2b6816616e8d01497c2ceffa5f62b003",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[97m[INFO ] using MLP layer as FFN\u001b[0m\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "4ce0d4cdc901b0bcc72ffb99840d6bed",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "Podc",
+      "code_hash": "022e6952df2b76be1a201eef3d471afe",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[97m[INFO ] Processed Images Done taking 0.007288694381713867 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.012152910232543945 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003085136413574219 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.006844758987426758 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.016112327575683594 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0002703666687011719 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.007328510284423828 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.01645493507385254 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003440380096435547 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.008195877075195312 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.011722087860107422 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.00024390220642089844 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.008154153823852539 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.01190328598022461 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.00027370452880859375 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.0070345401763916016 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.016947269439697266 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003247261047363281 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.008304595947265625 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.017290353775024414 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.00031876564025878906 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.006111860275268555 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.018294811248779297 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003108978271484375 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.008189201354980469 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.016041040420532227 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003726482391357422 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.008906364440917969 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.015374183654785156 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003325939178466797 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.007870197296142578 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.0158994197845459 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003459453582763672 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.004914522171020508 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.015912294387817383 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.0003039836883544922 seconds\u001b[0m\n\u001b[97m[INFO ] Processed Images Done taking 0.007692575454711914 seconds. Shape:  torch.Size([1, 3, 196, 336])\u001b[0m\n\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.015956640243530273 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.00034117698669433594 seconds\u001b[0m\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "yGmc",
+      "code_hash": "d39631f7db63308f4bc32865bef303c5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u001b[97m[INFO ] Model Forward Pass Done. Time: 0.03133082389831543 seconds\u001b[0m\n\u001b[97m[INFO ] Conversion to Prediction Done. Time: 0.00027871131896972656 seconds\u001b[0m\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "CGkW",
+      "code_hash": "f5c2a2ebba353d2dd6084fb37dca7c61",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "VDaG",
+      "code_hash": "dec0926d35bca1c0c12459a972cf4286",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "XOfx",
+      "code_hash": "d80b1ca67652b1f51fd147fa4b6bf2d5",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "cZgq",
+      "code_hash": "beb17176b319ed29076c5775339b3649",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "CGWT",
+      "code_hash": "8f4f0a8c29158052bd72877b1218ef55",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "enyv",
+      "code_hash": "023d0f88484c4e53d6d377ed16a32a51",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "vblA",
+      "code_hash": "9d27236f3e0f7426049cec989be24a43",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<pre class='text-xs'>9</pre>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "kJln",
+      "code_hash": "117bba4e98e04ac4a22c3efb97ff29c6",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "amJl",
+      "code_hash": "f5e28d1d318ad5e63e4dbd6bb39dd147",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "bkHC",
+      "code_hash": "70c5f2fa9de2eb8a9f5cfc5840e20239",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "\u256d\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 viser \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256e\n\u2502             \u2577                         \u2502\n\u2502   HTTP      \u2502 http://127.0.0.1:8768   \u2502\n\u2502   Websocket \u2502 ws://127.0.0.1:8768     \u2502\n\u2502             \u2575                         \u2502\n\u2570\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u256f\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "AYqu",
+      "code_hash": "865b8fb088cb3681225a25b08b3b90a2",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "JbfK",
+      "code_hash": "1eb27b8d734fab21c655eab0d92e8289",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/html": "<div style='border-radius: 6px; overflow: hidden; background-color: var(--slate-1); display: inline-block; min-width: 0; max-width: 100%;'><div style='padding: 10px 12px 8px 12px; display: flex; align-items: center;'><span style='background-color: var(--green-3); color: var(--green-11);padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.75rem; font-weight: 600; margin-right: 8px; display: inline-block;'>function</span><span style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12);'>reset_gaze_calibration</span></div><div style='height: 1px; background-color: var(--slate-3); margin: 0 12px 8px 12px;'></div><div style='font-family: monospace; font-size: 0.875rem; color: var(--slate-12); margin: 0 12px 8px 12px;'><span>def reset_gaze_calibration(event):</span></div></div>"
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "EEpG",
+      "code_hash": "dc3eb8f8fd017d46e6c4062c640b6c17",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "VRnR",
+      "code_hash": "2885edef0128f0dd34fb731618a927e7",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "tykZ",
+      "code_hash": "d4c064e7fa3341ee7e3c0883447c997f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "mahz",
+      "code_hash": "acead03ca71a7d38c452799391ebc7b1",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": []
+    },
+    {
+      "id": "lEQa",
+      "code_hash": "06e57a7af67664e0d0800f4f6bc0a14f",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/markdown": "<span class=\"markdown prose dark:prose-invert contents\"><h1 id=\"webcam-da3-depth-and-cloud\">Webcam \u2192 DA3 \u2192 depth and cloud</h1>\n<span class=\"paragraph\">Open <a href=\"http://127.0.0.1:8768\" rel=\"noopener noreferrer\" target=\"_blank\">http://127.0.0.1:8768</a> for RGB, depth and a colored cloud together.\nDepth is relative estimated geometry, not metres. Frames are undistorted\nusing the measured webcam calibration. Point stride controls cloud density.</span>\n<span class=\"paragraph\">Retain the model and camera cells while revising processing. Close the\ncurrent viewer before replacing its display cell. Call <code>viewer.close()</code> and\n<code>workbench.close()</code> when done. See <code>DEPTH_COMPARISON.md</code> for measurements.</span></span>"
+          }
+        }
+      ],
+      "console": []
+    }
+  ]
+}

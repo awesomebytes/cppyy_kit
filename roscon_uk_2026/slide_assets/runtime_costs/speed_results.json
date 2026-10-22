@@ -1,0 +1,526 @@
+{
+  "method": "Three fresh processes, rotated order, warm OS caches and prepared kit cache. First call then 1000 warmup calls, seven batches of 10000 calls. Additional 50000 individually timed calls per process; pooled p95 from 150000. Timer control measured separately and not subtracted. Retained callable/arrays. Common O3 Eigen object in pybind11/nanobind; Rust LLT versus Eigen LDLT. Launch-to-warm includes interpreter, imports, input setup, preparation, first call, 1000 calls and pipe notification. Shared workstation, no CPU pinning.",
+  "summary": {
+    "plain": {
+      "median_ns_per_call": 270.5365,
+      "individual_p50_ns": 298.0,
+      "individual_p95_ns": 328.0,
+      "individual_p99_ns": 347.0,
+      "process_p95_ns": [
+        321.0,
+        335.0,
+        323.0
+      ],
+      "timer_p50_ns": 26.0,
+      "timer_p95_ns": 28.0,
+      "launch_to_warm_ms": 1446.325569,
+      "stages_ms": {
+        "numpy_import_ms": 28.821721,
+        "binding_import_ms": 151.317865,
+        "prepare_ms": 1194.236572,
+        "first_call_ms": 40.875613,
+        "warmup_1000_ms": 0.281911
+      },
+      "probes_ns": {}
+    },
+    "cached": {
+      "median_ns_per_call": 248.4095,
+      "individual_p50_ns": 273.0,
+      "individual_p95_ns": 293.0,
+      "individual_p99_ns": 309.0,
+      "process_p95_ns": [
+        290.0,
+        296.0,
+        292.0
+      ],
+      "timer_p50_ns": 26.0,
+      "timer_p95_ns": 27.0,
+      "launch_to_warm_ms": 222.286127,
+      "stages_ms": {
+        "numpy_import_ms": 29.111154,
+        "binding_import_ms": 12.448561,
+        "prepare_ms": 149.465537,
+        "first_call_ms": 1.58205,
+        "warmup_1000_ms": 0.267367
+      },
+      "probes_ns": {}
+    },
+    "native": {
+      "median_ns_per_call": 448.6178,
+      "individual_p50_ns": 483.0,
+      "individual_p95_ns": 512.0,
+      "individual_p99_ns": 553.0,
+      "process_p95_ns": [
+        517.0,
+        504.0,
+        515.0
+      ],
+      "timer_p50_ns": 25.0,
+      "timer_p95_ns": 28.0,
+      "launch_to_warm_ms": 58.844321,
+      "stages_ms": {
+        "numpy_import_ms": 29.273081,
+        "binding_import_ms": 0.189648,
+        "prepare_ms": 0.000414,
+        "first_call_ms": 0.075018,
+        "warmup_1000_ms": 0.434236
+      },
+      "probes_ns": {
+        "scalar_probe": 23.7948,
+        "array_probe": 299.4208
+      }
+    },
+    "nanobind": {
+      "median_ns_per_call": 346.1056,
+      "individual_p50_ns": 375.0,
+      "individual_p95_ns": 407.0,
+      "individual_p99_ns": 428.0,
+      "process_p95_ns": [
+        402.0,
+        401.0,
+        414.0
+      ],
+      "timer_p50_ns": 25.0,
+      "timer_p95_ns": 27.0,
+      "launch_to_warm_ms": 58.736761,
+      "stages_ms": {
+        "numpy_import_ms": 28.6757,
+        "binding_import_ms": 0.164935,
+        "prepare_ms": 0.000268,
+        "first_call_ms": 0.006593,
+        "warmup_1000_ms": 0.347339
+      },
+      "probes_ns": {
+        "scalar_probe": 13.9937,
+        "array_probe": 213.1524
+      }
+    },
+    "rust": {
+      "median_ns_per_call": 258.2354,
+      "individual_p50_ns": 278.0,
+      "individual_p95_ns": 298.0,
+      "individual_p99_ns": 309.0,
+      "process_p95_ns": [
+        290.0,
+        283.0,
+        306.0
+      ],
+      "timer_p50_ns": 26.0,
+      "timer_p95_ns": 28.0,
+      "launch_to_warm_ms": 59.053963,
+      "stages_ms": {
+        "numpy_import_ms": 29.422875,
+        "binding_import_ms": 0.147138,
+        "prepare_ms": 0.000302,
+        "first_call_ms": 0.08028,
+        "warmup_1000_ms": 0.265321
+      },
+      "probes_ns": {}
+    }
+  },
+  "samples": {
+    "plain": [
+      {
+        "mode": "plain",
+        "stages": {
+          "numpy_import_ms": 28.029896,
+          "binding_import_ms": 151.317865,
+          "prepare_ms": 1197.0052,
+          "first_call_ms": 41.534911,
+          "warmup_1000_ms": 0.27915
+        },
+        "batch_ns_per_call": [
+          262.5959,
+          277.7457,
+          262.9625,
+          271.4938,
+          268.6258,
+          274.1741,
+          268.6141
+        ],
+        "median_ns_per_call": 268.6258,
+        "latency_file": "latency_samples/plain-16166.npz",
+        "probe_ns": {},
+        "p95_ns": 321.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 1486.970198
+      },
+      {
+        "mode": "plain",
+        "stages": {
+          "numpy_import_ms": 28.821721,
+          "binding_import_ms": 153.406958,
+          "prepare_ms": 1194.236572,
+          "first_call_ms": 40.767436,
+          "warmup_1000_ms": 0.281911
+        },
+        "batch_ns_per_call": [
+          256.9778,
+          277.7325,
+          262.165,
+          273.8612,
+          269.2413,
+          294.6462,
+          288.7064
+        ],
+        "median_ns_per_call": 273.8612,
+        "latency_file": "latency_samples/plain-16279.npz",
+        "probe_ns": {},
+        "p95_ns": 335.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 1446.325569
+      },
+      {
+        "mode": "plain",
+        "stages": {
+          "numpy_import_ms": 29.281134,
+          "binding_import_ms": 141.23701,
+          "prepare_ms": 1187.004833,
+          "first_call_ms": 40.875613,
+          "warmup_1000_ms": 0.294399
+        },
+        "batch_ns_per_call": [
+          265.822,
+          275.4611,
+          265.073,
+          273.7953,
+          270.5365,
+          270.9603,
+          265.579
+        ],
+        "median_ns_per_call": 270.5365,
+        "latency_file": "latency_samples/plain-16342.npz",
+        "probe_ns": {},
+        "p95_ns": 323.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 1427.901221
+      }
+    ],
+    "cached": [
+      {
+        "mode": "cached",
+        "stages": {
+          "numpy_import_ms": 30.148925,
+          "binding_import_ms": 12.504989,
+          "prepare_ms": 151.826838,
+          "first_call_ms": 1.58205,
+          "warmup_1000_ms": 0.239445
+        },
+        "batch_ns_per_call": [
+          244.5548,
+          245.6503,
+          246.8302,
+          247.5385,
+          249.8646,
+          247.27,
+          245.298
+        ],
+        "median_ns_per_call": 246.8302,
+        "latency_file": "latency_samples/cached-16209.npz",
+        "probe_ns": {},
+        "p95_ns": 290.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 225.565755
+      },
+      {
+        "mode": "cached",
+        "stages": {
+          "numpy_import_ms": 29.111154,
+          "binding_import_ms": 12.448561,
+          "prepare_ms": 148.796822,
+          "first_call_ms": 1.553691,
+          "warmup_1000_ms": 0.267367
+        },
+        "batch_ns_per_call": [
+          253.4572,
+          246.784,
+          245.6962,
+          247.0102,
+          248.6117,
+          251.7989,
+          248.4095
+        ],
+        "median_ns_per_call": 248.4095,
+        "latency_file": "latency_samples/cached-16240.npz",
+        "probe_ns": {},
+        "p95_ns": 296.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 221.726175
+      },
+      {
+        "mode": "cached",
+        "stages": {
+          "numpy_import_ms": 29.006369,
+          "binding_import_ms": 12.015274,
+          "prepare_ms": 149.465537,
+          "first_call_ms": 1.995324,
+          "warmup_1000_ms": 0.272604
+        },
+        "batch_ns_per_call": [
+          246.444,
+          251.6453,
+          251.6948,
+          251.1468,
+          249.5942,
+          248.0583,
+          249.2032
+        ],
+        "median_ns_per_call": 249.5942,
+        "latency_file": "latency_samples/cached-16372.npz",
+        "probe_ns": {},
+        "p95_ns": 292.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 222.286127
+      }
+    ],
+    "native": [
+      {
+        "mode": "native",
+        "stages": {
+          "numpy_import_ms": 29.273081,
+          "binding_import_ms": 0.18864,
+          "prepare_ms": 0.000418,
+          "first_call_ms": 0.075577,
+          "warmup_1000_ms": 0.434622
+        },
+        "batch_ns_per_call": [
+          436.1853,
+          445.2016,
+          448.6178,
+          452.4491,
+          453.1784,
+          448.2281,
+          456.0536
+        ],
+        "median_ns_per_call": 448.6178,
+        "latency_file": "latency_samples/native-16236.npz",
+        "probe_ns": {
+          "scalar_probe": 23.7707,
+          "array_probe": 299.4208
+        },
+        "p95_ns": 517.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 58.844321
+      },
+      {
+        "mode": "native",
+        "stages": {
+          "numpy_import_ms": 29.836936,
+          "binding_import_ms": 0.197136,
+          "prepare_ms": 0.000414,
+          "first_call_ms": 0.073052,
+          "warmup_1000_ms": 0.434236
+        },
+        "batch_ns_per_call": [
+          458.5583,
+          448.8492,
+          442.1314,
+          430.094,
+          431.757,
+          434.439,
+          434.613
+        ],
+        "median_ns_per_call": 434.613,
+        "latency_file": "latency_samples/native-16269.npz",
+        "probe_ns": {
+          "scalar_probe": 25.1632,
+          "array_probe": 294.7841
+        },
+        "p95_ns": 504.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 59.949327
+      },
+      {
+        "mode": "native",
+        "stages": {
+          "numpy_import_ms": 28.974368,
+          "binding_import_ms": 0.189648,
+          "prepare_ms": 0.000346,
+          "first_call_ms": 0.075018,
+          "warmup_1000_ms": 0.431637
+        },
+        "batch_ns_per_call": [
+          443.977,
+          447.3049,
+          454.0821,
+          454.0157,
+          455.6582,
+          456.5652,
+          457.5757
+        ],
+        "median_ns_per_call": 454.0821,
+        "latency_file": "latency_samples/native-16335.npz",
+        "probe_ns": {
+          "scalar_probe": 23.7948,
+          "array_probe": 299.7449
+        },
+        "p95_ns": 515.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 58.038329
+      }
+    ],
+    "nanobind": [
+      {
+        "mode": "nanobind",
+        "stages": {
+          "numpy_import_ms": 27.99801,
+          "binding_import_ms": 0.144186,
+          "prepare_ms": 0.000268,
+          "first_call_ms": 0.005948,
+          "warmup_1000_ms": 0.345408
+        },
+        "batch_ns_per_call": [
+          342.1789,
+          363.0573,
+          356.6204,
+          353.8321,
+          341.5353,
+          344.985,
+          346.1056
+        ],
+        "median_ns_per_call": 346.1056,
+        "latency_file": "latency_samples/nanobind-16238.npz",
+        "probe_ns": {
+          "scalar_probe": 13.8951,
+          "array_probe": 211.7137
+        },
+        "p95_ns": 402.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 57.046468
+      },
+      {
+        "mode": "nanobind",
+        "stages": {
+          "numpy_import_ms": 28.6757,
+          "binding_import_ms": 0.164935,
+          "prepare_ms": 0.000233,
+          "first_call_ms": 0.0067,
+          "warmup_1000_ms": 0.347339
+        },
+        "batch_ns_per_call": [
+          342.5942,
+          340.6215,
+          339.1436,
+          340.7289,
+          339.8329,
+          338.265,
+          341.8469
+        ],
+        "median_ns_per_call": 340.6215,
+        "latency_file": "latency_samples/nanobind-16270.npz",
+        "probe_ns": {
+          "scalar_probe": 14.3985,
+          "array_probe": 213.1524
+        },
+        "p95_ns": 401.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 58.736761
+      },
+      {
+        "mode": "nanobind",
+        "stages": {
+          "numpy_import_ms": 29.001543,
+          "binding_import_ms": 0.1772,
+          "prepare_ms": 0.000275,
+          "first_call_ms": 0.006593,
+          "warmup_1000_ms": 0.381925
+        },
+        "batch_ns_per_call": [
+          362.7858,
+          351.4698,
+          347.1106,
+          353.838,
+          347.8475,
+          357.3781,
+          345.8489
+        ],
+        "median_ns_per_call": 351.4698,
+        "latency_file": "latency_samples/nanobind-16336.npz",
+        "probe_ns": {
+          "scalar_probe": 13.9937,
+          "array_probe": 213.6543
+        },
+        "p95_ns": 414.0,
+        "max_error": 1.5265566588595902e-16,
+        "launch_to_warm_ms": 59.133511
+      }
+    ],
+    "rust": [
+      {
+        "mode": "rust",
+        "stages": {
+          "numpy_import_ms": 29.961113,
+          "binding_import_ms": 0.149501,
+          "prepare_ms": 0.000302,
+          "first_call_ms": 0.080638,
+          "warmup_1000_ms": 0.265321
+        },
+        "batch_ns_per_call": [
+          257.4599,
+          264.6609,
+          258.1791,
+          268.48,
+          257.6499,
+          263.3926,
+          257.547
+        ],
+        "median_ns_per_call": 258.1791,
+        "latency_file": "latency_samples/rust-16239.npz",
+        "probe_ns": {},
+        "p95_ns": 290.0,
+        "max_error": 4.163336342344337e-17,
+        "launch_to_warm_ms": 59.339108
+      },
+      {
+        "mode": "rust",
+        "stages": {
+          "numpy_import_ms": 29.311929,
+          "binding_import_ms": 0.147138,
+          "prepare_ms": 0.000412,
+          "first_call_ms": 0.076847,
+          "warmup_1000_ms": 0.260217
+        },
+        "batch_ns_per_call": [
+          250.0176,
+          252.8276,
+          246.6609,
+          259.2641,
+          261.8417,
+          267.0359,
+          258.2354
+        ],
+        "median_ns_per_call": 258.2354,
+        "latency_file": "latency_samples/rust-16271.npz",
+        "probe_ns": {},
+        "p95_ns": 283.0,
+        "max_error": 4.163336342344337e-17,
+        "launch_to_warm_ms": 58.749843
+      },
+      {
+        "mode": "rust",
+        "stages": {
+          "numpy_import_ms": 29.422875,
+          "binding_import_ms": 0.136828,
+          "prepare_ms": 0.00027,
+          "first_call_ms": 0.08028,
+          "warmup_1000_ms": 0.270599
+        },
+        "batch_ns_per_call": [
+          274.8618,
+          273.8429,
+          272.2085,
+          287.1182,
+          268.6986,
+          272.1364,
+          258.0886
+        ],
+        "median_ns_per_call": 272.2085,
+        "latency_file": "latency_samples/rust-16341.npz",
+        "probe_ns": {},
+        "p95_ns": 306.0,
+        "max_error": 4.163336342344337e-17,
+        "launch_to_warm_ms": 59.053963
+      }
+    ]
+  }
+}

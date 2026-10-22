@@ -1,0 +1,30 @@
+[
+  {
+    "condition": "camera30_physics1ms",
+    "wall_seconds": 6.00125197507441,
+    "sim_seconds": 4.0290000000000035,
+    "rtf": 0.671359912353963,
+    "valid_active_controller_comparison": true
+  },
+  {
+    "condition": "camera5_physics1ms",
+    "wall_seconds": 6.000123895006254,
+    "sim_seconds": 4.150999999999996,
+    "rtf": 0.6918190478457894,
+    "valid_active_controller_comparison": true
+  },
+  {
+    "condition": "camera30_physics2ms",
+    "wall_seconds": 6.0002731629647315,
+    "sim_seconds": 6.994,
+    "rtf": 1.1656135995889008,
+    "valid_active_controller_comparison": false
+  },
+  {
+    "condition": "camera30_physics1ms_restored",
+    "wall_seconds": 6.000398371950723,
+    "sim_seconds": 4.675000000000011,
+    "rtf": 0.7791149370771151,
+    "valid_active_controller_comparison": false
+  }
+]

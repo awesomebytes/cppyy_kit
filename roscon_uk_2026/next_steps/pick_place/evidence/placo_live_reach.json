@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "base_enabled": false,
+  "initial_xyz_m": [
+    -2.8585916856196327,
+    1.7146945390975459,
+    0.8358242255308994
+  ],
+  "target_xyz_m": [
+    -2.8585916856196327,
+    1.7146945390975459,
+    0.8508242255308994
+  ],
+  "final_xyz_m": [
+    -2.858596822209693,
+    1.7146339232972778,
+    0.8488515710852994
+  ],
+  "error_m": 0.0019735922125771336,
+  "wall_s": 4.3761103610740975,
+  "moves": [
+    {
+      "link": "gripper_left_grasping_link",
+      "position_error_m": 0.0019735922125771336,
+      "orientation_error_rad": 0.0,
+      "cycles": 80,
+      "wall_s": 4.375214709085412
+    }
+  ],
+  "method": "live measured feedback through native Gazebo trajectory controllers; full robot self-collision enabled"
+}

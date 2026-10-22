@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-22",
+  "hardware": "Intel Arrow Lake-P hybrid CPU, Intel graphics, NVIDIA RTX PRO 2000 Laptop",
+  "conditions": "Same robot, RGB-D 640x480 at 30 simulated Hz, lasers 10 Hz, ros2_control 100 Hz. RTF measured from ROS /clock over wall time.",
+  "intel_sweep": "First two samples compare camera 30 Hz vs 5 Hz at 1 ms. Runtime 2 ms change deactivated the controller; subsequent samples are diagnostic only, not valid controller-performance comparisons.",
+  "nvidia": "Fresh headless full-house run at 1 ms, render device verified in Ogre log. No observed speedup.",
+  "2ms_gui": "Fresh full-house RViz run at 2 ms. Condition label corrected against generated SDF. Later controller deactivation and failed motion check mean this setting was rejected.",
+  "table": "Fresh table-only headless run at 1 ms; arm force/return and normal controller restoration passed.",
+  "table_nav_rviz": "Table-only with RViz and Nav2 processes; lifecycle initialization stalled after a dropped service reply. RTF is an idle-process measurement, not proof of working navigation.",
+  "table_nav_nvidia": "Table scene, 1 ms, RViz and active Nav2, NVIDIA renderer. 15-second sample overlapped a navigation goal. GUI displays could be changed interactively. RTF 0.778. Navigation outcome is recorded separately.",
+  "table_nav_fixed": "Intel GPU, 1 ms, table scene, RViz and active Nav2 with look-ahead-point heading fix. Goal passed, 114 moving commands all within 30 degrees. RTF 0.660 over 15 wall seconds overlapping navigation. Earlier table navigation failures are retained as diagnostics.",
+  "house_nav_regression": "Original house with look-ahead-point heading fix, 1 ms, headless. Goal passed: 0.098 m position error, 117 moving commands, zero outside 30 degrees."
+}

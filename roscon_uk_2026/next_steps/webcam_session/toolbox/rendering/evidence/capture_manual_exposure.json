@@ -1,0 +1,22 @@
+[
+  {
+    "exposure": 100,
+    "accepted": [
+      true,
+      true
+    ],
+    "auto": 1.0,
+    "actual_exposure": 100.0,
+    "fps": 20.439551902392328
+  },
+  {
+    "exposure": 156,
+    "accepted": [
+      true,
+      true
+    ],
+    "auto": 1.0,
+    "actual_exposure": 156.0,
+    "fps": 20.43595723541939
+  }
+]

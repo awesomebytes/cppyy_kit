@@ -1,0 +1,32 @@
+{
+  "cloud_frame": "head_front_camera_depth_frame",
+  "cloud_size": [
+    640,
+    480
+  ],
+  "head_joints": {
+    "head_1_joint": 5.571614610181222e-17,
+    "head_2_joint": -0.20000000000245613
+  },
+  "camera_base_transform": {
+    "translation": [
+      0.1025359357079263,
+      0.017500520789387804,
+      1.3458306447253208
+    ],
+    "rotation_xyzw": [
+      1.0823840624550375e-16,
+      0.09983341664737665,
+      -3.6670861550126397e-07,
+      0.9950041652779031
+    ]
+  },
+  "world_height_range_m": [
+    3.3888847652541187e-06,
+    2.1663870254249096
+  ],
+  "sampled_tall_points": 4780,
+  "tall_points_in_global_costmap": 4780,
+  "tall_points_at_lethal_cost": 4778,
+  "note": "Overlap alone cannot attribute lethal cells exclusively to depth while lasers also mark obstacles."
+}

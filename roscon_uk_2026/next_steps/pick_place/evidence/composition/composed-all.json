@@ -1,0 +1,54 @@
+{
+  "stage": "all",
+  "startup_s": 4.391305605997331,
+  "warm_wall_s": 11.002124469028786,
+  "warm_cpu_s": 3.052925398,
+  "cpu_cores": 0.27748508086724977,
+  "peak_rss_kib": 919568,
+  "joined_shutdown": true,
+  "executor_exceptions": 0,
+  "stages": {
+    "filter": {
+      "received": 127,
+      "processed": 127,
+      "published": 127,
+      "dropped": 0,
+      "coalesced": 0,
+      "exceptions": 0,
+      "python_boundary_crossings": 0,
+      "output_instances": 127,
+      "middleware_loaned_messages": 0,
+      "allocator_fallbacks": 0,
+      "compile_cache_hits": 1,
+      "compile_cache_misses": 0
+    },
+    "cluster": {
+      "received": 126,
+      "processed": 126,
+      "published": 126,
+      "dropped": 0,
+      "coalesced": 0,
+      "exceptions": 0,
+      "python_boundary_crossings": 0,
+      "output_instances": 126,
+      "middleware_loaned_messages": 0,
+      "allocator_fallbacks": 0,
+      "compile_cache_hits": 1,
+      "compile_cache_misses": 0
+    },
+    "image": {
+      "received": 66,
+      "processed": 66,
+      "published": 66,
+      "dropped": 0,
+      "coalesced": 0,
+      "exceptions": 0,
+      "python_boundary_crossings": 0,
+      "output_instances": 66,
+      "middleware_loaned_messages": 0,
+      "allocator_fallbacks": 0,
+      "compile_cache_hits": 1,
+      "compile_cache_misses": 0
+    }
+  }
+}

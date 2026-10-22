@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "output": null,
+  "stdout": "{'pid': 4176483, 'snapshot_id': 135349397290544, 'points_id': 135349394126960}\n",
+  "stderr": "",
+  "session": {
+    "id": "sess-pe0vgw2xvwqkx3se"
+  }
+}

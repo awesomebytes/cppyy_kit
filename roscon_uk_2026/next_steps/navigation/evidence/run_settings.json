@@ -1,0 +1,30 @@
+{
+  "date_utc": "2026-10-19",
+  "simulator": "TIAGo PRO Jazzy / Gazebo Harmonic source kit environment",
+  "ros_domain_id": 77,
+  "map": "roscon_uk_2026/next_steps/tiago_pro/worlds/home/map.yaml",
+  "localization": "simulation truth odometry, identity map to odom",
+  "both_runs": {"TIAGO_PRO_NAV_DEPTH": "1", "goal_offset_m": [0.8, 0.0], "goal_yaw_rad": 0.0},
+  "baseline": {"TIAGO_PRO_NAV_PROFILE": "default"},
+  "forward": {
+    "TIAGO_PRO_NAV_PROFILE": "forward",
+    "additional_critics": ["ObstacleFootprint", "ForwardCamera"],
+    "velocity_x_limits_m_s": [0.0, 0.25],
+    "velocity_y_limits_m_s": [-0.2, 0.2],
+    "camera_half_angle_rad": 0.5236,
+    "path_heading_release_distance_m": 0.25,
+    "heading_weight": 80.0,
+    "translation_epsilon_m_s": 0.0001
+  },
+  "measurement": {
+    "moving_command_min_speed_m_s": 0.03,
+    "heading_cone_rad": 0.5235987755982988,
+    "minimum_odom_step_m": 0.0001,
+    "distance_heading_reference": "previous odometry yaw",
+    "command_heading_reference": "body-frame atan2(vy,vx)"
+  },
+  "reset": "Between runs, stopped Nav2, set Gazebo tiago_pro pose to x=-2.65728,y=1.35,z=.02,yaw=pi/2, restarted Nav2. Measured starts in reports agree within 2e-8 m and 1e-8 rad.",
+  "scope": "One successful 0.8 m goal per final profile; no claim of general navigation reliability or corridor traversal.",
+  "tuning_failures": ["forward_weight8_aborted.json", "forward_weight80_aborted.json", "forward_exact_zero_aborted.json"],
+  "tuning_note": "Initial grids lacked exact zero x velocity and permitted small creep below the policy epsilon. After correction, path-heading scoring near the short goal conflicted with final approach. Releasing path-heading constraints inside .25m while retaining the body cone allowed success. Failed trials were aborted by the operator after progress failures."
+}

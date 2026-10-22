@@ -1,0 +1,26 @@
+[gz-1] [INFO] [1792396444.630908301] [controller_manager]: Loading controller : 'cppyy_native_arm_left' of type 'control_kit_native/PositionServo'
+[gz-1] [INFO] [1792396444.630940394] [controller_manager]: Loading controller 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396444.633349147] [controller_manager]: Controller 'cppyy_native_arm_left' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --params-file /home/sapf/.cache/cppyy_kit/control_plugin/cppyy_native_arm_left.yaml --param use_sim_time:=true 
+[gz-1] [INFO] [1792396444.642385814] [controller_manager]: Configuring controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396444.808209140] [controller_manager]: Activating controllers: [ cppyy_native_arm_left ]
+[INFO] [launch.user]: TIAGO_PRO_READY: simulator and native controllers active
+[gz-1] [INFO] [1792396456.917941175] [controller_manager]: Deactivating controllers: [ cppyy_native_arm_left ]
+[gz-1] [INFO] [1792396457.022491834] [controller_manager]: Unloading controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396457.022562577] [controller_manager]: Cleanup controller 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396480.786530137] [controller_manager]: Loading controller : 'cppyy_native_arm_left' of type 'control_kit_native/PositionServo'
+[gz-1] [INFO] [1792396480.786568112] [controller_manager]: Loading controller 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396480.786630029] [controller_manager]: Controller 'cppyy_native_arm_left' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --params-file /home/sapf/.cache/cppyy_kit/control_plugin/cppyy_native_arm_left.yaml --param use_sim_time:=true 
+[gz-1] [INFO] [1792396480.799868814] [controller_manager]: Configuring controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396480.968252146] [controller_manager]: Activating controllers: [ cppyy_native_arm_left ]
+[gz-1] [INFO] [1792396493.094846516] [controller_manager]: Deactivating controllers: [ cppyy_native_arm_left ]
+[gz-1] [INFO] [1792396493.120667457] [controller_manager]: Unloading controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396493.120722590] [controller_manager]: Cleanup controller 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396497.399938841] [controller_manager]: Loading controller : 'cppyy_native_arm_left' of type 'control_kit_native/PositionServo'
+[gz-1] [INFO] [1792396497.399994592] [controller_manager]: Loading controller 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396497.400059900] [controller_manager]: Controller 'cppyy_native_arm_left' node arguments: --ros-args --params-file /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/controllers.yaml -p use_sim_time:=true --params-file /home/sapf/.cache/cppyy_kit/control_plugin/cppyy_native_arm_left.yaml --param use_sim_time:=true 
+[gz-1] [INFO] [1792396497.412231779] [controller_manager]: Configuring controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396497.567675109] [controller_manager]: Activating controllers: [ cppyy_native_arm_left ]
+[gz-1] [INFO] [1792396507.237423548] [controller_manager]: Deactivating controllers: [ cppyy_native_arm_left ]
+[gz-1] [INFO] [1792396507.343593855] [controller_manager]: Unloading controller: 'cppyy_native_arm_left'
+[gz-1] [INFO] [1792396507.343657958] [controller_manager]: Cleanup controller 'cppyy_native_arm_left'
+[INFO] [gz-1]: process has finished cleanly [pid 2048884]

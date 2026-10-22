@@ -39,12 +39,48 @@ def generate_launch_description():
         decel_lim_x=-0.5, decel_lim_y=-0.5, acc_lim_theta=1.0, decel_lim_theta=-1.0,
         vx_samples=12, vy_samples=9, vtheta_samples=16, trans_stopped_velocity=0.03,
         xy_goal_tolerance=0.1)
+    profile = os.environ.get('TIAGO_PRO_NAV_PROFILE', 'default')
+    if profile not in ('default', 'forward'):
+        raise ValueError(f'Unknown TIAGO_PRO_NAV_PROFILE: {profile}')
+    if profile == 'forward':
+        # Source-checkout experiment. The exported adapter calls the Python policy
+        # in the Nav2 process; all stock DWB critics remain active.
+        from nav2_kit.python_critic import install_python_critic_plugin
+        import json
+        repo = root.parents[3]
+        prefix = install_python_critic_plugin(artifacts / 'python_critic')
+        os.environ['AMENT_PREFIX_PATH'] = str(prefix) + ':' + os.environ.get('AMENT_PREFIX_PATH', '')
+        follow = controller['FollowPath']
+        follow['critics'] += ['ObstacleFootprint', 'ForwardCamera']
+        follow.update({
+            # Include exact zero translation so turn-first candidates exist.
+            'min_vel_x': 0.0, 'min_vel_y': -0.2, 'max_vel_y': 0.2,
+            'ObstacleFootprint.scale': 0.02,
+            'ForwardCamera.class': 'nav2_kit_python::PythonCritic',
+            'ForwardCamera.scale': 1.0,
+            'ForwardCamera.python_module': 'forward_camera_policy',
+            'ForwardCamera.python_class': 'ForwardCameraPolicy',
+            'ForwardCamera.python_path': str(repo / 'nav2_kit/demos'),
+            'ForwardCamera.python_options': json.dumps({
+                'camera_half_angle': 0.5236, 'goal_tolerance': 0.25,
+                'heading_weight': 80.0, 'translation_epsilon': 0.0001}),
+        })
     observations = {
         name: {'topic': topic, 'max_obstacle_height': 2.0, 'clearing': True,
                'marking': True, 'data_type': 'LaserScan', 'inf_is_valid': True,
                'raytrace_max_range': 8.0, 'obstacle_max_range': 7.5,
                'raytrace_min_range': 0.15, 'obstacle_min_range': 0.15}
         for name, topic in [('front', '/scan_front_raw'), ('rear', '/scan_rear_raw')]}
+    if os.environ.get('TIAGO_PRO_NAV_DEPTH', '0') == '1':
+        # Harmonic XYZ is already in the depth body frame, not an optical frame.
+        # Height bounds apply after the costmap transforms points to its frame.
+        observations['depth'] = {
+            'topic': '/head_front_camera/depth/color/points',
+            'data_type': 'PointCloud2', 'marking': True, 'clearing': True,
+            'min_obstacle_height': 0.15, 'max_obstacle_height': 2.0,
+            'obstacle_min_range': 0.3, 'obstacle_max_range': 2.8,
+            'raytrace_min_range': 0.3, 'raytrace_max_range': 3.0,
+        }
     for name in ['local_costmap', 'global_costmap']:
         costmap = params[name][name]['ros__parameters']
         costmap.update(robot_base_frame='base_footprint', use_sim_time=True,
@@ -57,7 +93,7 @@ def generate_launch_description():
         costmap['plugins'] = (['static_layer'] if name == 'global_costmap' else []) + ['obstacle_layer', 'inflation_layer']
         costmap['obstacle_layer'] = {
             'plugin': 'nav2_costmap_2d::ObstacleLayer', 'enabled': True,
-            'observation_sources': 'front rear', **copy.deepcopy(observations)}
+            'observation_sources': ' '.join(observations), **copy.deepcopy(observations)}
         costmap['inflation_layer'].update(inflation_radius=0.65, cost_scaling_factor=3.0)
     selected_map = Path(os.environ.get('TIAGO_PRO_NAV_MAP', str(artifacts / 'map.yaml'))).resolve()
     if not selected_map.is_file():

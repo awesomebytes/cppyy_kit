@@ -1,0 +1,135 @@
+{
+  "recorded_at": "2026-10-21T21:50:07.733775+01:00",
+  "method": "Same source, input, standard PCH and disabled auto hook. Cached mode uses a fresh function-cache directory then three repeats. Eigen-PCH mode uses a separately generated PCH and the plain JIT source. All processes include numerical validation. OS caches remain warm.",
+  "pch_preparation_s": 1.6524849280249327,
+  "samples": {
+    "plain": [
+      {
+        "mode": "plain",
+        "load_s": 0.40643473295494914,
+        "first_call_s": 0.0057050499599426985,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.4961187469307333,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 0.3822461209492758,
+        "first_call_s": 0.005840106983669102,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.5129095169249922,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 0.39474952302407473,
+        "first_call_s": 0.005961432005278766,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.4925330609548837,
+        "stderr": ""
+      }
+    ],
+    "cached": [
+      {
+        "mode": "cached",
+        "load_s": 1.220161464996636,
+        "first_call_s": 0.007425299030728638,
+        "nearest_index": 86,
+        "cache": {
+          "cached": false,
+          "reason": "miss-built",
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 1.362216431996785,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.17691114696208388,
+        "first_call_s": 0.00224204792175442,
+        "nearest_index": 86,
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.26712414796929806,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.1837426059646532,
+        "first_call_s": 0.0022086920216679573,
+        "nearest_index": 86,
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.2722381791099906,
+        "stderr": ""
+      },
+      {
+        "mode": "cached",
+        "load_s": 0.18378281907644123,
+        "first_call_s": 0.0022181120002642274,
+        "nearest_index": 86,
+        "cache": {
+          "cached": true,
+          "so": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.so",
+          "header": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/functions/17.6.32.8/slide_nearest_point_eb47826dd502.h"
+        },
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/lib/python3.12/site-packages/cppyy_backend/etc/allDict.cxx.pch.native.17.6.32.8",
+        "process_s": 0.27212200302165,
+        "stderr": ""
+      }
+    ],
+    "eigen_pch": [
+      {
+        "mode": "plain",
+        "load_s": 0.18925151496659964,
+        "first_call_s": 0.005788510898128152,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/eigen.pch",
+        "process_s": 0.31384670501574874,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 0.20150426996406168,
+        "first_call_s": 0.005703261005692184,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/eigen.pch",
+        "process_s": 0.2902485689846799,
+        "stderr": ""
+      },
+      {
+        "mode": "plain",
+        "load_s": 0.21085041493643075,
+        "first_call_s": 0.005839787074364722,
+        "nearest_index": 86,
+        "cache": null,
+        "pch": "/home/sapf/playground/ros_project/cppyy_kit/build/eigen-slide-_typpjbz/eigen.pch",
+        "process_s": 0.2993340389803052,
+        "stderr": ""
+      }
+    ]
+  },
+  "repeat_median_s": {
+    "plain": 0.4961187469307333,
+    "cached": 0.27212200302165,
+    "eigen_pch": 0.2993340389803052
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "assumption": "Ideal position command tracking, fixed initial perception. No physical object/contact simulation.",
+  "orientation_scale_m_per_rad": 0.3,
+  "stages": [
+    {
+      "stage": "outward",
+      "cycles": 20,
+      "position_error_m": 0.009953552664666574,
+      "orientation_error_rad": 0.008815461045632033,
+      "wall_s": 0.4803587190108374,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.016261766057934893,
+        "minimum_clearance": 0.004595387814308434,
+        "step_accepted": true,
+        "scaled_speed": 0.13848888422085093,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 45,
+        "solver_failure": null
+      }
+    },
+    {
+      "stage": "orient_outward",
+      "cycles": 125,
+      "position_error_m": 0.009015294375786239,
+      "orientation_error_rad": 0.037684554491551295,
+      "wall_s": 2.728277912014164,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.04717003063886275,
+        "minimum_clearance": 0.004595387814308463,
+        "step_accepted": true,
+        "scaled_speed": 0.23145995965813349,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 45,
+        "solver_failure": null
+      }
+    },
+    {
+      "stage": "raise_before_table",
+      "cycles": 37,
+      "position_error_m": 0.009959994509576292,
+      "orientation_error_rad": 0.028010246384834427,
+      "wall_s": 0.8186285150004551,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.036039160839429554,
+        "minimum_clearance": 0.004595387814308431,
+        "step_accepted": true,
+        "scaled_speed": 0.24309902595340382,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 41,
+        "solver_failure": null
+      }
+    },
+    {
+      "stage": "approach",
+      "cycles": 41,
+      "position_error_m": 0.008590595200607381,
+      "orientation_error_rad": 0.031407682853719976,
+      "wall_s": 0.8857185250381008,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.038359850839755995,
+        "minimum_clearance": 0.004595387814308399,
+        "step_accepted": true,
+        "scaled_speed": 0.28883200745033477,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 44,
+        "solver_failure": null
+      }
+    },
+    {
+      "stage": "descend",
+      "cycles": 15,
+      "position_error_m": 0.00918786312106545,
+      "orientation_error_rad": 0.015691460985283734,
+      "wall_s": 0.32198860100470483,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.021946373746883414,
+        "minimum_clearance": 0.004595387814308448,
+        "step_accepted": true,
+        "scaled_speed": 0.11628175742477431,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 43,
+        "solver_failure": null
+      }
+    },
+    {
+      "stage": "lift",
+      "cycles": 13,
+      "position_error_m": 0.008743643924669678,
+      "orientation_error_rad": 0.01115864896070058,
+      "wall_s": 0.272722052060999,
+      "failure": null,
+      "last_diagnostics": {
+        "backend": "placo",
+        "task_error": 0.017083604169436818,
+        "minimum_clearance": 0.004595387814308415,
+        "step_accepted": true,
+        "scaled_speed": 0.08440057766898157,
+        "collision_pairs": 1114,
+        "near_collision_pairs": 44,
+        "solver_failure": null
+      }
+    }
+  ],
+  "base_world_y_upper_bound_m": 1.6,
+  "initial_outward_world_offset_m": [
+    -0.15,
+    0.18,
+    0.065
+  ]
+}

@@ -1,0 +1,311 @@
+{
+  "date": "2026-10-21",
+  "versions": {
+    "python": "3.11.17 (main, Oct 13 2026, 16:45:47) [GCC 15.3.0]",
+    "opencv": "4.11.0",
+    "numpy": "1.26.4",
+    "torch": "2.9.1+cu128",
+    "cuda": "12.8",
+    "gpu": "NVIDIA RTX PRO 2000 Blackwell Generation Laptop GPU",
+    "protobuf_loaded": "7.36.2",
+    "cppyy": "3.5.0",
+    "marimo": "0.25.2",
+    "viser": "1.1.1",
+    "face_worker_python": "3.12.15",
+    "face_worker_mediapipe": "0.10.21",
+    "face_worker_protobuf": "4.25.9"
+  },
+  "final_controls": {
+    "threshold": 0.5,
+    "label": "object",
+    "enabled": true,
+    "stride": 2,
+    "face_landmarks": true,
+    "gaze_enabled": true,
+    "gaze_length": 2.0,
+    "gaze_calibration": {
+      "request": 3,
+      "reset": false
+    },
+    "hands_enabled": true,
+    "hands_3d": true,
+    "hands_confidence": 0.8,
+    "hand_drag": true,
+    "hand_drag_gain": 0.6,
+    "pose_enabled": false,
+    "pose_3d": false,
+    "pose_confidence": 0.5,
+    "hand_zoom": true,
+    "hand_zoom_gain": 1.0,
+    "foreground_only": true,
+    "foreground_depth_margin": 0.5,
+    "raised_hand_only": false,
+    "rain_enabled": true,
+    "rain_count": 800,
+    "rain_gravity": 10.0,
+    "rain_speed": 11.0
+  },
+  "cell_names": [
+    "setup",
+    "model",
+    "camera_session",
+    "face_model",
+    "hand_model",
+    "hand_drag_logic",
+    "two_hand_zoom_logic",
+    "hand_grace_logic",
+    "pose_model",
+    "foreground_surface",
+    "raised_hand_filter",
+    "processing",
+    "rain_native_kernel",
+    "rain_simulation",
+    "display",
+    "face_overlay_view",
+    "gaze_controls",
+    "face_controls_layout",
+    "hand_overlay_view",
+    "pose_overlay_view",
+    "hand_drag_runtime",
+    "introduction"
+  ],
+  "checks": {
+    "face_live_check.json": {
+      "capture_hz": 30.0,
+      "processing_hz": 23.666666666666668,
+      "face_count": 1,
+      "gaze_eye_count": 2
+    },
+    "hands_live_check.json": {
+      "capture_hz": 30.2,
+      "processing_hz": 13.8,
+      "hand_count": 2,
+      "hand_joint_shapes": [
+        [
+          21,
+          3
+        ],
+        [
+          21,
+          3
+        ]
+      ]
+    },
+    "pose_live_check.json": {
+      "capture_hz": 30.2,
+      "processing_hz": 10.0,
+      "visible_joints": 13
+    },
+    "rain_live_check.json": {
+      "simulation_steps_hz": 57.97947607776487,
+      "publication_hz": 28.989738038882436,
+      "collision_delta": 3820,
+      "processing_hz": 14.328261329562585,
+      "capture_hz": 30.15599186803288,
+      "kernel_median_ms": 0.19721349235624075,
+      "rain_thread_alive": true,
+      "rain_visible": true
+    },
+    "rain_kernel_checks.json": {
+      "passed": true,
+      "particles": 512,
+      "synthetic_collisions": 2302,
+      "warm_step_median_ms": 0.031325966119766235,
+      "checks": [
+        "native compilation",
+        "gravity and finite state",
+        "depth-surface collisions",
+        "empty mask ignores collisions",
+        "buffer bounds rejected"
+      ]
+    },
+    "surface_state_checks.json": {
+      "passed": true,
+      "checks": [
+        "connected face and torso",
+        "disconnected object rejection",
+        "detected hand inclusion",
+        "two-frame face grace",
+        "no-face empty mask",
+        "margin adjustment",
+        "invalid depth",
+        "shallow depth gap rejects background"
+      ]
+    },
+    "raised_state_checks.json": {
+      "passed": true,
+      "checks": [
+        "raised wrist admits person",
+        "lowered hands reject person",
+        "face associated with correct person",
+        "two raised people admitted",
+        "weak wrist confidence rejected",
+        "out-of-frame wrist rejected",
+        "no pose produces empty selection"
+      ]
+    },
+    "drag_state_checks.json": {
+      "passed": true,
+      "checks": [
+        "fist/open classification",
+        "two-frame press",
+        "pan while held",
+        "orientation preserved",
+        "open releases",
+        "no movement after release",
+        "lost hand releases",
+        "other hand does not inherit drag",
+        "disable releases",
+        "stale release"
+      ],
+      "status": {
+        "held": false,
+        "event": "released",
+        "reason": "No fresh hand frame",
+        "curled_fingers": 4,
+        "presses": 5,
+        "releases": 5,
+        "moves": 1,
+        "xy": null
+      }
+    },
+    "zoom_state_checks.json": {
+      "passed": true,
+      "checks": [
+        "one-hand pan",
+        "pan paused during zoom acquisition",
+        "two-fist zoom press",
+        "apart zooms in",
+        "together zooms out",
+        "fixed target and direction",
+        "no pan while zooming",
+        "opening releases",
+        "lost hand releases",
+        "zoom disable releases",
+        "gesture disable releases",
+        "pan works after release"
+      ],
+      "distances": [
+        3.0,
+        2.5821239292751734,
+        3.0
+      ]
+    },
+    "grace_state_checks.json": {
+      "passed": true,
+      "checks": [
+        "pan tolerates 1 and 2 misses",
+        "zoom tolerates one missing hand for 2 frames",
+        "third consecutive miss releases",
+        "no camera movement during a gap",
+        "recovery preserves grab without a jump",
+        "pan and zoom resume after recovery",
+        "open hand releases immediately during a gap",
+        "good frame resets consecutive miss count",
+        "stale-source release remains immediate"
+      ]
+    },
+    "shutdown.json": {
+      "rain_thread_alive": false,
+      "gesture_thread_alive": false,
+      "workbench": {
+        "pid": 484078,
+        "session_id": 140405865828048,
+        "state_id": 140398962880000,
+        "captured": 87280,
+        "processed": 47041,
+        "capture_fps": 30.042260531121524,
+        "inference_fps": 16.19177334606425,
+        "processing_ms": 60.09337306022644,
+        "revision": 9,
+        "result_revision": 9,
+        "result_age_ms": 223.01884891930968,
+        "error": null,
+        "capture_error": null,
+        "capture_running": false,
+        "inference_running": false
+      },
+      "viewer_thread_alive": false,
+      "face_worker_exit": 0
+    }
+  },
+  "assets": {
+    "build/webcam_session/face_landmarker.task": {
+      "sha256": "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff",
+      "bytes": 3758596
+    },
+    "build/webcam_session/canonical_face_model.obj": {
+      "sha256": "8bac80443397e113f41a8b565ea72c59390bc031d9defab289dba7bc0c54e618",
+      "bytes": 45999
+    },
+    "build/webcam_session/calibration_refined.json": {
+      "sha256": "6f0cf6faae2689dabfb60f09f18a8777003340906cd750607782f856f2693258",
+      "bytes": 1484
+    }
+  },
+  "shutdown": {
+    "rain_thread_alive": false,
+    "gesture_thread_alive": false,
+    "workbench": {
+      "pid": 484078,
+      "session_id": 140405865828048,
+      "state_id": 140398962880000,
+      "captured": 87280,
+      "processed": 47041,
+      "capture_fps": 30.042260531121524,
+      "inference_fps": 16.19177334606425,
+      "processing_ms": 60.09337306022644,
+      "revision": 9,
+      "result_revision": 9,
+      "result_age_ms": 223.01884891930968,
+      "error": null,
+      "capture_error": null,
+      "capture_running": false,
+      "inference_running": false
+    },
+    "viewer_thread_alive": false,
+    "face_worker_exit": 0
+  },
+  "closed_ports": [
+    2721,
+    8768,
+    9223
+  ],
+  "notes": [
+    "PCL was discussed but not integrated.",
+    "Performance samples used different controls.",
+    "Session processes and browser were stopped.",
+    "The worker source was wrapped with textwrap.dedent after shutdown; the worker payload was compiled separately without starting a camera."
+  ],
+  "startup_validation": {
+    "notebook_compiles": true,
+    "dedented_worker_compiles": true,
+    "documentation_links_resolve": true,
+    "camera_restarted": false,
+    "gesture_class_bodies_unchanged": true,
+    "gesture_classes_grouped_in_one_cell": true,
+    "marimo_check_passed": true
+  },
+  "saved_notebook_sha256": "8f34cfb74c3749752223f9593fc230ce1ee38295acc89ed2d5d2b6ce3d836450",
+  "saved_cell_names": [
+    "model",
+    "camera_session",
+    "face_model",
+    "hand_model",
+    "hand_drag_logic",
+    "pose_model",
+    "foreground_surface",
+    "raised_hand_filter",
+    "processing",
+    "rain_native_kernel",
+    "rain_simulation",
+    "display",
+    "face_overlay_view",
+    "gaze_controls",
+    "face_controls_layout",
+    "hand_overlay_view",
+    "pose_overlay_view",
+    "hand_drag_runtime",
+    "introduction"
+  ]
+}

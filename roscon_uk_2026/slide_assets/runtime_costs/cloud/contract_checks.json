@@ -1,0 +1,7 @@
+{
+  "dtype": "Expected float64 NumPy arrays",
+  "shape": "Points must have shape (N, 3)",
+  "layout": "Expected aligned C-contiguous arrays",
+  "readonly": "Output must be writable",
+  "alias": "Output must not alias either input"
+}

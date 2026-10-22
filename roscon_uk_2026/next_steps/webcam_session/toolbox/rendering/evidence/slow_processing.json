@@ -1,0 +1,58 @@
+{
+  "source": "saved webcam image paced at 30Hz; artificial 100ms processing delay",
+  "seconds": 5.000125232967548,
+  "before": {
+    "pid": 184769,
+    "session_id": 130360217248528,
+    "state_id": 130360238688896,
+    "captured": 919,
+    "processed": 719,
+    "capture_fps": 29.723360586123714,
+    "inference_fps": 23.254729337783406,
+    "processing_ms": 100.28071911074221,
+    "revision": 2,
+    "result_revision": 2,
+    "result_age_ms": 181.39446305576712,
+    "error": null,
+    "capture_error": null,
+    "capture_running": true,
+    "inference_running": true
+  },
+  "after": {
+    "pid": 184769,
+    "session_id": 130360217248528,
+    "state_id": 130360238688896,
+    "captured": 1068,
+    "processed": 769,
+    "capture_fps": 29.733944321151476,
+    "inference_fps": 21.409553542102515,
+    "processing_ms": 100.3120238892734,
+    "revision": 2,
+    "result_revision": 2,
+    "result_age_ms": 178.3085549250245,
+    "error": null,
+    "capture_error": null,
+    "capture_running": true,
+    "inference_running": true
+  },
+  "viewer_before": {
+    "running": true,
+    "render_ticks": 1838,
+    "render_fps": 59.450520278630506,
+    "unique_images": 919,
+    "image_updates_fps": 29.725260139315253,
+    "error": null
+  },
+  "viewer_after": {
+    "running": true,
+    "render_ticks": 2136,
+    "render_fps": 59.47112515979849,
+    "unique_images": 1067,
+    "image_updates_fps": 29.70772029283941,
+    "error": null
+  },
+  "capture_hz": 29.799253630207435,
+  "inference_hz": 9.999749540338065,
+  "render_hz": 59.59850726041487,
+  "image_update_hz": 29.599258639400674
+}

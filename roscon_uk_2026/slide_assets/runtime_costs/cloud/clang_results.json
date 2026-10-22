@@ -1,0 +1,736 @@
+{
+  "method": "5 processes per variant, rotated order. Same shared Python validation, 307200 points, 30 warmup calls and seven batches of 100 calls. All offline variants use unchanged nanobind wrapper; loader mappings verified. No fast-math; new variants disable FMA contraction. Shared workstation, warm caches.",
+  "cpu_affinity": [
+    0
+  ],
+  "build_commands": [
+    [
+      "/home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/x86_64-conda-linux-gnu-c++",
+      "-std=c++17",
+      "-O2",
+      "-ffp-contract=off",
+      "-fPIC",
+      "-shared",
+      "-march=nocona",
+      "-mtune=haswell",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/runtime_costs/cloud/kernel.cpp",
+      "-o",
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+    ],
+    [
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/.pixi/envs/default/bin/clang++",
+      "-std=c++17",
+      "-O2",
+      "-ffp-contract=off",
+      "-fPIC",
+      "-shared",
+      "-march=nocona",
+      "-mtune=haswell",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/runtime_costs/cloud/kernel.cpp",
+      "-o",
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+    ],
+    [
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/.pixi/envs/default/bin/clang++",
+      "-std=c++17",
+      "-O3",
+      "-ffp-contract=off",
+      "-fPIC",
+      "-shared",
+      "-march=nocona",
+      "-mtune=haswell",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/runtime_costs/cloud/kernel.cpp",
+      "-o",
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+    ],
+    [
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-tools/.pixi/envs/default/bin/clang++",
+      "-std=c++17",
+      "-O3",
+      "-ffp-contract=off",
+      "-fPIC",
+      "-shared",
+      "-march=native",
+      "-mtune=native",
+      "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/runtime_costs/cloud/kernel.cpp",
+      "-o",
+      "/home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+    ]
+  ],
+  "summary": {
+    "offline_original": {
+      "median_ms": 0.43038644,
+      "process_medians_ms": [
+        0.43032697,
+        0.43038644,
+        0.43369914000000004,
+        0.43079342,
+        0.42850824
+      ]
+    },
+    "offline_gcc_o2": {
+      "median_ms": 0.43151923999999997,
+      "process_medians_ms": [
+        0.42553434,
+        0.43162102,
+        0.43505266,
+        0.42997581,
+        0.43151923999999997
+      ]
+    },
+    "offline_clang_o2": {
+      "median_ms": 0.36039459999999995,
+      "process_medians_ms": [
+        0.36039459999999995,
+        0.36170801,
+        0.35989191,
+        0.35946629999999996,
+        0.36498377000000004
+      ]
+    },
+    "offline_clang_o3": {
+      "median_ms": 0.3615254,
+      "process_medians_ms": [
+        0.36525925,
+        0.35873765,
+        0.3615254,
+        0.36393633000000003,
+        0.35760048
+      ]
+    },
+    "offline_clang_native": {
+      "median_ms": 0.37336158,
+      "process_medians_ms": [
+        0.37094931,
+        0.37330401,
+        0.37459301,
+        0.37336158,
+        0.37555734
+      ]
+    },
+    "jit": {
+      "median_ms": 0.35973675,
+      "process_medians_ms": [
+        0.35774478000000004,
+        0.35906189,
+        0.35973675,
+        0.3666171,
+        0.37001698
+      ]
+    }
+  },
+  "samples": {
+    "offline_original": [
+      {
+        "variant": "offline_original",
+        "batch_ns": [
+          429113.92,
+          428025.44,
+          433833.18,
+          429556.99,
+          430326.97,
+          431517.24,
+          431859.49
+        ],
+        "median_ns": 430326.97,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "778cb9017000-778cb9018000 r--p 00000000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "778cb9018000-778cb9019000 r-xp 00001000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "778cb9019000-778cb901a000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "778cb901a000-778cb901b000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "778cb901b000-778cb901c000 rw-p 00003000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_original",
+        "batch_ns": [
+          432012.84,
+          432450.12,
+          433485.46,
+          430386.44,
+          426968.24,
+          427950.46,
+          429613.39
+        ],
+        "median_ns": 430386.44,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7b7660c33000-7b7660c34000 r--p 00000000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7b7660c34000-7b7660c35000 r-xp 00001000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7b7660c35000-7b7660c36000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7b7660c36000-7b7660c37000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7b7660c37000-7b7660c38000 rw-p 00003000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_original",
+        "batch_ns": [
+          429325.58,
+          445010.76,
+          438946.11,
+          437481.94,
+          429949.85,
+          433699.14,
+          431817.86
+        ],
+        "median_ns": 433699.14,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7c93576e7000-7c93576e8000 r--p 00000000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7c93576e8000-7c93576e9000 r-xp 00001000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7c93576e9000-7c93576ea000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7c93576ea000-7c93576eb000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7c93576eb000-7c93576ec000 rw-p 00003000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_original",
+        "batch_ns": [
+          435578.24,
+          438889.87,
+          425137.75,
+          428370.89,
+          430793.42,
+          427733.05,
+          434202.58
+        ],
+        "median_ns": 430793.42,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7fafb3c2c000-7fafb3c2d000 r--p 00000000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7fafb3c2d000-7fafb3c2e000 r-xp 00001000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7fafb3c2e000-7fafb3c2f000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7fafb3c2f000-7fafb3c30000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "7fafb3c30000-7fafb3c31000 rw-p 00003000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_original",
+        "batch_ns": [
+          434062.34,
+          424604.31,
+          431093.02,
+          425453.87,
+          428508.24,
+          429923.85,
+          424699.22
+        ],
+        "median_ns": 428508.24,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "73def53e7000-73def53e8000 r--p 00000000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "73def53e8000-73def53e9000 r-xp 00001000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "73def53e9000-73def53ea000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "73def53ea000-73def53eb000 r--p 00002000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so",
+          "73def53eb000-73def53ec000 rw-p 00003000 103:02 90227592                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/libcloud_kernel.so"
+        ]
+      }
+    ],
+    "offline_gcc_o2": [
+      {
+        "variant": "offline_gcc_o2",
+        "batch_ns": [
+          426240.6,
+          427351.04,
+          425534.34,
+          421664.45,
+          425289.81,
+          422373.51,
+          429854.67
+        ],
+        "median_ns": 425534.34,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "70d802866000-70d802867000 r--p 00000000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "70d802867000-70d802868000 r-xp 00001000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "70d802868000-70d802869000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "70d802869000-70d80286a000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "70d80286a000-70d80286b000 rw-p 00003000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_gcc_o2",
+        "batch_ns": [
+          429242.86,
+          431797.86,
+          434286.64,
+          430790.72,
+          429288.9,
+          431621.02,
+          443448.71
+        ],
+        "median_ns": 431621.02,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "73080da38000-73080da39000 r--p 00000000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "73080da39000-73080da3a000 r-xp 00001000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "73080da3a000-73080da3b000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "73080da3b000-73080da3c000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "73080da3c000-73080da3d000 rw-p 00003000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_gcc_o2",
+        "batch_ns": [
+          433855.34,
+          439534.28,
+          433286.65,
+          435052.66,
+          433381.25,
+          435710.81,
+          438433.01
+        ],
+        "median_ns": 435052.66,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "75d05a275000-75d05a276000 r--p 00000000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "75d05a276000-75d05a277000 r-xp 00001000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "75d05a277000-75d05a278000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "75d05a278000-75d05a279000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "75d05a279000-75d05a27a000 rw-p 00003000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_gcc_o2",
+        "batch_ns": [
+          430445.1,
+          436034.11,
+          435517.2,
+          427742.54,
+          429975.81,
+          427992.07,
+          429891.16
+        ],
+        "median_ns": 429975.81,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7dcdcdbdf000-7dcdcdbe0000 r--p 00000000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7dcdcdbe0000-7dcdcdbe1000 r-xp 00001000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7dcdcdbe1000-7dcdcdbe2000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7dcdcdbe2000-7dcdcdbe3000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7dcdcdbe3000-7dcdcdbe4000 rw-p 00003000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_gcc_o2",
+        "batch_ns": [
+          436811.98,
+          443458.84,
+          430251.92,
+          431519.24,
+          430997.0,
+          426845.1,
+          433774.18
+        ],
+        "median_ns": 431519.24,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7076cd62c000-7076cd62d000 r--p 00000000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7076cd62d000-7076cd62e000 r-xp 00001000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7076cd62e000-7076cd62f000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7076cd62f000-7076cd630000 r--p 00002000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so",
+          "7076cd630000-7076cd631000 rw-p 00003000 103:02 14708220                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_gcc_o2/libcloud_kernel.so"
+        ]
+      }
+    ],
+    "offline_clang_o2": [
+      {
+        "variant": "offline_clang_o2",
+        "batch_ns": [
+          363384.64,
+          361250.72,
+          359890.27,
+          356821.01,
+          355182.05,
+          363747.18,
+          360394.6
+        ],
+        "median_ns": 360394.6,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7f43a3675000-7f43a3676000 r--p 00000000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7f43a3676000-7f43a3677000 r-xp 00001000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7f43a3677000-7f43a3678000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7f43a3678000-7f43a3679000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7f43a3679000-7f43a367a000 rw-p 00003000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o2",
+        "batch_ns": [
+          358232.49,
+          362395.43,
+          361321.1,
+          358872.97,
+          361708.01,
+          367485.99,
+          370070.01
+        ],
+        "median_ns": 361708.01,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "71eeb8069000-71eeb806a000 r--p 00000000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "71eeb806a000-71eeb806b000 r-xp 00001000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "71eeb806b000-71eeb806c000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "71eeb806c000-71eeb806d000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "71eeb806d000-71eeb806e000 rw-p 00003000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o2",
+        "batch_ns": [
+          355532.63,
+          359891.91,
+          358106.24,
+          360009.37,
+          362177.95,
+          357398.97,
+          363657.54
+        ],
+        "median_ns": 359891.91,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "77817bc17000-77817bc18000 r--p 00000000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "77817bc18000-77817bc19000 r-xp 00001000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "77817bc19000-77817bc1a000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "77817bc1a000-77817bc1b000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "77817bc1b000-77817bc1c000 rw-p 00003000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o2",
+        "batch_ns": [
+          358167.1,
+          362916.59,
+          359466.3,
+          361140.44,
+          360010.8,
+          357033.18,
+          359062.71
+        ],
+        "median_ns": 359466.3,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "781e479df000-781e479e0000 r--p 00000000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "781e479e0000-781e479e1000 r-xp 00001000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "781e479e1000-781e479e2000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "781e479e2000-781e479e3000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "781e479e3000-781e479e4000 rw-p 00003000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o2",
+        "batch_ns": [
+          366172.37,
+          365817.69,
+          363837.14,
+          364983.77,
+          364809.34,
+          364150.87,
+          368231.85
+        ],
+        "median_ns": 364983.77,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7fbb19c17000-7fbb19c18000 r--p 00000000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7fbb19c18000-7fbb19c19000 r-xp 00001000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7fbb19c19000-7fbb19c1a000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7fbb19c1a000-7fbb19c1b000 r--p 00002000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so",
+          "7fbb19c1b000-7fbb19c1c000 rw-p 00003000 103:02 14708223                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o2/libcloud_kernel.so"
+        ]
+      }
+    ],
+    "offline_clang_o3": [
+      {
+        "variant": "offline_clang_o3",
+        "batch_ns": [
+          363429.16,
+          365259.25,
+          366424.27,
+          382247.08,
+          365664.47,
+          362316.19,
+          364763.61
+        ],
+        "median_ns": 365259.25,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "729594e77000-729594e78000 r--p 00000000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "729594e78000-729594e79000 r-xp 00001000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "729594e79000-729594e7a000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "729594e7a000-729594e7b000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "729594e7b000-729594e7c000 rw-p 00003000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o3",
+        "batch_ns": [
+          358737.65,
+          355508.64,
+          358830.97,
+          359790.86,
+          356965.03,
+          365742.97,
+          357937.88
+        ],
+        "median_ns": 358737.65,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "74717427c000-74717427d000 r--p 00000000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "74717427d000-74717427e000 r-xp 00001000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "74717427e000-74717427f000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "74717427f000-747174280000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "747174280000-747174281000 rw-p 00003000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o3",
+        "batch_ns": [
+          364276.65,
+          362795.35,
+          361362.14,
+          361525.4,
+          361240.1,
+          363299.35,
+          359943.08
+        ],
+        "median_ns": 361525.4,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "78bd02897000-78bd02898000 r--p 00000000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "78bd02898000-78bd02899000 r-xp 00001000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "78bd02899000-78bd0289a000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "78bd0289a000-78bd0289b000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "78bd0289b000-78bd0289c000 rw-p 00003000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o3",
+        "batch_ns": [
+          363936.33,
+          377425.3,
+          368297.62,
+          367082.92,
+          362068.6,
+          361521.3,
+          362337.22
+        ],
+        "median_ns": 363936.33,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "76beefae7000-76beefae8000 r--p 00000000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "76beefae8000-76beefae9000 r-xp 00001000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "76beefae9000-76beefaea000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "76beefaea000-76beefaeb000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "76beefaeb000-76beefaec000 rw-p 00003000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_o3",
+        "batch_ns": [
+          355934.25,
+          356987.2,
+          358081.89,
+          359752.09,
+          357600.48,
+          356460.41,
+          359866.86
+        ],
+        "median_ns": 357600.48,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "73ed9c23d000-73ed9c23e000 r--p 00000000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "73ed9c23e000-73ed9c23f000 r-xp 00001000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "73ed9c23f000-73ed9c240000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "73ed9c240000-73ed9c241000 r--p 00002000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so",
+          "73ed9c241000-73ed9c242000 rw-p 00003000 103:02 14708226                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_o3/libcloud_kernel.so"
+        ]
+      }
+    ],
+    "offline_clang_native": [
+      {
+        "variant": "offline_clang_native",
+        "batch_ns": [
+          380363.48,
+          371218.33,
+          366392.59,
+          369073.73,
+          370949.31,
+          370022.56,
+          372992.93
+        ],
+        "median_ns": 370949.31,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7591ab838000-7591ab839000 r--p 00000000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7591ab839000-7591ab83a000 r-xp 00001000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7591ab83a000-7591ab83b000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7591ab83b000-7591ab83c000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7591ab83c000-7591ab83d000 rw-p 00003000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_native",
+        "batch_ns": [
+          373304.01,
+          370164.26,
+          370838.21,
+          372518.47,
+          377290.0,
+          379151.76,
+          373634.3
+        ],
+        "median_ns": 373304.01,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "754f1b869000-754f1b86a000 r--p 00000000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "754f1b86a000-754f1b86b000 r-xp 00001000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "754f1b86b000-754f1b86c000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "754f1b86c000-754f1b86d000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "754f1b86d000-754f1b86e000 rw-p 00003000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_native",
+        "batch_ns": [
+          372556.57,
+          383616.64,
+          381112.8,
+          375274.79,
+          374593.01,
+          371519.84,
+          373966.39
+        ],
+        "median_ns": 374593.01,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7e707737b000-7e707737c000 r--p 00000000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7e707737c000-7e707737d000 r-xp 00001000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7e707737d000-7e707737e000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7e707737e000-7e707737f000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7e707737f000-7e7077380000 rw-p 00003000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_native",
+        "batch_ns": [
+          370888.73,
+          373361.58,
+          383961.51,
+          370245.86,
+          371765.31,
+          375173.79,
+          377373.55
+        ],
+        "median_ns": 373361.58,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "75f622e77000-75f622e78000 r--p 00000000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "75f622e78000-75f622e79000 r-xp 00001000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "75f622e79000-75f622e7a000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "75f622e7a000-75f622e7b000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "75f622e7b000-75f622e7c000 rw-p 00003000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+        ]
+      },
+      {
+        "variant": "offline_clang_native",
+        "batch_ns": [
+          375287.62,
+          375737.18,
+          375030.97,
+          374575.73,
+          376195.63,
+          379206.31,
+          375557.34
+        ],
+        "median_ns": 375557.34,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": [
+          "7aa7dbce7000-7aa7dbce8000 r--p 00000000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7aa7dbce8000-7aa7dbce9000 r-xp 00001000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7aa7dbce9000-7aa7dbcea000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7aa7dbcea000-7aa7dbceb000 r--p 00002000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so",
+          "7aa7dbceb000-7aa7dbcec000 rw-p 00003000 103:02 14708229                  /home/sapf/playground/ros_project/cppyy_kit/build/runtime-cost-cloud/offline_clang_native/libcloud_kernel.so"
+        ]
+      }
+    ],
+    "jit": [
+      {
+        "variant": "jit",
+        "batch_ns": [
+          358385.84,
+          360740.65,
+          356021.33,
+          359164.81,
+          357716.15,
+          357102.72,
+          357744.78
+        ],
+        "median_ns": 357744.78,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": []
+      },
+      {
+        "variant": "jit",
+        "batch_ns": [
+          359523.01,
+          359059.14,
+          355897.32,
+          359061.89,
+          360800.63,
+          358904.69,
+          360511.89
+        ],
+        "median_ns": 359061.89,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": []
+      },
+      {
+        "variant": "jit",
+        "batch_ns": [
+          358933.64,
+          359736.75,
+          360284.54,
+          361617.91,
+          357041.78,
+          355570.97,
+          360980.38
+        ],
+        "median_ns": 359736.75,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": []
+      },
+      {
+        "variant": "jit",
+        "batch_ns": [
+          371625.42,
+          368376.25,
+          371098.73,
+          366617.1,
+          365167.25,
+          365065.78,
+          363163.33
+        ],
+        "median_ns": 366617.1,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": []
+      },
+      {
+        "variant": "jit",
+        "batch_ns": [
+          363243.66,
+          370244.57,
+          370016.98,
+          373930.17,
+          365292.49,
+          363790.63,
+          370755.01
+        ],
+        "median_ns": 370016.98,
+        "max_error": 1.0658141036401503e-14,
+        "kernel_mappings": []
+      }
+    ]
+  }
+}

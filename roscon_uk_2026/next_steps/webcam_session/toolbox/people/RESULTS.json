@@ -1,0 +1,39 @@
+{
+  "image": "/home/sapf/playground/ros_project/cppyy_kit/build/webcam_session/rotation_0.jpg",
+  "shape": [
+    480,
+    640,
+    3
+  ],
+  "opencv": "4.11.0",
+  "operations": {
+    "face": {
+      "load_and_first_ms": 20.14904096722603,
+      "warm_median_ms": 8.240952447522432,
+      "warm_p95_ms": 10.017305664950978,
+      "calls": 10,
+      "outputs": 1
+    },
+    "hand": {
+      "load_and_first_ms": 49.48011296801269,
+      "warm_median_ms": 22.509618022013456,
+      "warm_p95_ms": 27.655102568678558,
+      "calls": 10,
+      "outputs": 1
+    },
+    "pose": {
+      "load_and_first_ms": 61.139837955124676,
+      "warm_median_ms": 33.15265598939732,
+      "warm_p95_ms": 35.272953286767006,
+      "calls": 10,
+      "outputs": 1
+    },
+    "segmentation": {
+      "load_and_first_ms": 28.25202897656709,
+      "warm_median_ms": 12.57568650180474,
+      "warm_p95_ms": 14.946746872738002,
+      "calls": 10,
+      "outputs": 1
+    }
+  }
+}

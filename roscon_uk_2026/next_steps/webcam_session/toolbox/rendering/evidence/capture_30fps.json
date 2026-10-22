@@ -1,0 +1,28 @@
+[
+  {
+    "format": "YUYV",
+    "settings": {
+      "fourcc": true,
+      "width": true,
+      "height": true,
+      "fps": true,
+      "buffer": true
+    },
+    "reported_fps": 30.0,
+    "measured_fps": 19.9353068293657,
+    "frames": 160
+  },
+  {
+    "format": "MJPG",
+    "settings": {
+      "fourcc": true,
+      "width": true,
+      "height": true,
+      "fps": true,
+      "buffer": true
+    },
+    "reported_fps": 30.0,
+    "measured_fps": 19.95823475668269,
+    "frames": 160
+  }
+]

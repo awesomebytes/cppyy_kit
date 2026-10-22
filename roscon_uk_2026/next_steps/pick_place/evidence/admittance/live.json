@@ -1,0 +1,305 @@
+{
+  "observer_pid": 2087717,
+  "controller": "control_kit_python/PythonController",
+  "plugin_library": "/home/sapf/.cache/cppyy_kit/control_plugin/lib/libcontrol_kit_python_controller.so",
+  "joints": [
+    "arm_left_1_joint",
+    "arm_left_2_joint",
+    "arm_left_3_joint",
+    "arm_left_4_joint",
+    "arm_left_5_joint",
+    "arm_left_6_joint",
+    "arm_left_7_joint"
+  ],
+  "force_frame": "torso_lift_link",
+  "force_N": 1.0,
+  "force_axis": "x",
+  "duration_s": 8.0,
+  "controllers_before": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    }
+  },
+  "start_rad": [
+    0.3599999999992369,
+    -1.8299999999990693,
+    0.46999999999970943,
+    -2.349999999996132,
+    4.1105803786842045e-13,
+    -1.2000000000012778,
+    2.385542803877095e-13
+  ],
+  "start_position_m": [
+    0.3888174912800346,
+    0.20130707015622742,
+    -0.2098757744670998
+  ],
+  "spawner_output": "[INFO] [1792403240.069232137] [spawner_cppyy_admittance_arm_left]: waiting for service /controller_manager/list_controllers to become available...\n[INFO] [1792403240.324973076] [spawner_cppyy_admittance_arm_left]: Setting controller param \"params_file\" to \"['/home/sapf/.cache/cppyy_kit/control_plugin/cppyy_admittance_arm_left.yaml']\" for cppyy_admittance_arm_left\n[INFO] [1792403240.327662776] [spawner_cppyy_admittance_arm_left]: Setting controller param \"type\" to \"control_kit_python/PythonController\" for cppyy_admittance_arm_left\n[INFO] [1792403240.344697581] [spawner_cppyy_admittance_arm_left]: Loaded cppyy_admittance_arm_left\n",
+  "controllers_during": {
+    "cppyy_admittance_arm_left": {
+      "state": "active",
+      "type": "control_kit_python/PythonController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    },
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "inactive",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": []
+    }
+  },
+  "forced_rad": [
+    0.34684561877971914,
+    -1.79347209647811,
+    0.461717100764532,
+    -2.3364827973888476,
+    -0.007157872961704375,
+    -1.1751269531559454,
+    -3.067083827704087e-05
+  ],
+  "peak_joint_displacement_rad": 0.03652790352095936,
+  "returned_rad": [
+    0.35825148995857503,
+    -1.8251057792945329,
+    0.4688525512750681,
+    -2.3482770326298468,
+    -0.0009963476641962291,
+    -1.1966056122905249,
+    6.7709693468206636e-06
+  ],
+  "forced_position_m": [
+    0.3996790480197537,
+    0.2012988307656387,
+    -0.20988064433498105
+  ],
+  "returned_position_m": [
+    0.39026349024223944,
+    0.20131355057109349,
+    -0.20987171869523563
+  ],
+  "peak_cartesian_displacement_m": 0.010861560956570973,
+  "cartesian_return_error_m": 0.0014460191712974161,
+  "max_return_error_rad": 0.004894220704536378,
+  "passed": true,
+  "stock_controller_restored": true,
+  "python_update": {
+    "pid": 2085266,
+    "module": "python_admittance_controller",
+    "class": "CartesianAdmittance",
+    "callback_count": 1157,
+    "base_link": "torso_lift_link",
+    "tip_link": "gripper_left_grasping_link",
+    "peak_displacement_m": 0.012499999964685291,
+    "peak_command_step_rad": 0.0015000000000000568,
+    "native_kernel": "cppyy_kit.cppdef_cached:control_kit_admittance",
+    "native_step_mean_us": 31.181738980121,
+    "native_step_max_us": 3129.715,
+    "final_measured_displacement_m": 0.0014404219241630838,
+    "final_measured_orientation_error_rad": 1.2764094963666039e-05,
+    "process_command": "gz sim -r -s /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/home.sdf                                                                                                               ",
+    "plugin_mapped": true
+  },
+  "controllers_after": {
+    "wrist_left_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "wrist_right_ft_broadcaster": {
+      "state": "active",
+      "type": "force_torque_sensor_broadcaster/ForceTorqueSensorBroadcaster",
+      "claimed_interfaces": []
+    },
+    "joint_state_broadcaster": {
+      "state": "active",
+      "type": "joint_state_broadcaster/JointStateBroadcaster",
+      "claimed_interfaces": []
+    },
+    "head_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "head_1_joint/position",
+        "head_2_joint/position"
+      ]
+    },
+    "gripper_right_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_right_finger_joint/effort"
+      ]
+    },
+    "torso_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "torso_lift_joint/position"
+      ]
+    },
+    "arm_right_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_right_1_joint/position",
+        "arm_right_2_joint/position",
+        "arm_right_3_joint/position",
+        "arm_right_4_joint/position",
+        "arm_right_5_joint/position",
+        "arm_right_6_joint/position",
+        "arm_right_7_joint/position"
+      ]
+    },
+    "gripper_left_controller": {
+      "state": "active",
+      "type": "effort_controllers/GripperActionController",
+      "claimed_interfaces": [
+        "gripper_left_finger_joint/effort"
+      ]
+    },
+    "arm_left_controller": {
+      "state": "active",
+      "type": "joint_trajectory_controller/JointTrajectoryController",
+      "claimed_interfaces": [
+        "arm_left_1_joint/position",
+        "arm_left_2_joint/position",
+        "arm_left_3_joint/position",
+        "arm_left_4_joint/position",
+        "arm_left_5_joint/position",
+        "arm_left_6_joint/position",
+        "arm_left_7_joint/position"
+      ]
+    }
+  }
+}

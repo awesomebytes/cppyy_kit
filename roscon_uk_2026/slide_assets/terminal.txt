@@ -1,0 +1,64 @@
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/python_sum.py --tiny
+14.0
+process_elapsed_s=0.10
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/python_sum.py --tiny
+14.0
+process_elapsed_s=0.07
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/python_sum.py --tiny
+14.0
+process_elapsed_s=0.07
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/python_sum.py --tiny
+14.0
+process_elapsed_s=0.08
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/cppyy_sum.py --tiny
+14.0
+process_elapsed_s=0.24
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/cppyy_sum.py --tiny
+14.0
+process_elapsed_s=0.24
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/cppyy_sum.py --tiny
+14.0
+process_elapsed_s=0.25
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/cppyy_sum.py --tiny
+14.0
+process_elapsed_s=0.24
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/kit_sum.py --tiny
+14.0
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch
+process_elapsed_s=0.54
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/kit_sum.py --tiny
+14.0
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch
+process_elapsed_s=0.34
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/kit_sum.py --tiny
+14.0
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch
+process_elapsed_s=0.34
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/kit_sum.py --tiny
+14.0
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch
+process_elapsed_s=0.33
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/python_sum.py
+{"elements": 1000000, "result": 3283500000.0, "samples_ms": [51.857229, 52.136049, 52.103081, 52.685274, 52.850601, 52.254276, 51.925679], "median_ms": 52.136049}
+process_elapsed_s=0.54
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/cppyy_sum.py
+{"elements": 1000000, "result": 3283500000.0, "samples_ms": [2.73111, 0.485429, 0.44312, 0.447395, 0.449194, 0.438085, 0.442605], "median_ms": 0.447395}
+process_elapsed_s=0.26
+
+$ /usr/bin/time -f process_elapsed_s=%e /home/sapf/playground/ros_project/cppyy_kit/.pixi/envs/default/bin/python /home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/slide_assets/kit_sum.py
+{"elements": 1000000, "result": 3283500000.0, "samples_ms": [0.670027, 0.501849, 0.420468, 0.417832, 0.408484, 0.397958, 0.396563], "median_ms": 0.417832}
+cppyy_kit: Cling PCH loaded from /home/sapf/.cache/cppyy_kit/pch/b1bc8f2caa4826ee.pch
+process_elapsed_s=0.31

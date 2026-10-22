@@ -1,0 +1,26 @@
+{
+  "stage": "filter",
+  "startup_s": 4.5213927330914885,
+  "warm_wall_s": 11.008783238939941,
+  "warm_cpu_s": 2.927976751,
+  "cpu_cores": 0.26596733603067485,
+  "peak_rss_kib": 914988,
+  "joined_shutdown": true,
+  "executor_exceptions": 0,
+  "stages": {
+    "filter": {
+      "received": 143,
+      "processed": 142,
+      "published": 142,
+      "dropped": 0,
+      "coalesced": 1,
+      "exceptions": 0,
+      "python_boundary_crossings": 0,
+      "output_instances": 142,
+      "middleware_loaned_messages": 0,
+      "allocator_fallbacks": 0,
+      "compile_cache_hits": 1,
+      "compile_cache_misses": 0
+    }
+  }
+}

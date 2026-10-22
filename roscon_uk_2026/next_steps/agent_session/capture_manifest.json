@@ -1,0 +1,245 @@
+{
+  "captured_at_utc": "2026-10-20T17:32:09.043736+00:00",
+  "bag": "table_scene",
+  "counts": {
+    "/clock": 9332,
+    "/head_front_camera/depth/camera_info": 274,
+    "/head_front_camera/color/camera_info": 274,
+    "/mobile_base_controller/odom": 452,
+    "/tf": 628,
+    "/tf_static": 1,
+    "/head_front_camera/depth/image_rect_raw": 273,
+    "/head_front_camera/color/image_raw": 273,
+    "/head_front_camera/depth/color/points": 273,
+    "/joint_states": 849
+  },
+  "first_record_timestamp_ns": {
+    "/clock": 1792517477569674394,
+    "/head_front_camera/depth/camera_info": 1792517477928316863,
+    "/head_front_camera/color/camera_info": 1792517477928321823,
+    "/mobile_base_controller/odom": 1792517477930771597,
+    "/tf": 1792517477930826481,
+    "/tf_static": 1792517477936287503,
+    "/head_front_camera/depth/image_rect_raw": 1792517477951773811,
+    "/head_front_camera/color/image_raw": 1792517477958431058,
+    "/head_front_camera/depth/color/points": 1792517478073718120,
+    "/joint_states": 1792517478559105142
+  },
+  "last_record_timestamp_ns": {
+    "/clock": 1792517492143748706,
+    "/head_front_camera/depth/camera_info": 1792517492125604543,
+    "/head_front_camera/color/camera_info": 1792517492125612247,
+    "/mobile_base_controller/odom": 1792517492143654111,
+    "/tf": 1792517492143717988,
+    "/tf_static": 1792517477936287503,
+    "/head_front_camera/depth/image_rect_raw": 1792517492091690447,
+    "/head_front_camera/color/image_raw": 1792517492090618116,
+    "/head_front_camera/depth/color/points": 1792517492089984039,
+    "/joint_states": 1792517492143629111
+  },
+  "frames": {
+    "/head_front_camera/depth/camera_info": "head_front_camera_depth_optical_frame",
+    "/head_front_camera/color/camera_info": "head_front_camera_depth_optical_frame",
+    "/mobile_base_controller/odom": "odom",
+    "/tf": [
+      "odom->base_footprint"
+    ],
+    "/tf_static": [
+      "arm_left_7_link->arm_left_tool_link",
+      "arm_left_tool_link->wrist_left_ft_sensor_base_link",
+      "arm_right_7_link->arm_right_tool_link",
+      "arm_right_tool_link->wrist_right_ft_sensor_base_link",
+      "base_footprint->base_link",
+      "base_link->base_antenna_left_link",
+      "base_link->base_antenna_right_link",
+      "base_link->base_dock_link",
+      "base_link->base_front_laser_link",
+      "base_link->base_imu_link",
+      "base_link->base_rear_laser_link",
+      "base_link->suspension_front_left_link",
+      "base_link->suspension_front_right_link",
+      "base_link->suspension_rear_left_link",
+      "base_link->suspension_rear_right_link",
+      "base_link->torso_base_link",
+      "base_link->torso_fixed_column_link",
+      "base_link->virtual_base_laser_link",
+      "gripper_left_base_link->gripper_left_base_finger_left_link",
+      "gripper_left_base_link->gripper_left_base_finger_right_link",
+      "gripper_left_base_link->gripper_left_grasping_link",
+      "gripper_right_base_link->gripper_right_base_finger_left_link",
+      "gripper_right_base_link->gripper_right_base_finger_right_link",
+      "gripper_right_base_link->gripper_right_grasping_link",
+      "head_2_link->head_front_camera_bottom_screw_frame",
+      "head_2_link->head_screen_link",
+      "head_2_link->sellion_link",
+      "head_front_camera_bottom_screw_frame->head_front_camera_link",
+      "head_front_camera_color_frame->head_front_camera_color_optical_frame",
+      "head_front_camera_depth_frame->head_front_camera_depth_optical_frame",
+      "head_front_camera_infra1_frame->head_front_camera_infra1_optical_frame",
+      "head_front_camera_infra2_frame->head_front_camera_infra2_optical_frame",
+      "head_front_camera_link->head_front_camera_color_eye_frame",
+      "head_front_camera_link->head_front_camera_color_frame",
+      "head_front_camera_link->head_front_camera_depth_frame",
+      "head_front_camera_link->head_front_camera_infra1_frame",
+      "head_front_camera_link->head_front_camera_infra2_frame",
+      "sellion_link->eye_left_link",
+      "sellion_link->eye_right_link",
+      "torso_lift_link->torso_arm_left_link",
+      "torso_lift_link->torso_arm_right_link",
+      "torso_lift_link->torso_head_link",
+      "wrist_left_ft_sensor_base_link->wrist_left_ft_sensor_link",
+      "wrist_left_ft_sensor_link->wrist_left_ft_tool_link",
+      "wrist_left_ft_tool_link->gripper_left_base_link",
+      "wrist_right_ft_sensor_base_link->wrist_right_ft_sensor_link",
+      "wrist_right_ft_sensor_link->wrist_right_ft_tool_link",
+      "wrist_right_ft_tool_link->gripper_right_base_link"
+    ],
+    "/head_front_camera/depth/image_rect_raw": "head_front_camera_depth_optical_frame",
+    "/head_front_camera/color/image_raw": "head_front_camera_depth_optical_frame",
+    "/head_front_camera/depth/color/points": "head_front_camera_depth_frame",
+    "/joint_states": "base_link"
+  },
+  "first_header_timestamp_ns": {
+    "/head_front_camera/depth/camera_info": 24816000000,
+    "/head_front_camera/color/camera_info": 24816000000,
+    "/mobile_base_controller/odom": 24820000000,
+    "/head_front_camera/depth/image_rect_raw": 24816000000,
+    "/head_front_camera/color/image_raw": 24816000000,
+    "/head_front_camera/depth/color/points": 24816000000,
+    "/joint_states": 25360000000
+  },
+  "image": {
+    "encoding": "rgb8",
+    "width": 640,
+    "height": 480,
+    "step": 1920
+  },
+  "cloud": {
+    "width": 640,
+    "height": 480,
+    "point_step": 24,
+    "row_step": 15360,
+    "total_points": 307200,
+    "finite_points": 147131,
+    "bounds_min_xyz_m": [
+      0.6244650483131409,
+      -2.5498108863830566,
+      -1.0607588291168213
+    ],
+    "bounds_max_xyz_m": [
+      2.9997830390930176,
+      2.550179958343506,
+      1.781903624534607
+    ],
+    "fields": [
+      {
+        "name": "x",
+        "offset": 0,
+        "datatype": 7
+      },
+      {
+        "name": "y",
+        "offset": 4,
+        "datatype": 7
+      },
+      {
+        "name": "z",
+        "offset": 8,
+        "datatype": 7
+      },
+      {
+        "name": "rgb",
+        "offset": 16,
+        "datatype": 7
+      }
+    ]
+  },
+  "camera_info": {
+    "width": 640,
+    "height": 480,
+    "k": [
+      347.9973856787208,
+      0.0,
+      320.0,
+      0.0,
+      347.9973856787207,
+      240.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "d": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "distortion_model": "plumb_bob"
+  },
+  "first_clock_ns": 24509000000,
+  "source_git_revision": "67596890d3ac7150ff7f19f070b4955589561c39",
+  "environment": {
+    "manifest": "roscon_uk_2026/next_steps/tiago_pro_jazzy/pixi.toml",
+    "ROS_DOMAIN_ID": "77",
+    "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+    "ROS_AUTOMATIC_DISCOVERY_RANGE": "SUBNET",
+    "GZ_PARTITION": "tiago_pro_jazzy"
+  },
+  "launch_arguments": {
+    "gui": false,
+    "rviz": false,
+    "moveit": false,
+    "navigation": false,
+    "spawn_x": -2.65728,
+    "spawn_y": 1.35,
+    "spawn_yaw": 1.5707963267948966,
+    "pose": "native ready pose, no commanded motion"
+  },
+  "limitations": [
+    "Recording log reported 2 transport-layer message losses.",
+    "Record timestamps are wall clock; headers and /clock contain simulation time.",
+    "Native Harmonic cloud coordinates are X forward, Y left, Z up in head_front_camera_depth_frame. RGB and CameraInfo use depth optical frame.",
+    "MCAP and local data are ignored by repository data/ ignore rule."
+  ],
+  "source_provenance": {
+    "roscon_uk_2026/next_steps/tiago_pro/sources.lock": "omni_base_robot https://github.com/pal-robotics/omni_base_robot.git 49ecf709e3f42ba0613ccaeb8a07105be24a6c36\npal_pro_gripper https://github.com/pal-robotics/pal_pro_gripper.git ed9445716b9534b6d387d88eaf88f0bcb781b5cd\npal_sea_arm https://github.com/pal-robotics/pal_sea_arm.git 78b544fd2d96b8edbc2472e68f653ea5cce15423\npal_urdf_utils https://github.com/pal-robotics/pal_urdf_utils.git e8600a339a3a9b7ffe67d1030190b97b67fb577b\nrealsense https://github.com/realsenseai/realsense-ros.git 7a87097c499e3b0b69518d54a8e7a9ac1924e87c\ntiago_pro_head_robot https://github.com/pal-robotics/tiago_pro_head_robot.git c9ea3291f0001fd40f40770d4eed9bacd03d889d\ntiago_pro_robot https://github.com/pal-robotics/tiago_pro_robot.git 59eff25559b0f071ac5cf6d3c4c72c2e33b8951a\ntiago_pro_simulation https://github.com/pal-robotics/tiago_pro_simulation.git 0fead4e4083fe695c61b39fc7998a0f433db978d\ngazebo_ros_pkgs https://github.com/ros-simulation/gazebo_ros_pkgs.git ae6e5793a31f5927df89cb58007d2a5eb567baa8\n",
+    "roscon_uk_2026/next_steps/tiago_pro/moveit/sources.lock": "upstream https://github.com/pal-robotics/tiago_pro_moveit_config.git fa1f97542f85c15c464d9685b93584316b8ceead\npal_sea_arm_moveit_config https://github.com/pal-robotics/pal_sea_arm_moveit_config.git d262ae8a3db78e86b8017a06aa3fb0d24ad744e1\n",
+    "roscon_uk_2026/next_steps/tiago_pro/worlds/home/sources.json": "{\n  \"turtlebot3_simulations\": \"a35a56c8b04877dc89772b598084d8ce648a9023\",\n  \"gazebo_models\": \"8163eb4b5e7e21985c6591d1c0bfb56468c0093f\",\n  \"bundled_model_files\": 35\n}\n"
+  },
+  "bag_files": [
+    {
+      "name": "table_scene_0.mcap",
+      "bytes": 614114985
+    }
+  ],
+  "actual_simulator_environment": {
+    "ROS_DOMAIN_ID": "77",
+    "RMW_IMPLEMENTATION": "rmw_fastrtps_cpp",
+    "ROS_AUTOMATIC_DISCOVERY_RANGE": "SUBNET",
+    "ROS_DISTRO": "jazzy",
+    "GZ_PARTITION": "tiago_pro_jazzy",
+    "AMENT_PREFIX_PATH": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/prefix:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/.pixi/envs/default",
+    "CONDA_PREFIX": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/.pixi/envs/default",
+    "GZ_SIM_RESOURCE_PATH": "/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/prefix/share:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro/worlds/home/models:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro/worlds/home/models/table_marble/materials/textures:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro/worlds/home/models/cafe_table/materials/textures:/home/sapf/playground/ros_project/cppyy_kit/roscon_uk_2026/next_steps/tiago_pro/worlds/home/models/mailbox/materials/textures"
+  },
+  "process_ids": {
+    "launch": 4171770,
+    "gazebo": 4171779,
+    "robot_state_publisher": 4171781,
+    "bridge": 4171783
+  },
+  "verified_preview": "rgb_first.png: red cube, blue cylinder, yellow cube are visible on table.",
+  "source_file_sha256": {
+    "roscon_uk_2026/next_steps/tiago_pro_jazzy/pixi.lock": "042d8b484c67d3a44a548ac06318e3a6e76ee3afa20373588a29a1d3f33ef01f",
+    "roscon_uk_2026/next_steps/tiago_pro_jazzy/playground.launch.py": "7b87b3227cb0b764f121d28f6de5cced5d4beedb38f6c26ee1d07fce637d2575",
+    "roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/sim.urdf": "6df1d3e60eb51eee89338595087cbda54c53af8f39f227914fd1c596d46119d3",
+    "roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/home.sdf": "b82eb8295d2ff1ae977db70ec9471f65fbc67930c5a49a2d6fc31e0982c061b6",
+    "roscon_uk_2026/next_steps/tiago_pro_jazzy/generated/bridge.yaml": "dd40b72c34e5ca3c9471632ac7bb74e905a942e13de6a62775ae59cf45b72439"
+  },
+  "shutdown": {
+    "completed_at_utc": "2026-10-20T17:38:57.122788+00:00",
+    "method": "SIGINT to owned RViz PID 4174994 and ROS launch PID 4171770",
+    "result": "Owned process groups 4174942 and 4171735 empty; simulator guard lock reacquired successfully."
+  }
+}

@@ -1,135 +1,222 @@
-# One robot playground, several ways to build its software
+# Proposed talk redesign: interactive robotics experiments
 
-Rough narrative for the 45-minute ROSCon UK 2026 deep dive. This captures the
-new direction discussed for the talk. It is not an implemented robot stack or
-a replacement for the existing [presentation plan](PLAN.md) and its evidence.
+Updated 21 October 2026. The [slide draft](SLIDE_DRAFT.md) now follows this order with 24 main slides and 10 backups. The [HTML preview](SLIDE_DRAFT.html) includes coloured code and speaker notes. The earlier [script](TALK_SCRIPT.md) remains reference material.
 
-## The shared setting
+## Main argument
 
-Start with a simulated mobile manipulator: a wheeled base, arm(s), RGB/depth,
-IMU, joint state and range/point-cloud data. The current starting point is
-[TIAGo PRO on ROS 2 Jazzy and Gazebo Harmonic](next_steps/tiago_pro_jazzy/README.md),
-now published as `tiago-pro-playground` 0.2.0 build 2. Fresh installed startup
-passed nine controllers, MoveIt, Nav2, sensors and the GUI; the user also
-confirmed source-session navigation and MoveIt operation. The optional shared
-`kit` environment passed installed `rclcpp_kit` native-node bringup and teardown.
-These establish the robot baseline and compatible kit setup, not the robot
-processing/composition experiment, acceleration result or autonomous grasping.
+LLMs reduce the effort of writing wrappers and build files. cppyy_kit can still
+provide useful native integration and a short feedback loop against retained
+robot data and running resources. Use that loop to discover the requirements,
+collect examples and failure cases, and build a reference implementation.
+These become an implementation brief for a dedicated agent or agent team,
+with concrete criteria for judging the result.
 
-The native materials are restored, with a plain floor. One aligned RGBD camera
-runs at 30 Hz without duplicate rendering. Quiet-window median real-time factor
-improved from 0.589 to 0.832 in the recorded comparison; it remains below 1.0.
-The depth-cloud bridge uses the camera body frame matching native XYZ, while
-RGB retains its optical frame. Registered cloud geometry places the floor at
-z=0 and tabletop at approximately z=1.02 m. Public 0.1.0 remains the earlier
-Humble / Gazebo Classic fallback; its wrist-load and motion evidence does not
-establish new Harmonic force calibration. Stretch, single-arm TIAGo and TIAGo++
-remain earlier alternatives. One shared lock permits one simulator at a time.
-The measured cppyy_kit processing and composition demonstration below remains
-the next task.
+Explain the contributions separately: cppyy provides dynamic C++ access;
+cppyy_kit and the kits provide reusable setup and integration; marimo and its
+agent interface provide the interactive workspace. Agent productivity is a
+hypothesis to evaluate through completed tasks.
 
-Use one task: find an object, approach it and position the arm near it. Reuse
-navigation and basic control software. Grasping and whole-body balance are not
-prerequisites. This gives context for concerns shared with humanoids, cars,
-drones and quadrupeds: processing, estimation, control, ownership and timing.
+## Proposed 45-minute sequence
 
-Initially show a typical ROS setup: separate processes, topics, parameters,
-a viewer and recording. All demonstrations change this same application.
+| Minutes | Content | Screen |
+| --- | --- | --- |
+| 0–3 | Robotics context and language vote | TIAGo PRO clip and familiar ROS graph |
+| 3–9 | cppyy, then cppyy_kit | Small example and meaningful cached Eigen example |
+| 9–15 | Kit capabilities, centred on rclcppyy | Measured ROS performance and native C++ objects |
+| 15–23 | Nav2 policy and Python controller | Minimal integration code and robot demonstration videos |
+| 23–26 | What changes when agents can write bindings? | The retained interactive workspace |
+| 26–33 | Live coding against the webcam | Agent and viewer side by side; choose and implement the task live |
+| 33–38 | From interactive discovery to an implementation brief | Examples, acceptance cases, reference code, runtime costs and target constraints |
+| 38–40 | Close | Explore, specify, implement, evaluate |
+| 40–45 | Questions | Supporting material |
 
-```mermaid
-flowchart LR
-    sim["Simulated robot and sensors"] --> processing["Perception and preprocessing"]
-    processing --> goal["Target or motion reference"]
-    goal --> control["Existing navigation and control"]
-    control --> sim
-    processing -. "Intermediate results and timing" .-> inspect["Viewer, recording and diagnostics"]
+The webcam is the primary interactive demo. If it cannot run, use the marimo notebook with the robot MCAP to detect blocks on the table. The fallback is an interactive recorded-data task, not a demonstration video. Keep its hidden slide and notebook tab ready.
+
+## Kit capabilities: rclcppyy and native data reuse
+
+Give the revamped rclcppyy library the largest share of this six-minute section:
+
+- About three minutes: introduce its Python-facing ROS API and show a compact
+  performance comparison from the revamped library. Label the workload, message
+  size, callback path and measured metric. Use results from that version;
+  distinguish rclcppyy measurements from lower-level rclcpp_kit pipeline results.
+- About one minute: show Python holding a proxy to a C++ ROS message and passing
+  the compatible object to C++ processing. Explain how retaining the native
+  representation avoids rebuilding message fields as Python objects at that
+  boundary. Show the actual conversion or view used when entering PCL or OpenCV.
+- About one minute: show the minimal Python ros2_control controller and its
+  reusable bridge glue as another kit capability.
+- About one minute: show pick-and-place as a short outcome clip connecting
+  perception and motion. Keep the detailed WBC explanation in backup material.
+
+Suggested narration:
+
+> I also revamped rclcppyy. There are two things I want to show here: the
+> performance we measured, and what happens to the data. We can keep a message
+> as a C++ object, let Python decide what to do with it, and pass it into C++
+> code. That is useful when the next operation lives in a native library too.
+
+Show this simple data path beside a small real code example:
+
+```text
+ROS input → C++ message → native processing → result
+                 ↑ Python selects and configures the operation
 ```
 
-## Establish the tools before the experiments
+Explain ownership and copy boundaries through the example. Keeping the message
+native avoids a representation conversion on compatible paths. Middleware
+transport, ROS-to-PCL conversion and processing can still allocate or copy.
+Use the [ROS section of the script](TALK_SCRIPT.md#6-bring-ros-into-the-story-before-processing-its-messages)
+and [pipeline deployment notes](next_steps/pick_place/DEPLOYMENT.md) for the
+existing code and boundary explanations.
 
-Explain the distinction with one small operation:
+## Suggested spoken transitions
 
-| Approach | What the developer does |
-| --- | --- |
-| Without cppyy | Uses available Python bindings, stays in Python, or builds and maintains a native extension. |
-| With vanilla cppyy | Calls C++ dynamically, supplies headers and libraries, and handles integration details. |
-| With cppyy_kit | Reuses library setup and interoperability helpers, or writes cached C++ kernels through `@cpp`; supplies explicit buffer and lifetime contracts. |
+> I usually work in robotics. Sensors, control, data, autonomous systems. We are
+> at ROSCon, so this probably looks familiar. I set up this robot as a playground.
+> Let me show you a few things we can build from Python, using C++ underneath.
 
-Python remains the high-level language. Native code still needs review and
-testing; kits reduce integration work.
+After the kit examples:
 
-## Same content, audience-selected order
+> Now, there is a question I have been asking myself. An agent can write the C++,
+> the bindings and the CMake project for me. That used to be a substantial part
+> of the friction. So what is still useful here?
 
-Ask whether people would first reuse an established library or ask an agent
-to write a tailored implementation. Show their less preferred approach first,
-then their preferred approach. Only the order and framing change.
+Before the notebook:
 
-| Audience preference | First | Second |
+> I think part of the answer is being able to try things against the actual data.
+> We have the data loaded, the native libraries available, and a result we can
+> look at. Let's change the question and see what happens.
+
+Before the webcam:
+
+> That was recorded data. Now the input keeps changing. Can we keep the camera
+> running and change what we ask the software to tell us?
+
+Before the implementation handoff:
+
+> During this session, we have figured out what we mean by “works”. We have
+> collected examples, found cases where it fails, and made a reference
+> implementation. Now we can give all of that to another agent and ask it to
+> build an implementation for the machine where we want to run it. And we have
+> something concrete to judge its result against.
+
+## Recorded-data demonstration
+
+Use the existing [marimo session](next_steps/agent_session/NOTEBOOK.md) and
+[table recording](next_steps/agent_session/CAPTURE.md). Keep the robot video as
+context; the MCAP supplies repeatable input on stage.
+
+1. Show the table objects and explain the current cloud filtering and clusters.
+2. Ask the agent to find the red object and overlay its selected points.
+3. Refine the region and voxel size, inspect the result, and save the accepted
+   notebook source. Show the recorded fresh-process replay result.
+4. Show the handoff: selected inputs, reviewed expected behavior, a failure
+   case, reference code and the deployment requirements.
+
+The implemented experiment retained its kernel and input arrays across three
+revisions. It moved from three objects to one red cluster with 178 points.
+The saved notebook reproduced the result in a fresh process. See the
+[session evidence](next_steps/agent_session/README.md).
+Rehearse the spoken agent interaction with bounded requests and legible output.
+Show the real edit and a result check, including a correction when needed.
+A useful additional acceptance case is a frame without the requested object.
+
+## Webcam demonstration: implement the task live
+
+Start with [live_notebook.py](next_steps/webcam_session/toolbox/rendering/live_notebook.py): one webcam, a pass-through processor and a Viser viewer. Put the agent terminal on the left and the viewer on the right. Keep the marimo tab open in the background. Rehearse resource startup and agent access before the talk. The perception task is chosen and implemented live.
+
+| Step | Action | Point to explain |
 | --- | --- | --- |
-| Established library | Agent-written custom implementation | Established C++ library |
-| Agent-written implementation | Established C++ library | Agent-written custom implementation |
+| Start | Show the current webcam image and choose one bounded task | Work from the scene in front of us. |
+| Implement | Ask the agent to add detection, tracking or another useful operation | The interpreter and camera stay alive while processing changes. |
+| Inspect | Look at the result; identify one concrete failure or refinement | Visible output helps clarify what we actually want. |
+| Refine | Change the processing and check it again | Keep model instances and accepted state when useful. |
+| Retain | Save accepted cells and representative inputs/outputs | Supply a reference and acceptance cases to an implementation agent. |
 
-Both orders include the same Python baseline, acceleration, library integration,
-checks and measurements. Reuse and agents are compatible: an agent can also
-integrate the established library.
+Do not script a tour of features from an earlier webcam session. There is no rain or gesture sequence to reproduce. Use an existing model when appropriate and add a cppyy_kit native operation where the chosen task benefits from one. The depth-to-points slide is an illustrative option, not a promise about the live task.
 
-Choose one sensor-processing operation with a measured bottleneck and an
-appropriate C++ library: perhaps depth/point-cloud filtering or neighborhood
-queries. Select the exact operation during rehearsal.
+Suggested transition:
 
-The custom section moves measured Python work into a small native kernel. The
-library section replaces that operation with a maintained implementation,
-without a separate handwritten bindings project. Compare behavior, capability
-and performance; do not assume either implementation wins. Use reasonable
-Python baselines, including existing vectorized operations and bindings.
+> We have the camera and viewer running. Let's choose something to do with the image, ask the agent to implement it, and look at what actually happens. Then we can change the request while the session stays alive.
 
-## Shared finale: change how the application is assembled
+If webcam delivery is not workable, switch to the [MCAP notebook](next_steps/agent_session/NOTEBOOK.md) at port 2718. Use the robot recording to identify blocks on the table, select by color, inspect image and cloud results, and refine the region. The saved notebook starts with a red-object selection; inspect that starting state and make a visible change. Keep the input loaded while the analysis is edited. The fallback slide is hidden during the normal slideshow.
 
-Keep the robot task and algorithm. Explore Python configuring native ROS stages
-inside one process or a few coherent subsystems. Keep expensive work and
-frequent callbacks native where useful. Make thread scheduling, buffer
-ownership, bounded queues and shutdown visible.
+The presentation does not use webcam recordings as a fallback. The existing robot navigation and arm videos remain part of the earlier ROS section.
 
-Show one readable assembly point, fewer conversions and less deployment
-coordination. Retain ROS interfaces for viewers, parameters and recording;
-identify which stages remain ROS-visible. Existing ROS composition supplies
-the foundation; cppyy_kit helps make it accessible from Python.
+## From interactive discovery to an implementation brief
 
-Composition is another useful experiment, not a claim that monoliths are the
-best architecture. Shared failures, asynchronous ordering and native debugging
-remain concerns. A shared process alone does not guarantee zero-copy.
+The interactive exercise produces a specification supported by data and code.
+Capture these artifacts as the task becomes clearer:
 
-## Timing and participation
-
-| Minutes | Content |
+| Artifact | What to preserve |
 | --- | --- |
-| 0–5 | Robot, task, audience vote and initial ROS graph |
-| 5–12 | Without cppyy, vanilla cppyy, then cppyy_kit |
-| 12–30 | The same two nine-minute implementation sections, in the voted order |
-| 30–40 | Composition and the development/debugging workflow |
-| 40–45 | Compare results and discuss questions |
+| Representative inputs | Recordings, selected frames and relevant operating conditions |
+| Expected behavior | Reviewed outputs, tolerances and acceptance criteria |
+| Failure cases | False detections, absent targets, occlusion and changing conditions |
+| Reference implementation | Readable accepted code, dependencies and input/output contracts |
+| Operational requirements | Target hardware, latency, memory and deployment constraints |
 
-Include optional exercises inside these times: change a processing parameter
-and check outputs; change overload policy and inspect frame age. Supply prepared
-checkpoints. Continue presenting or taking questions while attendees experiment.
-Keep recorded runs and checked solutions available.
+Reference outputs need review before they become expected answers. Keep separate
+held-out evaluation examples so an implementation is assessed beyond the cases
+used to develop it. Recordings and labels can also supply training data when a
+learning approach is appropriate; otherwise they serve as examples and test data.
 
-## Show the working experience and the evidence
+Give the brief to a dedicated implementation agent or a team comparing approaches:
 
-Demonstrate a small requirement change, an independent correctness check and
-a recorded-input regression. Aim to inspect intermediate results, reproduce a
-failure and pause/step the simulation at defined boundaries. These debugging
-facilities are proposed work; a Python breakpoint does not pause native workers.
+> Here is what we want it to do. Here are examples, failures and a working
+> reference. Implement it for this target, check its behavior, and measure it.
 
-Compare CPU, processing time, frame age, dropped inputs and UI responsiveness.
-Separate compilation/startup from warmed execution. Explain ownership and
-copies. For agent steps, retain prompts, guidance, failures and corrections;
-time to a verified result matters more than time to generated code.
+Define “best” through the requirements. Agents could compare an existing library,
+a compiled C++ implementation and a Rust implementation against the same behavior
+and resource limits. Evaluate correctness first, then performance and maintenance
+cost. Retain useful new failure cases found during implementation.
 
-The [existing composition experiment](next_steps/composition/README.md) proves
-synthetic native progress, output parity, bounded pending work and joined
-shutdown. It does not establish robot performance or zero-copy. Build the
-playground in order: verify the stock simulation, select one operation, validate
-both implementations, then demonstrate composition and rehearse both orders.
-GPU and Zenoh are outside this exploration. EventsCBGExecutor is a separate
-upstream dependency upgrade and comparison, not a new executor to implement.
+cppyy_kit supports discovery through native access and interactive feedback.
+The implementation can use whichever tools satisfy the brief. Compiling the
+accepted kernel is one possible outcome; replacing the algorithm or implementation
+language is another. The shared contract and evaluation cases connect the stages.
+
+### Runtime costs inform the deployment requirements
+
+Use one compact measurement slide. In the recorded Eigen experiment, importing
+cppyy added about 164 MiB RSS. The cached-kit process reached about 203 MiB after
+its first call; native extension processes were about 37 MiB. These are process
+measurements for this environment. Separate startup, first use and warmed calls.
+Explain deferred compilation, buffer ownership, callback/GIL behavior and native
+failures through concrete examples. See [measurements](slide_assets/runtime_costs/README.md).
+
+The cloud investigation provides a concrete implementation comparison. With the same source and
+unchanged nanobind wrapper, offline Clang reached about 0.360 ms versus JIT
+0.360 ms and original GCC 0.430 ms for 307,200 points. Generated SIMD code
+explained the difference. See [conditions and analysis](slide_assets/runtime_costs/cloud/CODEGEN.md).
+
+> We found something that worked interactively, and then we could keep its
+> performance in an ordinary compiled library. That is a useful destination
+> for an experiment.
+
+Use the demonstrated saved-notebook replay and standalone compiled kernels as
+existing evidence. Present the broader agent handoff as the proposed next stage:
+an implementation brief, candidate implementations and evaluation against the
+captured cases and deployment requirements.
+
+## Material to reuse
+
+| Material | Role |
+| --- | --- |
+| [Script](TALK_SCRIPT.md), [slides](SLIDE_DRAFT.md), [speaker notes](SPEAKER_NOTES.md) | Existing narration, code, actual controller glue and media cues |
+| [Agent workflow discussion](AGENT_LIVE_EXPERIMENTS.md) | LLM argument, persistent sessions and extraction ideas |
+| [marimo notebook](next_steps/agent_session/NOTEBOOK.md) | Main interactive example and reproducible replay |
+| [Continuous ROS perception](next_steps/agent_session/README.md) | Live robotics evidence and alternative to webcam |
+| [Pick-place results](next_steps/pick_place/RESULTS.md) | Short robot outcome clip |
+| [Runtime measurements](slide_assets/runtime_costs/README.md) | Tradeoff slide and detailed backup tables |
+| [Compiler investigation](slide_assets/runtime_costs/cloud/CODEGEN.md) | Offline artifact preserving measured JIT performance |
+
+The earlier plan covered perception, nanoflann, control, admittance, pick-place,
+WBC, composition and optional navigation in sequence. Preserve those sections
+as supporting material. Use WBC/pick-place as an outcome clip. Keep solver
+details, Nav2, nanoflann, full binding tables and assembly for questions.
+
+A later evaluation can compare the same bounded task in this workspace and
+through an agent-generated extension. Record time to a checked result,
+corrections, build steps and resource use. This tests the workflow claim directly.

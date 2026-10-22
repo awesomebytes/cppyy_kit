@@ -1,0 +1,14 @@
+[controller_server-3] [INFO] [1792444393.071902505] [local_costmap.local_costmap]: Subscribed to Topics: front rear depth
+[controller_server-3] [INFO] [1792444393.105823362] [controller_server]: Using critic "RotateToGoal" (dwb_critics::RotateToGoalCritic)
+[controller_server-3] [INFO] [1792444393.106119242] [controller_server]: Using critic "Oscillation" (dwb_critics::OscillationCritic)
+[controller_server-3] [INFO] [1792444393.106270692] [controller_server]: Using critic "BaseObstacle" (dwb_critics::BaseObstacleCritic)
+[controller_server-3] [INFO] [1792444393.106352471] [controller_server]: Using critic "GoalAlign" (dwb_critics::GoalAlignCritic)
+[controller_server-3] [INFO] [1792444393.106479089] [controller_server]: Using critic "PathAlign" (dwb_critics::PathAlignCritic)
+[controller_server-3] [INFO] [1792444393.106754690] [controller_server]: Using critic "PathDist" (dwb_critics::PathDistCritic)
+[controller_server-3] [INFO] [1792444393.106891425] [controller_server]: Using critic "GoalDist" (dwb_critics::GoalDistCritic)
+[controller_server-3] [INFO] [1792444393.107068569] [controller_server]: Using critic "ObstacleFootprint" (dwb_critics::ObstacleFootprintCritic)
+[controller_server-3] [INFO] [1792444393.109380406] [controller_server]: Using critic "ForwardCamera" (nav2_kit_python::PythonCritic)
+[planner_server-4] [INFO] [1792444393.142997538] [global_costmap.global_costmap]: Subscribed to Topics: front rear depth
+[bt_navigator-7] [INFO] [1792444396.834843534] [bt_navigator]: Begin navigating from current location (-2.66, 1.35) to (-1.86, 1.35)
+[controller_server-3] [INFO] [1792444412.989260462] [controller_server]: Reached the goal!
+[bt_navigator-7] [INFO] [1792444413.015100471] [bt_navigator]: Goal succeeded

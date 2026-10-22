@@ -32,7 +32,7 @@ evaluation history.
 
 ### Quick composition experiment (2026-10-18)
 
-The earlier [robot playground](roscon_uk_2026/next_steps/robot_playground/README.md)
+The earlier [robot playground](https://github.com/awesomebytes/cppyy_kit/blob/roscon_uk_2026/roscon_uk_2026/next_steps/robot_playground/README.md)
 established a Stretch 4 MuJoCo baseline with locked local base/lift/arm,
 RGB/depth, IMU and 3D lidar checks. The user confirmed its interactive viewer
 and camera operation. Stretch 3 also passes motion and sensor
@@ -51,7 +51,7 @@ verified. Dual wrist F/T passes a 5 N load check (approximately 4.7 N; release
 0.065 N). PRO's native base/gripper/sensor corrections resolved the earlier
 force-magnitude failures; directional and pure-torque evidence and subsequent
 effort-controller load checks are recorded. PRO now has a
-[unified ROS launch](roscon_uk_2026/next_steps/tiago_pro/README.md) for the home
+[unified ROS launch](https://github.com/awesomebytes/cppyy_kit/blob/roscon_uk_2026/roscon_uk_2026/next_steps/tiago_pro/README.md) for the home
 simulator, native controllers, MoveIt, Nav2 and RViz. Native arm/head/gripper
 execution and Nav2 arrivals are recorded. Ready joints initialize directly;
 depth supplies collision occupancy in a world-fixed planning frame. Grasping,
@@ -59,7 +59,7 @@ WBC and PRO's per-joint torque estimator remain unvalidated. Robot acceleration
 or composition with cppyy_kit is not implemented by this conventional ROS
 baseline. Tasks retain a one-playground simulator lock.
 
-The current [Jazzy / Gazebo Harmonic baseline](roscon_uk_2026/next_steps/tiago_pro_jazzy/README.md) is published
+The current [Jazzy / Gazebo Harmonic baseline](https://github.com/awesomebytes/cppyy_kit/blob/roscon_uk_2026/roscon_uk_2026/next_steps/tiago_pro_jazzy/README.md) is published
 as `tiago-pro-playground` 0.2.0 build 2 on `awesomebytes`. Fresh installed
 startup passed nine controllers, MoveIt, Nav2, RGB/depth, lasers, wrist F/T topic
 presence and the GUI. The user also confirmed source-session navigation and
@@ -101,7 +101,7 @@ The [consumer README, manifest and lock](recipe/tiago-pro-playground/consumer/)
 use remote public channels, preserve all 826 package versions, and passed
 `pixi install --locked` without a local artifact channel.
 
-The [native ROS composition experiment](roscon_uk_2026/next_steps/composition/README.md)
+The [native ROS composition experiment](https://github.com/awesomebytes/cppyy_kit/blob/roscon_uk_2026/roscon_uk_2026/next_steps/composition/README.md)
 implements two processing nodes and a native sink in one managed context, with
 Python main-thread supervision. Shared kernels have direct and composed output
 parity checks. Latest-only overload accounting, native progress during a busy

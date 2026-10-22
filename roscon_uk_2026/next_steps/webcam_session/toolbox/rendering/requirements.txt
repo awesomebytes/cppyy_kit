@@ -1,0 +1,9 @@
+imgui-bundle==1.92.900
+viser==1.1.1
+msgspec==0.22.0
+zstandard==0.25.0
+rich==14.3.4
+markdown-it-py==4.2.0
+mdurl==0.1.2
+pygments==2.21.0
+polyscope==2.6.1
