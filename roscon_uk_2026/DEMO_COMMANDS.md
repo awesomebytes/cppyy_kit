@@ -87,6 +87,9 @@ Use this notebook as the starting point:
 roscon_uk_2026/next_steps/webcam_session/toolbox/rendering/live_notebook.py
 
 First check whether marimo is running at http://127.0.0.1:2721.
+Inspect sys.version and sys.executable in any existing session. This demo
+requires Python 3.12. Do not continue in a retained 3.11 interpreter; explain
+that it must be stopped and relaunched with the current documented command.
 If it is not, start it using the documented command. If it is running,
 connect to that session. Discover its session ID using notebook.sh pair
 notebook list --url http://127.0.0.1:2721. Run the cells if needed and verify
