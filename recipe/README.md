@@ -26,9 +26,9 @@ for the same eleven suite recipes.
 | `ros-jazzy-bt-kit` | `bt_kit` | `cppyy-kit`, `ros-jazzy-behaviortree-cpp` |
 | `ros-jazzy-pcl-kit` | `pcl_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `pcl`, `ros-jazzy-pcl-conversions` |
 | `ros-jazzy-ompl-kit` | `ompl_kit` | `cppyy-kit`, `ros-jazzy-ompl` |
-| `ros-jazzy-nav2-kit` | `nav2_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `ros-jazzy-nav2-{costmap-2d,navfn-planner,smac-planner,regulated-pure-pursuit-controller,msgs}` |
+| `ros-jazzy-nav2-kit` | `nav2_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `ros-jazzy-nav2-{costmap-2d,navfn-planner,smac-planner,regulated-pure-pursuit-controller,msgs}`, `ros-jazzy-dwb-core` |
 | `ros-jazzy-moveit-kit` | `moveit_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `ros-jazzy-moveit`, `ros-jazzy-ament-index-python` |
-| `ros-jazzy-control-kit` | `control_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `ros-jazzy-ros2-control` |
+| `ros-jazzy-control-kit` | `control_kit` | `cppyy-kit`, `ros-jazzy-rclcpp-kit`, `ros-jazzy-ros2-control`, `eigen` |
 | `ros-jazzy-cv-kit` | `cv_kit` | `cppyy-kit`, `opencv >=4,<5` |
 | `ros-jazzy-dbow-kit` | `dbow_kit` | `cppyy-kit`, `ros-jazzy-cv-kit`, `opencv >=4,<5` |
 | `wbc-kit` | `wbc_kit` | `cppyy-kit`, `crocoddyl` |
